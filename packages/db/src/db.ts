@@ -70,6 +70,29 @@ const makeService = (config: DatabaseConnectionConfig) =>
 
     const db = drizzle(pool, { schema })
 
+    const setupConnectionListeners = Effect.zipRight(
+      Effect.async<void, DatabaseConnectionError>((resume) => {
+        pool.on("error", (error) => {
+          resume(
+            Effect.fail(
+              new DatabaseConnectionError({
+                message: "[Database] Connection error occurred.",
+                cause: error,
+              })
+            )
+          )
+        })
+
+        return Effect.sync(() => {
+          pool.removeAllListeners("error")
+        })
+      }),
+      Effect.logInfo("[Database] Connection error listeners set up."),
+      {
+        concurrent: true,
+      }
+    )
+
     const execute = Effect.fn(<T>(fn: (client: typeof db) => Promise<T>) => {
       return Effect.tryPromise({
         try: () => fn(db),
@@ -99,7 +122,7 @@ const makeService = (config: DatabaseConnectionConfig) =>
       })
     })
 
-    return { execute }
+    return { setupConnectionListeners, execute }
   })
 
 type Shape = Effect.Effect.Success<ReturnType<typeof makeService>>
