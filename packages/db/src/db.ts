@@ -1,4 +1,4 @@
-import { drizzle } from "drizzle-orm/postgres-js"
+import { drizzle } from "drizzle-orm/node-postgres"
 import * as Context from "effect/Context"
 import * as Data from "effect/Data"
 import * as Effect from "effect/Effect"

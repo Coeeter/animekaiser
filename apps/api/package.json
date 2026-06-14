@@ -11,6 +11,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@workspace/db": "workspace:*",
     "@effect/platform": "^0.96.1",
     "@effect/platform-bun": "^0.90.0",
     "effect": "^3.21.3"
