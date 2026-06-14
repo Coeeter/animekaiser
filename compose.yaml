@@ -1,0 +1,22 @@
+name: animekaiser
+services:
+  database:
+    image: postgres:17-alpine
+    container_name: animekaiser-db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: animekaiser
+    ports:
+      - "5432:5432"
+    volumes:
+      - db_data:/var/lib/postgresql/data
+
+  redis:
+    image: redis:8.8-alpine
+    container_name: animekaiser-redis
+    ports:
+      - "6379:6379"
+
+volumes:
+  db_data:
