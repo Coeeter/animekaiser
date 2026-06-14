@@ -8,7 +8,7 @@
     "build": "vite build",
     "preview": "vite preview",
     "lint": "eslint",
-    "format": "prettier --write \"**/*.{ts,tsx}\"",
+    "format": "prettier --write \"**/*.{ts,tsx}\" --ignore-path ../../.prettierignore",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
