@@ -1,9 +1,18 @@
 {
+  "$schema": "./node_modules/@effect/language-service/schema.json",
   "compilerOptions": {
     "target": "ES2022",
     "module": "ESNext",
     "moduleResolution": "bundler",
     "skipLibCheck": true,
-    "strict": true
-  }
+    "strict": true,
+    "plugins": [
+      {
+        "name": "@effect/language-service",
+        "barrelImportPackages": ["effect", "@effect/*", "@effect-atom/*"],
+        "namespaceImportPackages": ["effect", "@effect/*", "@effect-atom/*"]
+      }
+    ]
+  },
+  "include": ["**/*.ts"]
 }

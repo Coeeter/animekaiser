@@ -1,0 +1,15 @@
+/// <reference types="node" />
+
+import { defineConfig } from "drizzle-kit"
+
+export default defineConfig({
+  dialect: "postgresql",
+  driver: "pglite",
+  out: "./drizzle",
+  schema: "./src/schema/index.ts",
+  dbCredentials: {
+    url:
+      process.env.DATABASE_URL ||
+      "postgresql://postgres:password@localhost:5432/mydb",
+  },
+})
