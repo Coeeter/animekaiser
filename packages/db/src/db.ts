@@ -97,27 +97,26 @@ const makeService = (config: DatabaseConnectionConfig) =>
       return Effect.tryPromise({
         try: () => fn(db),
         catch: (error) => {
-          if (error instanceof PgDatabaseError) {
-            switch (error.code) {
-              case "23505":
-                return new DatabaseError({
-                  type: "unique_violation",
-                  cause: error,
-                })
-              case "23503":
-                return new DatabaseError({
-                  type: "foreign_key_violation",
-                  cause: error,
-                })
-              case "08000":
-                return new DatabaseError({
-                  type: "connection_error",
-                  cause: error,
-                })
-            }
-          }
+          const isPgError = error instanceof PgDatabaseError
+          if (!isPgError) throw error // Just crash for unknown errors
 
-          throw error
+          switch (error.code) {
+            case "23505":
+              return new DatabaseError({
+                type: "unique_violation",
+                cause: error,
+              })
+            case "23503":
+              return new DatabaseError({
+                type: "foreign_key_violation",
+                cause: error,
+              })
+            case "08000":
+              return new DatabaseError({
+                type: "connection_error",
+                cause: error,
+              })
+          }
         },
       })
     })
