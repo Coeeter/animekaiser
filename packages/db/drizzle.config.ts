@@ -10,6 +10,6 @@ export default defineConfig({
   dbCredentials: {
     url:
       process.env.DATABASE_URL ||
-      "postgresql://postgres:password@localhost:5432/mydb",
+      "postgresql://postgres:password@localhost:5432/animekaiser",
   },
 })
