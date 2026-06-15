@@ -1,20 +1,18 @@
 {
-  "name": "@workspace/api",
+  "name": "@workspace/domain",
   "version": "0.0.0",
   "type": "module",
   "private": true,
+  "exports": {
+    ".": "./src/index.ts"
+  },
   "scripts": {
-    "dev": "bun --watch src/index.ts",
-    "build": "tsc --outDir dist",
     "lint": "eslint",
     "format": "prettier --write \"**/*.{ts,tsx}\" --ignore-path ../../.prettierignore",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@workspace/db": "workspace:*",
-    "@workspace/domain": "workspace:*",
     "@effect/platform": "^0.96.1",
-    "@effect/platform-bun": "^0.90.0",
     "effect": "^3.21.3"
   },
   "devDependencies": {

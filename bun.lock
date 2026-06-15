@@ -19,6 +19,7 @@
         "@effect/platform": "^0.96.1",
         "@effect/platform-bun": "^0.90.0",
         "@workspace/db": "workspace:*",
+        "@workspace/domain": "workspace:*",
         "effect": "^3.21.3",
       },
       "devDependencies": {
@@ -69,6 +70,20 @@
         "@types/node": "^25.9.2",
         "@types/pg": "^8.20.0",
         "drizzle-kit": "^0.31.10",
+        "eslint": "^9",
+        "typescript": "^6",
+      },
+    },
+    "packages/domain": {
+      "name": "@workspace/domain",
+      "version": "0.0.0",
+      "dependencies": {
+        "@effect/platform": "^0.96.1",
+        "effect": "^3.21.3",
+      },
+      "devDependencies": {
+        "@tanstack/eslint-config": "^0.4.0",
+        "@types/node": "^25.9.2",
         "eslint": "^9",
         "typescript": "^6",
       },
@@ -809,6 +824,8 @@
     "@workspace/api": ["@workspace/api@workspace:apps/api"],
 
     "@workspace/db": ["@workspace/db@workspace:packages/db"],
+
+    "@workspace/domain": ["@workspace/domain@workspace:packages/domain"],
 
     "@workspace/ui": ["@workspace/ui@workspace:packages/ui"],
 
