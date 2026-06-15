@@ -1,4 +1,9 @@
-import { HttpApiBuilder, HttpMiddleware, HttpServer } from "@effect/platform"
+import {
+  HttpApiBuilder,
+  HttpApiSwagger,
+  HttpMiddleware,
+  HttpServer,
+} from "@effect/platform"
 import * as BunHttpServer from "@effect/platform-bun/BunHttpServer"
 import * as BunRuntime from "@effect/platform-bun/BunRuntime"
 import { Database } from "@workspace/db"
@@ -43,6 +48,7 @@ const HttpServerLayer = Layer.unwrapEffect(
 
 const HttpLive = HttpApiBuilder.serve(HttpMiddleware.logger).pipe(
   HttpServer.withLogAddress,
+  Layer.provide(HttpApiSwagger.layer()),
   Layer.provide(CorsLive),
   Layer.provide(ApiLive),
   Layer.merge(DBListenerLive),

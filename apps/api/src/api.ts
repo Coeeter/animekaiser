@@ -7,19 +7,15 @@ import * as Layer from "effect/Layer"
 import * as Schema from "effect/Schema"
 
 export const Api = HttpApi.make("api").add(
-  HttpApiGroup.make("helloWorld").add(
-    HttpApiEndpoint.get("get", "/").addSuccess(
-      Schema.Struct({
-        message: Schema.String,
-      })
-    )
+  HttpApiGroup.make("Entry").add(
+    HttpApiEndpoint.get("hello-world")`/`.addSuccess(Schema.String)
   )
 )
 
+const GreetingsLive = HttpApiBuilder.group(Api, "Entry", (handlers) =>
+  handlers.handle("hello-world", () => Effect.succeed("Hello, World!"))
+)
+
 export const ApiLive = HttpApiBuilder.api(Api).pipe(
-  Layer.provide(
-    HttpApiBuilder.group(Api, "helloWorld", (handlers) =>
-      handlers.handle("get", () => Effect.succeed({ message: "hello world" }))
-    )
-  )
+  Layer.provide(GreetingsLive)
 )
