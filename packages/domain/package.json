@@ -12,7 +12,6 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@effect/platform": "^0.96.1",
     "effect": "^3.21.3"
   },
   "devDependencies": {

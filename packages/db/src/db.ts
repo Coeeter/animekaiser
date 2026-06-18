@@ -11,6 +11,16 @@ export type DatabaseConnectionConfig = {
   ssl?: boolean
 }
 
+export const createPgPool = (config: DatabaseConnectionConfig) =>
+  new Pool({
+    connectionString: config.url,
+    ssl: config.ssl,
+  })
+
+export const createDrizzleClient = (pool: Pool) => drizzle(pool, { schema })
+
+export type KaiserDb = ReturnType<typeof createDrizzleClient>
+
 export class DatabaseConnectionError extends Data.TaggedError(
   "DatabaseConnectionError"
 )<{
@@ -34,13 +44,7 @@ export class DatabaseError extends Data.TaggedError("DatabaseError")<{
 const makeService = (config: DatabaseConnectionConfig) =>
   Effect.gen(function* () {
     const pool = yield* Effect.acquireRelease(
-      Effect.sync(
-        () =>
-          new Pool({
-            connectionString: config.url,
-            ssl: config.ssl,
-          })
-      ),
+      Effect.sync(() => createPgPool(config)),
       (p) => Effect.promise(() => p.end())
     )
 
@@ -68,7 +72,7 @@ const makeService = (config: DatabaseConnectionConfig) =>
       )
     )
 
-    const db = drizzle(pool, { schema })
+    const db = createDrizzleClient(pool)
 
     const setupConnectionListeners = Effect.zipRight(
       Effect.async<void, DatabaseConnectionError>((resume) => {
@@ -121,7 +125,9 @@ const makeService = (config: DatabaseConnectionConfig) =>
       })
     })
 
-    return { setupConnectionListeners, execute }
+    const withClient = <T>(fn: (client: typeof db) => T) => fn(db)
+
+    return { setupConnectionListeners, execute, withClient }
   })
 
 type Shape = Effect.Effect.Success<ReturnType<typeof makeService>>

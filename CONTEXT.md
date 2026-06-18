@@ -27,3 +27,15 @@ _Avoid_: Sync error, merge error
 **Streaming Provider Anime ID**:
 A provider-specific identifier that maps an Anime to its corresponding title on a streaming provider.
 _Avoid_: Stream ID, episode ID, playable source
+
+**Sign-In Method**:
+A way for a user to authenticate into Kaiser, such as email/password, email OTP, or passkey.
+_Avoid_: External list account, provider link
+
+**External List Account**:
+A user's linked MAL or AniList account used for importing and syncing anime library data.
+_Avoid_: Sign-in provider, primary auth provider
+
+**Auth Account**:
+A Better Auth account used for Kaiser authentication and sign-in method management.
+_Avoid_: External list account

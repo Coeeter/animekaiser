@@ -1,0 +1,24 @@
+import { createDrizzleClient, createPgPool } from "@workspace/db"
+import { initAuth } from "../src/init-auth"
+
+const pool = createPgPool({
+  url: process.env.DATABASE_URL ?? "postgres://localhost:5432/kaiser",
+})
+
+export const auth = initAuth({
+  appName: "Kaiser",
+  baseURL: process.env.BETTER_AUTH_URL ?? "http://localhost:8080",
+  secret:
+    process.env.BETTER_AUTH_SECRET ??
+    "development-only-better-auth-secret-change-before-use",
+  trustedOrigins: [process.env.APP_URL ?? "http://localhost:3000"],
+  db: createDrizzleClient(pool),
+  logger: {
+    info: console.info,
+    warn: console.warn,
+    error: console.error,
+  },
+  mailer: {
+    sendEmailOtp: async () => {},
+  },
+})
