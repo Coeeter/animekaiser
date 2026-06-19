@@ -1,9 +1,7 @@
-import {
-  HttpBody,
-  HttpClient,
-  HttpClientRequest,
-  HttpClientResponse,
-} from "@effect/platform"
+import * as HttpBody from "@effect/platform/HttpBody"
+import * as HttpClient from "@effect/platform/HttpClient"
+import * as HttpClientRequest from "@effect/platform/HttpClientRequest"
+import * as HttpClientResponse from "@effect/platform/HttpClientResponse"
 import * as Context from "effect/Context"
 import * as Data from "effect/Data"
 import * as Effect from "effect/Effect"

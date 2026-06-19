@@ -31,12 +31,10 @@
   },
   "devDependencies": {
     "@tanstack/devtools-vite": "latest",
-    "@tanstack/eslint-config": "latest",
     "@types/node": "^22",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@vitejs/plugin-react": "^6",
-    "eslint": "^9",
     "typescript": "^6",
     "vite": "^8"
   }

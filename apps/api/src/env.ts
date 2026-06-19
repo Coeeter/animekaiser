@@ -37,9 +37,9 @@ export class Env extends Effect.Service<Env>()("@workspace/api/env", {
       externalList: {
         mal: {
           clientId: yield* Config.nonEmptyString("MAL_CLIENT_ID"),
-          clientSecret: yield* Config.nonEmptyString(
-            "MAL_CLIENT_SECRET"
-          ).pipe(Config.map(Redacted.make)),
+          clientSecret: yield* Config.nonEmptyString("MAL_CLIENT_SECRET").pipe(
+            Config.map(Redacted.make)
+          ),
         },
         aniList: {
           clientId: yield* Config.nonEmptyString("ANILIST_CLIENT_ID"),

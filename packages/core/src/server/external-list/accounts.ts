@@ -51,95 +51,95 @@ const linkExternalListAccount = (
 ) =>
   Effect.gen(function* () {
     const now = new Date()
-      const linkedRows = yield* database.execute((db) =>
-        db
-          .select({
-            id: externalListAccount.id,
-            userId: externalListAccount.userId,
-          })
-          .from(externalListAccount)
-          .where(
-            and(
-              eq(externalListAccount.provider, linkedAccount.provider),
-              eq(
-                externalListAccount.providerAccountId,
-                linkedAccount.providerAccountId
-              )
-            )
-          )
-      )
-      const linkedToAnotherUser = linkedRows.some(
-        (row) => row.userId !== linkedAccount.userId
-      )
-      if (linkedToAnotherUser) {
-        return yield* new ExternalListOAuthError({
-          provider: linkedAccount.provider,
-          message: `${linkedAccount.provider} account is already linked to a different user`,
+    const linkedRows = yield* database.execute((db) =>
+      db
+        .select({
+          id: externalListAccount.id,
+          userId: externalListAccount.userId,
         })
-      }
-
-      const existing = yield* database.execute((db) =>
-        db
-          .select({ id: externalListAccount.id })
-          .from(externalListAccount)
-          .where(
-            and(
-              eq(externalListAccount.provider, linkedAccount.provider),
-              eq(externalListAccount.userId, linkedAccount.userId)
+        .from(externalListAccount)
+        .where(
+          and(
+            eq(externalListAccount.provider, linkedAccount.provider),
+            eq(
+              externalListAccount.providerAccountId,
+              linkedAccount.providerAccountId
             )
           )
-          .limit(1)
-      )
-
-      const nextTokenRefreshAt = getNextTokenRefreshAt(
-        linkedAccount.accessTokenExpiresAt
-      )
-
-      if (existing[0]) {
-        yield* database.execute((db) =>
-          db
-            .update(externalListAccount)
-            .set({
-              providerAccountId: linkedAccount.providerAccountId,
-              accessToken: linkedAccount.accessToken,
-              refreshToken: linkedAccount.refreshToken,
-              accessTokenExpiresAt: linkedAccount.accessTokenExpiresAt,
-              refreshTokenExpiresAt: linkedAccount.refreshTokenExpiresAt,
-              scopes: linkedAccount.scopes,
-              tokenType: linkedAccount.tokenType,
-              nextTokenRefreshAt,
-              updatedAt: now,
-            })
-            .where(eq(externalListAccount.id, existing[0].id))
         )
-        return
-      }
+    )
+    const linkedToAnotherUser = linkedRows.some(
+      (row) => row.userId !== linkedAccount.userId
+    )
+    if (linkedToAnotherUser) {
+      return yield* new ExternalListOAuthError({
+        provider: linkedAccount.provider,
+        message: `${linkedAccount.provider} account is already linked to a different user`,
+      })
+    }
 
+    const existing = yield* database.execute((db) =>
+      db
+        .select({ id: externalListAccount.id })
+        .from(externalListAccount)
+        .where(
+          and(
+            eq(externalListAccount.provider, linkedAccount.provider),
+            eq(externalListAccount.userId, linkedAccount.userId)
+          )
+        )
+        .limit(1)
+    )
+
+    const nextTokenRefreshAt = getNextTokenRefreshAt(
+      linkedAccount.accessTokenExpiresAt
+    )
+
+    if (existing[0]) {
       yield* database.execute((db) =>
-        db.insert(externalListAccount).values({
-          id: crypto.randomUUID(),
-          provider: linkedAccount.provider,
-          providerAccountId: linkedAccount.providerAccountId,
-          userId: linkedAccount.userId,
-          accessToken: linkedAccount.accessToken,
-          refreshToken: linkedAccount.refreshToken,
-          accessTokenExpiresAt: linkedAccount.accessTokenExpiresAt,
-          refreshTokenExpiresAt: linkedAccount.refreshTokenExpiresAt,
-          scopes: linkedAccount.scopes,
-          tokenType: linkedAccount.tokenType,
-          nextTokenRefreshAt,
-          createdAt: now,
-          updatedAt: now,
-        })
+        db
+          .update(externalListAccount)
+          .set({
+            providerAccountId: linkedAccount.providerAccountId,
+            accessToken: linkedAccount.accessToken,
+            refreshToken: linkedAccount.refreshToken,
+            accessTokenExpiresAt: linkedAccount.accessTokenExpiresAt,
+            refreshTokenExpiresAt: linkedAccount.refreshTokenExpiresAt,
+            scopes: linkedAccount.scopes,
+            tokenType: linkedAccount.tokenType,
+            nextTokenRefreshAt,
+            updatedAt: now,
+          })
+          .where(eq(externalListAccount.id, existing[0].id))
       )
+      return
+    }
+
+    yield* database.execute((db) =>
+      db.insert(externalListAccount).values({
+        id: crypto.randomUUID(),
+        provider: linkedAccount.provider,
+        providerAccountId: linkedAccount.providerAccountId,
+        userId: linkedAccount.userId,
+        accessToken: linkedAccount.accessToken,
+        refreshToken: linkedAccount.refreshToken,
+        accessTokenExpiresAt: linkedAccount.accessTokenExpiresAt,
+        refreshTokenExpiresAt: linkedAccount.refreshTokenExpiresAt,
+        scopes: linkedAccount.scopes,
+        tokenType: linkedAccount.tokenType,
+        nextTokenRefreshAt,
+        createdAt: now,
+        updatedAt: now,
+      })
+    )
   }).pipe(
     Effect.mapError(
       (cause) =>
-      new ExternalListOAuthError({
-        provider: linkedAccount.provider,
-        message: "[External List] Failed to link external list account.",
-        cause,
-      })
+        new ExternalListOAuthError({
+          provider: linkedAccount.provider,
+          message: "[External List] Failed to link external list account.",
+          cause,
+        })
     )
   )
 

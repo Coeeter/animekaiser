@@ -1,4 +1,5 @@
-import { HttpLayerRouter, HttpMiddleware } from "@effect/platform"
+import * as HttpLayerRouter from "@effect/platform/HttpLayerRouter"
+import * as HttpMiddleware from "@effect/platform/HttpMiddleware"
 import * as BunHttpServer from "@effect/platform-bun/BunHttpServer"
 import * as BunRuntime from "@effect/platform-bun/BunRuntime"
 import * as FetchHttpClient from "@effect/platform/FetchHttpClient"

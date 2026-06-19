@@ -1,6 +1,7 @@
 {
   "name": "kaiser",
   "version": "0.0.1",
+  "type": "module",
   "private": true,
   "scripts": {
     "build": "turbo build",
@@ -11,7 +12,11 @@
     "prepare": "effect-language-service patch"
   },
   "devDependencies": {
+    "@effect/eslint-plugin": "^0.3.2",
     "@effect/language-service": "^0.86.2",
+    "@tanstack/eslint-config": "^0.4.0",
+    "eslint": "^9",
+    "eslint-plugin-unused-imports": "^4.4.1",
     "prettier": "^3.8.3",
     "prettier-plugin-tailwindcss": "^0.8.0",
     "turbo": "^2.9.15",

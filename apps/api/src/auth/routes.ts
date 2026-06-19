@@ -1,4 +1,6 @@
-import { HttpApp, HttpLayerRouter, HttpServerResponse } from "@effect/platform"
+import * as HttpApp from "@effect/platform/HttpApp"
+import * as HttpLayerRouter from "@effect/platform/HttpLayerRouter"
+import * as HttpServerResponse from "@effect/platform/HttpServerResponse"
 import * as Effect from "effect/Effect"
 import { BetterAuth } from "."
 

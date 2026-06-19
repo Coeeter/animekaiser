@@ -23,9 +23,7 @@
     "resend": "^6.12.4"
   },
   "devDependencies": {
-    "@tanstack/eslint-config": "^0.4.0",
     "@types/node": "^25.9.2",
-    "eslint": "^9",
     "typescript": "^6"
   }
 }

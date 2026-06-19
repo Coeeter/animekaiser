@@ -1,9 +1,7 @@
-import {
-  HttpLayerRouter,
-  HttpRouter,
-  HttpServerRequest,
-  HttpServerResponse,
-} from "@effect/platform"
+import * as HttpLayerRouter from "@effect/platform/HttpLayerRouter"
+import * as HttpRouter from "@effect/platform/HttpRouter"
+import * as HttpServerRequest from "@effect/platform/HttpServerRequest"
+import * as HttpServerResponse from "@effect/platform/HttpServerResponse"
 import {
   ExternalListAccountError,
   ExternalListAccountsService,

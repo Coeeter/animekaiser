@@ -1,4 +1,4 @@
-import { HttpServerRequest } from "@effect/platform"
+import * as HttpServerRequest from "@effect/platform/HttpServerRequest"
 import { initAuth } from "@workspace/auth"
 import { ExternalListOAuthConfig } from "@workspace/core/server"
 import { Database } from "@workspace/db"
