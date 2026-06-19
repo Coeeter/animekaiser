@@ -1,12 +1,8 @@
-import type { KaiserDb } from "@workspace/db"
+import type { DatabaseService } from "@workspace/db"
 import { externalListAccount } from "@workspace/db"
 import { and, eq, lte } from "drizzle-orm"
 import * as Effect from "effect/Effect"
-import type {
-  ExternalListProvider,
-  MalTokenResponse,
-  ProviderOAuthConfig,
-} from "./oauth"
+import type { ExternalListProvider, ProviderOAuthConfig } from "./oauth"
 import {
   ExternalListOAuthError,
   exchangeAniListAuthorizationCode,
@@ -50,95 +46,105 @@ const getNextTokenRefreshAt = (expiresAt?: Date) =>
     : undefined
 
 const linkExternalListAccount = (
-  db: KaiserDb,
+  database: DatabaseService,
   linkedAccount: LinkedExternalListAccount
 ) =>
-  Effect.tryPromise({
-    try: async () => {
-      const now = new Date()
-      const linkedRows = await db
-        .select({
-          id: externalListAccount.id,
-          userId: externalListAccount.userId,
-        })
-        .from(externalListAccount)
-        .where(
-          and(
-            eq(externalListAccount.provider, linkedAccount.provider),
-            eq(
-              externalListAccount.providerAccountId,
-              linkedAccount.providerAccountId
+  Effect.gen(function* () {
+    const now = new Date()
+      const linkedRows = yield* database.execute((db) =>
+        db
+          .select({
+            id: externalListAccount.id,
+            userId: externalListAccount.userId,
+          })
+          .from(externalListAccount)
+          .where(
+            and(
+              eq(externalListAccount.provider, linkedAccount.provider),
+              eq(
+                externalListAccount.providerAccountId,
+                linkedAccount.providerAccountId
+              )
             )
           )
-        )
+      )
       const linkedToAnotherUser = linkedRows.some(
         (row) => row.userId !== linkedAccount.userId
       )
       if (linkedToAnotherUser) {
-        throw new Error(
-          `${linkedAccount.provider} account is already linked to a different user`
-        )
+        return yield* new ExternalListOAuthError({
+          provider: linkedAccount.provider,
+          message: `${linkedAccount.provider} account is already linked to a different user`,
+        })
       }
 
-      const existing = await db
-        .select({ id: externalListAccount.id })
-        .from(externalListAccount)
-        .where(
-          and(
-            eq(externalListAccount.provider, linkedAccount.provider),
-            eq(externalListAccount.userId, linkedAccount.userId)
+      const existing = yield* database.execute((db) =>
+        db
+          .select({ id: externalListAccount.id })
+          .from(externalListAccount)
+          .where(
+            and(
+              eq(externalListAccount.provider, linkedAccount.provider),
+              eq(externalListAccount.userId, linkedAccount.userId)
+            )
           )
-        )
-        .limit(1)
+          .limit(1)
+      )
 
       const nextTokenRefreshAt = getNextTokenRefreshAt(
         linkedAccount.accessTokenExpiresAt
       )
 
       if (existing[0]) {
-        await db
-          .update(externalListAccount)
-          .set({
-            providerAccountId: linkedAccount.providerAccountId,
-            accessToken: linkedAccount.accessToken,
-            refreshToken: linkedAccount.refreshToken,
-            accessTokenExpiresAt: linkedAccount.accessTokenExpiresAt,
-            refreshTokenExpiresAt: linkedAccount.refreshTokenExpiresAt,
-            scopes: linkedAccount.scopes,
-            tokenType: linkedAccount.tokenType,
-            nextTokenRefreshAt,
-            updatedAt: now,
-          })
-          .where(eq(externalListAccount.id, existing[0].id))
+        yield* database.execute((db) =>
+          db
+            .update(externalListAccount)
+            .set({
+              providerAccountId: linkedAccount.providerAccountId,
+              accessToken: linkedAccount.accessToken,
+              refreshToken: linkedAccount.refreshToken,
+              accessTokenExpiresAt: linkedAccount.accessTokenExpiresAt,
+              refreshTokenExpiresAt: linkedAccount.refreshTokenExpiresAt,
+              scopes: linkedAccount.scopes,
+              tokenType: linkedAccount.tokenType,
+              nextTokenRefreshAt,
+              updatedAt: now,
+            })
+            .where(eq(externalListAccount.id, existing[0].id))
+        )
         return
       }
 
-      await db.insert(externalListAccount).values({
-        id: crypto.randomUUID(),
-        provider: linkedAccount.provider,
-        providerAccountId: linkedAccount.providerAccountId,
-        userId: linkedAccount.userId,
-        accessToken: linkedAccount.accessToken,
-        refreshToken: linkedAccount.refreshToken,
-        accessTokenExpiresAt: linkedAccount.accessTokenExpiresAt,
-        refreshTokenExpiresAt: linkedAccount.refreshTokenExpiresAt,
-        scopes: linkedAccount.scopes,
-        tokenType: linkedAccount.tokenType,
-        nextTokenRefreshAt,
-        createdAt: now,
-        updatedAt: now,
-      })
-    },
-    catch: (cause) =>
+      yield* database.execute((db) =>
+        db.insert(externalListAccount).values({
+          id: crypto.randomUUID(),
+          provider: linkedAccount.provider,
+          providerAccountId: linkedAccount.providerAccountId,
+          userId: linkedAccount.userId,
+          accessToken: linkedAccount.accessToken,
+          refreshToken: linkedAccount.refreshToken,
+          accessTokenExpiresAt: linkedAccount.accessTokenExpiresAt,
+          refreshTokenExpiresAt: linkedAccount.refreshTokenExpiresAt,
+          scopes: linkedAccount.scopes,
+          tokenType: linkedAccount.tokenType,
+          nextTokenRefreshAt,
+          createdAt: now,
+          updatedAt: now,
+        })
+      )
+  }).pipe(
+    Effect.mapError(
+      (cause) =>
       new ExternalListOAuthError({
         provider: linkedAccount.provider,
         message: "[External List] Failed to link external list account.",
         cause,
-      }),
-  })
+      })
+    )
+  )
 
 export const handleMalCallback = (
-  db: KaiserDb,
+  database: DatabaseService,
   config: ProviderOAuthConfig,
   params: {
     userId: string
@@ -171,7 +177,7 @@ export const handleMalCallback = (
     })
     const malUser = yield* fetchMalUser(tokens.access_token)
 
-    yield* linkExternalListAccount(db, {
+    yield* linkExternalListAccount(database, {
       userId: params.userId,
       provider: "mal",
       providerAccountId: String(malUser.id),
@@ -188,7 +194,7 @@ export const handleMalCallback = (
   })
 
 export const handleAniListCallback = (
-  db: KaiserDb,
+  database: DatabaseService,
   config: ProviderOAuthConfig,
   params: {
     userId: string
@@ -212,7 +218,7 @@ export const handleAniListCallback = (
     })
     const aniListUser = yield* fetchAniListUser(tokens.access_token)
 
-    yield* linkExternalListAccount(db, {
+    yield* linkExternalListAccount(database, {
       userId: params.userId,
       provider: "anilist",
       providerAccountId: String(aniListUser.id),
@@ -228,27 +234,38 @@ export const handleAniListCallback = (
   })
 
 export const refreshExternalListAccountToken = (
-  db: KaiserDb,
+  database: DatabaseService,
   config: RefreshExternalListTokenConfig,
   params: RefreshExternalListTokenParams
 ) =>
   Effect.gen(function* () {
-    const tokens =
+    const { scopes, tokens } =
       params.provider === "mal"
-        ? yield* refreshMalAccessToken(config.mal, params.refreshToken)
-        : yield* refreshAniListAccessToken(config.aniList, params.refreshToken)
+        ? yield* refreshMalAccessToken(config.mal, params.refreshToken).pipe(
+            Effect.map((tokenResponse) => ({
+              scopes: tokenResponse.scope,
+              tokens: tokenResponse,
+            }))
+          )
+        : yield* refreshAniListAccessToken(
+            config.aniList,
+            params.refreshToken
+          ).pipe(
+            Effect.map((tokenResponse) => ({
+              scopes: undefined,
+              tokens: tokenResponse,
+            }))
+          )
     const now = new Date()
     const accessTokenExpiresAt = tokens.expires_in
       ? new Date(now.getTime() + tokens.expires_in * 1000)
       : params.currentAccessTokenExpiresAt
-    const scopes =
-      params.provider === "mal" ? (tokens as MalTokenResponse).scope : undefined
     const nextTokenRefreshAt =
       getNextTokenRefreshAt(accessTokenExpiresAt ?? undefined) ??
       params.currentNextTokenRefreshAt
 
-    yield* Effect.tryPromise({
-      try: () =>
+    yield* database
+      .execute((db) =>
         db
           .update(externalListAccount)
           .set({
@@ -261,30 +278,38 @@ export const refreshExternalListAccountToken = (
             nextTokenRefreshAt,
             updatedAt: now,
           })
-          .where(eq(externalListAccount.id, params.accountId)),
-      catch: (cause) =>
-        new ExternalListOAuthError({
-          provider: params.provider,
-          message: "[External List] Failed to persist refreshed token.",
-          cause,
-        }),
-    })
+          .where(eq(externalListAccount.id, params.accountId))
+      )
+      .pipe(
+        Effect.mapError(
+          (cause) =>
+            new ExternalListOAuthError({
+              provider: params.provider,
+              message: "[External List] Failed to persist refreshed token.",
+              cause,
+            })
+        )
+      )
   })
 
 export const findExternalListAccountsDueForTokenRefresh = (
-  db: KaiserDb,
+  database: DatabaseService,
   now = new Date()
 ) =>
-  Effect.tryPromise({
-    try: () =>
+  database
+    .execute((db) =>
       db
         .select()
         .from(externalListAccount)
-        .where(lte(externalListAccount.nextTokenRefreshAt, now)),
-    catch: (cause) =>
-      new ExternalListOAuthError({
-        message:
-          "[External List] Failed to load accounts due for token refresh.",
-        cause,
-      }),
-  })
+        .where(lte(externalListAccount.nextTokenRefreshAt, now))
+    )
+    .pipe(
+      Effect.mapError(
+        (cause) =>
+          new ExternalListOAuthError({
+            message:
+              "[External List] Failed to load accounts due for token refresh.",
+            cause,
+          })
+      )
+    )

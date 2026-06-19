@@ -29,15 +29,19 @@ export class DatabaseConnectionError extends Data.TaggedError(
 }> {}
 
 export class DatabaseError extends Data.TaggedError("DatabaseError")<{
-  type: "unique_violation" | "foreign_key_violation" | "connection_error"
-  cause: PgDatabaseError
+  type:
+    | "unique_violation"
+    | "foreign_key_violation"
+    | "connection_error"
+    | "query_error"
+  cause: unknown
 }> {
   public override toString(): string {
-    return `[DatabaseError] ${this.type}: ${this.cause.message}`
+    return `[DatabaseError] ${this.type}: ${this.message}`
   }
 
   public get message() {
-    return this.cause.message
+    return this.cause instanceof Error ? this.cause.message : "Unknown error"
   }
 }
 
@@ -100,27 +104,27 @@ const makeService = (config: DatabaseConnectionConfig) =>
     const execute = Effect.fn(<T>(fn: (client: typeof db) => Promise<T>) => {
       return Effect.tryPromise({
         try: () => fn(db),
-        catch: (error) => {
-          const isPgError = error instanceof PgDatabaseError
-          if (!isPgError) throw error // Just crash for unknown errors
-
-          switch (error.code) {
-            case "23505":
-              return new DatabaseError({
-                type: "unique_violation",
-                cause: error,
-              })
-            case "23503":
-              return new DatabaseError({
-                type: "foreign_key_violation",
-                cause: error,
-              })
-            case "08000":
-              return new DatabaseError({
-                type: "connection_error",
-                cause: error,
-              })
+        catch: (cause) => {
+          if (cause instanceof PgDatabaseError) {
+            switch (cause.code) {
+              case "23505":
+                return new DatabaseError({
+                  type: "unique_violation",
+                  cause,
+                })
+              case "23503":
+                return new DatabaseError({
+                  type: "foreign_key_violation",
+                  cause,
+                })
+              case "08000":
+                return new DatabaseError({
+                  type: "connection_error",
+                  cause,
+                })
+            }
           }
+          return new DatabaseError({ type: "query_error", cause })
         },
       })
     })
@@ -131,6 +135,7 @@ const makeService = (config: DatabaseConnectionConfig) =>
   })
 
 type Shape = Effect.Effect.Success<ReturnType<typeof makeService>>
+export type DatabaseService = Shape
 
 export class Database extends Context.Tag("@workspace/db/db/Database")<
   Database,

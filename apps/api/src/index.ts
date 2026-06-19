@@ -14,6 +14,7 @@ import { Env } from "./env"
 import { ExternalListAccountsRoutesLive } from "./external-list/routes"
 import { ExternalListOAuthStateStoreLive } from "./external-list/oauth-state-store"
 import { ExternalListTokenRefreshWorkerLive } from "./external-list/token-refresh"
+import { RpcLive } from "./rpc"
 
 const DBLive = Layer.unwrapEffect(
   Env.pipe(
@@ -53,6 +54,7 @@ const HttpServerLayer = Layer.unwrapEffect(
 const AllRoutesLive = Layer.mergeAll(
   AuthRoutesLive,
   ExternalListAccountsRoutesLive,
+  RpcLive,
   CorsLive
 )
 

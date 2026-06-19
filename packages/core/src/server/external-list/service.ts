@@ -47,7 +47,6 @@ export class ExternalListAccountsService extends Effect.Service<ExternalListAcco
     effect: Effect.gen(function* () {
       const database = yield* Database
       const config = yield* ExternalListOAuthConfig
-      const db = database.withClient((client) => client)
 
       const createLinkUrl = Effect.fn(
         "ExternalListAccountsService.createLinkUrl"
@@ -81,8 +80,8 @@ export class ExternalListAccountsService extends Effect.Service<ExternalListAcco
         const providerConfig = provider === "mal" ? config.mal : config.aniList
         return yield* (
           provider === "mal"
-            ? handleMalCallback(db, providerConfig, params)
-            : handleAniListCallback(db, providerConfig, params)
+            ? handleMalCallback(database, providerConfig, params)
+            : handleAniListCallback(database, providerConfig, params)
         ).pipe(
           Effect.catchTag("ExternalListOAuthError", mapExternalListOAuthError)
         )
@@ -92,7 +91,7 @@ export class ExternalListAccountsService extends Effect.Service<ExternalListAcco
         "ExternalListAccountsService.refreshDueTokens"
       )(function* () {
         const dueAccounts = yield* findExternalListAccountsDueForTokenRefresh(
-          db
+          database
         ).pipe(
           Effect.catchTag("ExternalListOAuthError", mapExternalListOAuthError)
         )
@@ -114,7 +113,7 @@ export class ExternalListAccountsService extends Effect.Service<ExternalListAcco
               )
             }
 
-            return refreshExternalListAccountToken(db, config, {
+            return refreshExternalListAccountToken(database, config, {
               accountId: account.id,
               provider: account.provider,
               refreshToken: account.refreshToken,
