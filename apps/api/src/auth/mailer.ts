@@ -1,4 +1,4 @@
-import type { AuthMailer } from "@workspace/auth"
+import type { AuthMailer } from "@workspace/auth/server"
 import { Resend } from "resend"
 
 export const createResendAuthMailer = (config: {
