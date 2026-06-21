@@ -58,15 +58,24 @@ export type ExternalListOAuthState = {
   userId: string
 }
 
+export class ExternalListOAuthStateStoreError extends Data.TaggedError(
+  "ExternalListOAuthStateStoreError"
+)<{ cause: unknown }> {}
+
 export class ExternalListOAuthStateStore extends Context.Tag(
   "@workspace/core/server/ExternalListOAuthStateStore"
 )<
   ExternalListOAuthStateStore,
   {
-    create: (state: ExternalListOAuthState) => Effect.Effect<string, unknown>
+    create: (
+      state: ExternalListOAuthState
+    ) => Effect.Effect<string, ExternalListOAuthStateStoreError>
     take: (
       id: string
-    ) => Effect.Effect<ExternalListOAuthState | undefined, unknown>
+    ) => Effect.Effect<
+      ExternalListOAuthState | undefined,
+      ExternalListOAuthStateStoreError
+    >
   }
 >() {}
 

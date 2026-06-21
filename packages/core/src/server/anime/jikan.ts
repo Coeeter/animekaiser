@@ -33,7 +33,12 @@ const JikanAnime = Schema.Struct({
     }),
   }),
   trailer: Schema.optional(
-    Schema.Struct({ youtube_id: NullableString, images: Schema.NullOr(Schema.Struct({ maximum_image_url: NullableString })) })
+    Schema.Struct({
+      youtube_id: NullableString,
+      images: Schema.NullOr(
+        Schema.Struct({ maximum_image_url: NullableString })
+      ),
+    })
   ),
   genres: Schema.Array(JikanNamed),
   score: NullableNumber,
@@ -44,16 +49,26 @@ const JikanAnime = Schema.Struct({
   synopsis: Schema.optional(NullableString),
   studios: Schema.optional(Schema.Array(JikanNamed)),
   broadcast: Schema.optional(
-    Schema.Struct({ day: NullableString, time: NullableString, timezone: NullableString, string: NullableString })
+    Schema.Struct({
+      day: NullableString,
+      time: NullableString,
+      timezone: NullableString,
+      string: NullableString,
+    })
   ),
-  external: Schema.optional(Schema.Array(Schema.Struct({ name: Schema.String, url: Schema.String }))),
+  external: Schema.optional(
+    Schema.Array(Schema.Struct({ name: Schema.String, url: Schema.String }))
+  ),
 })
 type JikanAnime = typeof JikanAnime.Type
 
 const Pagination = Schema.Struct({ has_next_page: Schema.Boolean })
-const JikanListResponse = Schema.Struct({ data: Schema.Array(JikanAnime), pagination: Pagination })
-const JikanDetailResponse = Schema.Struct({ data: JikanAnime })
-const JikanRecommendationResponse = Schema.Struct({
+export const JikanListResponse = Schema.Struct({
+  data: Schema.Array(JikanAnime),
+  pagination: Pagination,
+})
+export const JikanDetailResponse = Schema.Struct({ data: JikanAnime })
+export const JikanRecommendationResponse = Schema.Struct({
   data: Schema.Array(Schema.Struct({ entry: JikanAnime })),
 })
 
@@ -87,7 +102,9 @@ const season = (value: string | null): AnimeItem["season"] => {
   return null
 }
 
-const day = (value: string | null): NonNullable<AnimeItem["broadcast"]>["day"] => {
+const day = (
+  value: string | null
+): NonNullable<AnimeItem["broadcast"]>["day"] => {
   const normalized = value?.replace(/s$/, "").toLowerCase()
   if (normalized === "sunday") return "sunday"
   if (normalized === "monday") return "monday"
@@ -108,11 +125,16 @@ const mapAnime = (anime: JikanAnime): AnimeItem => ({
   episodes: anime.episodes && anime.episodes > 0 ? anime.episodes : null,
   duration: durationMinutes(anime.duration),
   coverImage:
-    anime.images.webp.large_image_url ?? anime.images.webp.image_url ?? anime.images.webp.small_image_url,
+    anime.images.webp.large_image_url ??
+    anime.images.webp.image_url ??
+    anime.images.webp.small_image_url,
   bannerImage: null,
   genres: anime.genres.map((genre) => genre.name),
   averageScore: anime.score === null ? null : Math.round(anime.score * 10),
-  popularity: anime.members === null || anime.members === undefined ? null : Math.round(anime.members),
+  popularity:
+    anime.members === null || anime.members === undefined
+      ? null
+      : Math.round(anime.members),
   trending: null,
   season: season(anime.season),
   seasonYear: anime.year,
@@ -128,10 +150,14 @@ const mapAnime = (anime: JikanAnime): AnimeItem => ({
   isAdult: anime.rating?.startsWith("Rx") ?? false,
 })
 
-const queryUrl = (path: string, params: Readonly<Record<string, string | number | undefined>>) => {
+const queryUrl = (
+  path: string,
+  params: Readonly<Record<string, string | number | undefined>>
+) => {
   const url = new URL(path, "https://api.jikan.moe/v4/")
   for (const [key, value] of Object.entries(params)) {
-    if (value !== undefined && value !== "") url.searchParams.set(key, String(value))
+    if (value !== undefined && value !== "")
+      url.searchParams.set(key, String(value))
   }
   return url.toString()
 }
@@ -142,13 +168,19 @@ export class JikanAnimeService extends Effect.Service<JikanAnimeService>()(
     accessors: true,
     dependencies: [FetchHttpClient.layer],
     effect: Effect.gen(function* () {
-      const http = (yield* HttpClient.HttpClient).pipe(HttpClient.withTracerPropagation(false))
-      const get = <TValue, TEncoded>(schema: Schema.Schema<TValue, TEncoded>, url: string) =>
+      const http = (yield* HttpClient.HttpClient).pipe(
+        HttpClient.withTracerPropagation(false)
+      )
+      const get = <TValue, TEncoded>(
+        schema: Schema.Schema<TValue, TEncoded>,
+        url: string
+      ) =>
         http.execute(HttpClientRequest.get(url)).pipe(
           Effect.flatMap(HttpClientResponse.filterStatusOk),
           Effect.flatMap(HttpClientResponse.schemaBodyJson(schema)),
           Effect.mapError(
-            (cause) => new JikanRequestError({ message: "Jikan request failed.", cause })
+            (cause) =>
+              new JikanRequestError({ message: "Jikan request failed.", cause })
           )
         )
 
@@ -185,15 +217,22 @@ export class JikanAnimeService extends Effect.Service<JikanAnimeService>()(
           })
         )
         return {
-          items: response.data.filter((anime) => !anime.rating?.startsWith("Rx")).map(mapAnime),
+          items: response.data
+            .filter((anime) => !anime.rating?.startsWith("Rx"))
+            .map(mapAnime),
           page: input.page,
           perPage: input.perPage,
           hasNextPage: response.pagination.has_next_page,
         } satisfies AnimePage
       })
 
-      const getDetail = Effect.fn("JikanAnimeService.getDetail")(function* (malId: number) {
-        const response = yield* get(JikanDetailResponse, `https://api.jikan.moe/v4/anime/${malId}/full`)
+      const getDetail = Effect.fn("JikanAnimeService.getDetail")(function* (
+        malId: number
+      ) {
+        const response = yield* get(
+          JikanDetailResponse,
+          `https://api.jikan.moe/v4/anime/${malId}/full`
+        )
         if (response.data.rating?.startsWith("Rx")) return null
         const item = mapAnime(response.data)
         return {
@@ -206,29 +245,39 @@ export class JikanAnimeService extends Effect.Service<JikanAnimeService>()(
             ? {
                 site: "youtube",
                 id: response.data.trailer.youtube_id,
-                thumbnail: response.data.trailer.images?.maximum_image_url ?? null,
+                thumbnail:
+                  response.data.trailer.images?.maximum_image_url ?? null,
               }
             : null,
           relations: [],
           externalLinks:
-            response.data.external?.map((link) => ({ site: link.name, url: link.url, type: null })) ?? [],
+            response.data.external?.map((link) => ({
+              site: link.name,
+              url: link.url,
+              type: null,
+            })) ?? [],
         } satisfies AnimeDetail
       })
 
-      const getRecommendations = Effect.fn("JikanAnimeService.getRecommendations")(
-        function* (malId: number, page: number, perPage: number) {
-          const response = yield* get(
-            JikanRecommendationResponse,
-            `https://api.jikan.moe/v4/anime/${malId}/recommendations`
-          )
-          const items = response.data
-            .map((recommendation) => recommendation.entry)
-            .filter((anime) => !anime.rating?.startsWith("Rx"))
-            .slice((page - 1) * perPage, page * perPage)
-            .map(mapAnime)
-          return { items, page, perPage, hasNextPage: response.data.length > page * perPage }
+      const getRecommendations = Effect.fn(
+        "JikanAnimeService.getRecommendations"
+      )(function* (malId: number, page: number, perPage: number) {
+        const response = yield* get(
+          JikanRecommendationResponse,
+          `https://api.jikan.moe/v4/anime/${malId}/recommendations`
+        )
+        const items = response.data
+          .map((recommendation) => recommendation.entry)
+          .filter((anime) => !anime.rating?.startsWith("Rx"))
+          .slice((page - 1) * perPage, page * perPage)
+          .map(mapAnime)
+        return {
+          items,
+          page,
+          perPage,
+          hasNextPage: response.data.length > page * perPage,
         }
-      )
+      })
 
       const getSchedule = Effect.fn("JikanAnimeService.getSchedule")(function* (
         page: number,
@@ -239,7 +288,9 @@ export class JikanAnimeService extends Effect.Service<JikanAnimeService>()(
           queryUrl("schedules", { page, limit: perPage })
         )
         return {
-          items: response.data.filter((anime) => !anime.rating?.startsWith("Rx")).map(mapAnime),
+          items: response.data
+            .filter((anime) => !anime.rating?.startsWith("Rx"))
+            .map(mapAnime),
           page,
           perPage,
           hasNextPage: response.pagination.has_next_page,

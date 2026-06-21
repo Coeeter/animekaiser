@@ -14,7 +14,8 @@ import type { AnimeCatalogRequest } from "./anilist"
 import { AnimeCache } from "./cache"
 import { JikanAnimeService } from "./jikan"
 
-const cacheKey = (scope: string, value: object) => `${scope}:${JSON.stringify(value)}`
+const cacheKey = (scope: string, value: object) =>
+  `${scope}:${JSON.stringify(value)}`
 const NullableAnimeDetail = Schema.NullOr(AnimeDetail)
 
 export class AnimeService extends Effect.Service<AnimeService>()(
@@ -34,7 +35,9 @@ export class AnimeService extends Effect.Service<AnimeService>()(
         load: Effect.Effect<TValue, TError, TRequirements>
       ) =>
         cache.get(key, schema).pipe(
-          Effect.catchTag("AnimeCacheError", () => Effect.succeed(Option.none<TValue>())),
+          Effect.catchTag("AnimeCacheError", () =>
+            Effect.succeed(Option.none<TValue>())
+          ),
           Effect.flatMap(
             Option.match({
               onNone: () =>
@@ -42,7 +45,9 @@ export class AnimeService extends Effect.Service<AnimeService>()(
                   Effect.tap((value) =>
                     cache
                       .set(key, schema, value, ttlSeconds)
-                      .pipe(Effect.catchTag("AnimeCacheError", () => Effect.void))
+                      .pipe(
+                        Effect.catchTag("AnimeCacheError", () => Effect.void)
+                      )
                   )
                 ),
               onSome: Effect.succeed,
@@ -55,12 +60,24 @@ export class AnimeService extends Effect.Service<AnimeService>()(
       ) {
         const load = input.rating
           ? jikan.getCatalog(input)
-          : aniList.getCatalog(input).pipe(
-              Effect.catchTag("AniListRequestError", () => jikan.getCatalog(input))
-            )
-        return yield* cached(cacheKey("anime:catalog:v1", input), AnimePage, 6 * 60 * 60, load).pipe(
+          : aniList
+              .getCatalog(input)
+              .pipe(
+                Effect.catchTag("AniListRequestError", () =>
+                  jikan.getCatalog(input)
+                )
+              )
+        return yield* cached(
+          cacheKey("anime:catalog:v1", input),
+          AnimePage,
+          6 * 60 * 60,
+          load
+        ).pipe(
           Effect.mapError(
-            () => new AnimeUnavailableError({ message: "Anime catalog is unavailable." })
+            () =>
+              new AnimeUnavailableError({
+                message: "Anime catalog is unavailable.",
+              })
           )
         )
       })
@@ -89,10 +106,17 @@ export class AnimeService extends Effect.Service<AnimeService>()(
           category === "trending" ? 2 * 60 * 60 : 12 * 60 * 60,
           aniList
             .getDiscovery(category, page, perPage)
-            .pipe(Effect.catchTag("AniListRequestError", () => jikan.getCatalog(fallbackInput)))
+            .pipe(
+              Effect.catchTag("AniListRequestError", () =>
+                jikan.getCatalog(fallbackInput)
+              )
+            )
         ).pipe(
           Effect.mapError(
-            () => new AnimeUnavailableError({ message: "Anime discovery is unavailable." })
+            () =>
+              new AnimeUnavailableError({
+                message: "Anime discovery is unavailable.",
+              })
           )
         )
       })
@@ -119,21 +143,33 @@ export class AnimeService extends Effect.Service<AnimeService>()(
         )
       })
 
-      const getDetail = Effect.fn("AnimeService.getDetail")(function* (malId: number) {
+      const getDetail = Effect.fn("AnimeService.getDetail")(function* (
+        malId: number
+      ) {
         const detail = yield* cached(
           `anime:detail:v1:${malId}`,
           NullableAnimeDetail,
           12 * 60 * 60,
           aniList
             .getDetail(malId)
-            .pipe(Effect.catchTag("AniListRequestError", () => jikan.getDetail(malId)))
+            .pipe(
+              Effect.catchTag("AniListRequestError", () =>
+                jikan.getDetail(malId)
+              )
+            )
         ).pipe(
           Effect.mapError(
-            () => new AnimeUnavailableError({ message: "Anime detail is unavailable." })
+            () =>
+              new AnimeUnavailableError({
+                message: "Anime detail is unavailable.",
+              })
           )
         )
         if (!detail) {
-          return yield* new AnimeNotFoundError({ malId, message: "Anime was not found." })
+          return yield* new AnimeNotFoundError({
+            malId,
+            message: "Anime was not found.",
+          })
         }
         return detail
       })
@@ -153,7 +189,10 @@ export class AnimeService extends Effect.Service<AnimeService>()(
               )
           ).pipe(
             Effect.mapError(
-              () => new AnimeUnavailableError({ message: "Recommendations are unavailable." })
+              () =>
+                new AnimeUnavailableError({
+                  message: "Recommendations are unavailable.",
+                })
             )
           )
         }
@@ -171,19 +210,30 @@ export class AnimeService extends Effect.Service<AnimeService>()(
           60 * 60,
           aniList
             .getSchedule(from, to, page, perPage)
-            .pipe(Effect.catchTag("AniListRequestError", () => jikan.getSchedule(page, perPage)))
+            .pipe(
+              Effect.catchTag("AniListRequestError", () =>
+                jikan.getSchedule(page, perPage)
+              )
+            )
         ).pipe(
           Effect.mapError(
-            () => new AnimeUnavailableError({ message: "Anime schedule is unavailable." })
+            () =>
+              new AnimeUnavailableError({
+                message: "Anime schedule is unavailable.",
+              })
           )
         )
       })
 
       const getRandom = Effect.fn("AnimeService.getRandom")(function* () {
         const page = yield* getDiscovery("popular", 1, 50)
-        const item = page.items.at(Math.floor(Math.random() * page.items.length))
+        const item = page.items.at(
+          Math.floor(Math.random() * page.items.length)
+        )
         if (!item) {
-          return yield* new AnimeUnavailableError({ message: "No anime is available." })
+          return yield* new AnimeUnavailableError({
+            message: "No anime is available.",
+          })
         }
         return item.malId
       })

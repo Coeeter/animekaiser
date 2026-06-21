@@ -9,7 +9,9 @@ export class AnimeCacheError extends Data.TaggedError("AnimeCacheError")<{
   cause?: unknown
 }> {}
 
-export class AnimeCache extends Context.Tag("@workspace/core/server/AnimeCache")<
+export class AnimeCache extends Context.Tag(
+  "@workspace/core/server/AnimeCache"
+)<
   AnimeCache,
   {
     get: <TValue, TEncoded>(

@@ -11,31 +11,46 @@ export const AnimeCacheLive = Layer.scoped(
   Effect.gen(function* () {
     const env = yield* Env
     const redis = yield* Effect.acquireRelease(
-      Effect.sync(() => new Redis(env.redis.url, { lazyConnect: true, maxRetriesPerRequest: 1 })),
+      Effect.sync(
+        () =>
+          new Redis(env.redis.url, {
+            lazyConnect: true,
+            maxRetriesPerRequest: 1,
+          })
+      ),
       (client) => Effect.promise(() => client.quit()).pipe(Effect.asVoid)
     )
     yield* Effect.tryPromise({
       try: () => redis.connect(),
-      catch: (cause) => new AnimeCacheError({ message: "Redis connection failed.", cause }),
+      catch: (cause) =>
+        new AnimeCacheError({ message: "Redis connection failed.", cause }),
     })
 
     return AnimeCache.of({
       get: (key, schema) =>
         Effect.tryPromise({
           try: () => redis.get(key),
-          catch: (cause) => new AnimeCacheError({ message: "Redis read failed.", cause }),
+          catch: (cause) =>
+            new AnimeCacheError({ message: "Redis read failed.", cause }),
         }).pipe(
           Effect.flatMap((value) => {
             if (value === null) return Effect.succeed(Option.none())
             return Effect.try({
               try: () => JSON.parse(value),
               catch: (cause) =>
-                new AnimeCacheError({ message: "Cached JSON is invalid.", cause }),
+                new AnimeCacheError({
+                  message: "Cached JSON is invalid.",
+                  cause,
+                }),
             }).pipe(
               Effect.flatMap(Schema.decodeUnknown(schema)),
               Effect.map(Option.some),
               Effect.mapError(
-                (cause) => new AnimeCacheError({ message: "Cached value is invalid.", cause })
+                (cause) =>
+                  new AnimeCacheError({
+                    message: "Cached value is invalid.",
+                    cause,
+                  })
               )
             )
           })
@@ -44,20 +59,22 @@ export const AnimeCacheLive = Layer.scoped(
         Schema.encode(schema)(value).pipe(
           Effect.flatMap((encoded) =>
             Effect.tryPromise({
-              try: () => redis.set(key, JSON.stringify(encoded), "EX", ttlSeconds),
+              try: () =>
+                redis.set(key, JSON.stringify(encoded), "EX", ttlSeconds),
               catch: (cause) =>
                 new AnimeCacheError({ message: "Redis write failed.", cause }),
             })
           ),
           Effect.asVoid,
-          Effect.mapError(
-            (cause) =>
-              cause instanceof AnimeCacheError
-                ? cause
-                : new AnimeCacheError({ message: "Cache encoding failed.", cause })
+          Effect.mapError((cause) =>
+            cause instanceof AnimeCacheError
+              ? cause
+              : new AnimeCacheError({
+                  message: "Cache encoding failed.",
+                  cause,
+                })
           )
         ),
     })
   })
 )
-

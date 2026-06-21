@@ -1,6 +1,5 @@
 import * as BunHttpServer from "@effect/platform-bun/BunHttpServer"
 import * as BunRuntime from "@effect/platform-bun/BunRuntime"
-import * as FetchHttpClient from "@effect/platform/FetchHttpClient"
 import * as HttpLayerRouter from "@effect/platform/HttpLayerRouter"
 import * as HttpMiddleware from "@effect/platform/HttpMiddleware"
 import { Database } from "@workspace/db"
@@ -94,7 +93,6 @@ const HttpLive = HttpLayerRouter.serve(AllRoutesLive, {
   Layer.provideMerge(ExternalListOAuthConfigLive),
   Layer.provideMerge(ExternalListOAuthStateStoreLive),
   Layer.provideMerge(BetterAuthLive),
-  Layer.provide(FetchHttpClient.layer),
   Layer.provide(DBLive),
   Layer.provide(HttpServerLayer),
   Layer.provide(Env.Default)

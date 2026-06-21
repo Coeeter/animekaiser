@@ -10,10 +10,14 @@ import {
 } from "better-auth/plugins"
 
 export type AuthLogger = {
-  info: (message: string, meta?: Record<string, unknown>) => void
-  warn: (message: string, meta?: Record<string, unknown>) => void
-  error: (message: string, meta?: Record<string, unknown>) => void
+  info: (message: string, meta?: AuthLogMetadata) => void
+  warn: (message: string, meta?: AuthLogMetadata) => void
+  error: (message: string, meta?: AuthLogMetadata) => void
 }
+
+type AuthLogMetadata = Readonly<
+  Record<string, string | number | boolean | null | undefined>
+>
 
 export type AuthMailer = {
   sendEmailOtp: (params: {

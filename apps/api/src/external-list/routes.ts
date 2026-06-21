@@ -21,7 +21,10 @@ class ExternalListRouteError extends Data.TaggedError(
 }> {}
 
 export const handleExternalListError = (
-  error: AuthenticationRequiredError | ExternalListRouteError | unknown
+  error:
+    | AuthenticationRequiredError
+    | ExternalListRouteError
+    | ExternalListAccountError
 ): Effect.Effect<HttpServerResponse.HttpServerResponse> => {
   if (error instanceof AuthenticationRequiredError) {
     return Effect.succeed(
@@ -38,8 +41,7 @@ export const handleExternalListError = (
       HttpServerResponse.text(error.message, { status: error.status })
     )
   }
-  return Effect.as(
-    Effect.logError("[External List OAuth] Route failed.", { error }),
+  return Effect.succeed(
     HttpServerResponse.text("External list OAuth failed", { status: 500 })
   )
 }
@@ -130,11 +132,7 @@ export const ExternalListAccountsRoutesLive = HttpLayerRouter.use((router) =>
     yield* router.add(
       "GET",
       "/api/link/:provider",
-      Effect.provideService(
-        linkHandler,
-        ExternalListAccountsService,
-        accounts
-      )
+      Effect.provideService(linkHandler, ExternalListAccountsService, accounts)
     )
     yield* router.add(
       "GET",

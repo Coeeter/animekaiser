@@ -18,9 +18,7 @@ export const drainLibraryImportJobs = <TError, TRequirements>(
 
 const importLoop = Effect.gen(function* () {
   const database = yield* Database
-  const drain = drainLibraryImportJobs(
-    LibraryImportService.processNextJob()
-  )
+  const drain = drainLibraryImportJobs(LibraryImportService.processNextJob())
 
   return yield* Effect.scoped(
     Effect.gen(function* () {

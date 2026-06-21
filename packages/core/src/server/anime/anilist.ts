@@ -58,7 +58,13 @@ const AniListMedia = Schema.Struct({
     Schema.Literal("TV", "TV_SHORT", "MOVIE", "SPECIAL", "OVA", "ONA", "MUSIC")
   ),
   status: Schema.NullOr(
-    Schema.Literal("FINISHED", "RELEASING", "NOT_YET_RELEASED", "CANCELLED", "HIATUS")
+    Schema.Literal(
+      "FINISHED",
+      "RELEASING",
+      "NOT_YET_RELEASED",
+      "CANCELLED",
+      "HIATUS"
+    )
   ),
   episodes: Schema.NullOr(PositiveInt),
   duration: Schema.NullOr(PositiveInt),
@@ -75,7 +81,7 @@ const AniListMedia = Schema.Struct({
 })
 type AniListMedia = typeof AniListMedia.Type
 
-const AniListPageResponse = Schema.Struct({
+export const AniListPageResponse = Schema.Struct({
   data: Schema.NullOr(
     Schema.Struct({
       Page: Schema.NullOr(
@@ -124,26 +130,38 @@ const AniListDetailMedia = Schema.Struct({
     })
   ),
   trailer: Schema.NullOr(
-    Schema.Struct({ site: Schema.String, id: Schema.String, thumbnail: NullableString })
+    Schema.Struct({
+      site: Schema.String,
+      id: Schema.String,
+      thumbnail: NullableString,
+    })
   ),
   relations: Schema.NullOr(
-    Schema.Struct({ edges: Schema.NullOr(Schema.Array(Schema.NullOr(AniListRelation))) })
+    Schema.Struct({
+      edges: Schema.NullOr(Schema.Array(Schema.NullOr(AniListRelation))),
+    })
   ),
   externalLinks: Schema.NullOr(
     Schema.Array(
       Schema.NullOr(
-        Schema.Struct({ site: Schema.String, url: Schema.String, type: NullableString })
+        Schema.Struct({
+          site: Schema.String,
+          url: Schema.String,
+          type: NullableString,
+        })
       )
     )
   ),
 })
 
-const AniListDetailResponse = Schema.Struct({
-  data: Schema.NullOr(Schema.Struct({ Media: Schema.NullOr(AniListDetailMedia) })),
+export const AniListDetailResponse = Schema.Struct({
+  data: Schema.NullOr(
+    Schema.Struct({ Media: Schema.NullOr(AniListDetailMedia) })
+  ),
   errors: Schema.optional(Schema.Array(AniListGraphQlError)),
 })
 
-const AniListRecommendationsResponse = Schema.Struct({
+export const AniListRecommendationsResponse = Schema.Struct({
   data: Schema.NullOr(
     Schema.Struct({
       Media: Schema.NullOr(
@@ -156,7 +174,9 @@ const AniListRecommendationsResponse = Schema.Struct({
               nodes: Schema.NullOr(
                 Schema.Array(
                   Schema.NullOr(
-                    Schema.Struct({ mediaRecommendation: Schema.NullOr(AniListMedia) })
+                    Schema.Struct({
+                      mediaRecommendation: Schema.NullOr(AniListMedia),
+                    })
                   )
                 )
               ),
@@ -169,7 +189,7 @@ const AniListRecommendationsResponse = Schema.Struct({
   errors: Schema.optional(Schema.Array(AniListGraphQlError)),
 })
 
-const AniListScheduleResponse = Schema.Struct({
+export const AniListScheduleResponse = Schema.Struct({
   data: Schema.NullOr(
     Schema.Struct({
       Page: Schema.NullOr(
@@ -296,7 +316,8 @@ const pageFromMedia = (
 })
 
 const anilistSort = (sort: AnimeSort, hasSearch: boolean) => {
-  if (sort === "relevance") return hasSearch ? ["SEARCH_MATCH", "POPULARITY_DESC"] : ["POPULARITY_DESC"]
+  if (sort === "relevance")
+    return hasSearch ? ["SEARCH_MATCH", "POPULARITY_DESC"] : ["POPULARITY_DESC"]
   if (sort === "score") return ["SCORE_DESC"]
   if (sort === "trending") return ["TRENDING_DESC"]
   if (sort === "newest") return ["START_DATE_DESC"]
@@ -334,7 +355,9 @@ export class AniListAnimeService extends Effect.Service<AniListAnimeService>()(
     accessors: true,
     dependencies: [FetchHttpClient.layer],
     effect: Effect.gen(function* () {
-      const http = (yield* HttpClient.HttpClient).pipe(HttpClient.withTracerPropagation(false))
+      const http = (yield* HttpClient.HttpClient).pipe(
+        HttpClient.withTracerPropagation(false)
+      )
 
       const request = <TValue, TEncoded>(
         schema: Schema.Schema<TValue, TEncoded>,
@@ -351,7 +374,11 @@ export class AniListAnimeService extends Effect.Service<AniListAnimeService>()(
             Effect.flatMap(HttpClientResponse.filterStatusOk),
             Effect.flatMap(HttpClientResponse.schemaBodyJson(schema)),
             Effect.mapError(
-              (cause) => new AniListRequestError({ message: "AniList request failed.", cause })
+              (cause) =>
+                new AniListRequestError({
+                  message: "AniList request failed.",
+                  cause,
+                })
             )
           )
 
@@ -368,11 +395,19 @@ export class AniListAnimeService extends Effect.Service<AniListAnimeService>()(
           genres: input.genres?.length ? input.genres : undefined,
           season: input.season,
           seasonYear: input.seasonYear,
-          minScore: input.minScore === undefined ? undefined : Math.round(input.minScore * 10),
-          maxScore: input.maxScore === undefined ? undefined : Math.round(input.maxScore * 10),
+          minScore:
+            input.minScore === undefined
+              ? undefined
+              : Math.round(input.minScore * 10),
+          maxScore:
+            input.maxScore === undefined
+              ? undefined
+              : Math.round(input.maxScore * 10),
         })
         if (response.errors?.length) {
-          return yield* new AniListRequestError({ message: response.errors[0].message })
+          return yield* new AniListRequestError({
+            message: response.errors[0].message,
+          })
         }
         return pageFromMedia(
           response.data?.Page?.media,
@@ -382,37 +417,52 @@ export class AniListAnimeService extends Effect.Service<AniListAnimeService>()(
         )
       })
 
-      const getDiscovery = Effect.fn("AniListAnimeService.getDiscovery")(function* (
-        category: AnimeDiscoveryCategory,
-        page: number,
-        perPage: number
-      ) {
-        const now = new Date()
-        const month = now.getUTCMonth()
-        const season: AnimeSeason =
-          month < 3 ? "WINTER" : month < 6 ? "SPRING" : month < 9 ? "SUMMER" : "FALL"
-        const requestInput: AnimeCatalogRequest = {
-          page,
-          perPage,
-          sort:
-            category === "trending"
-              ? "trending"
-              : category === "topRated"
-                ? "score"
-                : category === "upcoming"
-                  ? "newest"
-                  : "popularity",
-          status: category === "upcoming" ? "upcoming" : undefined,
-          season: category === "seasonal" ? season : undefined,
-          seasonYear: category === "seasonal" ? now.getUTCFullYear() : undefined,
+      const getDiscovery = Effect.fn("AniListAnimeService.getDiscovery")(
+        function* (
+          category: AnimeDiscoveryCategory,
+          page: number,
+          perPage: number
+        ) {
+          const now = new Date()
+          const month = now.getUTCMonth()
+          const season: AnimeSeason =
+            month < 3
+              ? "WINTER"
+              : month < 6
+                ? "SPRING"
+                : month < 9
+                  ? "SUMMER"
+                  : "FALL"
+          const requestInput: AnimeCatalogRequest = {
+            page,
+            perPage,
+            sort:
+              category === "trending"
+                ? "trending"
+                : category === "topRated"
+                  ? "score"
+                  : category === "upcoming"
+                    ? "newest"
+                    : "popularity",
+            status: category === "upcoming" ? "upcoming" : undefined,
+            season: category === "seasonal" ? season : undefined,
+            seasonYear:
+              category === "seasonal" ? now.getUTCFullYear() : undefined,
+          }
+          return yield* getCatalog(requestInput)
         }
-        return yield* getCatalog(requestInput)
-      })
+      )
 
-      const getDetail = Effect.fn("AniListAnimeService.getDetail")(function* (malId: number) {
-        const response = yield* request(AniListDetailResponse, detailQuery, { malId })
+      const getDetail = Effect.fn("AniListAnimeService.getDetail")(function* (
+        malId: number
+      ) {
+        const response = yield* request(AniListDetailResponse, detailQuery, {
+          malId,
+        })
         if (response.errors?.length) {
-          return yield* new AniListRequestError({ message: response.errors[0].message })
+          return yield* new AniListRequestError({
+            message: response.errors[0].message,
+          })
         }
         const media = response.data?.Media
         const item = media ? mapMedia(media) : null
@@ -452,72 +502,100 @@ export class AniListAnimeService extends Effect.Service<AniListAnimeService>()(
         return yield* Schema.decode(AnimeDetailSchema)(detail).pipe(
           Effect.mapError(
             (cause) =>
-              new AniListRequestError({ message: "AniList detail was invalid.", cause })
+              new AniListRequestError({
+                message: "AniList detail was invalid.",
+                cause,
+              })
           )
         )
       })
 
-      const getRecommendations = Effect.fn("AniListAnimeService.getRecommendations")(
-        function* (malId: number, page: number, perPage: number) {
-          const response = yield* request(AniListRecommendationsResponse, recommendationsQuery, {
+      const getRecommendations = Effect.fn(
+        "AniListAnimeService.getRecommendations"
+      )(function* (malId: number, page: number, perPage: number) {
+        const response = yield* request(
+          AniListRecommendationsResponse,
+          recommendationsQuery,
+          {
             malId,
             page,
             perPage,
-          })
-          if (response.errors?.length) {
-            return yield* new AniListRequestError({ message: response.errors[0].message })
           }
-          const recommendations = response.data?.Media?.recommendations
-          return yield* Schema.decode(AnimePageSchema)(
-            pageFromMedia(
-              (recommendations?.nodes ?? []).map((node) => node?.mediaRecommendation ?? null),
+        )
+        if (response.errors?.length) {
+          return yield* new AniListRequestError({
+            message: response.errors[0].message,
+          })
+        }
+        const recommendations = response.data?.Media?.recommendations
+        return yield* Schema.decode(AnimePageSchema)(
+          pageFromMedia(
+            (recommendations?.nodes ?? []).map(
+              (node) => node?.mediaRecommendation ?? null
+            ),
+            page,
+            perPage,
+            recommendations?.pageInfo?.hasNextPage
+          )
+        ).pipe(
+          Effect.mapError(
+            (cause) =>
+              new AniListRequestError({
+                message: "AniList recommendations were invalid.",
+                cause,
+              })
+          )
+        )
+      })
+
+      const getSchedule = Effect.fn("AniListAnimeService.getSchedule")(
+        function* (from: number, to: number, page: number, perPage: number) {
+          const response = yield* request(
+            AniListScheduleResponse,
+            scheduleQuery,
+            {
+              from,
+              to,
               page,
               perPage,
-              recommendations?.pageInfo?.hasNextPage
-            )
-          ).pipe(
-            Effect.mapError(
-              (cause) =>
-                new AniListRequestError({ message: "AniList recommendations were invalid.", cause })
-            )
+            }
           )
+          if (response.errors?.length) {
+            return yield* new AniListRequestError({
+              message: response.errors[0].message,
+            })
+          }
+          const schedules = response.data?.Page?.airingSchedules ?? []
+          const items = schedules.flatMap((schedule) => {
+            if (!schedule?.media) return []
+            const item = mapMedia(schedule.media)
+            if (!item) return []
+            return [
+              {
+                ...item,
+                nextAiringEpisode:
+                  schedule.episode && schedule.airingAt
+                    ? { episode: schedule.episode, airingAt: schedule.airingAt }
+                    : item.nextAiringEpisode,
+              },
+            ]
+          })
+          return {
+            items,
+            page,
+            perPage,
+            hasNextPage: Boolean(response.data?.Page?.pageInfo?.hasNextPage),
+          }
         }
       )
 
-      const getSchedule = Effect.fn("AniListAnimeService.getSchedule")(function* (
-        from: number,
-        to: number,
-        page: number,
-        perPage: number
-      ) {
-        const response = yield* request(AniListScheduleResponse, scheduleQuery, {
-          from,
-          to,
-          page,
-          perPage,
-        })
-        if (response.errors?.length) {
-          return yield* new AniListRequestError({ message: response.errors[0].message })
-        }
-        const schedules = response.data?.Page?.airingSchedules ?? []
-        const items = schedules.flatMap((schedule) => {
-          if (!schedule?.media) return []
-          const item = mapMedia(schedule.media)
-          if (!item) return []
-          return [
-            {
-              ...item,
-              nextAiringEpisode:
-                schedule.episode && schedule.airingAt
-                  ? { episode: schedule.episode, airingAt: schedule.airingAt }
-                  : item.nextAiringEpisode,
-            },
-          ]
-        })
-        return { items, page, perPage, hasNextPage: Boolean(response.data?.Page?.pageInfo?.hasNextPage) }
-      })
-
-      return { getCatalog, getDiscovery, getDetail, getRecommendations, getSchedule }
+      return {
+        getCatalog,
+        getDiscovery,
+        getDetail,
+        getRecommendations,
+        getSchedule,
+      }
     }),
   }
 ) {}

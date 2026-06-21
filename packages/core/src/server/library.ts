@@ -54,16 +54,20 @@ const toEntry = (row: {
   updatedAt: row.entry.updatedAt,
 })
 
-const dbError = (message: string) =>
+const dbError =
+  (message: string) =>
   <TValue, TRequirements>(
     effect: Effect.Effect<TValue, DatabaseError, TRequirements>
   ) =>
-    effect.pipe(Effect.mapError((cause) => new LibraryServiceError({ message, cause })))
+    effect.pipe(
+      Effect.mapError((cause) => new LibraryServiceError({ message, cause }))
+    )
 
 const listOrder = (sort: LibrarySort) => {
   if (sort === "updated_asc") return [asc(userLibraryEntry.updatedAt)]
   if (sort === "title_asc") return [asc(animeMetadata.titleRomaji)]
-  if (sort === "score_desc") return [desc(userLibraryEntry.score), desc(userLibraryEntry.updatedAt)]
+  if (sort === "score_desc")
+    return [desc(userLibraryEntry.score), desc(userLibraryEntry.updatedAt)]
   if (sort === "progress_desc") {
     return [desc(userLibraryEntry.progress), desc(userLibraryEntry.updatedAt)]
   }
@@ -77,19 +81,19 @@ export class LibraryService extends Effect.Service<LibraryService>()(
     effect: Effect.gen(function* () {
       const database = yield* Database
 
-      const linkedProviders = Effect.fn("LibraryService.linkedProviders")(function* (
-        userId: string
-      ) {
-        const rows = yield* database
-          .execute((db) =>
-            db
-              .select({ provider: externalListAccount.provider })
-              .from(externalListAccount)
-              .where(eq(externalListAccount.userId, userId))
-          )
-          .pipe(dbError("Unable to load linked providers."))
-        return rows.map((row) => row.provider)
-      })
+      const linkedProviders = Effect.fn("LibraryService.linkedProviders")(
+        function* (userId: string) {
+          const rows = yield* database
+            .execute((db) =>
+              db
+                .select({ provider: externalListAccount.provider })
+                .from(externalListAccount)
+                .where(eq(externalListAccount.userId, userId))
+            )
+            .pipe(dbError("Unable to load linked providers."))
+          return rows.map((row) => row.provider)
+        }
+      )
 
       const enqueue = Effect.fn("LibraryService.enqueue")(function* (
         userId: string,
@@ -123,9 +127,14 @@ export class LibraryService extends Effect.Service<LibraryService>()(
                 action,
                 payload,
               }))
-              const rows = await tx.insert(librarySyncEvent).values(values).returning()
+              const rows = await tx
+                .insert(librarySyncEvent)
+                .values(values)
+                .returning()
               for (const row of rows) {
-                await tx.execute(sql`select pg_notify(${LIBRARY_SYNC_EVENT_CHANNEL}, ${row.id})`)
+                await tx.execute(
+                  sql`select pg_notify(${LIBRARY_SYNC_EVENT_CHANNEL}, ${row.id})`
+                )
               }
               return rows
             })
@@ -142,27 +151,39 @@ export class LibraryService extends Effect.Service<LibraryService>()(
             db
               .select({ entry: userLibraryEntry, anime: animeMetadata })
               .from(userLibraryEntry)
-              .innerJoin(animeMetadata, eq(userLibraryEntry.malId, animeMetadata.malId))
-              .where(and(eq(userLibraryEntry.userId, userId), eq(userLibraryEntry.malId, malId)))
+              .innerJoin(
+                animeMetadata,
+                eq(userLibraryEntry.malId, animeMetadata.malId)
+              )
+              .where(
+                and(
+                  eq(userLibraryEntry.userId, userId),
+                  eq(userLibraryEntry.malId, malId)
+                )
+              )
               .limit(1)
           )
           .pipe(dbError("Unable to load library entry."))
         return rows[0] ? toEntry(rows[0]) : null
       })
 
-      const getStats = Effect.fn("LibraryService.getStats")(function* (userId: string) {
+      const getStats = Effect.fn("LibraryService.getStats")(function* (
+        userId: string
+      ) {
         const rows = yield* database
           .execute((db) =>
             db
-              .select({ status: userLibraryEntry.status, score: userLibraryEntry.score })
+              .select({
+                status: userLibraryEntry.status,
+                score: userLibraryEntry.score,
+              })
               .from(userLibraryEntry)
               .where(eq(userLibraryEntry.userId, userId))
           )
           .pipe(dbError("Unable to load library statistics."))
-        const byStatus = Object.fromEntries(libraryStatuses.map((status) => [status, 0])) as Record<
-          LibraryStatus,
-          number
-        >
+        const byStatus = Object.fromEntries(
+          libraryStatuses.map((status) => [status, 0])
+        ) as Record<LibraryStatus, number>
         let scoreTotal = 0
         let scoreCount = 0
         for (const row of rows) {
@@ -181,10 +202,18 @@ export class LibraryService extends Effect.Service<LibraryService>()(
 
       const getPage = Effect.fn("LibraryService.getPage")(function* (
         userId: string,
-        input: { status?: LibraryStatus; sort: LibrarySort; page: number; perPage: number }
+        input: {
+          status?: LibraryStatus
+          sort: LibrarySort
+          page: number
+          perPage: number
+        }
       ) {
         const where = input.status
-          ? and(eq(userLibraryEntry.userId, userId), eq(userLibraryEntry.status, input.status))
+          ? and(
+              eq(userLibraryEntry.userId, userId),
+              eq(userLibraryEntry.status, input.status)
+            )
           : eq(userLibraryEntry.userId, userId)
         const [rows, totals, stats] = yield* Effect.all(
           [
@@ -193,7 +222,10 @@ export class LibraryService extends Effect.Service<LibraryService>()(
                 db
                   .select({ entry: userLibraryEntry, anime: animeMetadata })
                   .from(userLibraryEntry)
-                  .innerJoin(animeMetadata, eq(userLibraryEntry.malId, animeMetadata.malId))
+                  .innerJoin(
+                    animeMetadata,
+                    eq(userLibraryEntry.malId, animeMetadata.malId)
+                  )
                   .where(where)
                   .orderBy(...listOrder(input.sort))
                   .limit(input.perPage)
@@ -202,7 +234,10 @@ export class LibraryService extends Effect.Service<LibraryService>()(
               .pipe(dbError("Unable to load library.")),
             database
               .execute((db) =>
-                db.select({ value: count() }).from(userLibraryEntry).where(where)
+                db
+                  .select({ value: count() })
+                  .from(userLibraryEntry)
+                  .where(where)
               )
               .pipe(dbError("Unable to count library entries.")),
             getStats(userId),
@@ -279,11 +314,18 @@ export class LibraryService extends Effect.Service<LibraryService>()(
           .execute((db) =>
             db
               .delete(userLibraryEntry)
-              .where(and(eq(userLibraryEntry.userId, userId), eq(userLibraryEntry.malId, malId)))
+              .where(
+                and(
+                  eq(userLibraryEntry.userId, userId),
+                  eq(userLibraryEntry.malId, malId)
+                )
+              )
           )
           .pipe(dbError("Unable to remove library entry."))
         const linked = yield* linkedProviders(userId)
-        const selected = providers.filter((provider) => linked.includes(provider))
+        const selected = providers.filter((provider) =>
+          linked.includes(provider)
+        )
         yield* enqueue(userId, malId, selected, "delete", {
           status: entry.status,
           score: entry.score,
@@ -295,14 +337,21 @@ export class LibraryService extends Effect.Service<LibraryService>()(
         return { removed: true, queuedProviders: selected }
       })
 
-      const clear = Effect.fn("LibraryService.clear")(function* (userId: string) {
+      const clear = Effect.fn("LibraryService.clear")(function* (
+        userId: string
+      ) {
         return yield* database
           .execute((db) =>
             db.transaction(async (tx) => {
               await tx
                 .update(librarySyncEvent)
                 .set({ status: "superseded", updatedAt: new Date() })
-                .where(and(eq(librarySyncEvent.userId, userId), eq(librarySyncEvent.status, "pending")))
+                .where(
+                  and(
+                    eq(librarySyncEvent.userId, userId),
+                    eq(librarySyncEvent.status, "pending")
+                  )
+                )
               const deleted = await tx
                 .delete(userLibraryEntry)
                 .where(eq(userLibraryEntry.userId, userId))
@@ -313,117 +362,131 @@ export class LibraryService extends Effect.Service<LibraryService>()(
           .pipe(dbError("Unable to clear library."))
       })
 
-      const listSyncEvents = Effect.fn("LibraryService.listSyncEvents")(function* (
-        userId: string,
-        input: {
-          page: number
-          perPage: number
-          status?: typeof librarySyncEvent.$inferSelect.status
-          provider?: ExternalListProvider
+      const listSyncEvents = Effect.fn("LibraryService.listSyncEvents")(
+        function* (
+          userId: string,
+          input: {
+            page: number
+            perPage: number
+            status?: typeof librarySyncEvent.$inferSelect.status
+            provider?: ExternalListProvider
+          }
+        ) {
+          const clauses = [eq(librarySyncEvent.userId, userId)]
+          if (input.status)
+            clauses.push(eq(librarySyncEvent.status, input.status))
+          if (input.provider)
+            clauses.push(eq(librarySyncEvent.provider, input.provider))
+          const where = and(...clauses)
+          const [rows, totals] = yield* Effect.all([
+            database
+              .execute((db) =>
+                db
+                  .select({ event: librarySyncEvent, anime: animeMetadata })
+                  .from(librarySyncEvent)
+                  .innerJoin(
+                    animeMetadata,
+                    eq(librarySyncEvent.malId, animeMetadata.malId)
+                  )
+                  .where(where)
+                  .orderBy(desc(librarySyncEvent.createdAt))
+                  .limit(input.perPage)
+                  .offset((input.page - 1) * input.perPage)
+              )
+              .pipe(dbError("Unable to load sync activity.")),
+            database
+              .execute((db) =>
+                db
+                  .select({ value: count() })
+                  .from(librarySyncEvent)
+                  .where(where)
+              )
+              .pipe(dbError("Unable to count sync activity.")),
+          ])
+          const total = totals[0]?.value ?? 0
+          return {
+            items: rows.map(({ event, anime }) => ({
+              id: event.id,
+              sourceEventId: event.sourceEventId,
+              malId: event.malId,
+              provider: event.provider,
+              action: event.action,
+              status: event.status,
+              title: anime.titleEnglish ?? anime.titleRomaji,
+              attempts: event.attempts,
+              errorMessage: event.errorMessage,
+              createdAt: event.createdAt,
+              updatedAt: event.updatedAt,
+            })),
+            page: input.page,
+            perPage: input.perPage,
+            total,
+            totalPages: Math.max(1, Math.ceil(total / input.perPage)),
+          }
         }
-      ) {
-        const clauses = [eq(librarySyncEvent.userId, userId)]
-        if (input.status) clauses.push(eq(librarySyncEvent.status, input.status))
-        if (input.provider) clauses.push(eq(librarySyncEvent.provider, input.provider))
-        const where = and(...clauses)
-        const [rows, totals] = yield* Effect.all([
-          database
+      )
+
+      const retrySyncEvents = Effect.fn("LibraryService.retrySyncEvents")(
+        function* (
+          userId: string,
+          eventIds: ReadonlyArray<string>,
+          target: typeof LibrarySyncRetryTarget.Type
+        ) {
+          const events = yield* database
             .execute((db) =>
               db
-                .select({ event: librarySyncEvent, anime: animeMetadata })
+                .select()
                 .from(librarySyncEvent)
-                .innerJoin(animeMetadata, eq(librarySyncEvent.malId, animeMetadata.malId))
-                .where(where)
-                .orderBy(desc(librarySyncEvent.createdAt))
-                .limit(input.perPage)
-                .offset((input.page - 1) * input.perPage)
-            )
-            .pipe(dbError("Unable to load sync activity.")),
-          database
-            .execute((db) =>
-              db.select({ value: count() }).from(librarySyncEvent).where(where)
-            )
-            .pipe(dbError("Unable to count sync activity.")),
-        ])
-        const total = totals[0]?.value ?? 0
-        return {
-          items: rows.map(({ event, anime }) => ({
-            id: event.id,
-            sourceEventId: event.sourceEventId,
-            malId: event.malId,
-            provider: event.provider,
-            action: event.action,
-            status: event.status,
-            title: anime.titleEnglish ?? anime.titleRomaji,
-            attempts: event.attempts,
-            errorMessage: event.errorMessage,
-            createdAt: event.createdAt,
-            updatedAt: event.updatedAt,
-          })),
-          page: input.page,
-          perPage: input.perPage,
-          total,
-          totalPages: Math.max(1, Math.ceil(total / input.perPage)),
-        }
-      })
-
-      const retrySyncEvents = Effect.fn("LibraryService.retrySyncEvents")(function* (
-        userId: string,
-        eventIds: ReadonlyArray<string>,
-        target: typeof LibrarySyncRetryTarget.Type
-      ) {
-        const events = yield* database
-          .execute((db) =>
-            db
-              .select()
-              .from(librarySyncEvent)
-              .where(
-                and(
-                  eq(librarySyncEvent.userId, userId),
-                  eq(librarySyncEvent.status, "failed"),
-                  inArray(librarySyncEvent.id, [...eventIds])
+                .where(
+                  and(
+                    eq(librarySyncEvent.userId, userId),
+                    eq(librarySyncEvent.status, "failed"),
+                    inArray(librarySyncEvent.id, [...eventIds])
+                  )
                 )
-              )
-          )
-          .pipe(dbError("Unable to load failed sync events."))
-        const linked = yield* linkedProviders(userId)
-        const queued: Array<typeof librarySyncEvent.$inferSelect> = []
-        for (const event of events) {
-          const providers =
-            target.type === "original"
-              ? linked.includes(event.provider)
-                ? [event.provider]
-                : []
-              : target.type === "all_linked"
-                ? linked
-                : target.providers.filter((provider) => linked.includes(provider))
-          const current = yield* getEntry(userId, event.malId)
-          const action = event.action === "delete" ? "delete" : "upsert"
-          let payload = event.payload
-          if (action === "upsert") {
-            if (!current) continue
-            payload = {
-              status: current.status,
-              score: current.score,
-              progress: current.progress,
-              notes: current.notes,
-              aniListId: current.anime.aniListId,
-              aniListEntryId: current.aniListEntryId,
+            )
+            .pipe(dbError("Unable to load failed sync events."))
+          const linked = yield* linkedProviders(userId)
+          const queued: Array<typeof librarySyncEvent.$inferSelect> = []
+          for (const event of events) {
+            const providers =
+              target.type === "original"
+                ? linked.includes(event.provider)
+                  ? [event.provider]
+                  : []
+                : target.type === "all_linked"
+                  ? linked
+                  : target.providers.filter((provider) =>
+                      linked.includes(provider)
+                    )
+            const current = yield* getEntry(userId, event.malId)
+            const action = event.action === "delete" ? "delete" : "upsert"
+            let payload = event.payload
+            if (action === "upsert") {
+              if (!current) continue
+              payload = {
+                status: current.status,
+                score: current.score,
+                progress: current.progress,
+                notes: current.notes,
+                aniListId: current.anime.aniListId,
+                aniListEntryId: current.aniListEntryId,
+              }
             }
+            queued.push(
+              ...(yield* enqueue(
+                userId,
+                event.malId,
+                providers,
+                action,
+                payload,
+                event.id
+              ))
+            )
           }
-          queued.push(
-            ...(yield* enqueue(
-              userId,
-              event.malId,
-              providers,
-              action,
-              payload,
-              event.id
-            ))
-          )
+          return queued
         }
-        return queued
-      })
+      )
 
       return {
         getEntry,

@@ -66,7 +66,10 @@ const MalImportEntry = Schema.Struct({
     id: PositiveInt,
     title: Schema.String,
     alternative_titles: Schema.optional(
-      Schema.Struct({ en: Schema.optional(Schema.String), ja: Schema.optional(Schema.String) })
+      Schema.Struct({
+        en: Schema.optional(Schema.String),
+        ja: Schema.optional(Schema.String),
+      })
     ),
     main_picture: Schema.optional(
       Schema.Struct({
@@ -85,7 +88,7 @@ const MalImportEntry = Schema.Struct({
   }),
 })
 
-const MalImportResponse = Schema.Struct({
+export const MalImportResponse = Schema.Struct({
   data: Schema.Array(MalImportEntry),
   paging: Schema.Struct({
     previous: Schema.optional(Schema.String),
@@ -121,7 +124,7 @@ const AniListImportEntry = Schema.Struct({
   ),
 })
 
-const AniListImportResponse = Schema.Struct({
+export const AniListImportResponse = Schema.Struct({
   data: Schema.optional(
     Schema.NullOr(
       Schema.Struct({
@@ -202,8 +205,12 @@ export const normalizeMalImportEntry = (
   aniListEntryId: null,
   titleRomaji: value.node.title.trim(),
   titleEnglish: value.node.alternative_titles?.en?.trim() || null,
-  coverImage: value.node.main_picture?.large ?? value.node.main_picture?.medium ?? null,
-  episodes: value.node.num_episodes && value.node.num_episodes > 0 ? value.node.num_episodes : null,
+  coverImage:
+    value.node.main_picture?.large ?? value.node.main_picture?.medium ?? null,
+  episodes:
+    value.node.num_episodes && value.node.num_episodes > 0
+      ? value.node.num_episodes
+      : null,
   status: value.list_status.is_rewatching
     ? "rewatching"
     : normalizeLibraryStatus(value.list_status.status),
@@ -216,7 +223,8 @@ export const normalizeAniListImportEntry = (
   value: null | typeof AniListImportEntry.Type
 ): NormalizedEntry | null => {
   const malId = value?.media?.idMal
-  const titleRomaji = value?.media?.title?.romaji?.trim() || value?.media?.title?.english?.trim()
+  const titleRomaji =
+    value?.media?.title?.romaji?.trim() || value?.media?.title?.english?.trim()
   if (!malId || !titleRomaji) return null
 
   return {
@@ -328,11 +336,16 @@ export class LibraryImportService extends Effect.Service<LibraryImportService>()
         }
 
         const providerEntries =
-          response.data?.MediaListCollection?.lists?.flatMap((list) => list?.entries ?? []) ?? []
+          response.data?.MediaListCollection?.lists?.flatMap(
+            (list) => list?.entries ?? []
+          ) ?? []
         const entries = providerEntries
           .map(normalizeAniListImportEntry)
           .filter((entry): entry is NormalizedEntry => entry !== null)
-        return { entries, skippedCount: providerEntries.length - entries.length }
+        return {
+          entries,
+          skippedCount: providerEntries.length - entries.length,
+        }
       })
 
       const recoverRunningJobs = Effect.fn(
@@ -356,7 +369,13 @@ export class LibraryImportService extends Effect.Service<LibraryImportService>()
           db
             .select()
             .from(job)
-            .where(and(eq(job.id, id), eq(job.userId, userId), eq(job.type, "library_import")))
+            .where(
+              and(
+                eq(job.id, id),
+                eq(job.userId, userId),
+                eq(job.type, "library_import")
+              )
+            )
             .limit(1)
         )
         const row = rows.at(0)
@@ -374,13 +393,19 @@ export class LibraryImportService extends Effect.Service<LibraryImportService>()
       const watchJob = (userId: string, id: string) =>
         Stream.unwrapScoped(
           Effect.gen(function* () {
-            const events = yield* database.listen(LIBRARY_IMPORT_JOB_UPDATE_CHANNEL)
+            const events = yield* database.listen(
+              LIBRARY_IMPORT_JOB_UPDATE_CHANNEL
+            )
             const initial = Stream.fromEffect(
               getJob(userId, id).pipe(
                 Effect.flatMap((value) =>
                   value
                     ? Effect.succeed(value)
-                    : Effect.fail(new LibraryImportError({ message: "Import job was not found." }))
+                    : Effect.fail(
+                        new LibraryImportError({
+                          message: "Import job was not found.",
+                        })
+                      )
                 )
               )
             )
@@ -400,7 +425,9 @@ export class LibraryImportService extends Effect.Service<LibraryImportService>()
                         value
                           ? Effect.succeed(value)
                           : Effect.fail(
-                              new LibraryImportError({ message: "Import job was not found." })
+                              new LibraryImportError({
+                                message: "Import job was not found.",
+                              })
                             )
                       )
                     )
@@ -408,7 +435,8 @@ export class LibraryImportService extends Effect.Service<LibraryImportService>()
             )
             return Stream.concat(initial, updates).pipe(
               Stream.takeUntil(
-                (value) => value.status === "completed" || value.status === "failed"
+                (value) =>
+                  value.status === "completed" || value.status === "failed"
               )
             )
           })
@@ -525,7 +553,12 @@ export class LibraryImportService extends Effect.Service<LibraryImportService>()
                 updatedCount += 1
               }
 
-              return { insertedCount, updatedCount, unchangedCount, skippedCount }
+              return {
+                insertedCount,
+                updatedCount,
+                unchangedCount,
+                skippedCount,
+              }
             })
           )
         }
@@ -536,7 +569,9 @@ export class LibraryImportService extends Effect.Service<LibraryImportService>()
           const next = yield* claimNextJob()
           if (!next) return false
           yield* database.execute((db) =>
-            db.execute(sql`select pg_notify(${LIBRARY_IMPORT_JOB_UPDATE_CHANNEL}, ${next.id})`)
+            db.execute(
+              sql`select pg_notify(${LIBRARY_IMPORT_JOB_UPDATE_CHANNEL}, ${next.id})`
+            )
           )
           const provider = next.payload.provider
 
@@ -566,7 +601,11 @@ export class LibraryImportService extends Effect.Service<LibraryImportService>()
                     account.accessToken,
                     account.providerAccountId
                   )
-            return yield* persistEntries(next.userId, imported.entries, imported.skippedCount)
+            return yield* persistEntries(
+              next.userId,
+              imported.entries,
+              imported.skippedCount
+            )
           })
 
           yield* program.pipe(

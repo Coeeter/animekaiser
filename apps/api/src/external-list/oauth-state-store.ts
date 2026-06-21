@@ -1,15 +1,13 @@
-import { ExternalListOAuthStateStore } from "@workspace/core/server"
-import * as Data from "effect/Data"
+import {
+  ExternalListOAuthStateStore,
+  ExternalListOAuthStateStoreError,
+} from "@workspace/core/server"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 import Redis from "ioredis"
 import { Env } from "../env"
 
 const key = (id: string) => `oauth-state:${id}`
-
-class OAuthStateStoreError extends Data.TaggedError("OAuthStateStoreError")<{
-  cause: unknown
-}> {}
 
 export const ExternalListOAuthStateStoreLive = Layer.scoped(
   ExternalListOAuthStateStore,
@@ -28,7 +26,7 @@ export const ExternalListOAuthStateStoreLive = Layer.scoped(
             await redis.set(key(id), JSON.stringify(state), "EX", 600)
             return id
           },
-          catch: (cause) => new OAuthStateStoreError({ cause }),
+          catch: (cause) => new ExternalListOAuthStateStoreError({ cause }),
         }),
       take: (id) =>
         Effect.tryPromise({
@@ -36,7 +34,7 @@ export const ExternalListOAuthStateStoreLive = Layer.scoped(
             const value = await redis.getdel(key(id))
             return value ? JSON.parse(value) : undefined
           },
-          catch: (cause) => new OAuthStateStoreError({ cause }),
+          catch: (cause) => new ExternalListOAuthStateStoreError({ cause }),
         }),
     }
   })

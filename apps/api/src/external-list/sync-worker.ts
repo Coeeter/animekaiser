@@ -20,16 +20,19 @@ const syncLoop = Effect.scoped(
     yield* LibrarySyncService.recoverRunningEvents()
     yield* drain
     return yield* Queue.take(events).pipe(
-      Effect.flatMap((event) => (event._tag === "Error" ? Effect.fail(event.error) : drain)),
+      Effect.flatMap((event) =>
+        event._tag === "Error" ? Effect.fail(event.error) : drain
+      ),
       Effect.forever
     )
   })
 ).pipe(
-  Effect.tapError((error) => Effect.logError("Library sync worker reconnecting.", { error })),
+  Effect.tapError((error) =>
+    Effect.logError("Library sync worker reconnecting.", { error })
+  ),
   Effect.retry(Schedule.spaced("1 second"))
 )
 
 export const LibrarySyncWorkerLive = Layer.scopedDiscard(
   Effect.forkScoped(syncLoop)
 ).pipe(Layer.provide(LibrarySyncService.Default))
-

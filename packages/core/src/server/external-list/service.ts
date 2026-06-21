@@ -1,4 +1,6 @@
 import { Database, externalListAccount, job } from "@workspace/db"
+import * as FetchHttpClient from "@effect/platform/FetchHttpClient"
+import * as HttpClient from "@effect/platform/HttpClient"
 import { and, eq, sql } from "drizzle-orm"
 import * as Context from "effect/Context"
 import * as Data from "effect/Data"
@@ -46,9 +48,11 @@ export class ExternalListAccountsService extends Effect.Service<ExternalListAcco
   "@workspace/core/server/ExternalListAccountsService",
   {
     accessors: true,
+    dependencies: [FetchHttpClient.layer],
     effect: Effect.gen(function* () {
       const database = yield* Database
       const config = yield* ExternalListOAuthConfig
+      const http = yield* HttpClient.HttpClient
 
       const createLinkUrl = Effect.fn(
         "ExternalListAccountsService.createLinkUrl"
@@ -65,6 +69,7 @@ export class ExternalListAccountsService extends Effect.Service<ExternalListAcco
             ? createMalLinkUrl(providerConfig, params)
             : createAniListLinkUrl(providerConfig, params)
         ).pipe(
+          Effect.provideService(HttpClient.HttpClient, http),
           Effect.catchTag("ExternalListOAuthError", mapExternalListOAuthError)
         )
       })
@@ -85,6 +90,7 @@ export class ExternalListAccountsService extends Effect.Service<ExternalListAcco
             ? handleMalCallback(database, providerConfig, params)
             : handleAniListCallback(database, providerConfig, params)
         ).pipe(
+          Effect.provideService(HttpClient.HttpClient, http),
           Effect.catchTag("ExternalListOAuthError", mapExternalListOAuthError)
         )
       })
@@ -119,7 +125,12 @@ export class ExternalListAccountsService extends Effect.Service<ExternalListAcco
           const account = accounts.find((item) => item.provider === provider)
           const now = Date.now()
           const expiresAt = account?.expiresAt?.getTime() ?? null
-          const state: "disconnected" | "active" | "expiring" | "expired" | "relink_required" = !account
+          const state:
+            | "disconnected"
+            | "active"
+            | "expiring"
+            | "expired"
+            | "relink_required" = !account
             ? "disconnected"
             : account.relinkRequiredAt
               ? "relink_required"
@@ -270,6 +281,7 @@ export class ExternalListAccountsService extends Effect.Service<ExternalListAcco
               currentAccessTokenExpiresAt: account.accessTokenExpiresAt,
               currentNextTokenRefreshAt: account.nextTokenRefreshAt,
             }).pipe(
+              Effect.provideService(HttpClient.HttpClient, http),
               Effect.tap(() =>
                 Effect.logInfo(
                   "[External List Token Refresh] Token refreshed.",

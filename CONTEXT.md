@@ -20,9 +20,17 @@ _Avoid_: Watchlist item, external list item
 A durable work item used to track background work such as library imports and external list syncs.
 _Avoid_: Task, background task
 
-**Library Conflict**:
-A disagreement between a user's Kaiser Library Entry and an external list value that requires the user to choose a resolution.
-_Avoid_: Sync error, merge error
+**Anime Metadata**:
+The display-ready title, cover, episode total, and provider identity stored for an Anime referenced by a Library Entry.
+_Avoid_: Library payload, cached provider response
+
+**Library Import**:
+An inbound copy from one External List Account into Kaiser. It overwrites matching Kaiser entries, preserves local-only entries, and never triggers outbound sync.
+_Avoid_: Two-way sync, conflict merge
+
+**Library Sync Event**:
+An immutable outbound attempt to apply a Kaiser Library Entry change to one linked external provider. A retry creates a new linked event.
+_Avoid_: Import job, mutable sync log
 
 **Streaming Provider Anime ID**:
 A provider-specific identifier that maps an Anime to its corresponding title on a streaming provider.
