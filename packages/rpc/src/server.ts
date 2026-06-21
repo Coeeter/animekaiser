@@ -1,18 +1,15 @@
 import { RpcSerialization, RpcServer } from "@effect/rpc"
 import { KaiserRpcs } from "@workspace/domain"
-import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 import { AnimeHandlersLive } from "./server/anime"
+import { AuthenticationMiddlewareLive } from "./server/authentication"
 import { IntegrationHandlersLive } from "./server/integrations"
 import { LibraryHandlersLive } from "./server/library"
 import { ProfileHandlersLive } from "./server/profile"
 
 export { RpcServerConfig } from "./server/config"
 
-const PingHandlerLive = KaiserRpcs.toLayerHandler("Ping", () => Effect.succeed("pong" as const))
-
 const HandlersLive = Layer.mergeAll(
-  PingHandlerLive,
   AnimeHandlersLive,
   IntegrationHandlersLive,
   LibraryHandlersLive,
@@ -24,6 +21,6 @@ export const RpcLive = RpcServer.layerHttpRouter({
   path: "/rpc",
   protocol: "http",
 }).pipe(
-  Layer.provide(HandlersLive),
+  Layer.provide(Layer.mergeAll(HandlersLive, AuthenticationMiddlewareLive)),
   Layer.provide(RpcSerialization.layerNdjson)
 )

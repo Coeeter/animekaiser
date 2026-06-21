@@ -3,7 +3,6 @@ import * as FetchHttpClient from "@effect/platform/FetchHttpClient"
 import * as HttpClient from "@effect/platform/HttpClient"
 import * as HttpClientRequest from "@effect/platform/HttpClientRequest"
 import { RpcClient, RpcSerialization } from "@effect/rpc"
-import { KaiserRpcClient } from "@workspace/rpc/client"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 import type * as Scope from "effect/Scope"
@@ -35,10 +34,3 @@ export const runRpc = <TResult, TError>(
   Effect.runPromise(
     Effect.scoped(effect.pipe(Effect.provide(makeRpcProtocol())))
   )
-
-export const pingAtom = rpcRuntime.atom(
-  Effect.gen(function* () {
-    const client = yield* KaiserRpcClient
-    return yield* client.Ping()
-  })
-)

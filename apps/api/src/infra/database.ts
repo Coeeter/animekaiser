@@ -1,0 +1,22 @@
+import { Database } from "@workspace/db"
+import * as Effect from "effect/Effect"
+import * as Layer from "effect/Layer"
+import { Env } from "../env"
+
+export const DatabaseLive = Layer.unwrapEffect(
+  Env.pipe(
+    Effect.map((env) =>
+      Database.Default({
+        url: env.database.url,
+        ssl: env.server.env === "prod",
+      })
+    )
+  )
+).pipe(Layer.provide(Env.Default))
+
+export const DatabaseListenerLive = Layer.effectDiscard(
+  Effect.gen(function* () {
+    const database = yield* Database
+    yield* database.setupConnectionListeners
+  })
+)

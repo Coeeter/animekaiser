@@ -1,7 +1,7 @@
 import * as HttpServerRequest from "@effect/platform/HttpServerRequest"
 import { AuthServer, initAuth } from "@workspace/auth/server"
 import type { KaiserAuth } from "@workspace/auth/server"
-import { ExternalListOAuthConfig } from "@workspace/core/server"
+import { ExternalListOAuthConfig } from "@workspace/core"
 import { Database } from "@workspace/db"
 import { AuthenticationRequiredError } from "@workspace/domain"
 import * as Effect from "effect/Effect"

@@ -1,6 +1,6 @@
-export { AuthenticationRequiredError } from "./auth"
 export * from "./anime"
-export * from "./external-list"
+export * from "./auth"
+export * from "./integrations"
 export * from "./library"
 export * from "./profile"
 export * from "./rpc"

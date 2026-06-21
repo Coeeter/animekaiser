@@ -1,14 +1,8 @@
 import { drizzle } from "drizzle-orm/node-postgres"
-import * as Context from "effect/Context"
 import * as Data from "effect/Data"
 import * as Effect from "effect/Effect"
-import * as Layer from "effect/Layer"
 import * as Queue from "effect/Queue"
-import {
-  DatabaseError as PgDatabaseError,
-  escapeIdentifier,
-  Pool,
-} from "pg"
+import { DatabaseError as PgDatabaseError, escapeIdentifier, Pool } from "pg"
 import type { Notification } from "pg"
 import * as schema from "./schema"
 
@@ -147,8 +141,7 @@ const makeService = (config: DatabaseConnectionConfig) =>
           catch: (cause) =>
             new DatabaseError({ type: "connection_error", cause }),
         }),
-        (poolClient) =>
-          Effect.sync(() => poolClient.release(connectionFailed))
+        (poolClient) => Effect.sync(() => poolClient.release(connectionFailed))
       )
       const events = yield* Queue.unbounded<DatabaseListenEvent>()
       const onNotification = (notification: Notification) => {
@@ -201,11 +194,7 @@ const makeService = (config: DatabaseConnectionConfig) =>
 type Shape = Effect.Effect.Success<ReturnType<typeof makeService>>
 export type DatabaseService = Shape
 
-export class Database extends Context.Tag("@workspace/db/db/Database")<
-  Database,
-  Shape
->() {
-  static layer(config: DatabaseConnectionConfig) {
-    return Layer.scoped(this, makeService(config))
-  }
-}
+export class Database extends Effect.Service<Database>()(
+  "@workspace/db/Database",
+  { scoped: makeService }
+) {}
