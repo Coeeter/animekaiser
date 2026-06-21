@@ -18,9 +18,7 @@ export function HomePage({
   return Result.match(result, {
     onInitial: () => <HomeContent home={home} loggedIn={loggedIn} />,
     onFailure: () => <HomeContent home={home} loggedIn={loggedIn} />,
-    onSuccess: ({ value }) => (
-      <HomeContent home={value} loggedIn={loggedIn} />
-    ),
+    onSuccess: ({ value }) => <HomeContent home={value} loggedIn={loggedIn} />,
   })
 }
 

@@ -13,9 +13,6 @@ export const Route = createFileRoute("/schedule")({
 
 function ScheduleRoute() {
   return (
-    <SchedulePage
-      search={Route.useSearch()}
-      initial={Route.useLoaderData()}
-    />
+    <SchedulePage search={Route.useSearch()} initial={Route.useLoaderData()} />
   )
 }

@@ -9,19 +9,19 @@ import {
 import * as Schema from "effect/Schema"
 import { getTodayScheduleDay } from "./schedule"
 
-const PositivePage = Schema.Union(
-  Schema.Number,
-  Schema.NumberFromString
-).pipe(Schema.int(), Schema.positive())
+const PositivePage = Schema.Union(Schema.Number, Schema.NumberFromString).pipe(
+  Schema.int(),
+  Schema.positive()
+)
 
 const Score = Schema.Union(Schema.Number, Schema.NumberFromString).pipe(
   Schema.between(0, 10)
 )
 
-const SeasonYear = Schema.Union(
-  Schema.Number,
-  Schema.NumberFromString
-).pipe(Schema.int(), Schema.between(1900, 2200))
+const SeasonYear = Schema.Union(Schema.Number, Schema.NumberFromString).pipe(
+  Schema.int(),
+  Schema.between(1900, 2200)
+)
 
 export const CatalogSearch = Schema.Struct({
   q: Schema.optional(Schema.String),

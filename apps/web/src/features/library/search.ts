@@ -1,10 +1,10 @@
 import { LibrarySort, LibraryStatus } from "@workspace/domain"
 import * as Schema from "effect/Schema"
 
-const PositivePage = Schema.Union(
-  Schema.Number,
-  Schema.NumberFromString
-).pipe(Schema.int(), Schema.positive())
+const PositivePage = Schema.Union(Schema.Number, Schema.NumberFromString).pipe(
+  Schema.int(),
+  Schema.positive()
+)
 
 export const MyListSearch = Schema.Struct({
   status: Schema.optionalWith(

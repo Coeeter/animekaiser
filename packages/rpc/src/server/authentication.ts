@@ -41,6 +41,9 @@ export const AuthHandlersLive = AuthRpcs.toLayer(
           Effect.map((session) =>
             session
               ? {
+                  session: {
+                    expiresAt: session.session.expiresAt,
+                  },
                   user: {
                     id: session.user.id,
                     name: session.user.name,

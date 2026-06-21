@@ -35,9 +35,7 @@ export const uploadProfileImage = async (
 ) => {
   const contentType = Schema.decodeUnknownOption(ProfileImageContentType)(
     file.type
-  ).pipe(
-    Option.getOrThrowWith(() => new Error("Unsupported image type."))
-  )
+  ).pipe(Option.getOrThrowWith(() => new Error("Unsupported image type.")))
   const upload = await runRpc(
     Effect.gen(function* () {
       const client = yield* KaiserRpcClient

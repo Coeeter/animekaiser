@@ -8,11 +8,7 @@ import { AnimeTitle } from "./anime-title"
 import { scheduleAtom } from "./atoms"
 import { formatAnimeMeta } from "./format"
 import { NextEpisodeCountdown } from "./next-episode-countdown"
-import {
-  getCurrentWeek,
-  scheduleRange,
-  sortScheduleItems,
-} from "./schedule"
+import { getCurrentWeek, scheduleRange, sortScheduleItems } from "./schedule"
 import type { ScheduleSearch } from "./search"
 
 export function SchedulePage({

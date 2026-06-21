@@ -1,10 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router"
 import { loadAnimeCatalog } from "../features/anime/anime.functions"
 import { CatalogPage } from "../features/anime/catalog-page"
-import {
-  catalogInput,
-  decodeCatalogSearch,
-} from "../features/anime/search"
+import { catalogInput, decodeCatalogSearch } from "../features/anime/search"
 
 export const Route = createFileRoute("/series/")({
   validateSearch: decodeCatalogSearch,
@@ -15,9 +12,6 @@ export const Route = createFileRoute("/series/")({
 
 function CatalogRoute() {
   return (
-    <CatalogPage
-      search={Route.useSearch()}
-      initial={Route.useLoaderData()}
-    />
+    <CatalogPage search={Route.useSearch()} initial={Route.useLoaderData()} />
   )
 }

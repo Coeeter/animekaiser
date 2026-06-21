@@ -12,9 +12,6 @@ export const Route = createFileRoute("/discover")({
 
 function DiscoverRoute() {
   return (
-    <DiscoverPage
-      search={Route.useSearch()}
-      initial={Route.useLoaderData()}
-    />
+    <DiscoverPage search={Route.useSearch()} initial={Route.useLoaderData()} />
   )
 }

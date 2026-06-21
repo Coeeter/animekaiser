@@ -2,7 +2,7 @@ import { HeadContent, Scripts, createRootRoute } from "@tanstack/react-router"
 import { Toaster } from "@workspace/ui/components/sonner"
 import { TooltipProvider } from "@workspace/ui/components/tooltip"
 import { getAppSession } from "../lib/session"
-import { AppShell } from "../components/app-shell"
+import { AppShell } from "../features/layout/app-shell"
 import { ThemeProvider } from "../components/theme"
 
 import appCss from "@workspace/ui/globals.css?url"
