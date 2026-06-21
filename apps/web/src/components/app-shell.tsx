@@ -4,6 +4,7 @@ import {
   useRouter,
   useRouterState,
 } from "@tanstack/react-router"
+import { Result, useAtom, useAtomValue } from "@effect-atom/atom-react"
 import {
   Avatar,
   AvatarFallback,
@@ -14,7 +15,9 @@ import {
   Command,
   CommandDialog,
   CommandEmpty,
+  CommandGroup,
   CommandInput,
+  CommandItem,
   CommandList,
 } from "@workspace/ui/components/command"
 import {
@@ -50,12 +53,17 @@ import {
 } from "lucide-react"
 import type { LucideIcon } from "lucide-react"
 import type { ReactNode } from "react"
-import { useEffect, useState } from "react"
+import { useDeferredValue, useEffect, useMemo, useState } from "react"
 import { toast } from "sonner"
 import { authClient, displayUsername, userInitials } from "../auth"
 import type { AppSession } from "../auth.functions"
 import { SettingsDialog } from "../features/settings/settings"
 import type { SettingsSection } from "../features/settings/settings"
+import { catalogAtom } from "../features/anime/atoms"
+import {
+  animeTitlePreferenceAtom,
+  getAnimeTitle,
+} from "../features/anime/title"
 import { ModeToggle } from "./theme"
 
 type NavItem = { title: string; href: string; icon: LucideIcon }
@@ -127,17 +135,85 @@ function SearchDialog({
   open: boolean
   onOpenChange: (open: boolean) => void
 }) {
+  const navigate = useNavigate()
+  const [query, setQuery] = useState("")
+  const deferredQuery = useDeferredValue(query.trim())
+  const searchAtom = useMemo(
+    () =>
+      catalogAtom({
+        input: {
+          query: deferredQuery || undefined,
+          page: 1,
+          perPage: 10,
+          sort: "relevance",
+        },
+      }),
+    [deferredQuery]
+  )
+  const result = useAtomValue(searchAtom)
+  const [preference] = useAtom(animeTitlePreferenceAtom)
   return (
     <CommandDialog
       open={open}
       onOpenChange={onOpenChange}
       title="Search anime"
-      description="Anime search has not been migrated yet."
+      description="Search the anime catalog."
     >
       <Command>
-        <CommandInput placeholder="Search anime…" />
+        <CommandInput
+          value={query}
+          onValueChange={setQuery}
+          placeholder="Search anime…"
+        />
         <CommandList>
-          <CommandEmpty>Anime search has not been migrated yet.</CommandEmpty>
+          {!deferredQuery ? (
+            <CommandEmpty>Start typing to search anime.</CommandEmpty>
+          ) : (
+            Result.match(result, {
+              onInitial: () => <CommandEmpty>Searching…</CommandEmpty>,
+              onFailure: () => (
+                <CommandEmpty>Search is unavailable.</CommandEmpty>
+              ),
+              onSuccess: ({ value: page }) =>
+                page.items.length === 0 ? (
+                  <CommandEmpty>No anime found.</CommandEmpty>
+                ) : (
+                  <CommandGroup heading="Anime">
+                    {page.items.map((anime) => (
+                      <CommandItem
+                        key={anime.malId}
+                        value={`${anime.malId}-${anime.title.romaji}`}
+                        onSelect={() => {
+                          onOpenChange(false)
+                          void navigate({
+                            to: "/series/$id",
+                            params: { id: anime.malId },
+                          })
+                        }}
+                      >
+                        {anime.coverImage ? (
+                          <img
+                            src={anime.coverImage}
+                            alt=""
+                            className="aspect-2/3 w-8 rounded object-cover"
+                          />
+                        ) : (
+                          <div className="aspect-2/3 w-8 rounded bg-muted" />
+                        )}
+                        <div className="min-w-0">
+                          <p className="truncate">
+                            {getAnimeTitle(anime.title, preference)}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            MAL {anime.malId}
+                          </p>
+                        </div>
+                      </CommandItem>
+                    ))}
+                  </CommandGroup>
+                ),
+            })
+          )}
         </CommandList>
       </Command>
     </CommandDialog>
@@ -162,6 +238,12 @@ export function AppShell({
   const [requestedSection, setRequestedSection] =
     useState<SettingsSection | null>(null)
   const [logoutPending, setLogoutPending] = useState(false)
+  const [, setTitlePreference] = useAtom(animeTitlePreferenceAtom)
+
+  useEffect(() => {
+    const stored = window.localStorage.getItem("anime-title-preference")
+    if (stored === "english" || stored === "romaji") setTitlePreference(stored)
+  }, [setTitlePreference])
 
   useEffect(() => {
     const keydown = (event: KeyboardEvent) => {

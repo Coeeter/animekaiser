@@ -9,17 +9,67 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as WatchHistoryRouteImport } from './routes/watch-history'
+import { Route as SyncActivityRouteImport } from './routes/sync-activity'
+import { Route as SeriesRouteImport } from './routes/series'
+import { Route as ScheduleRouteImport } from './routes/schedule'
+import { Route as RandomRouteImport } from './routes/random'
 import { Route as ProfileRouteImport } from './routes/profile'
+import { Route as MyListRouteImport } from './routes/my-list'
+import { Route as LatestEpisodesRouteImport } from './routes/latest-episodes'
+import { Route as DiscoverRouteImport } from './routes/discover'
 import { Route as AuthRouteImport } from './routes/_auth'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as SeriesIndexRouteImport } from './routes/series.index'
 import { Route as UUsernameRouteImport } from './routes/u.$username'
+import { Route as SeriesIdRouteImport } from './routes/series.$id'
 import { Route as AuthRegisterRouteImport } from './routes/_auth.register'
 import { Route as AuthLoginRouteImport } from './routes/_auth.login'
 import { Route as AuthForgotPasswordRouteImport } from './routes/_auth.forgot-password'
 
+const WatchHistoryRoute = WatchHistoryRouteImport.update({
+  id: '/watch-history',
+  path: '/watch-history',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SyncActivityRoute = SyncActivityRouteImport.update({
+  id: '/sync-activity',
+  path: '/sync-activity',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SeriesRoute = SeriesRouteImport.update({
+  id: '/series',
+  path: '/series',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ScheduleRoute = ScheduleRouteImport.update({
+  id: '/schedule',
+  path: '/schedule',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RandomRoute = RandomRouteImport.update({
+  id: '/random',
+  path: '/random',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ProfileRoute = ProfileRouteImport.update({
   id: '/profile',
   path: '/profile',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MyListRoute = MyListRouteImport.update({
+  id: '/my-list',
+  path: '/my-list',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LatestEpisodesRoute = LatestEpisodesRouteImport.update({
+  id: '/latest-episodes',
+  path: '/latest-episodes',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DiscoverRoute = DiscoverRouteImport.update({
+  id: '/discover',
+  path: '/discover',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthRoute = AuthRouteImport.update({
@@ -31,10 +81,20 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SeriesIndexRoute = SeriesIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => SeriesRoute,
+} as any)
 const UUsernameRoute = UUsernameRouteImport.update({
   id: '/u/$username',
   path: '/u/$username',
   getParentRoute: () => rootRouteImport,
+} as any)
+const SeriesIdRoute = SeriesIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => SeriesRoute,
 } as any)
 const AuthRegisterRoute = AuthRegisterRouteImport.update({
   id: '/register',
@@ -54,72 +114,194 @@ const AuthForgotPasswordRoute = AuthForgotPasswordRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/discover': typeof DiscoverRoute
+  '/latest-episodes': typeof LatestEpisodesRoute
+  '/my-list': typeof MyListRoute
   '/profile': typeof ProfileRoute
+  '/random': typeof RandomRoute
+  '/schedule': typeof ScheduleRoute
+  '/series': typeof SeriesRouteWithChildren
+  '/sync-activity': typeof SyncActivityRoute
+  '/watch-history': typeof WatchHistoryRoute
   '/forgot-password': typeof AuthForgotPasswordRoute
   '/login': typeof AuthLoginRoute
   '/register': typeof AuthRegisterRoute
+  '/series/$id': typeof SeriesIdRoute
   '/u/$username': typeof UUsernameRoute
+  '/series/': typeof SeriesIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/discover': typeof DiscoverRoute
+  '/latest-episodes': typeof LatestEpisodesRoute
+  '/my-list': typeof MyListRoute
   '/profile': typeof ProfileRoute
+  '/random': typeof RandomRoute
+  '/schedule': typeof ScheduleRoute
+  '/sync-activity': typeof SyncActivityRoute
+  '/watch-history': typeof WatchHistoryRoute
   '/forgot-password': typeof AuthForgotPasswordRoute
   '/login': typeof AuthLoginRoute
   '/register': typeof AuthRegisterRoute
+  '/series/$id': typeof SeriesIdRoute
   '/u/$username': typeof UUsernameRoute
+  '/series': typeof SeriesIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/_auth': typeof AuthRouteWithChildren
+  '/discover': typeof DiscoverRoute
+  '/latest-episodes': typeof LatestEpisodesRoute
+  '/my-list': typeof MyListRoute
   '/profile': typeof ProfileRoute
+  '/random': typeof RandomRoute
+  '/schedule': typeof ScheduleRoute
+  '/series': typeof SeriesRouteWithChildren
+  '/sync-activity': typeof SyncActivityRoute
+  '/watch-history': typeof WatchHistoryRoute
   '/_auth/forgot-password': typeof AuthForgotPasswordRoute
   '/_auth/login': typeof AuthLoginRoute
   '/_auth/register': typeof AuthRegisterRoute
+  '/series/$id': typeof SeriesIdRoute
   '/u/$username': typeof UUsernameRoute
+  '/series/': typeof SeriesIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/discover'
+    | '/latest-episodes'
+    | '/my-list'
     | '/profile'
+    | '/random'
+    | '/schedule'
+    | '/series'
+    | '/sync-activity'
+    | '/watch-history'
     | '/forgot-password'
     | '/login'
     | '/register'
+    | '/series/$id'
     | '/u/$username'
+    | '/series/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/discover'
+    | '/latest-episodes'
+    | '/my-list'
     | '/profile'
+    | '/random'
+    | '/schedule'
+    | '/sync-activity'
+    | '/watch-history'
     | '/forgot-password'
     | '/login'
     | '/register'
+    | '/series/$id'
     | '/u/$username'
+    | '/series'
   id:
     | '__root__'
     | '/'
     | '/_auth'
+    | '/discover'
+    | '/latest-episodes'
+    | '/my-list'
     | '/profile'
+    | '/random'
+    | '/schedule'
+    | '/series'
+    | '/sync-activity'
+    | '/watch-history'
     | '/_auth/forgot-password'
     | '/_auth/login'
     | '/_auth/register'
+    | '/series/$id'
     | '/u/$username'
+    | '/series/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthRoute: typeof AuthRouteWithChildren
+  DiscoverRoute: typeof DiscoverRoute
+  LatestEpisodesRoute: typeof LatestEpisodesRoute
+  MyListRoute: typeof MyListRoute
   ProfileRoute: typeof ProfileRoute
+  RandomRoute: typeof RandomRoute
+  ScheduleRoute: typeof ScheduleRoute
+  SeriesRoute: typeof SeriesRouteWithChildren
+  SyncActivityRoute: typeof SyncActivityRoute
+  WatchHistoryRoute: typeof WatchHistoryRoute
   UUsernameRoute: typeof UUsernameRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/watch-history': {
+      id: '/watch-history'
+      path: '/watch-history'
+      fullPath: '/watch-history'
+      preLoaderRoute: typeof WatchHistoryRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/sync-activity': {
+      id: '/sync-activity'
+      path: '/sync-activity'
+      fullPath: '/sync-activity'
+      preLoaderRoute: typeof SyncActivityRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/series': {
+      id: '/series'
+      path: '/series'
+      fullPath: '/series'
+      preLoaderRoute: typeof SeriesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/schedule': {
+      id: '/schedule'
+      path: '/schedule'
+      fullPath: '/schedule'
+      preLoaderRoute: typeof ScheduleRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/random': {
+      id: '/random'
+      path: '/random'
+      fullPath: '/random'
+      preLoaderRoute: typeof RandomRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/profile': {
       id: '/profile'
       path: '/profile'
       fullPath: '/profile'
       preLoaderRoute: typeof ProfileRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/my-list': {
+      id: '/my-list'
+      path: '/my-list'
+      fullPath: '/my-list'
+      preLoaderRoute: typeof MyListRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/latest-episodes': {
+      id: '/latest-episodes'
+      path: '/latest-episodes'
+      fullPath: '/latest-episodes'
+      preLoaderRoute: typeof LatestEpisodesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/discover': {
+      id: '/discover'
+      path: '/discover'
+      fullPath: '/discover'
+      preLoaderRoute: typeof DiscoverRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_auth': {
@@ -136,12 +318,26 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/series/': {
+      id: '/series/'
+      path: '/'
+      fullPath: '/series/'
+      preLoaderRoute: typeof SeriesIndexRouteImport
+      parentRoute: typeof SeriesRoute
+    }
     '/u/$username': {
       id: '/u/$username'
       path: '/u/$username'
       fullPath: '/u/$username'
       preLoaderRoute: typeof UUsernameRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/series/$id': {
+      id: '/series/$id'
+      path: '/$id'
+      fullPath: '/series/$id'
+      preLoaderRoute: typeof SeriesIdRouteImport
+      parentRoute: typeof SeriesRoute
     }
     '/_auth/register': {
       id: '/_auth/register'
@@ -181,10 +377,31 @@ const AuthRouteChildren: AuthRouteChildren = {
 
 const AuthRouteWithChildren = AuthRoute._addFileChildren(AuthRouteChildren)
 
+interface SeriesRouteChildren {
+  SeriesIdRoute: typeof SeriesIdRoute
+  SeriesIndexRoute: typeof SeriesIndexRoute
+}
+
+const SeriesRouteChildren: SeriesRouteChildren = {
+  SeriesIdRoute: SeriesIdRoute,
+  SeriesIndexRoute: SeriesIndexRoute,
+}
+
+const SeriesRouteWithChildren =
+  SeriesRoute._addFileChildren(SeriesRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthRoute: AuthRouteWithChildren,
+  DiscoverRoute: DiscoverRoute,
+  LatestEpisodesRoute: LatestEpisodesRoute,
+  MyListRoute: MyListRoute,
   ProfileRoute: ProfileRoute,
+  RandomRoute: RandomRoute,
+  ScheduleRoute: ScheduleRoute,
+  SeriesRoute: SeriesRouteWithChildren,
+  SyncActivityRoute: SyncActivityRoute,
+  WatchHistoryRoute: WatchHistoryRoute,
   UUsernameRoute: UUsernameRoute,
 }
 export const routeTree = rootRouteImport

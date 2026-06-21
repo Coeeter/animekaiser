@@ -22,10 +22,8 @@ import { authClient, safeRedirect } from "../../auth"
 
 type LoginMethod = "password" | "otp" | "passkey"
 
-const errorMessage = (error: unknown, fallback: string) =>
-  error && typeof error === "object" && "message" in error
-    ? String(error.message)
-    : fallback
+const errorMessage = <T,>(error: T, fallback: string) =>
+  error instanceof Error ? error.message : fallback
 
 function SubmitButton({
   pending,

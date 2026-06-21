@@ -1,4 +1,5 @@
 import { Link, useNavigate, useRouter } from "@tanstack/react-router"
+import { useAtom } from "@effect-atom/atom-react"
 import {
   Avatar,
   AvatarFallback,
@@ -69,6 +70,7 @@ import {
 } from "../../api"
 import { apiUrl, authClient, displayUsername, userInitials } from "../../auth"
 import type { AppUser } from "../../auth"
+import { animeTitlePreferenceAtom } from "../anime/title"
 
 const sections = [
   {
@@ -118,10 +120,8 @@ const sections = [
 
 export type SettingsSection = (typeof sections)[number]["title"]
 
-const message = (reason: unknown, fallback: string) =>
-  reason && typeof reason === "object" && "message" in reason
-    ? String(reason.message)
-    : fallback
+const message = <T,>(reason: T, fallback: string) =>
+  reason instanceof Error ? reason.message : fallback
 
 function PanelCard({
   children,
@@ -638,14 +638,10 @@ function PrivacyPanel({ open, user }: { open: boolean; user: AppUser | null }) {
 }
 
 function SitePanel() {
-  const [title, setTitle] = useState<"english" | "romaji">("romaji")
-  useEffect(() => {
-    const saved = window.localStorage.getItem("title-preference")
-    if (saved === "english" || saved === "romaji") setTitle(saved)
-  }, [])
+  const [title, setTitle] = useAtom(animeTitlePreferenceAtom)
   const update = (value: "english" | "romaji") => {
     setTitle(value)
-    window.localStorage.setItem("title-preference", value)
+    window.localStorage.setItem("anime-title-preference", value)
   }
   return (
     <PanelCard>
@@ -714,6 +710,11 @@ function IntegrationsPanel({ user }: { user: AppUser | null }) {
   }
   return (
     <div className="flex flex-col gap-3">
+      <Button asChild variant="outline" className="self-start">
+        <Link to="/sync-activity" search={{ page: 1 }}>
+          View sync activity
+        </Link>
+      </Button>
       {accounts.map((account) => (
         <PanelCard key={account.provider}>
           <div className="flex flex-wrap items-center justify-between gap-4">
@@ -723,7 +724,14 @@ function IntegrationsPanel({ user }: { user: AppUser | null }) {
                   {account.provider === "mal" ? "MyAnimeList" : "AniList"}
                 </h3>
                 <Badge variant={account.connected ? "default" : "secondary"}>
-                  {account.connected ? "Connected" : "Disconnected"}
+                  {account.state === "expiring"
+                    ? "Expiring soon"
+                    : account.state === "relink_required" ||
+                        account.state === "expired"
+                      ? "Reconnect required"
+                      : account.connected
+                        ? "Connected"
+                        : "Disconnected"}
                 </Badge>
               </div>
               {account.expiresAt ? (

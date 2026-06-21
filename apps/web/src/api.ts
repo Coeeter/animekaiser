@@ -1,6 +1,63 @@
 import { KaiserRpcClient } from "@workspace/rpc/client"
+import type { LibraryImportJob } from "@workspace/domain"
 import * as Effect from "effect/Effect"
+import * as Stream from "effect/Stream"
 import { runRpc } from "./rpc"
+
+export const loadAnimeHome = () =>
+  runRpc(
+    Effect.gen(function* () {
+      const client = yield* KaiserRpcClient
+      return yield* client.GetAnimeHome()
+    })
+  )
+
+export const loadAnimeCatalog = (
+  input: Parameters<
+    Effect.Effect.Success<typeof KaiserRpcClient>["ListAnimeCatalog"]
+  >[0]
+) =>
+  runRpc(
+    Effect.gen(function* () {
+      const client = yield* KaiserRpcClient
+      return yield* client.ListAnimeCatalog(input)
+    })
+  )
+
+export const loadAnimeDiscovery = (
+  category: "trending" | "seasonal" | "popular" | "topRated" | "upcoming",
+  page: number
+) =>
+  runRpc(
+    Effect.gen(function* () {
+      const client = yield* KaiserRpcClient
+      return yield* client.ListAnimeDiscovery({ category, page, perPage: 24 })
+    })
+  )
+
+export const loadAnimeSchedule = (from: number, to: number) =>
+  runRpc(
+    Effect.gen(function* () {
+      const client = yield* KaiserRpcClient
+      return yield* client.ListAnimeSchedule({ from, to, page: 1, perPage: 50 })
+    })
+  )
+
+export const loadAnimeDetail = (malId: number) =>
+  runRpc(
+    Effect.gen(function* () {
+      const client = yield* KaiserRpcClient
+      return yield* client.GetAnimeDetail({ malId })
+    })
+  )
+
+export const loadRandomAnime = () =>
+  runRpc(
+    Effect.gen(function* () {
+      const client = yield* KaiserRpcClient
+      return yield* client.GetRandomAnime()
+    })
+  )
 
 export const loadOwnProfile = () =>
   runRpc(
@@ -98,5 +155,18 @@ export const startLibraryImport = (provider: "mal" | "anilist") =>
     Effect.gen(function* () {
       const client = yield* KaiserRpcClient
       return yield* client.StartLibraryImport({ provider })
+    })
+  )
+
+export const watchLibraryImport = (
+  id: string,
+  onUpdate: (job: LibraryImportJob) => void
+) =>
+  runRpc(
+    Effect.gen(function* () {
+      const client = yield* KaiserRpcClient
+      yield* client
+        .WatchLibraryImport({ id })
+        .pipe(Stream.runForEach((job) => Effect.sync(() => onUpdate(job))))
     })
   )
