@@ -7,7 +7,7 @@ import {
 test("normalizes typed provider entries", () => {
   expect(
     normalizeMalImportEntry({
-      node: { id: 1 },
+      node: { id: 1, title: "Cowboy Bebop" },
       list_status: {
         status: "watching",
         score: 8,
@@ -23,7 +23,14 @@ test("normalizes typed provider entries", () => {
       status: "CURRENT",
       score: 75,
       progress: 4,
-      media: { idMal: 1 },
+      notes: null,
+      media: {
+        id: 1,
+        idMal: 1,
+        title: { romaji: "Cowboy Bebop", english: "Cowboy Bebop" },
+        coverImage: { extraLarge: null, large: null, medium: null },
+        episodes: 26,
+      },
     })
   ).toMatchObject({
     malId: 1,
@@ -39,7 +46,14 @@ test("normalizes typed provider entries", () => {
       status: "PLANNING",
       score: 0,
       progress: 0,
-      media: { idMal: null },
+      notes: null,
+      media: {
+        id: 2,
+        idMal: null,
+        title: { romaji: "No MAL ID", english: null },
+        coverImage: null,
+        episodes: null,
+      },
     })
   ).toBeNull()
 })

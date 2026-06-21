@@ -1,16 +1,16 @@
 import * as HttpServerRequest from "@effect/platform/HttpServerRequest"
-import { initAuth } from "@workspace/auth/server"
+import { AuthServer, initAuth } from "@workspace/auth/server"
+import type { KaiserAuth } from "@workspace/auth/server"
 import { ExternalListOAuthConfig } from "@workspace/core/server"
 import { Database } from "@workspace/db"
 import { AuthenticationRequiredError } from "@workspace/domain"
-import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 import * as Redacted from "effect/Redacted"
 import { Env } from "../env"
 import { createResendAuthMailer } from "./mailer"
 
-type BetterAuthRuntime = ReturnType<typeof initAuth>
+type BetterAuthRuntime = KaiserAuth
 type EnvShape = Effect.Effect.Success<typeof Env>
 
 const providerConfig = (
@@ -28,10 +28,7 @@ const providerConfig = (
   callbackBaseURL: appBaseURL,
 })
 
-export class BetterAuth extends Context.Tag("@workspace/api/auth/BetterAuth")<
-  BetterAuth,
-  BetterAuthRuntime
->() {}
+export { AuthServer as BetterAuth }
 
 export const getCurrentSession = (auth: BetterAuthRuntime) =>
   Effect.gen(function* () {
@@ -60,7 +57,7 @@ export const requireCurrentUser = (auth: BetterAuthRuntime) =>
   })
 
 export const BetterAuthLive = Layer.effect(
-  BetterAuth,
+  AuthServer,
   Effect.gen(function* () {
     const env = yield* Env
     const database = yield* Database

@@ -27,6 +27,7 @@
         "@workspace/core": "workspace:*",
         "@workspace/db": "workspace:*",
         "@workspace/domain": "workspace:*",
+        "@workspace/rpc": "workspace:*",
         "effect": "^3.21.3",
         "ioredis": "^5.8.2",
         "resend": "^6.12.4",
@@ -52,6 +53,7 @@
         "@tanstack/router-plugin": "latest",
         "@workspace/auth": "workspace:*",
         "@workspace/domain": "workspace:*",
+        "@workspace/rpc": "workspace:*",
         "@workspace/ui": "workspace:*",
         "effect": "^3.21.3",
         "lucide-react": "^1.17.0",
@@ -122,6 +124,22 @@
       "version": "0.0.0",
       "dependencies": {
         "@effect/rpc": "^0.75.1",
+        "effect": "^3.21.3",
+      },
+      "devDependencies": {
+        "@types/node": "^25.9.2",
+        "typescript": "^6",
+      },
+    },
+    "packages/rpc": {
+      "name": "@workspace/rpc",
+      "version": "0.0.0",
+      "dependencies": {
+        "@effect/platform": "^0.96.1",
+        "@effect/rpc": "^0.75.1",
+        "@workspace/auth": "workspace:*",
+        "@workspace/core": "workspace:*",
+        "@workspace/domain": "workspace:*",
         "effect": "^3.21.3",
       },
       "devDependencies": {
@@ -945,6 +963,8 @@
     "@workspace/db": ["@workspace/db@workspace:packages/db"],
 
     "@workspace/domain": ["@workspace/domain@workspace:packages/domain"],
+
+    "@workspace/rpc": ["@workspace/rpc@workspace:packages/rpc"],
 
     "@workspace/ui": ["@workspace/ui@workspace:packages/ui"],
 

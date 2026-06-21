@@ -1,19 +1,21 @@
+import * as FetchHttpClient from "@effect/platform/FetchHttpClient"
 import * as HttpClient from "@effect/platform/HttpClient"
 import * as HttpClientRequest from "@effect/platform/HttpClientRequest"
 import * as HttpClientResponse from "@effect/platform/HttpClientResponse"
 import {
+  animeMetadata,
   Database,
   externalListAccount,
   job,
-  libraryConflict,
   userLibraryEntry,
 } from "@workspace/db"
-import { and, asc, eq } from "drizzle-orm"
+import { and, asc, eq, sql } from "drizzle-orm"
 import * as Effect from "effect/Effect"
+import * as Stream from "effect/Stream"
 import * as Schema from "effect/Schema"
 
-type Provider = "mal" | "anilist"
 export const LIBRARY_IMPORT_JOB_CHANNEL = "library_import_jobs"
+export const LIBRARY_IMPORT_JOB_UPDATE_CHANNEL = "library_import_job_updates"
 
 type Status =
   | "watching"
@@ -25,7 +27,12 @@ type Status =
 
 type NormalizedEntry = {
   malId: number
+  aniListId: number | null
   aniListEntryId: number | null
+  titleRomaji: string
+  titleEnglish: string | null
+  coverImage: string | null
+  episodes: number | null
   status: Status
   score: number | null
   progress: number
@@ -55,12 +62,26 @@ const AniListStatus = Schema.Literal(
 )
 
 const MalImportEntry = Schema.Struct({
-  node: Schema.Struct({ id: PositiveInt }),
+  node: Schema.Struct({
+    id: PositiveInt,
+    title: Schema.String,
+    alternative_titles: Schema.optional(
+      Schema.Struct({ en: Schema.optional(Schema.String), ja: Schema.optional(Schema.String) })
+    ),
+    main_picture: Schema.optional(
+      Schema.Struct({
+        medium: Schema.optional(Schema.String),
+        large: Schema.optional(Schema.String),
+      })
+    ),
+    num_episodes: Schema.optional(Schema.NonNegativeInt),
+  }),
   list_status: Schema.Struct({
     status: MalStatus,
     score: Schema.Int.pipe(Schema.between(0, 10)),
     num_episodes_watched: Schema.NonNegativeInt,
     is_rewatching: Schema.Boolean,
+    comments: Schema.optional(Schema.String),
   }),
 })
 
@@ -77,7 +98,27 @@ const AniListImportEntry = Schema.Struct({
   status: Schema.NullOr(AniListStatus),
   score: Schema.NullOr(Schema.Number.pipe(Schema.between(0, 100))),
   progress: Schema.NullOr(Schema.NonNegativeInt),
-  media: Schema.NullOr(Schema.Struct({ idMal: Schema.NullOr(PositiveInt) })),
+  notes: Schema.NullOr(Schema.String),
+  media: Schema.NullOr(
+    Schema.Struct({
+      id: PositiveInt,
+      idMal: Schema.NullOr(PositiveInt),
+      title: Schema.NullOr(
+        Schema.Struct({
+          romaji: Schema.NullOr(Schema.String),
+          english: Schema.NullOr(Schema.String),
+        })
+      ),
+      coverImage: Schema.NullOr(
+        Schema.Struct({
+          extraLarge: Schema.NullOr(Schema.String),
+          large: Schema.NullOr(Schema.String),
+          medium: Schema.NullOr(Schema.String),
+        })
+      ),
+      episodes: Schema.NullOr(PositiveInt),
+    })
+  ),
 })
 
 const AniListImportResponse = Schema.Struct({
@@ -118,8 +159,12 @@ const aniListImportQuery = `
     MediaListCollection(userId: $userId, type: ANIME) {
       lists {
         entries {
-          id status score(format: POINT_100) progress
-          media { idMal }
+          id status score(format: POINT_100) progress notes
+          media {
+            id idMal title { romaji english }
+            coverImage { extraLarge large medium }
+            episodes
+          }
         }
       }
     }
@@ -153,28 +198,43 @@ export const normalizeMalImportEntry = (
   value: typeof MalImportEntry.Type
 ): NormalizedEntry => ({
   malId: value.node.id,
+  aniListId: null,
   aniListEntryId: null,
+  titleRomaji: value.node.title.trim(),
+  titleEnglish: value.node.alternative_titles?.en?.trim() || null,
+  coverImage: value.node.main_picture?.large ?? value.node.main_picture?.medium ?? null,
+  episodes: value.node.num_episodes && value.node.num_episodes > 0 ? value.node.num_episodes : null,
   status: value.list_status.is_rewatching
     ? "rewatching"
     : normalizeLibraryStatus(value.list_status.status),
   score: value.list_status.score > 0 ? value.list_status.score * 10 : null,
   progress: value.list_status.num_episodes_watched,
-  notes: null,
+  notes: value.list_status.comments?.trim() || null,
 })
 
 export const normalizeAniListImportEntry = (
   value: null | typeof AniListImportEntry.Type
 ): NormalizedEntry | null => {
   const malId = value?.media?.idMal
-  if (!malId) return null
+  const titleRomaji = value?.media?.title?.romaji?.trim() || value?.media?.title?.english?.trim()
+  if (!malId || !titleRomaji) return null
 
   return {
     malId,
+    aniListId: value.media.id,
     aniListEntryId: value.id,
+    titleRomaji,
+    titleEnglish: value.media.title?.english?.trim() || null,
+    coverImage:
+      value.media.coverImage?.extraLarge ??
+      value.media.coverImage?.large ??
+      value.media.coverImage?.medium ??
+      null,
+    episodes: value.media.episodes,
     status: normalizeLibraryStatus(value.status),
     score: value.score && value.score > 0 ? Math.round(value.score) : null,
     progress: value.progress ?? 0,
-    notes: null,
+    notes: value.notes?.trim() || null,
   }
 }
 
@@ -191,6 +251,7 @@ export class LibraryImportService extends Effect.Service<LibraryImportService>()
   "@workspace/core/server/LibraryImportService",
   {
     accessors: true,
+    dependencies: [FetchHttpClient.layer],
     effect: Effect.gen(function* () {
       const database = yield* Database
       const http = (yield* HttpClient.HttpClient).pipe(
@@ -201,7 +262,7 @@ export class LibraryImportService extends Effect.Service<LibraryImportService>()
         function* (accessToken: string) {
           const entries: Array<NormalizedEntry> = []
           let next: string | null =
-            "https://api.myanimelist.net/v2/users/@me/animelist?fields=list_status&limit=1000"
+            "https://api.myanimelist.net/v2/users/@me/animelist?fields=list_status,alternative_titles,main_picture,num_episodes&limit=1000"
 
           while (next) {
             const response: typeof MalImportResponse.Type = yield* http
@@ -226,7 +287,7 @@ export class LibraryImportService extends Effect.Service<LibraryImportService>()
             }
             next = response.paging.next ?? null
           }
-          return entries
+          return { entries, skippedCount: 0 }
         }
       )
 
@@ -266,12 +327,12 @@ export class LibraryImportService extends Effect.Service<LibraryImportService>()
           })
         }
 
-        return (
-          response.data?.MediaListCollection?.lists
-            ?.flatMap((list) => list?.entries ?? [])
-            .map(normalizeAniListImportEntry)
-            .filter((entry): entry is NormalizedEntry => entry !== null) ?? []
-        )
+        const providerEntries =
+          response.data?.MediaListCollection?.lists?.flatMap((list) => list?.entries ?? []) ?? []
+        const entries = providerEntries
+          .map(normalizeAniListImportEntry)
+          .filter((entry): entry is NormalizedEntry => entry !== null)
+        return { entries, skippedCount: providerEntries.length - entries.length }
       })
 
       const recoverRunningJobs = Effect.fn(
@@ -286,6 +347,72 @@ export class LibraryImportService extends Effect.Service<LibraryImportService>()
             )
         )
       })
+
+      const getJob = Effect.fn("LibraryImportService.getJob")(function* (
+        userId: string,
+        id: string
+      ) {
+        const rows = yield* database.execute((db) =>
+          db
+            .select()
+            .from(job)
+            .where(and(eq(job.id, id), eq(job.userId, userId), eq(job.type, "library_import")))
+            .limit(1)
+        )
+        const row = rows.at(0)
+        return row
+          ? {
+              id: row.id,
+              provider: row.payload.provider,
+              status: row.status,
+              result: row.result,
+              errorMessage: row.errorMessage,
+            }
+          : null
+      })
+
+      const watchJob = (userId: string, id: string) =>
+        Stream.unwrapScoped(
+          Effect.gen(function* () {
+            const events = yield* database.listen(LIBRARY_IMPORT_JOB_UPDATE_CHANNEL)
+            const initial = Stream.fromEffect(
+              getJob(userId, id).pipe(
+                Effect.flatMap((value) =>
+                  value
+                    ? Effect.succeed(value)
+                    : Effect.fail(new LibraryImportError({ message: "Import job was not found." }))
+                )
+              )
+            )
+            const updates = Stream.fromQueue(events).pipe(
+              Stream.filter(
+                (event) => event._tag === "Error" || event.payload === id
+              ),
+              Stream.mapEffect((event) =>
+                event._tag === "Error"
+                  ? Effect.fail(
+                      new LibraryImportError({
+                        message: "Import status connection failed.",
+                      })
+                    )
+                  : getJob(userId, id).pipe(
+                      Effect.flatMap((value) =>
+                        value
+                          ? Effect.succeed(value)
+                          : Effect.fail(
+                              new LibraryImportError({ message: "Import job was not found." })
+                            )
+                      )
+                    )
+              )
+            )
+            return Stream.concat(initial, updates).pipe(
+              Stream.takeUntil(
+                (value) => value.status === "completed" || value.status === "failed"
+              )
+            )
+          })
+        )
 
       const claimNextJob = Effect.fn("LibraryImportService.claimNextJob")(
         function* () {
@@ -322,8 +449,8 @@ export class LibraryImportService extends Effect.Service<LibraryImportService>()
       const persistEntries = Effect.fn("LibraryImportService.persistEntries")(
         function* (
           userId: string,
-          provider: Provider,
-          entries: ReadonlyArray<NormalizedEntry>
+          entries: ReadonlyArray<NormalizedEntry>,
+          skippedCount: number
         ) {
           return yield* database.execute((db) =>
             db.transaction(async (tx) => {
@@ -334,63 +461,71 @@ export class LibraryImportService extends Effect.Service<LibraryImportService>()
               const byMalId = new Map(
                 current.map((entry) => [entry.malId, entry])
               )
-              let importedCount = 0
-              let conflictCount = 0
-              let skippedCount = 0
+              let insertedCount = 0
+              let updatedCount = 0
+              let unchangedCount = 0
 
               for (const entry of entries) {
+                await tx
+                  .insert(animeMetadata)
+                  .values({
+                    malId: entry.malId,
+                    aniListId: entry.aniListId,
+                    titleRomaji: entry.titleRomaji,
+                    titleEnglish: entry.titleEnglish,
+                    coverImage: entry.coverImage,
+                    episodes: entry.episodes,
+                  })
+                  .onConflictDoUpdate({
+                    target: animeMetadata.malId,
+                    set: {
+                      aniListId: entry.aniListId,
+                      titleRomaji: entry.titleRomaji,
+                      titleEnglish: entry.titleEnglish,
+                      coverImage: entry.coverImage,
+                      episodes: entry.episodes,
+                      updatedAt: new Date(),
+                    },
+                  })
                 const existing = byMalId.get(entry.malId)
                 if (!existing) {
-                  await tx.insert(userLibraryEntry).values({ userId, ...entry })
-                  importedCount += 1
+                  await tx.insert(userLibraryEntry).values({
+                    userId,
+                    malId: entry.malId,
+                    status: entry.status,
+                    score: entry.score,
+                    progress: entry.progress,
+                    notes: entry.notes,
+                    aniListEntryId: entry.aniListEntryId,
+                  })
+                  insertedCount += 1
                   continue
                 }
                 if (sameEntry(existing, entry)) {
-                  skippedCount += 1
+                  unchangedCount += 1
                   continue
                 }
 
                 await tx
-                  .insert(libraryConflict)
-                  .values({
-                    id: crypto.randomUUID(),
-                    userId,
-                    malId: entry.malId,
-                    provider,
-                    localValue: {
-                      status: existing.status,
-                      score: existing.score,
-                      progress: existing.progress,
-                      notes: existing.notes,
-                    },
-                    externalValue: {
-                      status: entry.status,
-                      score: entry.score,
-                      progress: entry.progress,
-                      notes: entry.notes,
-                    },
+                  .update(userLibraryEntry)
+                  .set({
+                    status: entry.status,
+                    score: entry.score,
+                    progress: entry.progress,
+                    notes: entry.notes,
+                    aniListEntryId: entry.aniListEntryId,
+                    updatedAt: new Date(),
                   })
-                  .onConflictDoUpdate({
-                    target: [
-                      libraryConflict.userId,
-                      libraryConflict.malId,
-                      libraryConflict.provider,
-                    ],
-                    set: {
-                      externalValue: {
-                        status: entry.status,
-                        score: entry.score,
-                        progress: entry.progress,
-                        notes: entry.notes,
-                      },
-                      status: "pending",
-                      resolvedAt: null,
-                    },
-                  })
-                conflictCount += 1
+                  .where(
+                    and(
+                      eq(userLibraryEntry.userId, userId),
+                      eq(userLibraryEntry.malId, entry.malId)
+                    )
+                  )
+                updatedCount += 1
               }
 
-              return { importedCount, conflictCount, skippedCount }
+              return { insertedCount, updatedCount, unchangedCount, skippedCount }
             })
           )
         }
@@ -400,6 +535,9 @@ export class LibraryImportService extends Effect.Service<LibraryImportService>()
         function* () {
           const next = yield* claimNextJob()
           if (!next) return false
+          yield* database.execute((db) =>
+            db.execute(sql`select pg_notify(${LIBRARY_IMPORT_JOB_UPDATE_CHANNEL}, ${next.id})`)
+          )
           const provider = next.payload.provider
 
           const program = Effect.gen(function* () {
@@ -421,46 +559,56 @@ export class LibraryImportService extends Effect.Service<LibraryImportService>()
                 message: "External list account is not connected.",
               })
             }
-            const entries =
+            const imported =
               provider === "mal"
                 ? yield* fetchMalEntries(account.accessToken)
                 : yield* fetchAniListEntries(
                     account.accessToken,
                     account.providerAccountId
                   )
-            return yield* persistEntries(next.userId, provider, entries)
+            return yield* persistEntries(next.userId, imported.entries, imported.skippedCount)
           })
 
           yield* program.pipe(
             Effect.flatMap((result) =>
               database.execute((db) =>
-                db
-                  .update(job)
-                  .set({
-                    status: "completed",
-                    result,
-                    errorMessage: null,
-                    lockedAt: null,
-                    updatedAt: new Date(),
-                  })
-                  .where(eq(job.id, next.id))
+                db.transaction(async (tx) => {
+                  await tx
+                    .update(job)
+                    .set({
+                      status: "completed",
+                      result,
+                      errorMessage: null,
+                      lockedAt: null,
+                      updatedAt: new Date(),
+                    })
+                    .where(eq(job.id, next.id))
+                  await tx.execute(
+                    sql`select pg_notify(${LIBRARY_IMPORT_JOB_UPDATE_CHANNEL}, ${next.id})`
+                  )
+                })
               )
             ),
             Effect.catchAll((error) =>
               database
                 .execute((db) =>
-                  db
-                    .update(job)
-                    .set({
-                      status: "failed",
-                      errorMessage:
-                        "message" in error
-                          ? String(error.message)
-                          : "Library import failed.",
-                      lockedAt: null,
-                      updatedAt: new Date(),
-                    })
-                    .where(eq(job.id, next.id))
+                  db.transaction(async (tx) => {
+                    await tx
+                      .update(job)
+                      .set({
+                        status: "failed",
+                        errorMessage:
+                          "message" in error
+                            ? String(error.message)
+                            : "Library import failed.",
+                        lockedAt: null,
+                        updatedAt: new Date(),
+                      })
+                      .where(eq(job.id, next.id))
+                    await tx.execute(
+                      sql`select pg_notify(${LIBRARY_IMPORT_JOB_UPDATE_CHANNEL}, ${next.id})`
+                    )
+                  })
                 )
                 .pipe(
                   Effect.zipRight(
@@ -473,7 +621,7 @@ export class LibraryImportService extends Effect.Service<LibraryImportService>()
         }
       )
 
-      return { recoverRunningJobs, processNextJob }
+      return { recoverRunningJobs, processNextJob, getJob, watchJob }
     }),
   }
 ) {}

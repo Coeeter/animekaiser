@@ -10,7 +10,6 @@ import {
   fetchAniListUser,
   fetchMalUser,
   malScopes,
-  refreshAniListAccessToken,
   refreshMalAccessToken,
   takeState,
 } from "./oauth"
@@ -29,12 +28,11 @@ type LinkedExternalListAccount = {
 
 type RefreshExternalListTokenConfig = {
   mal: Pick<ProviderOAuthConfig, "clientId" | "clientSecret">
-  aniList: Pick<ProviderOAuthConfig, "clientId" | "clientSecret">
 }
 
 type RefreshExternalListTokenParams = {
   accountId: string
-  provider: ExternalListProvider
+  provider: "mal"
   refreshToken: string
   currentAccessTokenExpiresAt?: Date | null
   currentNextTokenRefreshAt?: Date | null
@@ -108,6 +106,7 @@ const linkExternalListAccount = (
             scopes: linkedAccount.scopes,
             tokenType: linkedAccount.tokenType,
             nextTokenRefreshAt,
+            relinkRequiredAt: null,
             updatedAt: now,
           })
           .where(eq(externalListAccount.id, existing[0].id))
@@ -239,23 +238,7 @@ export const refreshExternalListAccountToken = (
   params: RefreshExternalListTokenParams
 ) =>
   Effect.gen(function* () {
-    const { scopes, tokens } =
-      params.provider === "mal"
-        ? yield* refreshMalAccessToken(config.mal, params.refreshToken).pipe(
-            Effect.map((tokenResponse) => ({
-              scopes: tokenResponse.scope,
-              tokens: tokenResponse,
-            }))
-          )
-        : yield* refreshAniListAccessToken(
-            config.aniList,
-            params.refreshToken
-          ).pipe(
-            Effect.map((tokenResponse) => ({
-              scopes: undefined,
-              tokens: tokenResponse,
-            }))
-          )
+    const tokens = yield* refreshMalAccessToken(config.mal, params.refreshToken)
     const now = new Date()
     const accessTokenExpiresAt = tokens.expires_in
       ? new Date(now.getTime() + tokens.expires_in * 1000)
@@ -272,7 +255,7 @@ export const refreshExternalListAccountToken = (
             accessToken: tokens.access_token,
             refreshToken: tokens.refresh_token ?? params.refreshToken,
             accessTokenExpiresAt,
-            scopes,
+            scopes: tokens.scope,
             tokenType: tokens.token_type,
             lastTokenRefreshAt: now,
             nextTokenRefreshAt,
@@ -301,7 +284,12 @@ export const findExternalListAccountsDueForTokenRefresh = (
       db
         .select()
         .from(externalListAccount)
-        .where(lte(externalListAccount.nextTokenRefreshAt, now))
+        .where(
+          and(
+            eq(externalListAccount.provider, "mal"),
+            lte(externalListAccount.nextTokenRefreshAt, now)
+          )
+        )
     )
     .pipe(
       Effect.mapError(

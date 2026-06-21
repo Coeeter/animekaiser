@@ -4,19 +4,21 @@ import * as FetchHttpClient from "@effect/platform/FetchHttpClient"
 import * as HttpLayerRouter from "@effect/platform/HttpLayerRouter"
 import * as HttpMiddleware from "@effect/platform/HttpMiddleware"
 import { Database } from "@workspace/db"
+import { RpcLive, RpcServerConfig } from "@workspace/rpc/server"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 import * as Schedule from "effect/Schedule"
 import { BetterAuthLive, ExternalListOAuthConfigLive } from "./auth"
 import { AuthRoutesLive } from "./auth/routes"
+import { AnimeCacheLive } from "./cache"
 import { Env } from "./env"
 import { ExternalListOAuthStateStoreLive } from "./external-list/oauth-state-store"
 import { ExternalListAccountsRoutesLive } from "./external-list/routes"
 import { LibraryImportWorkerLive } from "./external-list/import-worker"
 import { ExternalListTokenRefreshWorkerLive } from "./external-list/token-refresh"
+import { LibrarySyncWorkerLive } from "./external-list/sync-worker"
 import { ProfileMediaStorageLive } from "./profile/storage"
-import { RpcLive } from "./rpc"
 
 const DBLive = Layer.unwrapEffect(
   Env.pipe(
@@ -34,6 +36,16 @@ const DBListenerLive = Layer.effectDiscard(
     const db = yield* Database
     return yield* db.setupConnectionListeners
   })
+)
+
+const RpcServerConfigLive = Layer.effect(
+  RpcServerConfig,
+  Env.pipe(
+    Effect.map((env) => ({
+      appUrl: env.app.url,
+      mediaPublicUrl: env.r2.publicUrl,
+    }))
+  )
 )
 
 const CorsLive = Layer.unwrapEffect(
@@ -74,8 +86,11 @@ const HttpLive = HttpLayerRouter.serve(AllRoutesLive, {
 }).pipe(
   Layer.merge(DBListenerLive),
   Layer.merge(LibraryImportWorkerLive),
+  Layer.merge(LibrarySyncWorkerLive),
   Layer.merge(ExternalListTokenRefreshWorkerLive),
   Layer.provideMerge(ProfileMediaStorageLive),
+  Layer.provideMerge(AnimeCacheLive),
+  Layer.provideMerge(RpcServerConfigLive),
   Layer.provideMerge(ExternalListOAuthConfigLive),
   Layer.provideMerge(ExternalListOAuthStateStoreLive),
   Layer.provideMerge(BetterAuthLive),

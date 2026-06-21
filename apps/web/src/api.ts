@@ -1,4 +1,4 @@
-import { KaiserRpcClient } from "@workspace/domain"
+import { KaiserRpcClient } from "@workspace/rpc/client"
 import * as Effect from "effect/Effect"
 import { runRpc } from "./rpc"
 

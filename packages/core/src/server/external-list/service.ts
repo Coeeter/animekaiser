@@ -98,6 +98,7 @@ export class ExternalListAccountsService extends Effect.Service<ExternalListAcco
               .select({
                 provider: externalListAccount.provider,
                 expiresAt: externalListAccount.accessTokenExpiresAt,
+                relinkRequiredAt: externalListAccount.relinkRequiredAt,
               })
               .from(externalListAccount)
               .where(eq(externalListAccount.userId, userId))
@@ -116,10 +117,24 @@ export class ExternalListAccountsService extends Effect.Service<ExternalListAcco
 
         return (["mal", "anilist"] as const).map((provider) => {
           const account = accounts.find((item) => item.provider === provider)
+          const now = Date.now()
+          const expiresAt = account?.expiresAt?.getTime() ?? null
+          const state: "disconnected" | "active" | "expiring" | "expired" | "relink_required" = !account
+            ? "disconnected"
+            : account.relinkRequiredAt
+              ? "relink_required"
+              : expiresAt !== null && expiresAt <= now
+                ? "expired"
+                : provider === "anilist" &&
+                    expiresAt !== null &&
+                    expiresAt <= now + 30 * 24 * 60 * 60 * 1000
+                  ? "expiring"
+                  : "active"
           return {
             provider,
             connected: Boolean(account),
             expiresAt: account?.expiresAt ?? null,
+            state,
           }
         })
       })
@@ -212,7 +227,13 @@ export class ExternalListAccountsService extends Effect.Service<ExternalListAcco
               )
             )
 
-          return { id, provider, status: "pending" as const }
+          return {
+            id,
+            provider,
+            status: "pending" as const,
+            result: null,
+            errorMessage: null,
+          }
         }
       )
 
@@ -244,7 +265,7 @@ export class ExternalListAccountsService extends Effect.Service<ExternalListAcco
 
             return refreshExternalListAccountToken(database, config, {
               accountId: account.id,
-              provider: account.provider,
+              provider: "mal",
               refreshToken: account.refreshToken,
               currentAccessTokenExpiresAt: account.accessTokenExpiresAt,
               currentNextTokenRefreshAt: account.nextTokenRefreshAt,

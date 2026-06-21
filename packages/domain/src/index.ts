@@ -1,4 +1,6 @@
 export { AuthenticationRequiredError } from "./auth"
+export * from "./anime"
 export * from "./external-list"
+export * from "./library"
 export * from "./profile"
-export { KaiserRpcClient, KaiserRpcs } from "./rpc"
+export * from "./rpc"

@@ -1,3 +1,4 @@
+import { sql } from "drizzle-orm"
 import {
   index,
   integer,
@@ -19,12 +20,23 @@ export const libraryStatuses = [
   "rewatching",
 ] as const
 
-export type LibraryEntryValue = {
-  status: (typeof libraryStatuses)[number]
-  score: number | null
-  progress: number
-  notes: string | null
-}
+export const animeMetadata = pgTable(
+  "anime_metadata",
+  {
+    malId: integer("mal_id").primaryKey(),
+    aniListId: integer("anilist_id"),
+    titleRomaji: text("title_romaji").notNull(),
+    titleEnglish: text("title_english"),
+    coverImage: text("cover_image"),
+    episodes: integer("episodes"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at")
+      .defaultNow()
+      .$onUpdate(() => new Date())
+      .notNull(),
+  },
+  (table) => [uniqueIndex("anime_metadata_anilist_id_idx").on(table.aniListId)]
+)
 
 export const userLibraryEntry = pgTable(
   "user_library_entry",
@@ -32,7 +44,9 @@ export const userLibraryEntry = pgTable(
     userId: text("user_id")
       .notNull()
       .references(() => user.id, { onDelete: "cascade" }),
-    malId: integer("mal_id").notNull(),
+    malId: integer("mal_id")
+      .notNull()
+      .references(() => animeMetadata.malId),
     status: text("status", { enum: libraryStatuses }).notNull(),
     score: integer("score"),
     progress: integer("progress").default(0).notNull(),
@@ -50,40 +64,14 @@ export const userLibraryEntry = pgTable(
   ]
 )
 
-export const libraryConflict = pgTable(
-  "library_conflict",
-  {
-    id: text("id").primaryKey(),
-    userId: text("user_id")
-      .notNull()
-      .references(() => user.id, { onDelete: "cascade" }),
-    malId: integer("mal_id").notNull(),
-    provider: text("provider", { enum: ["mal", "anilist"] }).notNull(),
-    localValue: jsonb("local_value").$type<LibraryEntryValue>().notNull(),
-    externalValue: jsonb("external_value").$type<LibraryEntryValue>().notNull(),
-    status: text("status", { enum: ["pending", "resolved"] })
-      .default("pending")
-      .notNull(),
-    createdAt: timestamp("created_at").defaultNow().notNull(),
-    resolvedAt: timestamp("resolved_at"),
-  },
-  (table) => [
-    uniqueIndex("library_conflict_entry_provider_idx").on(
-      table.userId,
-      table.malId,
-      table.provider
-    ),
-    index("library_conflict_user_status_idx").on(table.userId, table.status),
-  ]
-)
-
 export type LibraryImportJobPayload = {
   provider: "mal" | "anilist"
 }
 
 export type LibraryImportJobResult = {
-  importedCount: number
-  conflictCount: number
+  insertedCount: number
+  updatedCount: number
+  unchangedCount: number
   skippedCount: number
 }
 
@@ -114,5 +102,50 @@ export const job = pgTable(
   },
   (table) => [
     index("job_claim_idx").on(table.type, table.status, table.availableAt),
+  ]
+)
+
+export type LibrarySyncEventPayload = {
+  status: (typeof libraryStatuses)[number]
+  score: number | null
+  progress: number
+  notes: string | null
+  aniListId: number | null
+  aniListEntryId: number | null
+}
+
+export const librarySyncEvent = pgTable(
+  "library_sync_event",
+  {
+    id: text("id").primaryKey(),
+    sourceEventId: text("source_event_id"),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    malId: integer("mal_id")
+      .notNull()
+      .references(() => animeMetadata.malId),
+    provider: text("provider", { enum: ["mal", "anilist"] }).notNull(),
+    action: text("action", { enum: ["upsert", "delete"] }).notNull(),
+    status: text("status", {
+      enum: ["pending", "running", "completed", "failed", "superseded"],
+    })
+      .default("pending")
+      .notNull(),
+    attempts: integer("attempts").default(0).notNull(),
+    payload: jsonb("payload").$type<LibrarySyncEventPayload>().notNull(),
+    errorMessage: text("error_message"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at")
+      .defaultNow()
+      .$onUpdate(() => new Date())
+      .notNull(),
+  },
+  (table) => [
+    index("library_sync_event_claim_idx").on(table.status, table.createdAt),
+    index("library_sync_event_user_idx").on(table.userId, table.createdAt),
+    uniqueIndex("library_sync_event_pending_idx")
+      .on(table.userId, table.malId, table.provider)
+      .where(sql`${table.status} = 'pending'`),
   ]
 )

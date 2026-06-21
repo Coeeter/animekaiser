@@ -15,6 +15,13 @@
       "when": 1781953501845,
       "tag": "0001_glossy_thor",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1782022227816,
+      "tag": "0002_sour_prodigy",
+      "breakpoints": true
     }
   ]
 }

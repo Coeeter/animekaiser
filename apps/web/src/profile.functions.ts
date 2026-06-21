@@ -1,6 +1,6 @@
 import { createServerFn } from "@tanstack/react-start"
 import { getRequestHeaders } from "@tanstack/react-start/server"
-import { KaiserRpcClient } from "@workspace/domain"
+import { KaiserRpcClient } from "@workspace/rpc/client"
 import * as Effect from "effect/Effect"
 import { makeRpcProtocol } from "./rpc"
 

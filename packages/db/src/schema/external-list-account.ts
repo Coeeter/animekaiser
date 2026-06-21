@@ -25,6 +25,7 @@ export const externalListAccount = pgTable(
     tokenType: text("token_type"),
     lastTokenRefreshAt: timestamp("last_token_refresh_at"),
     nextTokenRefreshAt: timestamp("next_token_refresh_at"),
+    relinkRequiredAt: timestamp("relink_required_at"),
     createdAt: timestamp("created_at").notNull(),
     updatedAt: timestamp("updated_at")
       .$onUpdate(() => new Date())
