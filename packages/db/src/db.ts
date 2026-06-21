@@ -3,7 +3,13 @@ import * as Context from "effect/Context"
 import * as Data from "effect/Data"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
-import { DatabaseError as PgDatabaseError, Pool } from "pg"
+import * as Queue from "effect/Queue"
+import {
+  DatabaseError as PgDatabaseError,
+  escapeIdentifier,
+  Pool,
+} from "pg"
+import type { Notification } from "pg"
 import * as schema from "./schema"
 
 export type DatabaseConnectionConfig = {
@@ -44,6 +50,10 @@ export class DatabaseError extends Data.TaggedError("DatabaseError")<{
     return this.cause instanceof Error ? this.cause.message : "Unknown error"
   }
 }
+
+export type DatabaseListenEvent =
+  | { readonly _tag: "Notification"; readonly payload: string }
+  | { readonly _tag: "Error"; readonly error: DatabaseError }
 
 const makeService = (config: DatabaseConnectionConfig) =>
   Effect.gen(function* () {
@@ -129,9 +139,63 @@ const makeService = (config: DatabaseConnectionConfig) =>
       })
     })
 
+    const listen = Effect.fn("Database.listen")(function* (channel: string) {
+      let connectionFailed = false
+      const client = yield* Effect.acquireRelease(
+        Effect.tryPromise({
+          try: () => pool.connect(),
+          catch: (cause) =>
+            new DatabaseError({ type: "connection_error", cause }),
+        }),
+        (poolClient) =>
+          Effect.sync(() => poolClient.release(connectionFailed))
+      )
+      const events = yield* Queue.unbounded<DatabaseListenEvent>()
+      const onNotification = (notification: Notification) => {
+        if (notification.channel === channel) {
+          events.unsafeOffer({
+            _tag: "Notification",
+            payload: notification.payload ?? "",
+          })
+        }
+      }
+      const onError = (cause: Error) => {
+        connectionFailed = true
+        events.unsafeOffer({
+          _tag: "Error",
+          error: new DatabaseError({ type: "connection_error", cause }),
+        })
+      }
+
+      yield* Effect.acquireRelease(
+        Effect.sync(() => {
+          client.on("notification", onNotification)
+          client.on("error", onError)
+        }),
+        () =>
+          Effect.sync(() => {
+            client.removeListener("notification", onNotification)
+            client.removeListener("error", onError)
+          })
+      )
+
+      const identifier = escapeIdentifier(channel)
+      yield* Effect.tryPromise({
+        try: () => client.query(`LISTEN ${identifier}`),
+        catch: (cause) => new DatabaseError({ type: "query_error", cause }),
+      })
+      yield* Effect.addFinalizer(() =>
+        Effect.tryPromise(() => client.query(`UNLISTEN ${identifier}`)).pipe(
+          Effect.catchAll(() => Effect.void)
+        )
+      )
+
+      return events
+    })
+
     const withClient = <T>(fn: (client: typeof db) => T) => fn(db)
 
-    return { setupConnectionListeners, execute, withClient }
+    return { setupConnectionListeners, execute, listen, withClient }
   })
 
 type Shape = Effect.Effect.Success<ReturnType<typeof makeService>>

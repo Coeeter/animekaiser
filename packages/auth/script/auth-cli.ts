@@ -7,7 +7,9 @@ const pool = createPgPool({
 
 export const auth = initAuth({
   appName: "Kaiser",
+  appURL: process.env.APP_URL ?? "http://localhost:3000",
   baseURL: process.env.BETTER_AUTH_URL ?? "http://localhost:8080",
+  cookieDomain: process.env.AUTH_COOKIE_DOMAIN,
   secret:
     process.env.BETTER_AUTH_SECRET ??
     "development-only-better-auth-secret-change-before-use",

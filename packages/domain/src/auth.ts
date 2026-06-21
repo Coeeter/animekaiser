@@ -1,5 +1,6 @@
-import * as Data from "effect/Data"
+import * as Schema from "effect/Schema"
 
-export class AuthenticationRequiredError extends Data.TaggedError(
-  "AuthenticationRequiredError"
-)<{ message: string }> {}
+export class AuthenticationRequiredError extends Schema.TaggedError<AuthenticationRequiredError>()(
+  "AuthenticationRequiredError",
+  { message: Schema.String }
+) {}

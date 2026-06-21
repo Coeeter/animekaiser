@@ -1,9 +1,8 @@
-import * as HttpLayerRouter from "@effect/platform/HttpLayerRouter"
-import * as HttpMiddleware from "@effect/platform/HttpMiddleware"
 import * as BunHttpServer from "@effect/platform-bun/BunHttpServer"
 import * as BunRuntime from "@effect/platform-bun/BunRuntime"
 import * as FetchHttpClient from "@effect/platform/FetchHttpClient"
-import { ExternalListAccountsService } from "@workspace/core/server"
+import * as HttpLayerRouter from "@effect/platform/HttpLayerRouter"
+import * as HttpMiddleware from "@effect/platform/HttpMiddleware"
 import { Database } from "@workspace/db"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
@@ -12,9 +11,11 @@ import * as Schedule from "effect/Schedule"
 import { BetterAuthLive, ExternalListOAuthConfigLive } from "./auth"
 import { AuthRoutesLive } from "./auth/routes"
 import { Env } from "./env"
-import { ExternalListAccountsRoutesLive } from "./external-list/routes"
 import { ExternalListOAuthStateStoreLive } from "./external-list/oauth-state-store"
+import { ExternalListAccountsRoutesLive } from "./external-list/routes"
+import { LibraryImportWorkerLive } from "./external-list/import-worker"
 import { ExternalListTokenRefreshWorkerLive } from "./external-list/token-refresh"
+import { ProfileMediaStorageLive } from "./profile/storage"
 import { RpcLive } from "./rpc"
 
 const DBLive = Layer.unwrapEffect(
@@ -41,7 +42,16 @@ const CorsLive = Layer.unwrapEffect(
       HttpLayerRouter.cors({
         allowedOrigins: [env.app.url],
         allowedMethods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
-        allowedHeaders: ["Content-Type", "Authorization"],
+        allowedHeaders: [
+          "Content-Type",
+          "Authorization",
+          "b3",
+          "traceparent",
+          "tracestate",
+          "x-b3-traceid",
+          "x-b3-spanid",
+          "x-b3-sampled",
+        ],
         credentials: true,
       })
     )
@@ -63,8 +73,9 @@ const HttpLive = HttpLayerRouter.serve(AllRoutesLive, {
   middleware: HttpMiddleware.logger,
 }).pipe(
   Layer.merge(DBListenerLive),
+  Layer.merge(LibraryImportWorkerLive),
   Layer.merge(ExternalListTokenRefreshWorkerLive),
-  Layer.provideMerge(ExternalListAccountsService.Default),
+  Layer.provideMerge(ProfileMediaStorageLive),
   Layer.provideMerge(ExternalListOAuthConfigLive),
   Layer.provideMerge(ExternalListOAuthStateStoreLive),
   Layer.provideMerge(BetterAuthLive),

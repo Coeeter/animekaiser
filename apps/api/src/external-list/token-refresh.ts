@@ -1,4 +1,7 @@
-import { ExternalListTokenRefreshProgram } from "@workspace/core/server"
+import {
+  ExternalListAccountsService,
+  ExternalListTokenRefreshProgram,
+} from "@workspace/core/server"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
@@ -18,4 +21,4 @@ const refreshLoop = Effect.gen(function* () {
 
 export const ExternalListTokenRefreshWorkerLive = Layer.scopedDiscard(
   Effect.forkScoped(refreshLoop)
-)
+).pipe(Layer.provide(ExternalListAccountsService.Default))

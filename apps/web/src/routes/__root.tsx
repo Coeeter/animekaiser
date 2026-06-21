@@ -1,8 +1,14 @@
 import { HeadContent, Scripts, createRootRoute } from "@tanstack/react-router"
+import { Toaster } from "@workspace/ui/components/sonner"
+import { TooltipProvider } from "@workspace/ui/components/tooltip"
+import { getAppSession } from "../auth.functions"
+import { AppShell } from "../components/app-shell"
+import { ThemeProvider } from "../components/theme"
 
 import appCss from "@workspace/ui/globals.css?url"
 
 export const Route = createRootRoute({
+  loader: () => getAppSession(),
   head: () => ({
     meta: [
       {
@@ -21,6 +27,7 @@ export const Route = createRootRoute({
         rel: "stylesheet",
         href: appCss,
       },
+      { rel: "icon", href: "/logo.svg" },
     ],
   }),
   notFoundComponent: () => (
@@ -33,13 +40,19 @@ export const Route = createRootRoute({
 })
 
 function RootDocument({ children }: { children: React.ReactNode }) {
+  const session = Route.useLoaderData()
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <head>
         <HeadContent />
       </head>
-      <body>
-        {children}
+      <body className="overflow-x-hidden">
+        <ThemeProvider>
+          <TooltipProvider>
+            <AppShell session={session}>{children}</AppShell>
+          </TooltipProvider>
+          <Toaster richColors />
+        </ThemeProvider>
         <Scripts />
       </body>
     </html>

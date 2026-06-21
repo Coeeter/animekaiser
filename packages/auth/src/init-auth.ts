@@ -25,7 +25,9 @@ export type AuthMailer = {
 
 export type AuthConfig = {
   appName: string
+  appURL: string
   baseURL: string
+  cookieDomain?: string
   secret: string
   trustedOrigins: ReadonlyArray<string>
   db: KaiserDb
@@ -62,9 +64,16 @@ export const initAuth = (config: AuthConfig) =>
     },
     advanced: {
       useSecureCookies: config.useSecureCookies,
+      crossSubDomainCookies: config.cookieDomain
+        ? { enabled: true, domain: config.cookieDomain }
+        : undefined,
     },
     plugins: [
-      passkey(),
+      passkey({
+        rpID: new URL(config.appURL).hostname,
+        rpName: config.appName,
+        origin: config.appURL,
+      }),
       emailOTP({
         async sendVerificationOTP({ email, otp, type }) {
           await config.mailer.sendEmailOtp({ email, otp, type })
@@ -73,6 +82,10 @@ export const initAuth = (config: AuthConfig) =>
       }),
       haveIBeenPwned(),
       username(),
-      lastLoginMethod(),
+      lastLoginMethod({
+        storeInDatabase: true,
+        customResolveMethod: (context) =>
+          context.path === "/sign-in/email-otp" ? "email-otp" : null,
+      }),
     ],
   })

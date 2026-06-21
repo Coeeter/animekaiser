@@ -1,4 +1,5 @@
-import { Database } from "@workspace/db"
+import { Database, externalListAccount, job } from "@workspace/db"
+import { and, eq, sql } from "drizzle-orm"
 import * as Context from "effect/Context"
 import * as Data from "effect/Data"
 import * as Effect from "effect/Effect"
@@ -8,6 +9,7 @@ import {
   handleMalCallback,
   refreshExternalListAccountToken,
 } from "./accounts"
+import { LIBRARY_IMPORT_JOB_CHANNEL } from "./import"
 import type {
   ExternalListOAuthError,
   ExternalListProvider,
@@ -87,6 +89,133 @@ export class ExternalListAccountsService extends Effect.Service<ExternalListAcco
         )
       })
 
+      const listAccounts = Effect.fn(
+        "ExternalListAccountsService.listAccounts"
+      )(function* (userId: string) {
+        const accounts = yield* database
+          .execute((db) =>
+            db
+              .select({
+                provider: externalListAccount.provider,
+                expiresAt: externalListAccount.accessTokenExpiresAt,
+              })
+              .from(externalListAccount)
+              .where(eq(externalListAccount.userId, userId))
+          )
+          .pipe(
+            Effect.catchTag("DatabaseError", (cause) =>
+              Effect.fail(
+                new ExternalListAccountError({
+                  status: 503,
+                  message: "Unable to load external list accounts.",
+                  cause,
+                })
+              )
+            )
+          )
+
+        return (["mal", "anilist"] as const).map((provider) => {
+          const account = accounts.find((item) => item.provider === provider)
+          return {
+            provider,
+            connected: Boolean(account),
+            expiresAt: account?.expiresAt ?? null,
+          }
+        })
+      })
+
+      const disconnectAccount = Effect.fn(
+        "ExternalListAccountsService.disconnectAccount"
+      )(function* (userId: string, provider: ExternalListProvider) {
+        yield* database
+          .execute((db) =>
+            db
+              .delete(externalListAccount)
+              .where(
+                and(
+                  eq(externalListAccount.userId, userId),
+                  eq(externalListAccount.provider, provider)
+                )
+              )
+          )
+          .pipe(
+            Effect.catchTag("DatabaseError", (cause) =>
+              Effect.fail(
+                new ExternalListAccountError({
+                  status: 503,
+                  message: "Unable to disconnect external list account.",
+                  cause,
+                })
+              )
+            )
+          )
+      })
+
+      const startImport = Effect.fn("ExternalListAccountsService.startImport")(
+        function* (userId: string, provider: ExternalListProvider) {
+          const accounts = yield* database
+            .execute((db) =>
+              db
+                .select({ id: externalListAccount.id })
+                .from(externalListAccount)
+                .where(
+                  and(
+                    eq(externalListAccount.userId, userId),
+                    eq(externalListAccount.provider, provider)
+                  )
+                )
+                .limit(1)
+            )
+            .pipe(
+              Effect.catchTag("DatabaseError", (cause) =>
+                Effect.fail(
+                  new ExternalListAccountError({
+                    status: 503,
+                    message: "Unable to start library import.",
+                    cause,
+                  })
+                )
+              )
+            )
+
+          if (!accounts[0]) {
+            return yield* new ExternalListAccountError({
+              status: 400,
+              message: "Connect this provider before importing.",
+            })
+          }
+
+          const id = crypto.randomUUID()
+          yield* database
+            .execute((db) =>
+              db.transaction(async (tx) => {
+                await tx.insert(job).values({
+                  id,
+                  userId,
+                  type: "library_import",
+                  payload: { provider },
+                })
+                await tx.execute(
+                  sql`select pg_notify(${LIBRARY_IMPORT_JOB_CHANNEL}, ${id})`
+                )
+              })
+            )
+            .pipe(
+              Effect.catchTag("DatabaseError", (cause) =>
+                Effect.fail(
+                  new ExternalListAccountError({
+                    status: 503,
+                    message: "Unable to queue library import.",
+                    cause,
+                  })
+                )
+              )
+            )
+
+          return { id, provider, status: "pending" as const }
+        }
+      )
+
       const refreshDueTokens = Effect.fn(
         "ExternalListAccountsService.refreshDueTokens"
       )(function* () {
@@ -138,7 +267,14 @@ export class ExternalListAccountsService extends Effect.Service<ExternalListAcco
         )
       })
 
-      return { createLinkUrl, handleCallback, refreshDueTokens }
+      return {
+        createLinkUrl,
+        handleCallback,
+        listAccounts,
+        disconnectAccount,
+        startImport,
+        refreshDueTokens,
+      }
     }),
   }
 ) {}

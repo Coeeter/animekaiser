@@ -33,7 +33,7 @@ export class BetterAuth extends Context.Tag("@workspace/api/auth/BetterAuth")<
   BetterAuthRuntime
 >() {}
 
-export const requireCurrentUser = (auth: BetterAuthRuntime) =>
+export const getCurrentSession = (auth: BetterAuthRuntime) =>
   Effect.gen(function* () {
     const request = yield* HttpServerRequest.HttpServerRequest
     const webRequest = yield* HttpServerRequest.toWeb(request).pipe(
@@ -44,10 +44,14 @@ export const requireCurrentUser = (auth: BetterAuthRuntime) =>
           })
       )
     )
-    const session = yield* Effect.promise(() =>
+    return yield* Effect.promise(() =>
       auth.api.getSession({ headers: webRequest.headers })
     )
+  })
 
+export const requireCurrentUser = (auth: BetterAuthRuntime) =>
+  Effect.gen(function* () {
+    const session = yield* getCurrentSession(auth)
     return yield* session
       ? Effect.succeed({ id: session.user.id })
       : new AuthenticationRequiredError({
@@ -70,7 +74,9 @@ export const BetterAuthLive = Layer.effect(
 
     return initAuth({
       appName: "Kaiser",
+      appURL: env.app.url,
       baseURL: env.auth.url,
+      cookieDomain: env.auth.cookieDomain || undefined,
       secret: authSecret,
       trustedOrigins: [env.app.url],
       db,

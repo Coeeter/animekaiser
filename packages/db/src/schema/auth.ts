@@ -20,6 +20,7 @@ export const user = pgTable("user", {
     .notNull(),
   username: text("username").unique(),
   displayUsername: text("display_username"),
+  lastLoginMethod: text("last_login_method"),
 })
 
 export const session = pgTable(

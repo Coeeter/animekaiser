@@ -39,3 +39,11 @@ _Avoid_: Sign-in provider, primary auth provider
 **Auth Account**:
 A Better Auth account used for Kaiser authentication and sign-in method management.
 _Avoid_: External list account
+
+**Username**:
+The user-chosen public identity shown throughout Kaiser and used in profile URLs. Better Auth's `name` is kept equal to the username for compatibility; Kaiser does not expose a separate display-name field.
+_Avoid_: Display name, profile name
+
+**Profile**:
+User-owned public metadata outside the Auth Account: bio, banner, and visibility. The avatar remains Better Auth's user image and stores a public R2 URL.
+_Avoid_: Auth account, user identity

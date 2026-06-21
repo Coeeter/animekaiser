@@ -9,6 +9,7 @@ import {
 import { AuthenticationRequiredError } from "@workspace/domain"
 import * as Data from "effect/Data"
 import * as Effect from "effect/Effect"
+import * as Layer from "effect/Layer"
 import { BetterAuth, requireCurrentUser } from "../auth"
 import { Env } from "../env"
 
@@ -73,14 +74,36 @@ const requireProvider = Effect.gen(function* () {
   })
 })
 
+const getSafeCallbackURL = (
+  request: HttpServerRequest.HttpServerRequest,
+  appURL: string
+) =>
+  Effect.try({
+    try: () => {
+      const callbackURL = new URL(
+        getQueryParam(request, "callbackURL") ?? appURL,
+        appURL
+      )
+      if (callbackURL.origin !== new URL(appURL).origin) throw new Error()
+      return callbackURL.toString()
+    },
+    catch: () =>
+      new ExternalListRouteError({
+        status: 400,
+        message: "Invalid callbackURL",
+      }),
+  })
+
 const linkHandler = Effect.gen(function* () {
   const provider = yield* requireProvider
+  const request = yield* HttpServerRequest.HttpServerRequest
   const auth = yield* BetterAuth
   const user = yield* requireCurrentUser(auth)
   const env = yield* Env
+  const callbackURL = yield* getSafeCallbackURL(request, env.app.url)
   const url = yield* ExternalListAccountsService.createLinkUrl(provider, {
     userId: user.id,
-    callbackURL: env.app.url,
+    callbackURL,
   })
   return HttpServerResponse.redirect(url)
 }).pipe(Effect.catchAll(handleExternalListError))
@@ -103,7 +126,24 @@ const callbackHandler = Effect.gen(function* () {
 
 export const ExternalListAccountsRoutesLive = HttpLayerRouter.use((router) =>
   Effect.gen(function* () {
-    yield* router.add("GET", "/api/link/:provider", linkHandler)
-    yield* router.add("GET", "/api/link/:provider/callback", callbackHandler)
+    const accounts = yield* ExternalListAccountsService
+    yield* router.add(
+      "GET",
+      "/api/link/:provider",
+      Effect.provideService(
+        linkHandler,
+        ExternalListAccountsService,
+        accounts
+      )
+    )
+    yield* router.add(
+      "GET",
+      "/api/link/:provider/callback",
+      Effect.provideService(
+        callbackHandler,
+        ExternalListAccountsService,
+        accounts
+      )
+    )
   })
-)
+).pipe(Layer.provide(ExternalListAccountsService.Default))

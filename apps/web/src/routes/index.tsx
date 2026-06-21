@@ -8,17 +8,24 @@ function App() {
   const ping = useAtomValue(pingAtom)
 
   return (
-    <div className="flex min-h-svh p-6">
-      <div className="flex max-w-md min-w-0 flex-col gap-4 text-sm leading-loose">
-        <h1 className="font-medium">Effect RPC</h1>
-        <p>
+    <main className="mx-auto flex min-h-[70svh] w-full max-w-6xl items-center px-6 py-16">
+      <div className="max-w-2xl">
+        <p className="mb-4 text-sm font-medium text-primary">AnimeKaiser</p>
+        <h1 className="font-heading text-5xl font-black tracking-tight text-balance md:text-7xl">
+          Your anime life, in one place.
+        </h1>
+        <p className="mt-6 max-w-xl text-lg leading-8 text-muted-foreground">
+          The shell and account experience are ready. Discovery and library
+          pages are the next migration slice.
+        </p>
+        <p className="mt-8 text-sm text-muted-foreground">
           {Result.match(ping, {
-            onInitial: () => "Connecting…",
-            onFailure: () => "RPC failed",
-            onSuccess: ({ value }) => `RPC says: ${value}`,
+            onInitial: () => "Checking API…",
+            onFailure: () => "API unavailable",
+            onSuccess: () => "API connected",
           })}
         </p>
       </div>
-    </div>
+    </main>
   )
 }

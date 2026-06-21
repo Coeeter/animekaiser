@@ -1,18 +1,40 @@
 import { Atom } from "@effect-atom/atom-react"
 import * as FetchHttpClient from "@effect/platform/FetchHttpClient"
+import * as HttpClient from "@effect/platform/HttpClient"
+import * as HttpClientRequest from "@effect/platform/HttpClientRequest"
 import { RpcClient, RpcSerialization } from "@effect/rpc"
 import { KaiserRpcClient } from "@workspace/domain"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
+import type * as Scope from "effect/Scope"
+import { apiUrl } from "./auth"
 
-const apiUrl = import.meta.env.VITE_API_URL
-if (!apiUrl) throw new Error("Missing VITE_API_URL")
+const fetchLive = FetchHttpClient.layer.pipe(
+  Layer.provide(
+    Layer.succeed(FetchHttpClient.RequestInit, { credentials: "include" })
+  )
+)
 
-const RpcProtocolLive = RpcClient.layerProtocolHttp({
-  url: new URL("/rpc", apiUrl).toString(),
-}).pipe(Layer.provide([FetchHttpClient.layer, RpcSerialization.layerNdjson]))
+export const makeRpcProtocol = (cookie?: string) =>
+  RpcClient.layerProtocolHttp({
+    url: new URL("/rpc", apiUrl).toString(),
+    transformClient: cookie
+      ? (client) =>
+          HttpClient.mapRequest(
+            client,
+            HttpClientRequest.setHeader("cookie", cookie)
+          )
+      : undefined,
+  }).pipe(Layer.provide([fetchLive, RpcSerialization.layerNdjson]))
 
-const rpcRuntime = Atom.runtime(RpcProtocolLive)
+export const rpcRuntime = Atom.runtime(makeRpcProtocol())
+
+export const runRpc = <TResult, TError>(
+  effect: Effect.Effect<TResult, TError, RpcClient.Protocol | Scope.Scope>
+) =>
+  Effect.runPromise(
+    Effect.scoped(effect.pipe(Effect.provide(makeRpcProtocol())))
+  )
 
 export const pingAtom = rpcRuntime.atom(
   Effect.gen(function* () {
