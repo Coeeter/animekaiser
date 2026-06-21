@@ -3,28 +3,12 @@ import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import * as Schema from "effect/Schema"
-import Redis from "ioredis"
-import { Env } from "./env"
+import { RedisClient } from "./redis"
 
 export const AnimeCacheLive = Layer.scoped(
   AnimeCache,
   Effect.gen(function* () {
-    const env = yield* Env
-    const redis = yield* Effect.acquireRelease(
-      Effect.sync(
-        () =>
-          new Redis(env.redis.url, {
-            lazyConnect: true,
-            maxRetriesPerRequest: 1,
-          })
-      ),
-      (client) => Effect.promise(() => client.quit()).pipe(Effect.asVoid)
-    )
-    yield* Effect.tryPromise({
-      try: () => redis.connect(),
-      catch: (cause) =>
-        new AnimeCacheError({ message: "Redis connection failed.", cause }),
-    })
+    const redis = yield* RedisClient
 
     return AnimeCache.of({
       get: (key, schema) =>

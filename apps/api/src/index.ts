@@ -18,6 +18,7 @@ import { LibraryImportWorkerLive } from "./external-list/import-worker"
 import { ExternalListTokenRefreshWorkerLive } from "./external-list/token-refresh"
 import { LibrarySyncWorkerLive } from "./external-list/sync-worker"
 import { ProfileMediaStorageLive } from "./profile/storage"
+import { RedisClientLive } from "./redis"
 
 const DBLive = Layer.unwrapEffect(
   Env.pipe(
@@ -93,6 +94,7 @@ const HttpLive = HttpLayerRouter.serve(AllRoutesLive, {
   Layer.provideMerge(ExternalListOAuthConfigLive),
   Layer.provideMerge(ExternalListOAuthStateStoreLive),
   Layer.provideMerge(BetterAuthLive),
+  Layer.provide(RedisClientLive),
   Layer.provide(DBLive),
   Layer.provide(HttpServerLayer),
   Layer.provide(Env.Default)

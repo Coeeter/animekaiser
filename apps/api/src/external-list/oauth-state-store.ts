@@ -4,19 +4,14 @@ import {
 } from "@workspace/core/server"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
-import Redis from "ioredis"
-import { Env } from "../env"
+import { RedisClient } from "../redis"
 
 const key = (id: string) => `oauth-state:${id}`
 
 export const ExternalListOAuthStateStoreLive = Layer.scoped(
   ExternalListOAuthStateStore,
   Effect.gen(function* () {
-    const env = yield* Env
-    const redis = yield* Effect.acquireRelease(
-      Effect.sync(() => new Redis(env.redis.url)),
-      (client) => Effect.promise(() => client.quit()).pipe(Effect.orDie)
-    )
+    const redis = yield* RedisClient
 
     return {
       create: (state) =>
