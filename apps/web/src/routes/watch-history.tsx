@@ -1,7 +1,6 @@
 import { createFileRoute, redirect } from "@tanstack/react-router"
-import { History } from "lucide-react"
-import { getAppSession } from "../auth.functions"
-import { EmptyFeaturePage } from "../components/empty-feature-page"
+import { WatchHistoryPage } from "../features/library/watch-history-page"
+import { getAppSession } from "../lib/session"
 
 export const Route = createFileRoute("/watch-history")({
   beforeLoad: async () => {
@@ -11,14 +10,3 @@ export const Route = createFileRoute("/watch-history")({
   },
   component: WatchHistoryPage,
 })
-
-function WatchHistoryPage() {
-  return (
-    <EmptyFeaturePage
-      icon={History}
-      kicker="Coming soon"
-      title="Watch history"
-      description="Your viewing history will appear here so you can easily pick up where you left off."
-    />
-  )
-}

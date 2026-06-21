@@ -1,5 +1,5 @@
 import { createFileRoute, redirect } from "@tanstack/react-router"
-import { loadRandomAnime } from "../api"
+import { loadRandomAnime } from "../features/anime/anime.functions"
 
 export const Route = createFileRoute("/random")({
   loader: async () => {

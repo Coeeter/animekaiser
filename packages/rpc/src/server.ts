@@ -2,7 +2,10 @@ import { RpcSerialization, RpcServer } from "@effect/rpc"
 import { KaiserRpcs } from "@workspace/domain"
 import * as Layer from "effect/Layer"
 import { AnimeHandlersLive } from "./server/anime"
-import { AuthenticationMiddlewareLive } from "./server/authentication"
+import {
+  AuthHandlersLive,
+  AuthenticationMiddlewareLive,
+} from "./server/authentication"
 import { IntegrationHandlersLive } from "./server/integrations"
 import { LibraryHandlersLive } from "./server/library"
 import { ProfileHandlersLive } from "./server/profile"
@@ -11,6 +14,7 @@ export { RpcServerConfig } from "./server/config"
 
 const HandlersLive = Layer.mergeAll(
   AnimeHandlersLive,
+  AuthHandlersLive,
   IntegrationHandlersLive,
   LibraryHandlersLive,
   ProfileHandlersLive

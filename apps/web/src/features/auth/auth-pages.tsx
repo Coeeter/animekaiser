@@ -18,12 +18,10 @@ import { Fingerprint, KeyRound, Mail } from "lucide-react"
 import type { FormEvent, ReactNode } from "react"
 import { useState } from "react"
 import { toast } from "sonner"
-import { authClient, safeRedirect } from "../../auth"
+import { authClient, safeRedirect } from "../../lib/auth-client"
+import { errorMessage } from "../../lib/error"
 
 type LoginMethod = "password" | "otp" | "passkey"
-
-const errorMessage = <T,>(error: T, fallback: string) =>
-  error instanceof Error ? error.message : fallback
 
 function SubmitButton({
   pending,

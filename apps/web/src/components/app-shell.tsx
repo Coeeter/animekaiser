@@ -55,8 +55,8 @@ import type { LucideIcon } from "lucide-react"
 import type { ReactNode } from "react"
 import { useDeferredValue, useEffect, useMemo, useState } from "react"
 import { toast } from "sonner"
-import { authClient, displayUsername, userInitials } from "../auth"
-import type { AppSession } from "../auth.functions"
+import { authClient, displayUsername, userInitials } from "../lib/auth-client"
+import type { AppSession } from "../lib/session"
 import { SettingsDialog } from "../features/settings/settings"
 import type { SettingsSection } from "../features/settings/settings"
 import { catalogAtom } from "../features/anime/atoms"
@@ -225,7 +225,7 @@ export function AppShell({
   session,
 }: {
   children: ReactNode
-  session: AppSession
+  session: AppSession | null
 }) {
   const pathname = useRouterState({
     select: (state) => state.location.pathname,

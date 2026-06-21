@@ -1,10 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router"
 import { LoginPage } from "../features/auth/auth-pages"
+import { decodeLoginSearch } from "../features/auth/search"
 
 export const Route = createFileRoute("/_auth/login")({
-  validateSearch: (search) => ({
-    redirect: typeof search.redirect === "string" ? search.redirect : undefined,
-  }),
+  validateSearch: decodeLoginSearch,
   component: LoginRoute,
 })
 

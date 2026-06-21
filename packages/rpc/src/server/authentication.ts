@@ -1,9 +1,11 @@
 import { AuthServer } from "@workspace/auth/server"
 import type { KaiserAuth } from "@workspace/auth/server"
 import {
+  AuthRpcs,
   Authentication,
   AuthenticationRequiredError,
   OptionalAuthentication,
+  SessionOperationError,
 } from "@workspace/domain"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
@@ -20,6 +22,40 @@ const readSession = (
         message: "Authentication request could not be read.",
       }),
   })
+
+export const AuthHandlersLive = AuthRpcs.toLayer(
+  Effect.gen(function* () {
+    const auth = yield* AuthServer
+    return AuthRpcs.of({
+      GetCurrentSession: (_, { headers }) =>
+        Effect.tryPromise({
+          try: () =>
+            auth.api.getSession({
+              headers: new globalThis.Headers(headers),
+            }),
+          catch: () =>
+            new SessionOperationError({
+              message: "Unable to read the current session.",
+            }),
+        }).pipe(
+          Effect.map((session) =>
+            session
+              ? {
+                  user: {
+                    id: session.user.id,
+                    name: session.user.name,
+                    email: session.user.email,
+                    image: session.user.image ?? null,
+                    username: session.user.username ?? null,
+                    displayUsername: session.user.displayUsername ?? null,
+                  },
+                }
+              : null
+          )
+        ),
+    })
+  })
+)
 
 export const AuthenticationLive = Layer.effect(
   Authentication,

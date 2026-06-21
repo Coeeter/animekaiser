@@ -1,7 +1,7 @@
 import { createFileRoute, redirect } from "@tanstack/react-router"
-import { getAppSession } from "../auth.functions"
 import { OwnProfilePage } from "../features/profile/profile-page"
-import { getOwnProfile } from "../profile.functions"
+import { getOwnProfile } from "../features/profile/profile.functions"
+import { getAppSession } from "../lib/session"
 
 export const Route = createFileRoute("/profile")({
   beforeLoad: async () => {

@@ -4,17 +4,10 @@ import type {
   AnimeDiscoveryCategory,
   AnimeHome,
   AnimePage,
-  ExternalListProvider,
-  LibraryEntry,
-  LibraryPage,
-  LibrarySort,
-  LibraryStatus,
-  LibrarySyncEventPage,
-  LibrarySyncRetryTarget,
 } from "@workspace/domain"
 import { KaiserRpcClient } from "@workspace/rpc/client"
 import * as Effect from "effect/Effect"
-import { rpcRuntime } from "../../rpc"
+import { rpcRuntime } from "../../lib/rpc-client"
 
 export type CatalogInput = Parameters<
   Effect.Effect.Success<typeof KaiserRpcClient>["ListAnimeCatalog"]
@@ -25,9 +18,7 @@ export const homeAtom = Atom.family((initialValue?: AnimeHome) => {
     const client = yield* KaiserRpcClient
     return yield* client.GetAnimeHome()
   })
-  return initialValue === undefined
-    ? rpcRuntime.atom(effect)
-    : rpcRuntime.atom(effect, { initialValue })
+  return rpcRuntime.atom(effect, { initialValue })
 })
 
 export const catalogAtom = Atom.family(
@@ -42,9 +33,7 @@ export const catalogAtom = Atom.family(
       const client = yield* KaiserRpcClient
       return yield* client.ListAnimeCatalog(input)
     })
-    return initialValue === undefined
-      ? rpcRuntime.atom(effect)
-      : rpcRuntime.atom(effect, { initialValue })
+    return rpcRuntime.atom(effect, { initialValue })
   }
 )
 
@@ -64,9 +53,7 @@ export const discoveryAtom = Atom.family(
       const client = yield* KaiserRpcClient
       return yield* client.ListAnimeDiscovery({ category, page, perPage })
     })
-    return initialValue === undefined
-      ? rpcRuntime.atom(effect)
-      : rpcRuntime.atom(effect, { initialValue })
+    return rpcRuntime.atom(effect, { initialValue })
   }
 )
 
@@ -88,9 +75,7 @@ export const scheduleAtom = Atom.family(
       const client = yield* KaiserRpcClient
       return yield* client.ListAnimeSchedule({ from, to, page, perPage })
     })
-    return initialValue === undefined
-      ? rpcRuntime.atom(effect)
-      : rpcRuntime.atom(effect, { initialValue })
+    return rpcRuntime.atom(effect, { initialValue })
   }
 )
 
@@ -100,9 +85,7 @@ export const detailAtom = Atom.family(
       const client = yield* KaiserRpcClient
       return yield* client.GetAnimeDetail({ malId })
     })
-    return initialValue === undefined
-      ? rpcRuntime.atom(effect)
-      : rpcRuntime.atom(effect, { initialValue })
+    return rpcRuntime.atom(effect, { initialValue })
   }
 )
 
@@ -118,98 +101,3 @@ export const recommendationsAtom = Atom.family((malId: number) =>
     })
   )
 )
-
-export const libraryPageAtom = Atom.family(
-  (input: {
-    status?: LibraryStatus
-    sort: LibrarySort
-    page: number
-    perPage: number
-  }) =>
-    rpcRuntime.atom(
-      Effect.gen(function* () {
-        const client = yield* KaiserRpcClient
-        return yield* client.GetLibraryPage(input)
-      })
-    )
-)
-
-export const libraryEntryAtom = Atom.family((malId: number) =>
-  rpcRuntime.atom(
-    Effect.gen(function* () {
-      const client = yield* KaiserRpcClient
-      return yield* client.GetLibraryEntry({ malId })
-    })
-  )
-)
-
-export const accountHealthAtom = rpcRuntime.atom(
-  Effect.gen(function* () {
-    const client = yield* KaiserRpcClient
-    return yield* client.ListExternalListAccounts()
-  })
-)
-
-export const syncEventsAtom = Atom.family(
-  (input: {
-    page: number
-    perPage: number
-    status?: "pending" | "running" | "completed" | "failed" | "superseded"
-    provider?: ExternalListProvider
-  }) =>
-    rpcRuntime.atom(
-      Effect.gen(function* () {
-        const client = yield* KaiserRpcClient
-        return yield* client.ListLibrarySyncEvents(input)
-      })
-    )
-)
-
-export const upsertLibraryAtom = rpcRuntime.fn(
-  (input: {
-    anime: LibraryEntry["anime"]
-    status: LibraryStatus
-    score: number | null
-    progress: number
-    notes: string | null
-  }) =>
-    Effect.gen(function* () {
-      const client = yield* KaiserRpcClient
-      return yield* client.UpsertLibraryEntry(input)
-    })
-)
-
-export const removeLibraryAtom = rpcRuntime.fn(
-  (input: { malId: number; providers: ReadonlyArray<ExternalListProvider> }) =>
-    Effect.gen(function* () {
-      const client = yield* KaiserRpcClient
-      return yield* client.RemoveLibraryEntry(input)
-    })
-)
-
-export const clearLibraryAtom = rpcRuntime.fn(() =>
-  Effect.gen(function* () {
-    const client = yield* KaiserRpcClient
-    return yield* client.ClearLibrary()
-  })
-)
-
-export const startImportAtom = rpcRuntime.fn((provider: ExternalListProvider) =>
-  Effect.gen(function* () {
-    const client = yield* KaiserRpcClient
-    return yield* client.StartLibraryImport({ provider })
-  })
-)
-
-export const retrySyncAtom = rpcRuntime.fn(
-  (input: {
-    eventIds: ReadonlyArray<string>
-    target: typeof LibrarySyncRetryTarget.Type
-  }) =>
-    Effect.gen(function* () {
-      const client = yield* KaiserRpcClient
-      return yield* client.RetryLibrarySyncEvents(input)
-    })
-)
-
-export type { LibraryPage, LibrarySyncEventPage }

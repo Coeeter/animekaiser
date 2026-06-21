@@ -1,6 +1,12 @@
+import { Rpc, RpcGroup } from "@effect/rpc"
 import * as RpcMiddleware from "@effect/rpc/RpcMiddleware"
 import * as Context from "effect/Context"
-import { AuthenticationRequiredError } from "./models"
+import * as Schema from "effect/Schema"
+import {
+  AppSession,
+  AuthenticationRequiredError,
+  SessionOperationError,
+} from "./models"
 
 export type AuthenticatedUser = {
   readonly id: string
@@ -25,3 +31,10 @@ export class OptionalAuthentication extends RpcMiddleware.Tag<OptionalAuthentica
   "@workspace/domain/OptionalAuthentication",
   { provides: OptionalCurrentUser }
 ) {}
+
+export class GetCurrentSession extends Rpc.make("GetCurrentSession", {
+  success: Schema.NullOr(AppSession),
+  error: SessionOperationError,
+}) {}
+
+export class AuthRpcs extends RpcGroup.make(GetCurrentSession) {}

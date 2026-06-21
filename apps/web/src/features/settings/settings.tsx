@@ -58,18 +58,26 @@ import type { FormEvent, ReactNode } from "react"
 import { useEffect, useRef, useState } from "react"
 import { toast } from "sonner"
 import {
-  disconnectExternalAccount,
   deleteAccount as deleteKaiserAccount,
-  loadExternalAccounts,
   loadOwnProfile,
   removeProfileImage,
   savePrivacy,
   saveProfile,
-  startLibraryImport,
   uploadProfileImage,
-} from "../../api"
-import { apiUrl, authClient, displayUsername, userInitials } from "../../auth"
-import type { AppUser } from "../../auth"
+} from "../profile/profile-rpc"
+import {
+  disconnectExternalAccount,
+  loadExternalAccounts,
+} from "../integrations/integration-rpc"
+import { startLibraryImport } from "../library/import-rpc"
+import {
+  apiUrl,
+  authClient,
+  displayUsername,
+  userInitials,
+} from "../../lib/auth-client"
+import type { AppUser } from "../../lib/auth-client"
+import { errorMessage } from "../../lib/error"
 import { animeTitlePreferenceAtom } from "../anime/title"
 
 const sections = [
@@ -119,9 +127,6 @@ const sections = [
 ] as const
 
 export type SettingsSection = (typeof sections)[number]["title"]
-
-const message = <T,>(reason: T, fallback: string) =>
-  reason instanceof Error ? reason.message : fallback
 
 function PanelCard({
   children,
@@ -190,7 +195,7 @@ function AccountPanel({ user }: { user: AppUser | null }) {
       event.currentTarget.reset()
       toast.success("Password updated.")
     } catch (reason) {
-      toast.error(message(reason, "Unable to change password"))
+      toast.error(errorMessage(reason, "Unable to change password"))
     } finally {
       setPasswordPending(false)
     }
@@ -214,7 +219,7 @@ function AccountPanel({ user }: { user: AppUser | null }) {
       await router.invalidate()
       await navigate({ to: "/" })
     } catch (reason) {
-      toast.error(message(reason, "Unable to delete account"))
+      toast.error(errorMessage(reason, "Unable to delete account"))
     } finally {
       setDeletePending(false)
     }
@@ -386,7 +391,7 @@ function ProfilePanel({ open, user }: { open: boolean; user: AppUser | null }) {
         `${kind === "avatar" ? "Profile picture" : "Banner"} updated.`
       )
     } catch (reason) {
-      toast.error(message(reason, `Unable to update ${kind}`))
+      toast.error(errorMessage(reason, `Unable to update ${kind}`))
     } finally {
       setPending(null)
     }
@@ -403,7 +408,7 @@ function ProfilePanel({ open, user }: { open: boolean; user: AppUser | null }) {
         `${kind === "avatar" ? "Profile picture" : "Banner"} removed.`
       )
     } catch (reason) {
-      toast.error(message(reason, `Unable to remove ${kind}`))
+      toast.error(errorMessage(reason, `Unable to remove ${kind}`))
     } finally {
       setPending(null)
     }
@@ -422,7 +427,7 @@ function ProfilePanel({ open, user }: { open: boolean; user: AppUser | null }) {
       await router.invalidate()
       toast.success("Username updated.")
     } catch (reason) {
-      toast.error(message(reason, "Unable to update username"))
+      toast.error(errorMessage(reason, "Unable to update username"))
     } finally {
       setPending(null)
     }
@@ -439,7 +444,7 @@ function ProfilePanel({ open, user }: { open: boolean; user: AppUser | null }) {
       await router.invalidate()
       toast.success("Bio updated.")
     } catch (reason) {
-      toast.error(message(reason, "Unable to update bio"))
+      toast.error(errorMessage(reason, "Unable to update bio"))
     } finally {
       setPending(null)
     }
@@ -612,7 +617,7 @@ function PrivacyPanel({ open, user }: { open: boolean; user: AppUser | null }) {
       await router.invalidate()
     } catch (reason) {
       setPrivate(previous)
-      toast.error(message(reason, "Unable to update privacy"))
+      toast.error(errorMessage(reason, "Unable to update privacy"))
     } finally {
       setPending(false)
     }
@@ -692,7 +697,7 @@ function IntegrationsPanel({ user }: { user: AppUser | null }) {
       await refresh()
       toast.success("Integration disconnected.")
     } catch (reason) {
-      toast.error(message(reason, "Unable to disconnect"))
+      toast.error(errorMessage(reason, "Unable to disconnect"))
     } finally {
       setPending(null)
     }
@@ -703,7 +708,7 @@ function IntegrationsPanel({ user }: { user: AppUser | null }) {
       const job = await startLibraryImport(provider)
       toast.success(`Import queued: ${job.id}`)
     } catch (reason) {
-      toast.error(message(reason, "Unable to start import"))
+      toast.error(errorMessage(reason, "Unable to start import"))
     } finally {
       setPending(null)
     }
@@ -807,7 +812,7 @@ function SessionsPanel({
       await refresh()
       toast.success("Session revoked.")
     } catch (reason) {
-      toast.error(message(reason, "Unable to revoke session"))
+      toast.error(errorMessage(reason, "Unable to revoke session"))
     } finally {
       setPending(null)
     }
@@ -820,7 +825,7 @@ function SessionsPanel({
       await refresh()
       toast.success("Other sessions revoked.")
     } catch (reason) {
-      toast.error(message(reason, "Unable to revoke sessions"))
+      toast.error(errorMessage(reason, "Unable to revoke sessions"))
     } finally {
       setPending(null)
     }
@@ -890,7 +895,7 @@ function PasskeysPanel({ user }: { user: AppUser | null }) {
       await query.refetch()
       toast.success("Passkey added.")
     } catch (reason) {
-      toast.error(message(reason, "Unable to add passkey"))
+      toast.error(errorMessage(reason, "Unable to add passkey"))
     } finally {
       setPending(null)
     }
@@ -903,7 +908,7 @@ function PasskeysPanel({ user }: { user: AppUser | null }) {
       await query.refetch()
       toast.success("Passkey renamed.")
     } catch (reason) {
-      toast.error(message(reason, "Unable to rename passkey"))
+      toast.error(errorMessage(reason, "Unable to rename passkey"))
     } finally {
       setPending(null)
     }
@@ -917,7 +922,7 @@ function PasskeysPanel({ user }: { user: AppUser | null }) {
       await query.refetch()
       toast.success("Passkey removed.")
     } catch (reason) {
-      toast.error(message(reason, "Unable to remove passkey"))
+      toast.error(errorMessage(reason, "Unable to remove passkey"))
     } finally {
       setPending(null)
     }

@@ -6,7 +6,7 @@ import { RpcClient, RpcSerialization } from "@effect/rpc"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 import type * as Scope from "effect/Scope"
-import { apiUrl } from "./auth"
+import { apiUrl } from "./auth-client"
 
 const fetchLive = FetchHttpClient.layer.pipe(
   Layer.provide(
@@ -29,8 +29,9 @@ export const makeRpcProtocol = (cookie?: string) =>
 export const rpcRuntime = Atom.runtime(makeRpcProtocol())
 
 export const runRpc = <TResult, TError>(
-  effect: Effect.Effect<TResult, TError, RpcClient.Protocol | Scope.Scope>
+  effect: Effect.Effect<TResult, TError, RpcClient.Protocol | Scope.Scope>,
+  cookie?: string
 ) =>
   Effect.runPromise(
-    Effect.scoped(effect.pipe(Effect.provide(makeRpcProtocol())))
+    Effect.scoped(effect.pipe(Effect.provide(makeRpcProtocol(cookie))))
   )
