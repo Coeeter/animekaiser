@@ -8,6 +8,7 @@ import { PageHero } from "../components/page-hero"
 import { AnimeTitle } from "../features/anime/anime-title"
 import { scheduleAtom } from "../features/anime/atoms"
 import { formatAnimeMeta } from "../features/anime/format"
+import { NextEpisodeCountdown } from "../features/anime/next-episode-countdown"
 import {
   getCurrentWeek,
   getTodayScheduleDay,
@@ -124,7 +125,10 @@ function SchedulePage() {
                   </Badge>
                   {anime.nextAiringEpisode ? (
                     <Badge variant="secondary">
-                      Episode {anime.nextAiringEpisode.episode}
+                      Ep {anime.nextAiringEpisode.episode} ·{" "}
+                      <NextEpisodeCountdown
+                        airingAt={anime.nextAiringEpisode.airingAt}
+                      />
                     </Badge>
                   ) : null}
                 </div>

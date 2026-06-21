@@ -119,4 +119,3 @@ export class LibraryEntryNotFoundError extends Schema.TaggedError<LibraryEntryNo
   "LibraryEntryNotFoundError",
   { malId: MalId, message: Schema.String }
 ) {}
-

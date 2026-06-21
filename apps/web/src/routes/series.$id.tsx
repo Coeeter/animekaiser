@@ -1,13 +1,24 @@
 import { Result, useAtomSet, useAtomValue } from "@effect-atom/atom-react"
 import { Link, createFileRoute } from "@tanstack/react-router"
+import type { LibraryStatus } from "@workspace/domain"
 import { Badge } from "@workspace/ui/components/badge"
 import { Button } from "@workspace/ui/components/button"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@workspace/ui/components/dialog"
+import { Input } from "@workspace/ui/components/input"
 import {
   Tabs,
   TabsContent,
   TabsList,
   TabsTrigger,
 } from "@workspace/ui/components/tabs"
+import { Textarea } from "@workspace/ui/components/textarea"
 import {
   BookmarkPlus,
   CalendarDays,
@@ -16,6 +27,7 @@ import {
   Star,
 } from "lucide-react"
 import { toast } from "sonner"
+import { useState } from "react"
 import { loadAnimeDetail } from "../api"
 import { AnimeScrollRow } from "../features/anime/anime-scroll-row"
 import { AnimeTitle } from "../features/anime/anime-title"
@@ -44,6 +56,11 @@ function AnimeDetailPage() {
   })
   const recommendations = useAtomValue(recommendationsAtom(id))
   const save = useAtomSet(upsertLibraryAtom, { mode: "promise" })
+  const [libraryOpen, setLibraryOpen] = useState(false)
+  const [status, setStatus] = useState<LibraryStatus>("planning")
+  const [progress, setProgress] = useState(0)
+  const [score, setScore] = useState("")
+  const [notes, setNotes] = useState("")
 
   const addToList = async () => {
     try {
@@ -55,12 +72,13 @@ function AnimeDetailPage() {
           coverImage: anime.coverImage,
           episodes: anime.episodes,
         },
-        status: "planning",
-        score: null,
-        progress: 0,
-        notes: null,
+        status,
+        score: score ? Number(score) : null,
+        progress,
+        notes: notes.trim() || null,
       })
-      toast.success("Added to your list")
+      setLibraryOpen(false)
+      toast.success("Library entry saved")
     } catch {
       toast.error("Log in to add this title to your list")
     }
@@ -115,7 +133,7 @@ function AnimeDetailPage() {
               {formatAnimeMeta(anime.format, anime.status, anime.episodes)}
             </p>
             <div className="flex flex-wrap gap-2 pt-1">
-              <Button onClick={() => void addToList()}>
+              <Button onClick={() => setLibraryOpen(true)}>
                 <BookmarkPlus />
                 Add to list
               </Button>
@@ -262,6 +280,69 @@ function AnimeDetailPage() {
           ),
         })}
       </div>
+      <Dialog open={libraryOpen} onOpenChange={setLibraryOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add to your list</DialogTitle>
+            <DialogDescription>
+              Track your status, progress, score, and private notes for this
+              title.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4">
+            <label className="grid gap-1.5 text-sm">
+              Status
+              <select
+                value={status}
+                onChange={(event) =>
+                  setStatus(event.target.value as LibraryStatus)
+                }
+                className="h-9 rounded-md border bg-background px-3"
+              >
+                <option value="planning">Planning</option>
+                <option value="watching">Watching</option>
+                <option value="completed">Completed</option>
+                <option value="paused">Paused</option>
+                <option value="dropped">Dropped</option>
+                <option value="rewatching">Rewatching</option>
+              </select>
+            </label>
+            <label className="grid gap-1.5 text-sm">
+              Progress
+              <Input
+                type="number"
+                min={0}
+                max={anime.episodes ?? undefined}
+                value={progress}
+                onChange={(event) => setProgress(Number(event.target.value))}
+              />
+            </label>
+            <label className="grid gap-1.5 text-sm">
+              Score (0–100)
+              <Input
+                type="number"
+                min={0}
+                max={100}
+                value={score}
+                onChange={(event) => setScore(event.target.value)}
+              />
+            </label>
+            <label className="grid gap-1.5 text-sm">
+              Notes
+              <Textarea
+                value={notes}
+                onChange={(event) => setNotes(event.target.value)}
+              />
+            </label>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setLibraryOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={() => void addToList()}>Save entry</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </main>
   )
 }

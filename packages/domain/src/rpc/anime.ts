@@ -18,7 +18,10 @@ import {
 const animeFailure = Schema.Union(AnimeNotFoundError, AnimeUnavailableError)
 
 export const AnimeRpcs = RpcGroup.make(
-  Rpc.make("GetAnimeHome", { success: AnimeHome, error: AnimeUnavailableError }),
+  Rpc.make("GetAnimeHome", {
+    success: AnimeHome,
+    error: AnimeUnavailableError,
+  }),
   Rpc.make("ListAnimeCatalog", {
     payload: {
       query: Schema.optional(Schema.String),
@@ -75,4 +78,3 @@ export const AnimeRpcs = RpcGroup.make(
     error: animeFailure,
   })
 )
-

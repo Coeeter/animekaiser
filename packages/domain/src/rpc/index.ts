@@ -10,4 +10,3 @@ export const KaiserRpcs = RpcGroup.make(
 ).merge(ProfileRpcs, IntegrationRpcs, AnimeRpcs, LibraryRpcs)
 
 export { AnimeRpcs, IntegrationRpcs, LibraryRpcs, ProfileRpcs }
-

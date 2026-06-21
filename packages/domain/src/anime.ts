@@ -143,8 +143,14 @@ export const AnimeSort = Schema.Literal(
 )
 export type AnimeSort = typeof AnimeSort.Type
 
-export const AnimeCatalogStatus = Schema.Literal("airing", "complete", "upcoming")
+export const AnimeCatalogStatus = Schema.Literal(
+  "airing",
+  "complete",
+  "upcoming"
+)
+export type AnimeCatalogStatus = typeof AnimeCatalogStatus.Type
 export const AnimeRating = Schema.Literal("g", "pg", "pg13", "r17", "r")
+export type AnimeRating = typeof AnimeRating.Type
 export const AnimeDiscoveryCategory = Schema.Literal(
   "trending",
   "seasonal",
@@ -163,4 +169,3 @@ export class AnimeUnavailableError extends Schema.TaggedError<AnimeUnavailableEr
   "AnimeUnavailableError",
   { message: Schema.String }
 ) {}
-

@@ -10,10 +10,16 @@ import {
   PublicProfile,
 } from "../profile"
 
-const authenticatedFailure = Schema.Union(AuthenticationRequiredError, ProfileOperationError)
+const authenticatedFailure = Schema.Union(
+  AuthenticationRequiredError,
+  ProfileOperationError
+)
 
 export const ProfileRpcs = RpcGroup.make(
-  Rpc.make("GetOwnProfile", { success: OwnProfile, error: authenticatedFailure }),
+  Rpc.make("GetOwnProfile", {
+    success: OwnProfile,
+    error: authenticatedFailure,
+  }),
   Rpc.make("GetPublicProfile", {
     payload: { username: Schema.String },
     success: PublicProfile,
@@ -54,4 +60,3 @@ export const ProfileRpcs = RpcGroup.make(
     error: authenticatedFailure,
   })
 )
-

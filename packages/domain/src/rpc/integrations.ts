@@ -7,7 +7,10 @@ import {
   ExternalListProvider,
 } from "../external-list"
 
-const failure = Schema.Union(AuthenticationRequiredError, ExternalListOperationError)
+const failure = Schema.Union(
+  AuthenticationRequiredError,
+  ExternalListOperationError
+)
 
 export const IntegrationRpcs = RpcGroup.make(
   Rpc.make("ListExternalListAccounts", {
@@ -25,4 +28,3 @@ export const IntegrationRpcs = RpcGroup.make(
     error: failure,
   })
 )
-

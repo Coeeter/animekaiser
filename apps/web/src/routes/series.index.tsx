@@ -1,6 +1,11 @@
 import { Result, useAtomValue } from "@effect-atom/atom-react"
 import { Link, createFileRoute } from "@tanstack/react-router"
-import type { AnimeFormat, AnimeSort } from "@workspace/domain"
+import type {
+  AnimeFormat,
+  AnimeRating,
+  AnimeSeason,
+  AnimeSort,
+} from "@workspace/domain"
 import { Button } from "@workspace/ui/components/button"
 import { Input } from "@workspace/ui/components/input"
 import { Compass, Search } from "lucide-react"
@@ -15,6 +20,12 @@ type CatalogSearch = {
   sort: AnimeSort
   status?: "airing" | "complete" | "upcoming"
   format?: AnimeFormat
+  genres?: ReadonlyArray<string>
+  season?: AnimeSeason
+  seasonYear?: number
+  rating?: AnimeRating
+  minScore?: number
+  maxScore?: number
 }
 
 const sorts: ReadonlyArray<AnimeSort> = [
@@ -34,6 +45,13 @@ const formats: ReadonlyArray<AnimeFormat> = [
   "MUSIC",
   "TV_SHORT",
 ]
+const seasons: ReadonlyArray<AnimeSeason> = [
+  "WINTER",
+  "SPRING",
+  "SUMMER",
+  "FALL",
+]
+const ratings: ReadonlyArray<AnimeRating> = ["g", "pg", "pg13", "r17", "r"]
 
 export const Route = createFileRoute("/series/")({
   validateSearch: (search): CatalogSearch => ({
@@ -58,6 +76,41 @@ export const Route = createFileRoute("/series/")({
       formats.includes(search.format as AnimeFormat)
         ? (search.format as AnimeFormat)
         : undefined,
+    genres:
+      typeof search.genres === "string" && search.genres.trim()
+        ? search.genres
+            .split(",")
+            .map((genre) => genre.trim())
+            .filter(Boolean)
+        : undefined,
+    season:
+      typeof search.season === "string" &&
+      seasons.includes(search.season as AnimeSeason)
+        ? (search.season as AnimeSeason)
+        : undefined,
+    seasonYear:
+      typeof search.seasonYear === "number" &&
+      search.seasonYear >= 1900 &&
+      search.seasonYear <= 2200
+        ? Math.floor(search.seasonYear)
+        : undefined,
+    rating:
+      typeof search.rating === "string" &&
+      ratings.includes(search.rating as AnimeRating)
+        ? (search.rating as AnimeRating)
+        : undefined,
+    minScore:
+      typeof search.minScore === "number" &&
+      search.minScore >= 0 &&
+      search.minScore <= 10
+        ? search.minScore
+        : undefined,
+    maxScore:
+      typeof search.maxScore === "number" &&
+      search.maxScore >= 0 &&
+      search.maxScore <= 10
+        ? search.maxScore
+        : undefined,
   }),
   loaderDeps: ({ search }) => search,
   loader: ({ deps }) =>
@@ -68,6 +121,12 @@ export const Route = createFileRoute("/series/")({
       sort: deps.sort,
       status: deps.status,
       format: deps.format,
+      genres: deps.genres,
+      season: deps.season,
+      seasonYear: deps.seasonYear,
+      rating: deps.rating,
+      minScore: deps.minScore,
+      maxScore: deps.maxScore,
     }),
   component: CatalogPage,
 })
@@ -82,6 +141,12 @@ function CatalogPage() {
     sort: search.sort,
     status: search.status,
     format: search.format,
+    genres: search.genres,
+    season: search.season,
+    seasonYear: search.seasonYear,
+    rating: search.rating,
+    minScore: search.minScore,
+    maxScore: search.maxScore,
   }
   const result = useAtomValue(catalogAtom({ input, initialValue: initial }))
   const page = Result.match(result, {
@@ -104,7 +169,7 @@ function CatalogPage() {
         description="Search and filter the catalog to find your next series."
       />
       <form
-        className="grid gap-3 rounded-2xl border bg-card/70 p-4 md:grid-cols-[1fr_auto_auto_auto]"
+        className="grid gap-3 rounded-2xl border bg-card/70 p-4 sm:grid-cols-2 xl:grid-cols-4"
         action="/series"
       >
         <div className="relative">
@@ -149,9 +214,69 @@ function CatalogPage() {
             </option>
           ))}
         </select>
-        <Button type="submit" className="md:col-start-4">
-          Apply filters
-        </Button>
+        <Input
+          name="genres"
+          defaultValue={search.genres?.join(", ")}
+          placeholder="Genres (comma separated)"
+        />
+        <select
+          name="season"
+          defaultValue={search.season ?? ""}
+          className="h-9 rounded-md border bg-background px-3 text-sm"
+        >
+          <option value="">All seasons</option>
+          {seasons.map((season) => (
+            <option key={season} value={season}>
+              {season}
+            </option>
+          ))}
+        </select>
+        <Input
+          name="seasonYear"
+          type="number"
+          min={1900}
+          max={2200}
+          defaultValue={search.seasonYear}
+          placeholder="Season year"
+        />
+        <select
+          name="rating"
+          defaultValue={search.rating ?? ""}
+          className="h-9 rounded-md border bg-background px-3 text-sm"
+        >
+          <option value="">All ratings</option>
+          {ratings.map((rating) => (
+            <option key={rating} value={rating}>
+              {rating.toUpperCase()}
+            </option>
+          ))}
+        </select>
+        <Input
+          name="minScore"
+          type="number"
+          min={0}
+          max={10}
+          step={0.1}
+          defaultValue={search.minScore}
+          placeholder="Minimum score"
+        />
+        <Input
+          name="maxScore"
+          type="number"
+          min={0}
+          max={10}
+          step={0.1}
+          defaultValue={search.maxScore}
+          placeholder="Maximum score"
+        />
+        <div className="flex gap-2 sm:col-span-2 xl:col-span-4 xl:justify-end">
+          <Button asChild type="button" variant="ghost">
+            <Link to="/series" search={{ page: 1, sort: "popularity" }}>
+              Reset
+            </Link>
+          </Button>
+          <Button type="submit">Apply filters</Button>
+        </div>
       </form>
       <AnimeGrid items={page.items} />
       <div className="flex items-center justify-between">

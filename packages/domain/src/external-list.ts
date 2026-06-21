@@ -7,7 +7,13 @@ export const ExternalListAccountStatus = Schema.Struct({
   provider: ExternalListProvider,
   connected: Schema.Boolean,
   expiresAt: Schema.NullOr(Schema.DateFromString),
-  state: Schema.Literal("disconnected", "active", "expiring", "expired", "relink_required"),
+  state: Schema.Literal(
+    "disconnected",
+    "active",
+    "expiring",
+    "expired",
+    "relink_required"
+  ),
 })
 export type ExternalListAccountStatus = typeof ExternalListAccountStatus.Type
 

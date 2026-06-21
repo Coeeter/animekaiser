@@ -1,7 +1,11 @@
 import { Rpc, RpcGroup } from "@effect/rpc"
 import * as Schema from "effect/Schema"
 import { AuthenticationRequiredError } from "../auth"
-import { ExternalListProvider, LibraryImportJob, ExternalListOperationError } from "../external-list"
+import {
+  ExternalListProvider,
+  LibraryImportJob,
+  ExternalListOperationError,
+} from "../external-list"
 import {
   AnimeLibraryMetadata,
   LibraryEntry,
@@ -16,8 +20,14 @@ import {
 } from "../library"
 import { MalId } from "../anime"
 
-const libraryFailure = Schema.Union(AuthenticationRequiredError, LibraryOperationError)
-const importFailure = Schema.Union(AuthenticationRequiredError, ExternalListOperationError)
+const libraryFailure = Schema.Union(
+  AuthenticationRequiredError,
+  LibraryOperationError
+)
+const importFailure = Schema.Union(
+  AuthenticationRequiredError,
+  ExternalListOperationError
+)
 
 export const LibraryRpcs = RpcGroup.make(
   Rpc.make("GetLibraryPage", {
@@ -71,7 +81,13 @@ export const LibraryRpcs = RpcGroup.make(
       page: Schema.Int.pipe(Schema.positive()),
       perPage: Schema.Int.pipe(Schema.between(1, 100)),
       status: Schema.optional(
-        Schema.Literal("pending", "running", "completed", "failed", "superseded")
+        Schema.Literal(
+          "pending",
+          "running",
+          "completed",
+          "failed",
+          "superseded"
+        )
       ),
       provider: Schema.optional(ExternalListProvider),
     },
@@ -87,4 +103,3 @@ export const LibraryRpcs = RpcGroup.make(
     error: libraryFailure,
   })
 )
-
