@@ -7,7 +7,7 @@ export class AuthenticationRequiredError extends Schema.TaggedError<Authenticati
 
 export const AppSession = Schema.Struct({
   session: Schema.Struct({
-    expiresAt: Schema.DateFromSelf,
+    expiresAt: Schema.DateFromString,
   }),
   user: Schema.Struct({
     id: Schema.String,
