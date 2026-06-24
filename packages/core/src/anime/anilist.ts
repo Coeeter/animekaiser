@@ -50,13 +50,25 @@ const AniListNextEpisode = Schema.Struct({
   airingAt: PositiveInt,
 })
 
+const AniListMediaFormat = Schema.Literal(
+  "TV",
+  "TV_SHORT",
+  "MOVIE",
+  "SPECIAL",
+  "OVA",
+  "ONA",
+  "MUSIC",
+  "MANGA",
+  "NOVEL",
+  "ONE_SHOT"
+)
+
 const AniListMedia = Schema.Struct({
   id: PositiveInt,
   idMal: Schema.NullOr(PositiveInt),
+  type: Schema.optional(Schema.NullOr(Schema.Literal("ANIME", "MANGA"))),
   title: Schema.NullOr(AniListTitle),
-  format: Schema.NullOr(
-    Schema.Literal("TV", "TV_SHORT", "MOVIE", "SPECIAL", "OVA", "ONA", "MUSIC")
-  ),
+  format: Schema.NullOr(AniListMediaFormat),
   status: Schema.NullOr(
     Schema.Literal(
       "FINISHED",
@@ -216,7 +228,7 @@ export const AniListScheduleResponse = Schema.Struct({
 })
 
 const listFields = `
-  id idMal title { romaji english } format status episodes duration
+  id idMal type title { romaji english } format status episodes duration
   coverImage { extraLarge large medium } bannerImage genres averageScore
   popularity trending season seasonYear nextAiringEpisode { episode airingAt } isAdult
 `
@@ -225,7 +237,7 @@ const catalogQuery = `
   query Catalog($page:Int!,$perPage:Int!,$search:String,$sort:[MediaSort],$status:MediaStatus,$format:MediaFormat,$genres:[String],$season:MediaSeason,$seasonYear:Int,$minScore:Int,$maxScore:Int) {
     Page(page:$page,perPage:$perPage) {
       pageInfo { hasNextPage }
-      media(type:ANIME,isAdult:false,idMal_not:null,search:$search,sort:$sort,status:$status,format:$format,genre_in:$genres,season:$season,seasonYear:$seasonYear,averageScore_greater:$minScore,averageScore_lesser:$maxScore) { ${listFields} }
+      media(type:ANIME,isAdult:false,idMal_not:null,format_not:MUSIC,search:$search,sort:$sort,status:$status,format:$format,genre_in:$genres,season:$season,seasonYear:$seasonYear,averageScore_greater:$minScore,averageScore_lesser:$maxScore) { ${listFields} }
     }
   }
 `
@@ -268,16 +280,30 @@ const scheduleQuery = `
 const firstText = (...values: ReadonlyArray<string | null | undefined>) =>
   values.map((value) => value?.trim()).find((value) => Boolean(value)) ?? null
 
+const toAnimeFormat = (format: AniListMedia["format"]): AnimeItem["format"] => {
+  if (format === "TV") return "TV"
+  if (format === "TV_SHORT") return "TV_SHORT"
+  if (format === "MOVIE") return "MOVIE"
+  if (format === "SPECIAL") return "SPECIAL"
+  if (format === "OVA") return "OVA"
+  if (format === "ONA") return "ONA"
+  if (format === "MUSIC") return "MUSIC"
+  return null
+}
+
 const mapMedia = (media: AniListMedia): AnimeItem | null => {
   const malId = media.idMal
   const romaji = firstText(media.title?.romaji, media.title?.english)
+  const format = toAnimeFormat(media.format)
   if (!malId || !romaji || media.isAdult) return null
+  if (media.type && media.type !== "ANIME") return null
+  if (format === "MUSIC" || (media.format && !format)) return null
 
   return {
     malId,
     aniListId: media.id,
     title: { romaji, english: firstText(media.title?.english) },
-    format: media.format,
+    format,
     status: media.status,
     episodes: media.episodes,
     duration: media.duration,

@@ -1,3 +1,4 @@
+import type { AnimeDiscoveryCategory } from "@workspace/domain"
 import {
   AnimeDetail,
   AnimeHome,
@@ -5,12 +6,11 @@ import {
   AnimePage,
   AnimeUnavailableError,
 } from "@workspace/domain"
-import type { AnimeDiscoveryCategory } from "@workspace/domain"
 import * as Effect from "effect/Effect"
 import * as Option from "effect/Option"
 import * as Schema from "effect/Schema"
-import { AniListAnimeService } from "./anilist"
 import type { AnimeCatalogRequest } from "./anilist"
+import { AniListAnimeService } from "./anilist"
 import { AnimeCache } from "./cache"
 import { JikanAnimeService } from "./jikan"
 
@@ -72,7 +72,7 @@ export class AnimeService extends Effect.Service<AnimeService>()(
                 )
               )
         return yield* cached(
-          cacheKey("anime:catalog:v1", input),
+          cacheKey("anime:catalog:v2", input),
           AnimePage,
           6 * 60 * 60,
           load
@@ -105,7 +105,7 @@ export class AnimeService extends Effect.Service<AnimeService>()(
           status: category === "upcoming" ? "upcoming" : undefined,
         }
         return yield* cached(
-          cacheKey("anime:discover:v1", { category, page, perPage }),
+          cacheKey("anime:discover:v2", { category, page, perPage }),
           AnimePage,
           category === "trending" ? 2 * 60 * 60 : 12 * 60 * 60,
           aniList
@@ -127,7 +127,7 @@ export class AnimeService extends Effect.Service<AnimeService>()(
 
       const getHome = Effect.fn("AnimeService.getHome")(function* () {
         return yield* cached(
-          "anime:home:v1",
+          "anime:home:v2",
           AnimeHome,
           2 * 60 * 60,
           Effect.all(
@@ -151,7 +151,7 @@ export class AnimeService extends Effect.Service<AnimeService>()(
         malId: number
       ) {
         const detail = yield* cached(
-          `anime:detail:v1:${malId}`,
+          `anime:detail:v2:${malId}`,
           NullableAnimeDetail,
           12 * 60 * 60,
           aniList
@@ -181,7 +181,7 @@ export class AnimeService extends Effect.Service<AnimeService>()(
       const getRecommendations = Effect.fn("AnimeService.getRecommendations")(
         function* (malId: number, page: number, perPage: number) {
           return yield* cached(
-            `anime:recommendations:v1:${malId}:${page}:${perPage}`,
+            `anime:recommendations:v2:${malId}:${page}:${perPage}`,
             AnimePage,
             7 * 24 * 60 * 60,
             aniList
@@ -209,7 +209,7 @@ export class AnimeService extends Effect.Service<AnimeService>()(
         perPage: number
       ) {
         return yield* cached(
-          `anime:schedule:v1:${from}:${to}:${page}:${perPage}`,
+          `anime:schedule:v2:${from}:${to}:${page}:${perPage}`,
           AnimePage,
           60 * 60,
           aniList

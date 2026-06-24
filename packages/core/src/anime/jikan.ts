@@ -116,39 +116,50 @@ const day = (
   return null
 }
 
-const mapAnime = (anime: JikanAnime): AnimeItem => ({
-  malId: anime.mal_id,
-  aniListId: null,
-  title: { romaji: anime.title, english: anime.title_english },
-  format: format(anime.type),
-  status: status(anime.status),
-  episodes: anime.episodes && anime.episodes > 0 ? anime.episodes : null,
-  duration: durationMinutes(anime.duration),
-  coverImage:
-    anime.images.webp.large_image_url ??
-    anime.images.webp.image_url ??
-    anime.images.webp.small_image_url,
-  bannerImage: null,
-  genres: anime.genres.map((genre) => genre.name),
-  averageScore: anime.score === null ? null : Math.round(anime.score * 10),
-  popularity:
-    anime.members === null || anime.members === undefined
-      ? null
-      : Math.round(anime.members),
-  trending: null,
-  season: season(anime.season),
-  seasonYear: anime.year,
-  broadcast: anime.broadcast
-    ? {
-        day: day(anime.broadcast.day),
-        time: anime.broadcast.time,
-        timezone: anime.broadcast.timezone,
-        label: anime.broadcast.string,
-      }
-    : null,
-  nextAiringEpisode: null,
-  isAdult: anime.rating?.startsWith("Rx") ?? false,
-})
+const mapAnime = (anime: JikanAnime): AnimeItem | null => {
+  const animeFormat = format(anime.type)
+  if (anime.rating?.startsWith("Rx") || animeFormat === "MUSIC") return null
+
+  return {
+    malId: anime.mal_id,
+    aniListId: null,
+    title: { romaji: anime.title, english: anime.title_english },
+    format: animeFormat,
+    status: status(anime.status),
+    episodes: anime.episodes && anime.episodes > 0 ? anime.episodes : null,
+    duration: durationMinutes(anime.duration),
+    coverImage:
+      anime.images.webp.large_image_url ??
+      anime.images.webp.image_url ??
+      anime.images.webp.small_image_url,
+    bannerImage: null,
+    genres: anime.genres.map((genre) => genre.name),
+    averageScore: anime.score === null ? null : Math.round(anime.score * 10),
+    popularity:
+      anime.members === null || anime.members === undefined
+        ? null
+        : Math.round(anime.members),
+    trending: null,
+    season: season(anime.season),
+    seasonYear: anime.year,
+    broadcast: anime.broadcast
+      ? {
+          day: day(anime.broadcast.day),
+          time: anime.broadcast.time,
+          timezone: anime.broadcast.timezone,
+          label: anime.broadcast.string,
+        }
+      : null,
+    nextAiringEpisode: null,
+    isAdult: false,
+  }
+}
+
+const mapAnimeList = (anime: ReadonlyArray<JikanAnime>) =>
+  anime.flatMap((item) => {
+    const mapped = mapAnime(item)
+    return mapped ? [mapped] : []
+  })
 
 const queryUrl = (
   path: string,
@@ -217,9 +228,7 @@ export class JikanAnimeService extends Effect.Service<JikanAnimeService>()(
           })
         )
         return {
-          items: response.data
-            .filter((anime) => !anime.rating?.startsWith("Rx"))
-            .map(mapAnime),
+          items: mapAnimeList(response.data),
           page: input.page,
           perPage: input.perPage,
           hasNextPage: response.pagination.has_next_page,
@@ -233,8 +242,9 @@ export class JikanAnimeService extends Effect.Service<JikanAnimeService>()(
           JikanDetailResponse,
           `https://api.jikan.moe/v4/anime/${malId}/full`
         )
-        if (response.data.rating?.startsWith("Rx")) return null
         const item = mapAnime(response.data)
+        if (!item) return null
+
         return {
           ...item,
           description: response.data.synopsis ?? null,
@@ -268,11 +278,10 @@ export class JikanAnimeService extends Effect.Service<JikanAnimeService>()(
         )
         const items = response.data
           .map((recommendation) => recommendation.entry)
-          .filter((anime) => !anime.rating?.startsWith("Rx"))
           .slice((page - 1) * perPage, page * perPage)
-          .map(mapAnime)
+        const mapped = mapAnimeList(items)
         return {
-          items,
+          items: mapped,
           page,
           perPage,
           hasNextPage: response.data.length > page * perPage,
@@ -288,9 +297,7 @@ export class JikanAnimeService extends Effect.Service<JikanAnimeService>()(
           queryUrl("schedules", { page, limit: perPage })
         )
         return {
-          items: response.data
-            .filter((anime) => !anime.rating?.startsWith("Rx"))
-            .map(mapAnime),
+          items: mapAnimeList(response.data),
           page,
           perPage,
           hasNextPage: response.pagination.has_next_page,
