@@ -14,7 +14,13 @@ import {
 import { startLibraryImport } from "../library/import-rpc"
 import { AuthRequired, PanelCard } from "./settings-shared"
 
-export function IntegrationsPanel({ user }: { user: AppUser | null }) {
+export function IntegrationsPanel({
+  user,
+  onClose,
+}: {
+  user: AppUser | null
+  onClose: () => void
+}) {
   const [accounts, setAccounts] = useState<
     Awaited<ReturnType<typeof loadExternalAccounts>>
   >([])
@@ -56,7 +62,7 @@ export function IntegrationsPanel({ user }: { user: AppUser | null }) {
   return (
     <div className="flex flex-col gap-3">
       <Button asChild variant="outline" className="self-start">
-        <Link to="/sync-activity" search={{ page: 1 }}>
+        <Link to="/sync-activity" search={{ page: 1 }} onClick={onClose}>
           View sync activity
         </Link>
       </Button>

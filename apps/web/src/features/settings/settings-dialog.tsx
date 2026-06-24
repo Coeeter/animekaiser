@@ -34,6 +34,7 @@ import * as Schema from "effect/Schema"
 import type { AppUser } from "../../lib/auth-client"
 import type { AppSession } from "../../lib/session"
 import { AccountPanel } from "./account-panel"
+import { AppearancePanel } from "./appearance-panel"
 import { IntegrationsPanel } from "./integrations-panel"
 import { PasskeysPanel } from "./passkeys-panel"
 import { PrivacyPanel } from "./privacy-panel"
@@ -122,10 +123,12 @@ function SectionContent({
   section,
   open,
   session,
+  onClose,
 }: {
   section: SettingsSection
   open: boolean
   session: AppSession | null
+  onClose: () => void
 }) {
   const user = session?.user ?? null
   if (section === "Account")
@@ -137,8 +140,10 @@ function SectionContent({
     )
   if (section === "Profile") return <ProfilePanel open={open} user={user} />
   if (section === "Privacy") return <PrivacyPanel open={open} user={user} />
+  if (section === "Appearance") return <AppearancePanel />
   if (section === "Site") return <SitePanel />
-  if (section === "Integrations") return <IntegrationsPanel user={user} />
+  if (section === "Integrations")
+    return <IntegrationsPanel user={user} onClose={onClose} />
   if (section === "Sessions") return <SessionsPanel open={open} user={user} />
   if (section === "Passkeys") return <PasskeysPanel user={user} />
   return <PlaceholderPanel title={section} />
@@ -244,7 +249,12 @@ export function SettingsDialog({
               </div>
             </div>
             <Separator className="my-5" />
-            <SectionContent section={active} open={open} session={session} />
+            <SectionContent
+              section={active}
+              open={open}
+              session={session}
+              onClose={() => onOpenChange(false)}
+            />
           </main>
         </div>
       </DialogContent>

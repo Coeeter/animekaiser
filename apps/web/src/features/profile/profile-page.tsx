@@ -21,58 +21,61 @@ const initials = (username: string | null) =>
 function ProfileCard({ data, own }: { data: OwnProfile; own?: boolean }) {
   const username = data.user.username ?? "Unknown user"
   return (
-    <main className="mx-auto w-full max-w-5xl p-4 py-8 md:p-8">
-      <article className="overflow-hidden rounded-3xl border bg-card/70 shadow-2xl shadow-primary/5">
-        <div className="relative h-48 overflow-hidden bg-zinc-950 md:h-72">
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_10%_0%,color-mix(in_oklch,var(--primary)_35%,transparent),transparent_35%),radial-gradient(circle_at_90%_10%,color-mix(in_oklch,var(--chart-2)_25%,transparent),transparent_35%)]" />
+    <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 p-4 md:p-6">
+      <div className="overflow-hidden rounded-3xl border border-border/70 bg-card/70 shadow-[0_28px_90px_-66px_rgba(0,0,0,0.85)]">
+        <div className="relative h-44 w-full overflow-hidden bg-zinc-950 md:h-64">
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_12%_0%,rgba(250,204,21,0.2),transparent_34%),radial-gradient(circle_at_88%_12%,rgba(244,63,94,0.22),transparent_34%),linear-gradient(135deg,#18181b,#09090b_60%,#27272a)]" />
           {data.profile.bannerUrl ? (
-            <img
-              className="absolute inset-0 size-full object-cover opacity-90"
-              src={data.profile.bannerUrl}
-              alt=""
-            />
+            <>
+              <div
+                className="absolute inset-0 bg-cover bg-center opacity-90"
+                style={{ backgroundImage: `url(${data.profile.bannerUrl})` }}
+              />
+              <div className="absolute inset-0 bg-linear-to-t from-black/78 via-black/25 to-black/15" />
+            </>
           ) : null}
-          <div className="absolute inset-0 bg-linear-to-t from-black/80 via-black/15 to-black/10" />
-          <div className="absolute inset-x-0 bottom-0 flex flex-wrap items-end justify-between gap-4 p-5 md:p-8">
-            <div className="flex min-w-0 items-center gap-4">
-              <Avatar className="size-20 ring-4 ring-white md:size-24">
-                <AvatarImage
-                  src={data.user.image ?? undefined}
-                  alt={username}
-                />
-                <AvatarFallback>{initials(username)}</AvatarFallback>
-              </Avatar>
-              <div className="min-w-0 rounded-2xl border border-white/15 bg-black/40 px-4 py-3 text-white backdrop-blur-md">
-                <h1 className="truncate font-heading text-2xl font-black md:text-4xl">
-                  {username}
-                </h1>
-                <p className="mt-1 text-sm text-white/70">@{username}</p>
+
+          <div className="absolute inset-x-0 bottom-0 p-4 md:p-6">
+            <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+              <div className="flex items-center gap-4">
+                <Avatar className="size-20 ring-4 ring-white/85 md:size-24">
+                  <AvatarImage
+                    src={data.user.image ?? undefined}
+                    alt={username}
+                  />
+                  <AvatarFallback>{initials(username)}</AvatarFallback>
+                </Avatar>
+                <div className="max-w-full rounded-2xl border border-white/15 bg-black/35 px-4 py-3 text-white backdrop-blur-md">
+                  <h1 className="truncate font-heading text-2xl font-black tracking-normal drop-shadow-sm md:text-4xl">
+                    {username}
+                  </h1>
+                </div>
               </div>
+              {own ? (
+                <Button
+                  variant="secondary"
+                  onClick={() =>
+                    window.dispatchEvent(
+                      new CustomEvent("kaiser:settings", { detail: "Profile" })
+                    )
+                  }
+                >
+                  <Settings2 data-icon="inline-start" />
+                  Edit profile
+                </Button>
+              ) : null}
             </div>
-            {own ? (
-              <Button
-                variant="secondary"
-                onClick={() =>
-                  window.dispatchEvent(
-                    new CustomEvent("kaiser:settings", { detail: "Profile" })
-                  )
-                }
-              >
-                <Settings2 data-icon="inline-start" />
-                Edit profile
-              </Button>
-            ) : null}
           </div>
         </div>
-        <div className="p-5 md:p-8">
+        <div className="space-y-6 p-4 md:p-6">
           <h2 className="font-heading text-lg font-semibold">About</h2>
-          <Separator className="my-4" />
+          <Separator />
           <p className="max-w-3xl text-sm leading-7 text-muted-foreground">
             {data.profile.description || "No profile description yet."}
           </p>
         </div>
-      </article>
-    </main>
+      </div>
+    </div>
   )
 }
 
