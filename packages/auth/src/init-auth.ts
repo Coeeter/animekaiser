@@ -79,6 +79,7 @@ export const initAuth = (config: AuthConfig) =>
         origin: config.appURL,
       }),
       emailOTP({
+        disableSignUp: true,
         async sendVerificationOTP({ email, otp, type }) {
           await config.mailer.sendEmailOtp({ email, otp, type })
           config.logger.info("[Auth] Email OTP sent.", { email, type })
