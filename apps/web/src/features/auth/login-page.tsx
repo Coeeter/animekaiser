@@ -213,9 +213,9 @@ function PasskeyLogin({ onSuccess }: { onSuccess: () => Promise<void> }) {
 }
 
 const methods = [
-  { value: "password" as const, label: "Password", icon: KeyRound },
-  { value: "otp" as const, label: "Email code", icon: Mail },
-  { value: "passkey" as const, label: "Passkey", icon: Fingerprint },
+  { value: "password" as const, title: "Password", icon: KeyRound },
+  { value: "otp" as const, title: "Email code", icon: Mail },
+  { value: "passkey" as const, title: "Passkey", icon: Fingerprint },
 ]
 
 export function LoginPage({ redirect }: { redirect?: string }) {
@@ -229,16 +229,17 @@ export function LoginPage({ redirect }: { redirect?: string }) {
 
   return (
     <div className="flex w-full max-w-sm flex-col gap-5">
-      <div className="grid grid-cols-3 gap-2 rounded-2xl border bg-card/70 p-2">
+      <div className="grid grid-cols-3 gap-2">
         {methods.map((item) => (
           <Button
             key={item.value}
+            className="h-auto flex-col gap-2 py-3"
             type="button"
-            variant={method === item.value ? "secondary" : "ghost"}
+            variant={method === item.value ? "default" : "outline"}
             onClick={() => setMethod(item.value)}
           >
-            <item.icon data-icon="inline-start" />
-            <span className="hidden sm:inline">{item.label}</span>
+            <item.icon className="size-4" />
+            <span className="text-xs">{item.title}</span>
           </Button>
         ))}
       </div>
