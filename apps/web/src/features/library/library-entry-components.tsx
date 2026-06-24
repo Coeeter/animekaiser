@@ -12,7 +12,16 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@workspace/ui/components/dialog"
+import { Field, FieldLabel } from "@workspace/ui/components/field"
 import { Input } from "@workspace/ui/components/input"
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@workspace/ui/components/select"
 import { Textarea } from "@workspace/ui/components/textarea"
 import * as Schema from "effect/Schema"
 import { Edit3, Star, Trash2 } from "lucide-react"
@@ -216,26 +225,30 @@ export function LibraryDialog({
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4">
-          <label className="grid gap-1.5 text-sm">
-            Status
-            <select
+          <Field>
+            <FieldLabel htmlFor="edit-library-status">Status</FieldLabel>
+            <Select
               value={status}
-              onChange={(event) =>
-                setStatus(
-                  Schema.decodeUnknownSync(LibraryStatus)(event.target.value)
-                )
+              onValueChange={(value) =>
+                setStatus(Schema.decodeUnknownSync(LibraryStatus)(value))
               }
-              className="h-9 rounded-md border bg-background px-3"
             >
-              {libraryStatuses
-                .filter(({ value }) => value !== "all")
-                .map(({ value, label }) => (
-                  <option key={value} value={value}>
-                    {label}
-                  </option>
-                ))}
-            </select>
-          </label>
+              <SelectTrigger id="edit-library-status" className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectGroup>
+                  {libraryStatuses
+                    .filter(({ value }) => value !== "all")
+                    .map(({ value, label }) => (
+                      <SelectItem key={value} value={value}>
+                        {label}
+                      </SelectItem>
+                    ))}
+                </SelectGroup>
+              </SelectContent>
+            </Select>
+          </Field>
           <label className="grid gap-1.5 text-sm">
             Progress
             <Input

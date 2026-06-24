@@ -10,12 +10,22 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@workspace/ui/components/dialog"
+import { Field, FieldLabel } from "@workspace/ui/components/field"
 import { Input } from "@workspace/ui/components/input"
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@workspace/ui/components/select"
 import { Textarea } from "@workspace/ui/components/textarea"
 import * as Schema from "effect/Schema"
 import { useEffect, useState } from "react"
 import { toast } from "sonner"
 import { upsertLibraryAtom } from "./atoms"
+import { libraryStatuses } from "./constants"
 
 export function AddToLibraryDialog({
   anime,
@@ -79,25 +89,30 @@ export function AddToLibraryDialog({
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4">
-          <label className="grid gap-1.5 text-sm">
-            Status
-            <select
+          <Field>
+            <FieldLabel htmlFor="add-library-status">Status</FieldLabel>
+            <Select
               value={status}
-              onChange={(event) =>
-                setStatus(
-                  Schema.decodeUnknownSync(LibraryStatus)(event.target.value)
-                )
+              onValueChange={(value) =>
+                setStatus(Schema.decodeUnknownSync(LibraryStatus)(value))
               }
-              className="h-9 rounded-md border bg-background px-3"
             >
-              <option value="planning">Planning</option>
-              <option value="watching">Watching</option>
-              <option value="completed">Completed</option>
-              <option value="paused">Paused</option>
-              <option value="dropped">Dropped</option>
-              <option value="rewatching">Rewatching</option>
-            </select>
-          </label>
+              <SelectTrigger id="add-library-status" className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectGroup>
+                  {libraryStatuses
+                    .filter(({ value }) => value !== "all")
+                    .map(({ value, label }) => (
+                      <SelectItem key={value} value={value}>
+                        {label}
+                      </SelectItem>
+                    ))}
+                </SelectGroup>
+              </SelectContent>
+            </Select>
+          </Field>
           <label className="grid gap-1.5 text-sm">
             Progress
             <Input
