@@ -8,6 +8,7 @@ import {
 } from "./server/authentication"
 import { IntegrationHandlersLive } from "./server/integrations"
 import { LibraryHandlersLive } from "./server/library"
+import { RpcRequestLogging, RpcRequestLoggingLive } from "./server/logging"
 import { ProfileHandlersLive } from "./server/profile"
 
 export { RpcServerConfig } from "./server/config"
@@ -20,11 +21,19 @@ const HandlersLive = Layer.mergeAll(
   ProfileHandlersLive
 )
 
+const ServerRpcs = KaiserRpcs.middleware(RpcRequestLogging)
+
 export const RpcLive = RpcServer.layerHttpRouter({
-  group: KaiserRpcs,
+  group: ServerRpcs,
   path: "/rpc",
   protocol: "http",
 }).pipe(
-  Layer.provide(Layer.mergeAll(HandlersLive, AuthenticationMiddlewareLive)),
+  Layer.provide(
+    Layer.mergeAll(
+      HandlersLive,
+      AuthenticationMiddlewareLive,
+      RpcRequestLoggingLive
+    )
+  ),
   Layer.provide(RpcSerialization.layerNdjson)
 )
