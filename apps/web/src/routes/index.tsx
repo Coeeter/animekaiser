@@ -1,19 +1,13 @@
 import { createFileRoute } from "@tanstack/react-router"
 import { loadAnimeHome } from "../features/anime/anime.functions"
-import { HomePage } from "../features/anime/home-page"
-import { getAppSession } from "../lib/session"
+import { HomePage, HomePendingPage } from "../features/anime/home-page"
 
 export const Route = createFileRoute("/")({
-  loader: async () => {
-    const [home, session] = await Promise.all([
-      loadAnimeHome(),
-      getAppSession(),
-    ])
-    return { home, loggedIn: Boolean(session) }
-  },
+  loader: loadAnimeHome,
+  pendingComponent: HomePendingPage,
   component: HomeRoute,
 })
 
 function HomeRoute() {
-  return <HomePage {...Route.useLoaderData()} />
+  return <HomePage home={Route.useLoaderData()} />
 }

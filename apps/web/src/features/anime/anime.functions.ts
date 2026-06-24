@@ -29,7 +29,7 @@ export const loadAnimeDiscovery = (
   runRpc(
     Effect.gen(function* () {
       const client = yield* KaiserRpcClient
-      return yield* client.ListAnimeDiscovery({ category, page, perPage: 24 })
+      return yield* client.ListAnimeDiscovery({ category, page, perPage: 12 })
     })
   )
 

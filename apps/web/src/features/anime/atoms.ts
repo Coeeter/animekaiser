@@ -1,103 +1,75 @@
-import { Atom } from "@effect-atom/atom-react"
 import type {
-  AnimeDetail,
+  AnimeCatalogStatus,
   AnimeDiscoveryCategory,
-  AnimeHome,
-  AnimePage,
+  AnimeFormat,
+  AnimeRating,
+  AnimeSeason,
+  AnimeSort,
 } from "@workspace/domain"
-import { KaiserRpcClient } from "@workspace/rpc/client"
-import * as Effect from "effect/Effect"
-import { rpcRuntime } from "../../lib/rpc-client"
+import { KaiserAtomRpc } from "../../lib/rpc-client"
 
-export type CatalogInput = Parameters<
-  Effect.Effect.Success<typeof KaiserRpcClient>["ListAnimeCatalog"]
->[0]
+const genresFromSearch = (genre: string | undefined) => {
+  const genres = genre
+    ?.split(",")
+    .map((item) => item.trim())
+    .filter(Boolean)
+  return genres?.length ? genres : undefined
+}
 
-export const homeAtom = Atom.family((initialValue?: AnimeHome) => {
-  const effect = Effect.gen(function* () {
-    const client = yield* KaiserRpcClient
-    return yield* client.GetAnimeHome()
-  })
-  return rpcRuntime.atom(effect, { initialValue })
-})
+export const homeAtom = KaiserAtomRpc.query("GetAnimeHome", void 0)
 
-export const catalogAtom = Atom.family(
-  ({
-    input,
-    initialValue,
-  }: {
-    input: CatalogInput
-    initialValue?: AnimePage
-  }) => {
-    const effect = Effect.gen(function* () {
-      const client = yield* KaiserRpcClient
-      return yield* client.ListAnimeCatalog(input)
-    })
-    return rpcRuntime.atom(effect, { initialValue })
-  }
-)
-
-export const discoveryAtom = Atom.family(
-  ({
-    category,
-    page,
-    perPage,
-    initialValue,
-  }: {
-    category: AnimeDiscoveryCategory
-    page: number
-    perPage: number
-    initialValue?: AnimePage
-  }) => {
-    const effect = Effect.gen(function* () {
-      const client = yield* KaiserRpcClient
-      return yield* client.ListAnimeDiscovery({ category, page, perPage })
-    })
-    return rpcRuntime.atom(effect, { initialValue })
-  }
-)
-
-export const scheduleAtom = Atom.family(
-  ({
-    from,
-    to,
-    page,
-    perPage,
-    initialValue,
-  }: {
-    from: number
-    to: number
-    page: number
-    perPage: number
-    initialValue?: AnimePage
-  }) => {
-    const effect = Effect.gen(function* () {
-      const client = yield* KaiserRpcClient
-      return yield* client.ListAnimeSchedule({ from, to, page, perPage })
-    })
-    return rpcRuntime.atom(effect, { initialValue })
-  }
-)
-
-export const detailAtom = Atom.family(
-  ({ malId, initialValue }: { malId: number; initialValue?: AnimeDetail }) => {
-    const effect = Effect.gen(function* () {
-      const client = yield* KaiserRpcClient
-      return yield* client.GetAnimeDetail({ malId })
-    })
-    return rpcRuntime.atom(effect, { initialValue })
-  }
-)
-
-export const recommendationsAtom = Atom.family((malId: number) =>
-  rpcRuntime.atom(
-    Effect.gen(function* () {
-      const client = yield* KaiserRpcClient
-      return yield* client.ListAnimeRecommendations({
-        malId,
-        page: 1,
-        perPage: 12,
-      })
-    })
+export const catalogAtom = (
+  query: string | undefined,
+  page: number,
+  perPage: number,
+  sort: AnimeSort,
+  status?: AnimeCatalogStatus,
+  format?: AnimeFormat,
+  genre?: string,
+  season?: AnimeSeason,
+  seasonYear?: number,
+  rating?: AnimeRating,
+  minScore?: number,
+  maxScore?: number
+) =>
+  KaiserAtomRpc.query(
+    "ListAnimeCatalog",
+    {
+      query: query?.trim() || undefined,
+      page,
+      perPage,
+      sort,
+      status,
+      format,
+      genres: genresFromSearch(genre),
+      season,
+      seasonYear,
+      rating,
+      minScore,
+      maxScore,
+    },
+    { timeToLive: "1 minute" }
   )
-)
+
+export const discoveryAtom = (
+  category: AnimeDiscoveryCategory,
+  page: number,
+  perPage: number
+) => KaiserAtomRpc.query("ListAnimeDiscovery", { category, page, perPage })
+
+export const scheduleAtom = (
+  from: number,
+  to: number,
+  page: number,
+  perPage: number
+) => KaiserAtomRpc.query("ListAnimeSchedule", { from, to, page, perPage })
+
+export const detailAtom = (malId: number) =>
+  KaiserAtomRpc.query("GetAnimeDetail", { malId })
+
+export const recommendationsAtom = (malId: number) =>
+  KaiserAtomRpc.query("ListAnimeRecommendations", {
+    malId,
+    page: 1,
+    perPage: 12,
+  })

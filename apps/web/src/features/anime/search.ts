@@ -9,6 +9,8 @@ import {
 import * as Schema from "effect/Schema"
 import { getTodayScheduleDay } from "./schedule"
 
+export const DEFAULT_CATALOG_PER_PAGE = 24
+
 const PositivePage = Schema.Union(Schema.Number, Schema.NumberFromString).pipe(
   Schema.int(),
   Schema.positive()
@@ -29,7 +31,7 @@ export const CatalogSearch = Schema.Struct({
   sort: Schema.optionalWith(AnimeSort, { default: () => "popularity" }),
   status: Schema.optional(Schema.Literal("airing", "complete", "upcoming")),
   format: Schema.optional(AnimeFormat),
-  genres: Schema.optional(Schema.String),
+  genre: Schema.optional(Schema.String),
   season: Schema.optional(AnimeSeason),
   seasonYear: Schema.optional(SeasonYear),
   rating: Schema.optional(AnimeRating),
@@ -60,11 +62,11 @@ export const decodeScheduleSearch = Schema.decodeUnknownSync(ScheduleSearch)
 export const catalogInput = (search: CatalogSearch) => ({
   query: search.q?.trim() || undefined,
   page: search.page,
-  perPage: 30,
+  perPage: DEFAULT_CATALOG_PER_PAGE,
   sort: search.sort,
   status: search.status,
   format: search.format,
-  genres: search.genres
+  genres: search.genre
     ?.split(",")
     .map((genre) => genre.trim())
     .filter(Boolean),

@@ -1,6 +1,7 @@
 import { Link } from "@tanstack/react-router"
 import type { AnimeItem } from "@workspace/domain"
 import { Button } from "@workspace/ui/components/button"
+import { cn } from "@workspace/ui/lib/utils"
 import { ArrowRight, ChevronLeft, ChevronRight } from "lucide-react"
 import { useCallback, useEffect, useRef, useState } from "react"
 import { AnimeCard } from "./anime-card"
@@ -15,14 +16,16 @@ export function AnimeScrollRow({
   moreHref?: string
 }) {
   const scrollRef = useRef<HTMLDivElement>(null)
-  const [scrollable, setScrollable] = useState({ left: false, right: false })
+  const [canScrollLeft, setCanScrollLeft] = useState(false)
+  const [canScrollRight, setCanScrollRight] = useState(false)
+
   const checkScroll = useCallback(() => {
     const element = scrollRef.current
     if (!element) return
-    setScrollable({
-      left: element.scrollLeft > 4,
-      right: element.scrollLeft < element.scrollWidth - element.clientWidth - 4,
-    })
+    setCanScrollLeft(element.scrollLeft > 4)
+    setCanScrollRight(
+      element.scrollLeft < element.scrollWidth - element.clientWidth - 4
+    )
   }, [])
 
   useEffect(() => {
@@ -38,10 +41,19 @@ export function AnimeScrollRow({
     }
   }, [checkScroll])
 
-  if (items.length === 0) return null
-  const scroll = (direction: -1 | 1) => {
-    scrollRef.current?.scrollBy({ left: direction * 560, behavior: "smooth" })
+  const scroll = (direction: "left" | "right") => {
+    const element = scrollRef.current
+    if (!element) return
+    const cardWidth =
+      element.querySelector('[data-slot="scroll-card"]')?.clientWidth ?? 200
+    const distance = cardWidth * 3
+    element.scrollBy({
+      left: direction === "left" ? -distance : distance,
+      behavior: "smooth",
+    })
   }
+
+  if (items.length === 0) return null
 
   return (
     <section className="flex flex-col gap-3">
@@ -54,8 +66,8 @@ export function AnimeScrollRow({
             variant="ghost"
             size="icon-sm"
             className="hidden sm:inline-flex"
-            disabled={!scrollable.left}
-            onClick={() => scroll(-1)}
+            disabled={!canScrollLeft}
+            onClick={() => scroll("left")}
           >
             <ChevronLeft />
             <span className="sr-only">Scroll left</span>
@@ -64,8 +76,8 @@ export function AnimeScrollRow({
             variant="ghost"
             size="icon-sm"
             className="hidden sm:inline-flex"
-            disabled={!scrollable.right}
-            onClick={() => scroll(1)}
+            disabled={!canScrollRight}
+            onClick={() => scroll("right")}
           >
             <ChevronRight />
             <span className="sr-only">Scroll right</span>
@@ -73,22 +85,40 @@ export function AnimeScrollRow({
           {moreHref ? (
             <Link
               to={moreHref}
-              className="inline-flex items-center gap-1 text-sm font-medium text-muted-foreground hover:text-foreground"
+              className="inline-flex items-center gap-1 text-sm font-medium text-muted-foreground transition hover:text-foreground"
             >
-              View all <ArrowRight className="size-3.5" />
+              View all
+              <ArrowRight className="size-3.5" />
             </Link>
           ) : null}
         </div>
       </div>
-      <div
-        ref={scrollRef}
-        className="flex [scrollbar-width:none] gap-4 overflow-x-auto scroll-smooth pb-2 [&::-webkit-scrollbar]:hidden"
-      >
-        {items.map((anime) => (
-          <div key={anime.malId} className="w-36 shrink-0 sm:w-40 md:w-44">
-            <AnimeCard anime={anime} compact />
-          </div>
-        ))}
+
+      <div className="relative">
+        {canScrollLeft ? (
+          <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-8 bg-gradient-to-r from-background to-transparent" />
+        ) : null}
+        {canScrollRight ? (
+          <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-8 bg-gradient-to-l from-background to-transparent" />
+        ) : null}
+
+        <div
+          ref={scrollRef}
+          className={cn(
+            "flex gap-4 overflow-x-auto scroll-smooth pb-2",
+            "[scrollbar-width:none] scrollbar-none [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
+          )}
+        >
+          {items.map((anime) => (
+            <div
+              key={anime.malId}
+              data-slot="scroll-card"
+              className="w-36 shrink-0 sm:w-40 md:w-44"
+            >
+              <AnimeCard anime={anime} compact />
+            </div>
+          ))}
+        </div>
       </div>
     </section>
   )
