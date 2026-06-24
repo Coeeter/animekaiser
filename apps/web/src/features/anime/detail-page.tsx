@@ -130,6 +130,7 @@ export function AnimeDetailPage({
   onTabChange: (tab: AnimeDetailTab) => void
 }) {
   const result = useAtomValue(detailAtom(id))
+  const libraryEntryResult = useAtomValue(libraryEntryAtom(id))
   if (Result.isWaiting(result)) return <AnimeDetailPendingPage />
 
   const anime = Result.match(result, {
@@ -137,7 +138,6 @@ export function AnimeDetailPage({
     onFailure: () => initial,
     onSuccess: ({ value }) => value,
   })
-  const libraryEntryResult = useAtomValue(libraryEntryAtom(id))
   const libraryEntry = Result.match(libraryEntryResult, {
     onInitial: () => null,
     onFailure: () => null,
