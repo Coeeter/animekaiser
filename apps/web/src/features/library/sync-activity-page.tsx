@@ -8,20 +8,19 @@ import { Link } from "@tanstack/react-router"
 import { Badge } from "@workspace/ui/components/badge"
 import { Button } from "@workspace/ui/components/button"
 import { ListRestart, RefreshCw } from "lucide-react"
-import { useMemo } from "react"
 import { toast } from "sonner"
 import { PageHero } from "../../components/page-hero"
 import { retrySyncAtom, syncEventsAtom } from "./atoms"
 import type { SyncActivitySearch } from "./search"
 
 export function SyncActivityPage({ page }: SyncActivitySearch) {
-  const queryAtom = useMemo(() => syncEventsAtom({ page, perPage: 50 }), [page])
+  const queryAtom = syncEventsAtom(page, 50)
   const result = useAtomValue(queryAtom)
   const refresh = useAtomRefresh(queryAtom)
   const retry = useAtomSet(retrySyncAtom, { mode: "promise" })
   const retryEvent = async (id: string) => {
     try {
-      await retry({ eventIds: [id], target: { type: "original" } })
+      await retry({ payload: { eventIds: [id], target: { type: "original" } } })
       refresh()
       toast.success("Retry queued")
     } catch {

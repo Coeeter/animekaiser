@@ -1,6 +1,6 @@
 import { useAtomSet } from "@effect-atom/atom-react"
 import { LibraryStatus } from "@workspace/domain"
-import type { AnimeDetail } from "@workspace/domain"
+import type { AnimeDetail, LibraryEntry } from "@workspace/domain"
 import { Button } from "@workspace/ui/components/button"
 import {
   Dialog,
@@ -13,7 +13,7 @@ import {
 import { Input } from "@workspace/ui/components/input"
 import { Textarea } from "@workspace/ui/components/textarea"
 import * as Schema from "effect/Schema"
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { toast } from "sonner"
 import { upsertLibraryAtom } from "./atoms"
 
@@ -21,31 +21,45 @@ export function AddToLibraryDialog({
   anime,
   open,
   onOpenChange,
+  entry = null,
 }: {
   anime: AnimeDetail
   open: boolean
   onOpenChange: (open: boolean) => void
+  entry?: LibraryEntry | null
 }) {
   const save = useAtomSet(upsertLibraryAtom, { mode: "promise" })
-  const [status, setStatus] = useState<LibraryStatus>("planning")
-  const [progress, setProgress] = useState(0)
-  const [score, setScore] = useState("")
-  const [notes, setNotes] = useState("")
+  const [status, setStatus] = useState<LibraryStatus>(
+    entry?.status ?? "planning"
+  )
+  const [progress, setProgress] = useState(entry?.progress ?? 0)
+  const [score, setScore] = useState(entry?.score?.toString() ?? "")
+  const [notes, setNotes] = useState(entry?.notes ?? "")
+
+  useEffect(() => {
+    if (!open) return
+    setStatus(entry?.status ?? "planning")
+    setProgress(entry?.progress ?? 0)
+    setScore(entry?.score?.toString() ?? "")
+    setNotes(entry?.notes ?? "")
+  }, [entry, open])
 
   const submit = async () => {
     try {
       await save({
-        anime: {
-          malId: anime.malId,
-          aniListId: anime.aniListId,
-          title: anime.title,
-          coverImage: anime.coverImage,
-          episodes: anime.episodes,
+        payload: {
+          anime: {
+            malId: anime.malId,
+            aniListId: anime.aniListId,
+            title: anime.title,
+            coverImage: anime.coverImage,
+            episodes: anime.episodes,
+          },
+          status,
+          score: score ? Number(score) : null,
+          progress,
+          notes: notes.trim() || null,
         },
-        status,
-        score: score ? Number(score) : null,
-        progress,
-        notes: notes.trim() || null,
       })
       onOpenChange(false)
       toast.success("Library entry saved")
@@ -58,7 +72,7 @@ export function AddToLibraryDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Add to your list</DialogTitle>
+          <DialogTitle>{entry ? "Edit library entry" : "Add to your list"}</DialogTitle>
           <DialogDescription>
             Track your status, progress, score, and private notes for this
             title.

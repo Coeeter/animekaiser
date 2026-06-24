@@ -15,12 +15,27 @@ import {
 import { Input } from "@workspace/ui/components/input"
 import { Textarea } from "@workspace/ui/components/textarea"
 import * as Schema from "effect/Schema"
-import { Trash2 } from "lucide-react"
+import { Edit3, Star, Trash2 } from "lucide-react"
 import { useState } from "react"
 import { toast } from "sonner"
+import { AnimeTitle } from "../anime/anime-title"
 import { animeTitlePreferenceAtom, getAnimeTitle } from "../anime/title"
 import { removeLibraryAtom, upsertLibraryAtom } from "./atoms"
 import { libraryStatuses } from "./constants"
+
+const libraryStatusLabel = (status: LibraryStatus) =>
+  libraryStatuses.find((item) => item.value === status)?.label ?? status
+
+const formatScore = (score: number | null) => {
+  if (score === null) return null
+  const value = score / 10
+  return Number.isInteger(value) ? String(value) : value.toFixed(1)
+}
+
+const formatProgress = (entry: LibraryEntry) =>
+  entry.anime.episodes
+    ? `Watched ${entry.progress}/${entry.anime.episodes} ep`
+    : `Watched ${entry.progress} ep`
 
 export function LibraryCard({
   entry,
@@ -32,43 +47,54 @@ export function LibraryCard({
   onDelete: () => void
 }) {
   const preference = useAtomValue(animeTitlePreferenceAtom)
+  const titleText = getAnimeTitle(entry.anime.title, preference)
+  const score = formatScore(entry.score)
   return (
-    <article className="flex gap-4 rounded-xl border bg-card p-3 shadow-sm">
-      {entry.anime.coverImage ? (
-        <Link to="/series/$id" params={{ id: entry.malId }}>
+    <article className="grid grid-cols-[5.5rem_minmax(0,1fr)] gap-3 rounded-xl border bg-card/70 p-3">
+      <Link to="/series/$id" params={{ id: entry.malId }} preload="intent">
+        {entry.anime.coverImage ? (
           <img
             src={entry.anime.coverImage}
-            alt=""
-            className="aspect-2/3 w-24 rounded-lg object-cover"
+            alt={titleText}
+            className="aspect-2/3 w-full rounded-lg object-cover"
           />
-        </Link>
-      ) : (
-        <div className="aspect-2/3 w-24 rounded-lg bg-muted" />
-      )}
-      <div className="flex min-w-0 flex-1 flex-col">
-        <Link
-          to="/series/$id"
-          params={{ id: entry.malId }}
-          className="line-clamp-2 font-semibold hover:text-primary"
-        >
-          {getAnimeTitle(entry.anime.title, preference)}
-        </Link>
-        <Badge variant="secondary" className="mt-2 w-fit capitalize">
-          {entry.status}
-        </Badge>
-        <p className="mt-3 text-sm text-muted-foreground">
-          {entry.progress}
-          {entry.anime.episodes ? ` / ${entry.anime.episodes}` : ""} episodes
-        </p>
-        <p className="text-sm text-muted-foreground">
-          Score: {entry.score === null ? "—" : `${entry.score}%`}
-        </p>
-        <div className="mt-auto flex gap-2 pt-3">
-          <Button size="sm" variant="outline" onClick={onEdit}>
+        ) : (
+          <div className="flex aspect-2/3 w-full items-center justify-center rounded-lg bg-muted text-xs text-muted-foreground">
+            MAL #{entry.malId}
+          </div>
+        )}
+      </Link>
+      <div className="flex min-w-0 flex-col gap-2">
+        <div className="min-w-0">
+          <Link
+            to="/series/$id"
+            params={{ id: entry.malId }}
+            preload="intent"
+            className="line-clamp-2 text-sm font-semibold hover:underline"
+          >
+            <AnimeTitle title={entry.anime.title} />
+          </Link>
+          <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+            <span>{formatProgress(entry)}</span>
+            {score ? (
+              <span className="inline-flex items-center gap-1 text-foreground">
+                {score}
+                <Star className="size-3 fill-amber-400 text-amber-500" />
+              </span>
+            ) : null}
+          </div>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <Badge variant="secondary">{libraryStatusLabel(entry.status)}</Badge>
+        </div>
+        <div className="mt-auto flex gap-2">
+          <Button variant="outline" size="sm" onClick={onEdit}>
+            <Edit3 data-icon="inline-start" />
             Edit
           </Button>
-          <Button size="icon-sm" variant="ghost" onClick={onDelete}>
-            <Trash2 />
+          <Button variant="destructive" size="sm" onClick={onDelete}>
+            <Trash2 data-icon="inline-start" />
+            Remove
           </Button>
         </div>
       </div>
@@ -95,7 +121,7 @@ export function DeleteLibraryDialog({
     if (mal) providers.push("mal")
     if (anilist) providers.push("anilist")
     try {
-      await remove({ malId: entry.malId, providers })
+      await remove({ payload: { malId: entry.malId, providers } })
       toast.success(
         providers.length
           ? "Removed locally; external deletes queued"
@@ -166,11 +192,13 @@ export function LibraryDialog({
   const submit = async () => {
     try {
       await save({
-        anime: entry.anime,
-        status,
-        progress,
-        score: score ? Number(score) : null,
-        notes: notes.trim() || null,
+        payload: {
+          anime: entry.anime,
+          status,
+          progress,
+          score: score ? Number(score) : null,
+          notes: notes.trim() || null,
+        },
       })
       toast.success("Library entry updated")
       onSaved()
