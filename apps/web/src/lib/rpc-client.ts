@@ -1,8 +1,9 @@
-import { Atom } from "@effect-atom/atom-react"
+import { Atom, AtomRpc } from "@effect-atom/atom-react"
 import * as FetchHttpClient from "@effect/platform/FetchHttpClient"
 import * as HttpClient from "@effect/platform/HttpClient"
 import * as HttpClientRequest from "@effect/platform/HttpClientRequest"
 import { RpcClient, RpcSerialization } from "@effect/rpc"
+import { KaiserRpcs } from "@workspace/domain"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 import type * as Scope from "effect/Scope"
@@ -27,6 +28,14 @@ export const makeRpcProtocol = (cookie?: string) =>
   }).pipe(Layer.provide([fetchLive, RpcSerialization.layerNdjson]))
 
 export const rpcRuntime = Atom.runtime(makeRpcProtocol())
+
+export class KaiserAtomRpc extends AtomRpc.Tag<KaiserAtomRpc>()(
+  "KaiserAtomRpc",
+  {
+    group: KaiserRpcs,
+    protocol: makeRpcProtocol(),
+  }
+) {}
 
 export const runRpc = <TResult, TError>(
   effect: Effect.Effect<TResult, TError, RpcClient.Protocol | Scope.Scope>,

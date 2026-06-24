@@ -1,10 +1,6 @@
-import { KaiserRpcClient } from "@workspace/rpc/client"
-import * as Effect from "effect/Effect"
-import { rpcRuntime } from "../../lib/rpc-client"
+import { KaiserAtomRpc } from "../../lib/rpc-client"
 
-export const accountHealthAtom = rpcRuntime.atom(
-  Effect.gen(function* () {
-    const client = yield* KaiserRpcClient
-    return yield* client.ListExternalListAccounts()
-  })
+export const accountHealthAtom = KaiserAtomRpc.query(
+  "ListExternalListAccounts",
+  void 0
 )
