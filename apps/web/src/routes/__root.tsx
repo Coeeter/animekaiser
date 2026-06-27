@@ -1,4 +1,9 @@
-import { HeadContent, Scripts, createRootRoute } from "@tanstack/react-router"
+import {
+  HeadContent,
+  Outlet,
+  Scripts,
+  createRootRoute,
+} from "@tanstack/react-router"
 import { Toaster } from "@workspace/ui/components/sonner"
 import { TooltipProvider } from "@workspace/ui/components/tooltip"
 import { getAppSession } from "../lib/session"
@@ -36,11 +41,20 @@ export const Route = createRootRoute({
       <p>The requested page could not be found.</p>
     </main>
   ),
+  component: RootRouteComponent,
   shellComponent: RootDocument,
 })
 
-function RootDocument({ children }: { children: React.ReactNode }) {
+function RootRouteComponent() {
   const session = Route.useLoaderData()
+  return (
+    <AppShell session={session}>
+      <Outlet />
+    </AppShell>
+  )
+}
+
+function RootDocument({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
@@ -48,9 +62,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
       </head>
       <body className="overflow-x-hidden">
         <ThemeProvider>
-          <TooltipProvider>
-            <AppShell session={session}>{children}</AppShell>
-          </TooltipProvider>
+          <TooltipProvider>{children}</TooltipProvider>
           <Toaster richColors />
         </ThemeProvider>
         <Scripts />
