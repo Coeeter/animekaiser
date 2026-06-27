@@ -304,9 +304,7 @@ export function AppSidebar({
             </div>
           </div>
         </header>
-        <div className="flex-1 px-4 pt-20 pb-6 md:px-6 md:pt-6">
-          {children}
-        </div>
+        <div className="flex-1 px-4 pt-20 pb-6 md:px-6 md:pt-6">{children}</div>
       </SidebarInset>
     </>
   )

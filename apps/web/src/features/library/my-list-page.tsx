@@ -159,7 +159,10 @@ function MyListContent({
       <aside className="flex flex-col gap-4">
         <StatsPanel page={page} />
         <ImportLibraryPanel refresh={refresh} />
-        <ClearLibraryPanel disabled={page.stats.total === 0} refresh={refresh} />
+        <ClearLibraryPanel
+          disabled={page.stats.total === 0}
+          refresh={refresh}
+        />
       </aside>
       {editing ? (
         <LibraryDialog

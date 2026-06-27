@@ -45,7 +45,8 @@ export function SeriesCatalogResults({
           </Button>
         )}
         <span className="text-sm text-muted-foreground">
-          Page <span className="font-medium text-foreground">{search.page}</span>
+          Page{" "}
+          <span className="font-medium text-foreground">{search.page}</span>
         </span>
         {!page.hasNextPage ? (
           <Button variant="outline" disabled>

@@ -5,9 +5,7 @@ import {
   AvatarImage,
 } from "@workspace/ui/components/avatar"
 import { Button } from "@workspace/ui/components/button"
-import {
-  FieldDescription,
-} from "@workspace/ui/components/field"
+import { FieldDescription } from "@workspace/ui/components/field"
 import {
   Form,
   FormControl,

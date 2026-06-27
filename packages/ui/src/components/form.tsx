@@ -1,15 +1,7 @@
 import * as React from "react"
 import { Slot } from "radix-ui"
-import {
-  Controller,
-  FormProvider,
-  useFormContext,
-} from "react-hook-form"
-import type {
-  ControllerProps,
-  FieldPath,
-  FieldValues,
-} from "react-hook-form"
+import { Controller, FormProvider, useFormContext } from "react-hook-form"
+import type { ControllerProps, FieldPath, FieldValues } from "react-hook-form"
 
 import {
   Field,
@@ -25,9 +17,7 @@ type FormFieldContextValue = {
   name: FieldPath<FieldValues>
 }
 
-const FormFieldContext = React.createContext<FormFieldContextValue | null>(
-  null
-)
+const FormFieldContext = React.createContext<FormFieldContextValue | null>(null)
 
 function FormField<
   TFieldValues extends FieldValues = FieldValues,
@@ -72,10 +62,7 @@ function useFormField() {
   }
 }
 
-function FormItem({
-  className,
-  ...props
-}: React.ComponentProps<typeof Field>) {
+function FormItem({ className, ...props }: React.ComponentProps<typeof Field>) {
   const id = React.useId()
 
   return (
@@ -100,11 +87,8 @@ function FormLabel({
   )
 }
 
-function FormControl({
-  ...props
-}: React.ComponentProps<typeof Slot.Root>) {
-  const { error, formItemId, formDescriptionId, formMessageId } =
-    useFormField()
+function FormControl({ ...props }: React.ComponentProps<typeof Slot.Root>) {
+  const { error, formItemId, formDescriptionId, formMessageId } = useFormField()
 
   return (
     <Slot.Root

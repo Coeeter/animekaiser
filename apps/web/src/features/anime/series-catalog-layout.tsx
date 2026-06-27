@@ -94,10 +94,7 @@ export function SeriesCatalogLayout({
                 {activeFilters.length > 0 ? ` (${activeFilters.length})` : ""}
               </Button>
             </div>
-            <Sheet
-              open={mobileFiltersOpen}
-              onOpenChange={setMobileFiltersOpen}
-            >
+            <Sheet open={mobileFiltersOpen} onOpenChange={setMobileFiltersOpen}>
               <SheetContent
                 side="bottom"
                 className="flex max-h-[60svh] flex-col rounded-t-2xl border-t"
@@ -125,10 +122,7 @@ export function SeriesCatalogLayout({
           </div>
 
           <div className="hidden md:block">
-            <SeriesCatalogFilters
-              search={search}
-              updateSearch={updateSearch}
-            />
+            <SeriesCatalogFilters search={search} updateSearch={updateSearch} />
           </div>
 
           <SeriesCatalogActiveFilters

@@ -95,9 +95,7 @@ export function SchedulePage({
                   : "text-muted-foreground hover:bg-accent hover:text-foreground"
               )}
             >
-              <span className="text-xs font-medium">
-                {dayLabel(item.day)}
-              </span>
+              <span className="text-xs font-medium">{dayLabel(item.day)}</span>
               <span
                 className={cn(
                   "text-[11px]",

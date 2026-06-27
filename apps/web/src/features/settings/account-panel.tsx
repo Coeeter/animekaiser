@@ -215,9 +215,7 @@ export function AccountPanel({
             onSubmit={deleteForm.handleSubmit(deleteAccount)}
           >
             <div>
-              <h3 className="font-semibold text-destructive">
-                Delete account
-              </h3>
+              <h3 className="font-semibold text-destructive">Delete account</h3>
               <p className="mt-1 text-sm text-muted-foreground">
                 Permanently remove your account and profile.
               </p>

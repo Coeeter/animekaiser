@@ -1,9 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router"
 import { loadAnimeCatalog } from "../features/anime/anime.functions"
-import {
-  CatalogPage,
-  CatalogPendingPage,
-} from "../features/anime/catalog-page"
+import { CatalogPage, CatalogPendingPage } from "../features/anime/catalog-page"
 import { catalogInput, decodeCatalogSearch } from "../features/anime/search"
 
 export const Route = createFileRoute("/series/")({

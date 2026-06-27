@@ -1,4 +1,8 @@
-import { createFileRoute, getRouteApi, useNavigate } from "@tanstack/react-router"
+import {
+  createFileRoute,
+  getRouteApi,
+  useNavigate,
+} from "@tanstack/react-router"
 import * as Schema from "effect/Schema"
 import { loadAnimeDetail } from "../features/anime/anime.functions"
 import {

@@ -5,11 +5,7 @@ import { AnimeScrollRow } from "./anime-scroll-row"
 import { homeAtom } from "./atoms"
 import { HeroCarousel } from "./hero-carousel"
 
-export function HomePage({
-  home,
-}: {
-  home: AnimeHome
-}) {
+export function HomePage({ home }: { home: AnimeHome }) {
   const result = useAtomValue(homeAtom)
   if (Result.isWaiting(result)) return <HomePendingPage />
 

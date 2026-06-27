@@ -1,9 +1,6 @@
 import { useNavigate } from "@tanstack/react-router"
 import { Button } from "@workspace/ui/components/button"
-import {
-  FieldError,
-  FieldGroup,
-} from "@workspace/ui/components/field"
+import { FieldError, FieldGroup } from "@workspace/ui/components/field"
 import {
   Form,
   FormControl,
@@ -85,9 +82,7 @@ export function ForgotPasswordPage() {
   return (
     <div className="w-full max-w-sm rounded-3xl border bg-card p-6 shadow-sm">
       <div className="text-center">
-        <h1 className="font-heading text-2xl font-bold">
-          Reset your password
-        </h1>
+        <h1 className="font-heading text-2xl font-bold">Reset your password</h1>
         <p className="mt-1 text-sm text-muted-foreground">
           {email
             ? `Enter the code sent to ${email}.`
@@ -124,7 +119,9 @@ export function ForgotPasswordPage() {
               </FieldError>
             ) : null}
             <SubmitButton pending={requestForm.formState.isSubmitting}>
-              {requestForm.formState.isSubmitting ? "Working…" : "Send reset code"}
+              {requestForm.formState.isSubmitting
+                ? "Working…"
+                : "Send reset code"}
             </SubmitButton>
             <AuthFooter prompt="Back to" action="login" to="/login" />
           </form>

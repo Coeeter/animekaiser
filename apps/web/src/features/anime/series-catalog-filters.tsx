@@ -152,8 +152,7 @@ const seasonYearOptions = (() => {
   for (const year of yearOptions) {
     for (const season of seasonOrder) {
       const label =
-        seasonOptions.find((option) => option.value === season)?.label ??
-        season
+        seasonOptions.find((option) => option.value === season)?.label ?? season
       items.push({
         season,
         year,
@@ -490,7 +489,9 @@ export function SeriesCatalogFilters({
               id={`${mode}-series-season-year`}
               season={search.season}
               year={search.seasonYear}
-              onChange={(season, year) => updateSearch({ season, seasonYear: year })}
+              onChange={(season, year) =>
+                updateSearch({ season, seasonYear: year })
+              }
             />
           </Field>
 
@@ -586,7 +587,13 @@ export function SeriesCatalogFilters({
   )
 }
 
-function FilterPill({ label, onClear }: { label: string; onClear: () => void }) {
+function FilterPill({
+  label,
+  onClear,
+}: {
+  label: string
+  onClear: () => void
+}) {
   return (
     <Badge variant="secondary" className="gap-1 pr-1.5">
       {label}

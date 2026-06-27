@@ -1,8 +1,5 @@
 import { useNavigate, useRouter } from "@tanstack/react-router"
-import {
-  FieldError,
-  FieldGroup,
-} from "@workspace/ui/components/field"
+import { FieldError, FieldGroup } from "@workspace/ui/components/field"
 import {
   Form,
   FormControl,
@@ -101,7 +98,12 @@ export function RegisterPage() {
               <FormItem>
                 <FormLabel>Email</FormLabel>
                 <FormControl>
-                  <Input type="email" autoComplete="email" required {...field} />
+                  <Input
+                    type="email"
+                    autoComplete="email"
+                    required
+                    {...field}
+                  />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -150,9 +152,7 @@ export function RegisterPage() {
           <FieldError>{form.formState.errors.root.message}</FieldError>
         ) : null}
         <SubmitButton pending={form.formState.isSubmitting}>
-          {form.formState.isSubmitting
-            ? "Creating account…"
-            : "Create account"}
+          {form.formState.isSubmitting ? "Creating account…" : "Create account"}
         </SubmitButton>
         <AuthFooter
           prompt="Already have an account?"
