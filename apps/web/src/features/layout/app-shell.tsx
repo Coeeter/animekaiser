@@ -1,20 +1,22 @@
-import { useAtom } from "@effect-atom/atom-react"
+import { useAtomSet } from "@effect-atom/atom-react"
 import { useNavigate, useRouter, useRouterState } from "@tanstack/react-router"
 import { SidebarProvider } from "@workspace/ui/components/sidebar"
-import type { ReactNode } from "react"
-import { useEffect, useState } from "react"
 import * as Option from "effect/Option"
 import * as Schema from "effect/Schema"
+import type { ReactNode } from "react"
+import { useEffect, useState } from "react"
 import { toast } from "sonner"
-import type { AppSession } from "../../lib/session"
 import { authClient } from "../../lib/auth-client"
 import { errorMessage } from "../../lib/error"
-import { animeTitlePreferenceAtom } from "../anime/title"
+import type { AppSession } from "../../lib/session"
 import { SearchDialog } from "../anime/search-dialog"
+import { animeTitlePreferenceAtom } from "../anime/title"
+import { SettingsDialog, SettingsSection } from "../settings/settings-dialog"
 import {
-  SettingsDialog,
-  SettingsSection,
-} from "../settings/settings-dialog"
+  playerPreferencesAtom,
+  playerPreferencesStorageKey,
+  readStoredPlayerPreferences,
+} from "../streaming/preferences"
 import { AppSidebar, MobileSidebarCloser } from "./app-sidebar"
 
 const authRoutes = new Set(["/login", "/register", "/forgot-password"])
@@ -37,13 +39,25 @@ export function AppShell({
   const [requestedSection, setRequestedSection] =
     useState<SettingsSection | null>(null)
   const [logoutPending, setLogoutPending] = useState(false)
-  const [, setTitlePreference] = useAtom(animeTitlePreferenceAtom)
+  const isWatchRoute = pathname.startsWith("/watch/")
+  const [sidebarOpen, setSidebarOpen] = useState(!isWatchRoute)
+  const setTitlePreference = useAtomSet(animeTitlePreferenceAtom)
+  const setPlayerPreferences = useAtomSet(playerPreferencesAtom)
 
   useEffect(() => {
     Schema.decodeUnknownOption(Schema.Literal("english", "romaji"))(
       window.localStorage.getItem("anime-title-preference")
     ).pipe(Option.map(setTitlePreference))
-  }, [setTitlePreference])
+    setPlayerPreferences(
+      readStoredPlayerPreferences(
+        window.localStorage.getItem(playerPreferencesStorageKey)
+      )
+    )
+  }, [setPlayerPreferences, setTitlePreference])
+
+  useEffect(() => {
+    if (isWatchRoute) setSidebarOpen(false)
+  }, [isWatchRoute])
 
   useEffect(() => {
     const keydown = (event: KeyboardEvent) => {
@@ -123,7 +137,7 @@ export function AppShell({
         <div className="absolute -top-40 left-[20%] size-96 rounded-full bg-primary/12 blur-3xl" />
         <div className="absolute right-[8%] bottom-[-10rem] size-96 rounded-full bg-chart-2/10 blur-3xl" />
       </div>
-      <SidebarProvider>
+      <SidebarProvider open={sidebarOpen} onOpenChange={setSidebarOpen}>
         <MobileSidebarCloser pathname={pathname} />
         <AppSidebar
           pathname={pathname}

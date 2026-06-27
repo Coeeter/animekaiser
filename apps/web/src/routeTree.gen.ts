@@ -26,6 +26,7 @@ import { Route as SeriesIdRouteImport } from './routes/series.$id'
 import { Route as AuthRegisterRouteImport } from './routes/_auth.register'
 import { Route as AuthLoginRouteImport } from './routes/_auth.login'
 import { Route as AuthForgotPasswordRouteImport } from './routes/_auth.forgot-password'
+import { Route as WatchMalIdProviderEpisodeIdRouteImport } from './routes/watch.$malId.$provider.$episodeId'
 
 const WatchHistoryRoute = WatchHistoryRouteImport.update({
   id: '/watch-history',
@@ -111,6 +112,12 @@ const AuthForgotPasswordRoute = AuthForgotPasswordRouteImport.update({
   path: '/forgot-password',
   getParentRoute: () => AuthRoute,
 } as any)
+const WatchMalIdProviderEpisodeIdRoute =
+  WatchMalIdProviderEpisodeIdRouteImport.update({
+    id: '/watch/$malId/$provider/$episodeId',
+    path: '/watch/$malId/$provider/$episodeId',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -129,6 +136,7 @@ export interface FileRoutesByFullPath {
   '/series/$id': typeof SeriesIdRoute
   '/u/$username': typeof UUsernameRoute
   '/series/': typeof SeriesIndexRoute
+  '/watch/$malId/$provider/$episodeId': typeof WatchMalIdProviderEpisodeIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -146,6 +154,7 @@ export interface FileRoutesByTo {
   '/series/$id': typeof SeriesIdRoute
   '/u/$username': typeof UUsernameRoute
   '/series': typeof SeriesIndexRoute
+  '/watch/$malId/$provider/$episodeId': typeof WatchMalIdProviderEpisodeIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -166,6 +175,7 @@ export interface FileRoutesById {
   '/series/$id': typeof SeriesIdRoute
   '/u/$username': typeof UUsernameRoute
   '/series/': typeof SeriesIndexRoute
+  '/watch/$malId/$provider/$episodeId': typeof WatchMalIdProviderEpisodeIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -186,6 +196,7 @@ export interface FileRouteTypes {
     | '/series/$id'
     | '/u/$username'
     | '/series/'
+    | '/watch/$malId/$provider/$episodeId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -203,6 +214,7 @@ export interface FileRouteTypes {
     | '/series/$id'
     | '/u/$username'
     | '/series'
+    | '/watch/$malId/$provider/$episodeId'
   id:
     | '__root__'
     | '/'
@@ -222,6 +234,7 @@ export interface FileRouteTypes {
     | '/series/$id'
     | '/u/$username'
     | '/series/'
+    | '/watch/$malId/$provider/$episodeId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -237,6 +250,7 @@ export interface RootRouteChildren {
   SyncActivityRoute: typeof SyncActivityRoute
   WatchHistoryRoute: typeof WatchHistoryRoute
   UUsernameRoute: typeof UUsernameRoute
+  WatchMalIdProviderEpisodeIdRoute: typeof WatchMalIdProviderEpisodeIdRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -360,6 +374,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthForgotPasswordRouteImport
       parentRoute: typeof AuthRoute
     }
+    '/watch/$malId/$provider/$episodeId': {
+      id: '/watch/$malId/$provider/$episodeId'
+      path: '/watch/$malId/$provider/$episodeId'
+      fullPath: '/watch/$malId/$provider/$episodeId'
+      preLoaderRoute: typeof WatchMalIdProviderEpisodeIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -403,6 +424,7 @@ const rootRouteChildren: RootRouteChildren = {
   SyncActivityRoute: SyncActivityRoute,
   WatchHistoryRoute: WatchHistoryRoute,
   UUsernameRoute: UUsernameRoute,
+  WatchMalIdProviderEpisodeIdRoute: WatchMalIdProviderEpisodeIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

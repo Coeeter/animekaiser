@@ -5,7 +5,7 @@ import { Download, Link2, Unlink } from "lucide-react"
 import { useEffect, useState } from "react"
 import { toast } from "sonner"
 import type { AppUser } from "../../lib/auth-client"
-import { apiUrl } from "../../lib/auth-client"
+import { apiUrl } from "../../lib/api-url"
 import { errorMessage } from "../../lib/error"
 import {
   disconnectExternalAccount,

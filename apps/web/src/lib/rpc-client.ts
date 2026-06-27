@@ -7,7 +7,7 @@ import { KaiserRpcs } from "@workspace/domain"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 import type * as Scope from "effect/Scope"
-import { apiUrl } from "./auth-client"
+import { apiUrl } from "./api-url"
 
 const fetchLive = FetchHttpClient.layer.pipe(
   Layer.provide(

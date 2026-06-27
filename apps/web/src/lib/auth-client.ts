@@ -1,8 +1,6 @@
 import { createKaiserAuthClient } from "@workspace/auth/web"
 import type { AppSession } from "@workspace/domain"
-
-export const apiUrl = import.meta.env.VITE_API_URL
-if (!apiUrl) throw new Error("Missing VITE_API_URL")
+import { apiUrl } from "./api-url"
 
 export const authClient = createKaiserAuthClient({ baseURL: apiUrl })
 

@@ -44,6 +44,7 @@ import * as Schema from "effect/Schema"
 import { AddToLibraryDialog } from "../library/add-to-library-dialog"
 import { libraryEntryAtom } from "../library/atoms"
 import { libraryStatuses } from "../library/constants"
+import { EpisodesPanel } from "../streaming/episodes-panel"
 import { AnimeGrid } from "./anime-grid"
 import { AnimeSubtitle, AnimeTitle } from "./anime-title"
 import { detailAtom, recommendationsAtom } from "./atoms"
@@ -331,7 +332,10 @@ function SeriesDetail({
                       />
                     ) : null}
                     {anime.averageScore ? (
-                      <MetaField label="Score" value={`${anime.averageScore}%`} />
+                      <MetaField
+                        label="Score"
+                        value={`${anime.averageScore}%`}
+                      />
                     ) : null}
                   </dl>
 
@@ -363,7 +367,11 @@ function SeriesDetail({
                       </p>
                       <div className="flex flex-wrap gap-1.5">
                         {anime.tags.slice(0, 8).map((tag) => (
-                          <Badge key={tag} variant="outline" className="text-xs">
+                          <Badge
+                            key={tag}
+                            variant="outline"
+                            className="text-xs"
+                          >
                             {tag}
                           </Badge>
                         ))}
@@ -456,7 +464,7 @@ function SeriesDetail({
                     </TabsTrigger>
                   </TabsList>
                   <TabsContent value="episodes">
-                    <EpisodesPanel />
+                    <EpisodesPanel anime={anime} />
                   </TabsContent>
                   <TabsContent value="relations">
                     <RelationsPanel relations={relations} />
@@ -519,10 +527,7 @@ function SeriesDetail({
               Cancel
             </Button>
             <Button asChild>
-              <Link
-                to="/login"
-                search={{ redirect: `/series/${anime.malId}` }}
-              >
+              <Link to="/login" search={{ redirect: `/series/${anime.malId}` }}>
                 Login
               </Link>
             </Button>
@@ -603,14 +608,6 @@ function LibraryEntrySummary({ entry }: { entry: LibraryEntry }) {
       <span className="text-white/55">
         Updated {formatLibraryUpdatedAt(entry.updatedAt)}
       </span>
-    </div>
-  )
-}
-
-function EpisodesPanel() {
-  return (
-    <div className="rounded-xl border border-dashed p-10 text-center text-sm text-muted-foreground">
-      Episodes are not available yet.
     </div>
   )
 }
