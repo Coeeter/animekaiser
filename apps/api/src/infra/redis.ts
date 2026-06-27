@@ -30,7 +30,6 @@ export class RedisClient extends Effect.Service<RedisClient>()(
       })
       return client
     }),
-    dependencies: [Env.Default],
   }
 ) {}
 

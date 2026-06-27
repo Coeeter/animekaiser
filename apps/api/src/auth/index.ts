@@ -1,6 +1,6 @@
 import * as HttpServerRequest from "@effect/platform/HttpServerRequest"
-import { AuthServer, initAuth } from "@workspace/auth/server"
 import type { KaiserAuth } from "@workspace/auth/server"
+import { AuthServer, initAuth } from "@workspace/auth/server"
 import { ExternalListOAuthConfig } from "@workspace/core"
 import { Database } from "@workspace/db"
 import { AuthenticationRequiredError } from "@workspace/domain"
@@ -30,31 +30,33 @@ const providerConfig = (
 
 export { AuthServer as BetterAuth }
 
-export const getCurrentSession = (auth: BetterAuthRuntime) =>
-  Effect.gen(function* () {
-    const request = yield* HttpServerRequest.HttpServerRequest
-    const webRequest = yield* HttpServerRequest.toWeb(request).pipe(
-      Effect.mapError(
-        () =>
-          new AuthenticationRequiredError({
-            message: "Authentication request could not be read.",
-          })
-      )
-    )
-    return yield* Effect.promise(() =>
-      auth.api.getSession({ headers: webRequest.headers })
-    )
-  })
-
-export const requireCurrentUser = (auth: BetterAuthRuntime) =>
-  Effect.gen(function* () {
-    const session = yield* getCurrentSession(auth)
-    return yield* session
-      ? Effect.succeed({ id: session.user.id })
-      : new AuthenticationRequiredError({
-          message: "Authentication is required.",
+export const getCurrentSession = Effect.fn("getCurrentSession")(function* (
+  auth: BetterAuthRuntime
+) {
+  const request = yield* HttpServerRequest.HttpServerRequest
+  const webRequest = yield* HttpServerRequest.toWeb(request).pipe(
+    Effect.mapError(
+      () =>
+        new AuthenticationRequiredError({
+          message: "Authentication request could not be read.",
         })
-  })
+    )
+  )
+  return yield* Effect.promise(() =>
+    auth.api.getSession({ headers: webRequest.headers })
+  )
+})
+
+export const requireCurrentUser = Effect.fn("requireCurrentUser")(function* (
+  auth: BetterAuthRuntime
+) {
+  const session = yield* getCurrentSession(auth)
+  return yield* session
+    ? Effect.succeed({ id: session.user.id })
+    : new AuthenticationRequiredError({
+        message: "Authentication is required.",
+      })
+})
 
 export const BetterAuthLive = Layer.effect(
   AuthServer,

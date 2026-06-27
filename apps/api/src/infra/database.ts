@@ -12,7 +12,7 @@ export const DatabaseLive = Layer.unwrapEffect(
       })
     )
   )
-).pipe(Layer.provide(Env.Default))
+)
 
 export const DatabaseListenerLive = Layer.effectDiscard(
   Effect.gen(function* () {

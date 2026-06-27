@@ -9,7 +9,6 @@ import {
 import { AuthenticationRequiredError } from "@workspace/domain"
 import * as Data from "effect/Data"
 import * as Effect from "effect/Effect"
-import * as Layer from "effect/Layer"
 import { BetterAuth, requireCurrentUser } from "../auth"
 import { Env } from "../env"
 
@@ -108,7 +107,10 @@ const linkHandler = Effect.gen(function* () {
     callbackURL,
   })
   return HttpServerResponse.redirect(url)
-}).pipe(Effect.catchAll(handleExternalListError))
+}).pipe(
+  Effect.catchAll(handleExternalListError),
+  Effect.provide(ExternalListAccountsService.Default)
+)
 
 const callbackHandler = Effect.gen(function* () {
   const provider = yield* requireProvider
@@ -124,24 +126,14 @@ const callbackHandler = Effect.gen(function* () {
   )
 
   return HttpServerResponse.redirect(callbackURL)
-}).pipe(Effect.catchAll(handleExternalListError))
+}).pipe(
+  Effect.catchAll(handleExternalListError),
+  Effect.provide(ExternalListAccountsService.Default)
+)
 
 export const ExternalListAccountsRoutesLive = HttpLayerRouter.use((router) =>
   Effect.gen(function* () {
-    const accounts = yield* ExternalListAccountsService
-    yield* router.add(
-      "GET",
-      "/api/link/:provider",
-      Effect.provideService(linkHandler, ExternalListAccountsService, accounts)
-    )
-    yield* router.add(
-      "GET",
-      "/api/link/:provider/callback",
-      Effect.provideService(
-        callbackHandler,
-        ExternalListAccountsService,
-        accounts
-      )
-    )
+    yield* router.add("GET", "/api/link/:provider", linkHandler)
+    yield* router.add("GET", "/api/link/:provider/callback", callbackHandler)
   })
-).pipe(Layer.provide(ExternalListAccountsService.Default))
+)
