@@ -44,7 +44,8 @@ import {
 import { cn } from "@workspace/ui/lib/utils"
 import * as Schema from "effect/Schema"
 import { Check, ChevronsUpDown, Search, X } from "lucide-react"
-import { useEffect, useId, useState } from "react"
+import { useId, useState } from "react"
+import { useForm } from "react-hook-form"
 import type { CatalogSearch } from "./search"
 
 const decodeSort = Schema.decodeUnknownSync(AnimeSortSchema)
@@ -119,6 +120,10 @@ const yearOptions = Array.from(
   { length: endYear - startYear + 1 },
   (_, index) => endYear - index
 )
+
+type CatalogSearchFormValues = {
+  q: string
+}
 
 const currentSeasonValue: AnimeSeason = (() => {
   const month = new Date().getMonth() + 1
@@ -384,14 +389,13 @@ export function SeriesCatalogFilters({
   showAdvanced?: boolean
 }) {
   const searchId = useId()
-  const [query, setQuery] = useState(search.q ?? "")
-
-  useEffect(() => {
-    setQuery(search.q ?? "")
-  }, [search.q])
+  const form = useForm<CatalogSearchFormValues>({
+    values: { q: search.q ?? "" },
+  })
+  const query = form.watch("q")
 
   const resetFilters = () => {
-    setQuery("")
+    form.reset({ q: "" })
     updateSearch({
       q: undefined,
       format: undefined,
@@ -406,10 +410,9 @@ export function SeriesCatalogFilters({
   return (
     <form
       className={cn("flex flex-col gap-6", className)}
-      onSubmit={(event) => {
-        event.preventDefault()
-        updateSearch({ q: query || undefined })
-      }}
+      onSubmit={form.handleSubmit((values) =>
+        updateSearch({ q: values.q || undefined })
+      )}
     >
       {showSearch ? (
         <div className="grid gap-4 xl:grid-cols-[minmax(0,1.5fr)_auto] xl:items-end">
@@ -421,8 +424,7 @@ export function SeriesCatalogFilters({
               </InputGroupAddon>
               <InputGroupInput
                 id={searchId}
-                value={query}
-                onChange={(event) => setQuery(event.target.value)}
+                {...form.register("q")}
                 placeholder="Search by title, alternate name, or franchise"
               />
               {query ? (
@@ -430,7 +432,7 @@ export function SeriesCatalogFilters({
                   <InputGroupButton
                     aria-label="Clear search"
                     onClick={() => {
-                      setQuery("")
+                      form.setValue("q", "")
                       updateSearch({ q: undefined })
                     }}
                   >

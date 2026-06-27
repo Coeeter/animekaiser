@@ -1,17 +1,34 @@
 import { useNavigate, useRouter } from "@tanstack/react-router"
 import { Button } from "@workspace/ui/components/button"
-import { Field, FieldLabel } from "@workspace/ui/components/field"
+import { FieldGroup } from "@workspace/ui/components/field"
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@workspace/ui/components/form"
 import { Input } from "@workspace/ui/components/input"
 import { Spinner } from "@workspace/ui/components/spinner"
 import { Trash2 } from "lucide-react"
-import type { FormEvent } from "react"
-import { useState } from "react"
+import { useForm } from "react-hook-form"
 import { toast } from "sonner"
 import type { AppUser } from "../../lib/auth-client"
 import { authClient, displayUsername } from "../../lib/auth-client"
 import { errorMessage } from "../../lib/error"
 import { deleteAccount as deleteKaiserAccount } from "../profile/profile-rpc"
 import { AuthRequired, PanelCard } from "./settings-shared"
+
+type ChangePasswordValues = {
+  currentPassword: string
+  newPassword: string
+  confirmation: string
+}
+
+type DeleteAccountValues = {
+  deletePassword: string
+}
 
 export function AccountPanel({
   user,
@@ -22,56 +39,53 @@ export function AccountPanel({
 }) {
   const router = useRouter()
   const navigate = useNavigate()
-  const [passwordPending, setPasswordPending] = useState(false)
-  const [deletePending, setDeletePending] = useState(false)
+  const passwordForm = useForm<ChangePasswordValues>({
+    defaultValues: {
+      currentPassword: "",
+      newPassword: "",
+      confirmation: "",
+    },
+  })
+  const deleteForm = useForm<DeleteAccountValues>({
+    defaultValues: { deletePassword: "" },
+  })
   if (!user) return <AuthRequired />
 
-  const changePassword = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault()
-    const form = new FormData(event.currentTarget)
-    const currentPassword = String(form.get("currentPassword") ?? "")
-    const newPassword = String(form.get("newPassword") ?? "")
-    const confirmation = String(form.get("confirmation") ?? "")
-    if (newPassword !== confirmation)
-      return toast.error("Passwords do not match.")
-    setPasswordPending(true)
+  const changePassword = async (values: ChangePasswordValues) => {
+    if (values.newPassword !== values.confirmation) {
+      passwordForm.setError("confirmation", {
+        message: "Passwords do not match.",
+      })
+      return
+    }
     try {
       const result = await authClient.changePassword({
-        currentPassword,
-        newPassword,
+        currentPassword: values.currentPassword,
+        newPassword: values.newPassword,
         revokeOtherSessions: false,
       })
       if (result.error) throw result.error
-      event.currentTarget.reset()
+      passwordForm.reset()
       toast.success("Password updated.")
     } catch (reason) {
       toast.error(errorMessage(reason, "Unable to change password"))
-    } finally {
-      setPasswordPending(false)
     }
   }
 
-  const deleteAccount = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault()
+  const deleteAccount = async (values: DeleteAccountValues) => {
     if (
       !window.confirm(
         "Delete your AnimeKaiser account permanently? This cannot be undone."
       )
     )
       return
-    const password = String(
-      new FormData(event.currentTarget).get("deletePassword") ?? ""
-    )
-    setDeletePending(true)
     try {
-      await deleteKaiserAccount(password)
+      await deleteKaiserAccount(values.deletePassword)
       await authClient.signOut()
       await router.invalidate()
       await navigate({ to: "/" })
     } catch (reason) {
       toast.error(errorMessage(reason, "Unable to delete account"))
-    } finally {
-      setDeletePending(false)
     }
   }
 
@@ -112,92 +126,136 @@ export function AccountPanel({
         </PanelCard>
       </div>
       <PanelCard>
-        <form className="flex flex-col gap-4" onSubmit={changePassword}>
-          <div>
-            <h3 className="font-semibold">Change password</h3>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Use at least eight characters.
-            </p>
-          </div>
-          <div className="grid gap-4 lg:grid-cols-3">
-            <Field>
-              <FieldLabel htmlFor="current-password">
-                Current password
-              </FieldLabel>
-              <Input
-                id="current-password"
+        <Form {...passwordForm}>
+          <form
+            className="flex flex-col gap-4"
+            onSubmit={passwordForm.handleSubmit(changePassword)}
+          >
+            <div>
+              <h3 className="font-semibold">Change password</h3>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Use at least eight characters.
+              </p>
+            </div>
+            <FieldGroup className="grid gap-4 lg:grid-cols-3">
+              <FormField
+                control={passwordForm.control}
                 name="currentPassword"
-                type="password"
-                autoComplete="current-password"
-                required
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Current password</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="password"
+                        autoComplete="current-password"
+                        required
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
               />
-            </Field>
-            <Field>
-              <FieldLabel htmlFor="new-password">New password</FieldLabel>
-              <Input
-                id="new-password"
+              <FormField
+                control={passwordForm.control}
                 name="newPassword"
-                type="password"
-                autoComplete="new-password"
-                minLength={8}
-                required
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>New password</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="password"
+                        autoComplete="new-password"
+                        minLength={8}
+                        required
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
               />
-            </Field>
-            <Field>
-              <FieldLabel htmlFor="confirm-password">
-                Confirm password
-              </FieldLabel>
-              <Input
-                id="confirm-password"
+              <FormField
+                control={passwordForm.control}
                 name="confirmation"
-                type="password"
-                autoComplete="new-password"
-                minLength={8}
-                required
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Confirm password</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="password"
+                        autoComplete="new-password"
+                        minLength={8}
+                        required
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
               />
-            </Field>
-          </div>
-          <Button className="w-fit" disabled={passwordPending} type="submit">
-            {passwordPending ? <Spinner data-icon="inline-start" /> : null}
-            Update password
-          </Button>
-        </form>
+            </FieldGroup>
+            <Button
+              className="w-fit"
+              disabled={passwordForm.formState.isSubmitting}
+              type="submit"
+            >
+              {passwordForm.formState.isSubmitting ? (
+                <Spinner data-icon="inline-start" />
+              ) : null}
+              Update password
+            </Button>
+          </form>
+        </Form>
       </PanelCard>
       <PanelCard className="border-destructive/30">
-        <form className="flex flex-col gap-4" onSubmit={deleteAccount}>
-          <div>
-            <h3 className="font-semibold text-destructive">Delete account</h3>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Permanently remove your account and profile.
-            </p>
-          </div>
-          <Field>
-            <FieldLabel htmlFor="delete-password">
-              Confirm with your password
-            </FieldLabel>
-            <Input
-              className="max-w-sm"
-              id="delete-password"
-              name="deletePassword"
-              type="password"
-              autoComplete="current-password"
-              required
-            />
-          </Field>
-          <Button
-            className="w-fit"
-            variant="destructive"
-            disabled={deletePending}
-            type="submit"
+        <Form {...deleteForm}>
+          <form
+            className="flex flex-col gap-4"
+            onSubmit={deleteForm.handleSubmit(deleteAccount)}
           >
-            {deletePending ? (
-              <Spinner data-icon="inline-start" />
-            ) : (
-              <Trash2 data-icon="inline-start" />
-            )}
-            Delete account
-          </Button>
-        </form>
+            <div>
+              <h3 className="font-semibold text-destructive">
+                Delete account
+              </h3>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Permanently remove your account and profile.
+              </p>
+            </div>
+            <FormField
+              control={deleteForm.control}
+              name="deletePassword"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Confirm with your password</FormLabel>
+                  <FormControl>
+                    <Input
+                      className="max-w-sm"
+                      type="password"
+                      autoComplete="current-password"
+                      required
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <Button
+              className="w-fit"
+              variant="destructive"
+              disabled={deleteForm.formState.isSubmitting}
+              type="submit"
+            >
+              {deleteForm.formState.isSubmitting ? (
+                <Spinner data-icon="inline-start" />
+              ) : (
+                <Trash2 data-icon="inline-start" />
+              )}
+              Delete account
+            </Button>
+          </form>
+        </Form>
       </PanelCard>
     </div>
   )

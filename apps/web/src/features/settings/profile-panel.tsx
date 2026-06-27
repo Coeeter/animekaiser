@@ -6,14 +6,19 @@ import {
 } from "@workspace/ui/components/avatar"
 import { Button } from "@workspace/ui/components/button"
 import {
-  Field,
   FieldDescription,
-  FieldLabel,
 } from "@workspace/ui/components/field"
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+} from "@workspace/ui/components/form"
 import { Input } from "@workspace/ui/components/input"
 import { Textarea } from "@workspace/ui/components/textarea"
-import type { FormEvent } from "react"
 import { useEffect, useRef, useState } from "react"
+import { useForm } from "react-hook-form"
 import { toast } from "sonner"
 import type { AppUser } from "../../lib/auth-client"
 import {
@@ -30,6 +35,14 @@ import {
 } from "../profile/profile-rpc"
 import { AuthRequired, PanelCard } from "./settings-shared"
 
+type UsernameFormValues = {
+  username: string
+}
+
+type BioFormValues = {
+  description: string
+}
+
 export function ProfilePanel({
   open,
   user,
@@ -44,6 +57,12 @@ export function ProfilePanel({
     ReturnType<typeof loadOwnProfile>
   > | null>(null)
   const [pending, setPending] = useState<string | null>(null)
+  const usernameForm = useForm<UsernameFormValues>({
+    values: { username: user ? displayUsername(user) : "" },
+  })
+  const bioForm = useForm<BioFormValues>({
+    values: { description: profile?.profile.description ?? "" },
+  })
 
   const refresh = async () => {
     const next = await loadOwnProfile()
@@ -94,12 +113,8 @@ export function ProfilePanel({
     }
   }
 
-  const updateUsername = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault()
-    const username = String(
-      new FormData(event.currentTarget).get("username") ?? ""
-    ).trim()
-    setPending("username")
+  const updateUsername = async (values: UsernameFormValues) => {
+    const username = values.username.trim()
     try {
       const result = await authClient.updateUser({ username, name: username })
       if (result.error) throw result.error
@@ -107,25 +122,17 @@ export function ProfilePanel({
       toast.success("Username updated.")
     } catch (reason) {
       toast.error(errorMessage(reason, "Unable to update username"))
-    } finally {
-      setPending(null)
     }
   }
 
-  const updateBio = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault()
-    const description = String(
-      new FormData(event.currentTarget).get("description") ?? ""
-    ).trim()
-    setPending("bio")
+  const updateBio = async (values: BioFormValues) => {
+    const description = values.description.trim()
     try {
       setProfile(await saveProfile(description || null))
       await router.invalidate()
       toast.success("Bio updated.")
     } catch (reason) {
       toast.error(errorMessage(reason, "Unable to update bio"))
-    } finally {
-      setPending(null)
     }
   }
 
@@ -222,57 +229,82 @@ export function ProfilePanel({
         </div>
       </PanelCard>
       <PanelCard>
-        <form className="flex flex-col gap-4" onSubmit={updateUsername}>
-          <div>
-            <h3 className="font-semibold">Username</h3>
-            <p className="text-sm text-muted-foreground">
-              Used across the app and in your profile URL.
-            </p>
-          </div>
-          <Field>
-            <FieldLabel htmlFor="settings-username">Username</FieldLabel>
-            <Input
-              className="max-w-sm"
-              id="settings-username"
+        <Form {...usernameForm}>
+          <form
+            className="flex flex-col gap-4"
+            onSubmit={usernameForm.handleSubmit(updateUsername)}
+          >
+            <div>
+              <h3 className="font-semibold">Username</h3>
+              <p className="text-sm text-muted-foreground">
+                Used across the app and in your profile URL.
+              </p>
+            </div>
+            <FormField
+              control={usernameForm.control}
               name="username"
-              defaultValue={displayUsername(user)}
-              minLength={3}
-              maxLength={30}
-              pattern="[A-Za-z0-9_]+"
-              required
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Username</FormLabel>
+                  <FormControl>
+                    <Input
+                      className="max-w-sm"
+                      minLength={3}
+                      maxLength={30}
+                      pattern="[A-Za-z0-9_]+"
+                      required
+                      {...field}
+                    />
+                  </FormControl>
+                  <FieldDescription>
+                    Letters, numbers, and underscores only.
+                  </FieldDescription>
+                </FormItem>
+              )}
             />
-            <FieldDescription>
-              Letters, numbers, and underscores only.
-            </FieldDescription>
-          </Field>
-          <Button className="w-fit" disabled={pending === "username"}>
-            Save username
-          </Button>
-        </form>
+            <Button
+              className="w-fit"
+              disabled={usernameForm.formState.isSubmitting}
+              type="submit"
+            >
+              Save username
+            </Button>
+          </form>
+        </Form>
       </PanelCard>
       <PanelCard>
-        <form className="flex flex-col gap-4" onSubmit={updateBio}>
-          <div>
-            <h3 className="font-semibold">Bio</h3>
-            <p className="text-sm text-muted-foreground">
-              A short description shown on your profile.
-            </p>
-          </div>
-          <Field>
-            <FieldLabel htmlFor="profile-bio">Description</FieldLabel>
-            <Textarea
-              key={profile?.profile.description}
-              id="profile-bio"
+        <Form {...bioForm}>
+          <form
+            className="flex flex-col gap-4"
+            onSubmit={bioForm.handleSubmit(updateBio)}
+          >
+            <div>
+              <h3 className="font-semibold">Bio</h3>
+              <p className="text-sm text-muted-foreground">
+                A short description shown on your profile.
+              </p>
+            </div>
+            <FormField
+              control={bioForm.control}
               name="description"
-              defaultValue={profile?.profile.description ?? ""}
-              maxLength={300}
-              rows={5}
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Description</FormLabel>
+                  <FormControl>
+                    <Textarea maxLength={300} rows={5} {...field} />
+                  </FormControl>
+                </FormItem>
+              )}
             />
-          </Field>
-          <Button className="w-fit" disabled={pending === "bio"}>
-            Save bio
-          </Button>
-        </form>
+            <Button
+              className="w-fit"
+              disabled={bioForm.formState.isSubmitting}
+              type="submit"
+            >
+              Save bio
+            </Button>
+          </form>
+        </Form>
       </PanelCard>
     </div>
   )

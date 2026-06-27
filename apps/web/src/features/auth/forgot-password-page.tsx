@@ -1,38 +1,52 @@
 import { useNavigate } from "@tanstack/react-router"
 import { Button } from "@workspace/ui/components/button"
 import {
-  Field,
   FieldError,
   FieldGroup,
-  FieldLabel,
 } from "@workspace/ui/components/field"
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@workspace/ui/components/form"
 import { Input } from "@workspace/ui/components/input"
 import {
   InputOTP,
   InputOTPGroup,
   InputOTPSlot,
 } from "@workspace/ui/components/input-otp"
-import type { FormEvent } from "react"
 import { useState } from "react"
+import { useForm } from "react-hook-form"
 import { toast } from "sonner"
 import { authClient } from "../../lib/auth-client"
 import { errorMessage } from "../../lib/error"
 import { AuthFooter, SubmitButton } from "./auth-shared"
 
+type ResetRequestValues = {
+  email: string
+}
+
+type ResetPasswordValues = {
+  otp: string
+  password: string
+  confirmation: string
+}
+
 export function ForgotPasswordPage() {
   const navigate = useNavigate()
   const [email, setEmail] = useState<string | null>(null)
-  const [otp, setOtp] = useState("")
-  const [pending, setPending] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const requestForm = useForm<ResetRequestValues>({
+    defaultValues: { email: "" },
+  })
+  const resetForm = useForm<ResetPasswordValues>({
+    defaultValues: { otp: "", password: "", confirmation: "" },
+  })
 
-  const request = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault()
-    const value = String(
-      new FormData(event.currentTarget).get("email") ?? ""
-    ).trim()
-    setPending(true)
-    setError(null)
+  const request = async (values: ResetRequestValues) => {
+    const value = values.email.trim()
     try {
       const result = await authClient.emailOtp.requestPasswordReset({
         email: value,
@@ -40,117 +54,166 @@ export function ForgotPasswordPage() {
       if (result.error) throw result.error
       setEmail(value)
     } catch (cause) {
-      setError(errorMessage(cause, "Unable to send reset code"))
-    } finally {
-      setPending(false)
+      requestForm.setError("root", {
+        message: errorMessage(cause, "Unable to send reset code"),
+      })
     }
   }
 
-  const reset = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault()
+  const reset = async (values: ResetPasswordValues) => {
     if (!email) return
-    const data = new FormData(event.currentTarget)
-    const password = String(data.get("password") ?? "")
-    if (password !== String(data.get("confirmation") ?? "")) {
-      setError("Passwords do not match")
+    if (values.password !== values.confirmation) {
+      resetForm.setError("confirmation", { message: "Passwords do not match" })
       return
     }
-    setPending(true)
-    setError(null)
     try {
       const result = await authClient.emailOtp.resetPassword({
         email,
-        otp,
-        password,
+        otp: values.otp,
+        password: values.password,
       })
       if (result.error) throw result.error
       toast.success("Password reset. You can log in now.")
       await navigate({ to: "/login", search: { redirect: undefined } })
     } catch (cause) {
-      setError(errorMessage(cause, "Unable to reset password"))
-    } finally {
-      setPending(false)
+      resetForm.setError("root", {
+        message: errorMessage(cause, "Unable to reset password"),
+      })
     }
   }
 
   return (
     <div className="w-full max-w-sm rounded-3xl border bg-card p-6 shadow-sm">
-      <form className="flex flex-col gap-6" onSubmit={email ? reset : request}>
-        <div className="text-center">
-          <h1 className="font-heading text-2xl font-bold">
-            Reset your password
-          </h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            {email
-              ? `Enter the code sent to ${email}.`
-              : "We’ll email you a reset code."}
-          </p>
-        </div>
-        {!email ? (
-          <Field>
-            <FieldLabel htmlFor="reset-email">Email</FieldLabel>
-            <Input
-              id="reset-email"
+      <div className="text-center">
+        <h1 className="font-heading text-2xl font-bold">
+          Reset your password
+        </h1>
+        <p className="mt-1 text-sm text-muted-foreground">
+          {email
+            ? `Enter the code sent to ${email}.`
+            : "We’ll email you a reset code."}
+        </p>
+      </div>
+      {!email ? (
+        <Form {...requestForm}>
+          <form
+            className="mt-6 flex flex-col gap-6"
+            onSubmit={requestForm.handleSubmit(request)}
+          >
+            <FormField
+              control={requestForm.control}
               name="email"
-              type="email"
-              autoComplete="email"
-              required
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Email</FormLabel>
+                  <FormControl>
+                    <Input
+                      type="email"
+                      autoComplete="email"
+                      required
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
             />
-          </Field>
-        ) : (
-          <FieldGroup>
-            <Field>
-              <FieldLabel htmlFor="reset-code">Reset code</FieldLabel>
-              <InputOTP
-                id="reset-code"
-                maxLength={6}
-                value={otp}
-                onChange={setOtp}
-              >
-                <InputOTPGroup>
-                  {Array.from({ length: 6 }, (_, index) => (
-                    <InputOTPSlot key={index} index={index} />
-                  ))}
-                </InputOTPGroup>
-              </InputOTP>
-            </Field>
-            <Field>
-              <FieldLabel htmlFor="reset-password">New password</FieldLabel>
-              <Input
-                id="reset-password"
+            {requestForm.formState.errors.root?.message ? (
+              <FieldError>
+                {requestForm.formState.errors.root.message}
+              </FieldError>
+            ) : null}
+            <SubmitButton pending={requestForm.formState.isSubmitting}>
+              {requestForm.formState.isSubmitting ? "Working…" : "Send reset code"}
+            </SubmitButton>
+            <AuthFooter prompt="Back to" action="login" to="/login" />
+          </form>
+        </Form>
+      ) : (
+        <Form {...resetForm}>
+          <form
+            className="mt-6 flex flex-col gap-6"
+            onSubmit={resetForm.handleSubmit(reset)}
+          >
+            <FieldGroup>
+              <FormField
+                control={resetForm.control}
+                name="otp"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Reset code</FormLabel>
+                    <FormControl>
+                      <InputOTP maxLength={6} {...field}>
+                        <InputOTPGroup>
+                          {Array.from({ length: 6 }, (_, index) => (
+                            <InputOTPSlot key={index} index={index} />
+                          ))}
+                        </InputOTPGroup>
+                      </InputOTP>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={resetForm.control}
                 name="password"
-                type="password"
-                autoComplete="new-password"
-                minLength={8}
-                required
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>New password</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="password"
+                        autoComplete="new-password"
+                        minLength={8}
+                        required
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
               />
-            </Field>
-            <Field>
-              <FieldLabel htmlFor="reset-confirmation">
-                Confirm password
-              </FieldLabel>
-              <Input
-                id="reset-confirmation"
+              <FormField
+                control={resetForm.control}
                 name="confirmation"
-                type="password"
-                autoComplete="new-password"
-                minLength={8}
-                required
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Confirm password</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="password"
+                        autoComplete="new-password"
+                        minLength={8}
+                        required
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
               />
-            </Field>
-          </FieldGroup>
-        )}
-        {error ? <FieldError>{error}</FieldError> : null}
-        <SubmitButton pending={pending}>
-          {pending ? "Working…" : email ? "Reset password" : "Send reset code"}
-        </SubmitButton>
-        {email ? (
-          <Button type="button" variant="ghost" onClick={() => setEmail(null)}>
-            Use another email
-          </Button>
-        ) : null}
-        <AuthFooter prompt="Back to" action="login" to="/login" />
-      </form>
+            </FieldGroup>
+            {resetForm.formState.errors.root?.message ? (
+              <FieldError>{resetForm.formState.errors.root.message}</FieldError>
+            ) : null}
+            <SubmitButton pending={resetForm.formState.isSubmitting}>
+              {resetForm.formState.isSubmitting ? "Working…" : "Reset password"}
+            </SubmitButton>
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => {
+                setEmail(null)
+                resetForm.reset()
+              }}
+            >
+              Use another email
+            </Button>
+            <AuthFooter prompt="Back to" action="login" to="/login" />
+          </form>
+        </Form>
+      )}
     </div>
   )
 }

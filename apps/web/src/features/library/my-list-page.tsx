@@ -43,7 +43,11 @@ import {
 import { useState } from "react"
 import { toast } from "sonner"
 import { PageHero } from "../../components/page-hero"
-import { clearLibraryAtom, libraryPageAtom } from "./atoms"
+import {
+  clearLibraryAtom,
+  libraryPageAtom,
+  libraryReactivityKeys,
+} from "./atoms"
 import { librarySorts, libraryStatuses } from "./constants"
 import { startLibraryImport, watchLibraryImport } from "./import-rpc"
 import {
@@ -409,7 +413,10 @@ function ClearLibraryPanel({
   const clearList = async () => {
     setPending(true)
     try {
-      const result = await clear({ payload: void 0 })
+      const result = await clear({
+        payload: void 0,
+        reactivityKeys: [libraryReactivityKeys.all],
+      })
       refresh()
       toast.success(`Removed ${result.removedCount} library entries.`)
       setOpen(false)
@@ -446,24 +453,26 @@ function ClearLibraryPanel({
               not changed.
             </DialogDescription>
           </DialogHeader>
-          <DialogFooter>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setOpen(false)}
-            >
-              Cancel
-            </Button>
-            <Button
-              type="button"
-              variant="destructive"
-              disabled={pending}
-              onClick={() => void clearList()}
-            >
-              <Trash2 data-icon="inline-start" />
-              {pending ? "Clearing..." : "Clear list"}
-            </Button>
-          </DialogFooter>
+          <form
+            onSubmit={(event) => {
+              event.preventDefault()
+              void clearList()
+            }}
+          >
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setOpen(false)}
+              >
+                Cancel
+              </Button>
+              <Button type="submit" variant="destructive" disabled={pending}>
+                <Trash2 data-icon="inline-start" />
+                {pending ? "Clearing..." : "Clear list"}
+              </Button>
+            </DialogFooter>
+          </form>
         </DialogContent>
       </Dialog>
     </section>

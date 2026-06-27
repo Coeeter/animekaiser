@@ -8,15 +8,34 @@ import type {
 } from "@workspace/domain"
 import { KaiserAtomRpc } from "../../lib/rpc-client"
 
+export const libraryReactivityKeys = {
+  all: "library",
+  entry: (malId: number) => `library-entry:${malId}`,
+}
+
+export const libraryMutationKeys = (malId: number) => [
+  libraryReactivityKeys.all,
+  libraryReactivityKeys.entry(malId),
+]
+
 export const libraryPageAtom = (
   status: LibraryStatus | undefined,
   sort: LibrarySort,
   page: number,
   perPage: number
-) => KaiserAtomRpc.query("GetLibraryPage", { status, sort, page, perPage })
+) =>
+  KaiserAtomRpc.query(
+    "GetLibraryPage",
+    { status, sort, page, perPage },
+    { reactivityKeys: [libraryReactivityKeys.all] }
+  )
 
 export const libraryEntryAtom = (malId: number) =>
-  KaiserAtomRpc.query("GetLibraryEntry", { malId })
+  KaiserAtomRpc.query(
+    "GetLibraryEntry",
+    { malId },
+    { reactivityKeys: [libraryReactivityKeys.entry(malId)] }
+  )
 
 export const syncEventsAtom = (
   page: number,

@@ -4,6 +4,7 @@ import { LibraryStatus } from "@workspace/domain"
 import type { ExternalListProvider, LibraryEntry } from "@workspace/domain"
 import { Badge } from "@workspace/ui/components/badge"
 import { Button } from "@workspace/ui/components/button"
+import { Checkbox } from "@workspace/ui/components/checkbox"
 import {
   Dialog,
   DialogContent,
@@ -12,7 +13,18 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@workspace/ui/components/dialog"
-import { Field, FieldLabel } from "@workspace/ui/components/field"
+import {
+  FieldGroup,
+  FieldLegend,
+  FieldSet,
+} from "@workspace/ui/components/field"
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+} from "@workspace/ui/components/form"
 import { Input } from "@workspace/ui/components/input"
 import {
   Select,
@@ -25,12 +37,24 @@ import {
 import { Textarea } from "@workspace/ui/components/textarea"
 import * as Schema from "effect/Schema"
 import { Edit3, Star, Trash2 } from "lucide-react"
-import { useState } from "react"
+import { useId } from "react"
+import { useForm } from "react-hook-form"
 import { toast } from "sonner"
 import { AnimeTitle } from "../anime/anime-title"
 import { animeTitlePreferenceAtom, getAnimeTitle } from "../anime/title"
-import { removeLibraryAtom, upsertLibraryAtom } from "./atoms"
+import {
+  libraryMutationKeys,
+  removeLibraryAtom,
+  upsertLibraryAtom,
+} from "./atoms"
 import { libraryStatuses } from "./constants"
+import {
+  decodeLibraryProgress,
+  decodeLibraryScore,
+  libraryDeleteFormDefaults,
+  libraryEntryFormDefaults,
+} from "./form"
+import type { LibraryDeleteFormValues, LibraryEntryFormValues } from "./form"
 
 const libraryStatusLabel = (status: LibraryStatus) =>
   libraryStatuses.find((item) => item.value === status)?.label ?? status
@@ -123,14 +147,19 @@ export function DeleteLibraryDialog({
   onDeleted: () => void
 }) {
   const remove = useAtomSet(removeLibraryAtom, { mode: "promise" })
-  const [mal, setMal] = useState(false)
-  const [anilist, setAniList] = useState(false)
-  const submit = async () => {
+  const formId = useId()
+  const form = useForm<LibraryDeleteFormValues>({
+    values: libraryDeleteFormDefaults(),
+  })
+  const submit = async (values: LibraryDeleteFormValues) => {
     const providers: Array<ExternalListProvider> = []
-    if (mal) providers.push("mal")
-    if (anilist) providers.push("anilist")
+    if (values.mal) providers.push("mal")
+    if (values.anilist) providers.push("anilist")
     try {
-      await remove({ payload: { malId: entry.malId, providers } })
+      await remove({
+        payload: { malId: entry.malId, providers },
+        reactivityKeys: libraryMutationKeys(entry.malId),
+      })
       toast.success(
         providers.length
           ? "Removed locally; external deletes queued"
@@ -151,29 +180,63 @@ export function DeleteLibraryDialog({
             optional and explicit.
           </DialogDescription>
         </DialogHeader>
-        <div className="grid gap-3 rounded-xl border p-4">
-          <label className="flex items-center gap-3 text-sm">
-            <input
-              type="checkbox"
-              checked={mal}
-              onChange={(event) => setMal(event.target.checked)}
-            />
-            Also delete from MyAnimeList
-          </label>
-          <label className="flex items-center gap-3 text-sm">
-            <input
-              type="checkbox"
-              checked={anilist}
-              onChange={(event) => setAniList(event.target.checked)}
-            />
-            Also delete from AniList
-          </label>
-        </div>
+        <Form {...form}>
+          <form
+            className="rounded-xl border p-4"
+            id={formId}
+            onSubmit={form.handleSubmit(submit)}
+          >
+            <FieldSet>
+              <FieldLegend variant="label">External delete</FieldLegend>
+              <FieldGroup className="gap-3">
+                <FormField
+                  control={form.control}
+                  name="mal"
+                  render={({ field }) => (
+                    <FormItem orientation="horizontal">
+                      <FormControl>
+                        <Checkbox
+                          checked={field.value}
+                          onCheckedChange={(checked) =>
+                            field.onChange(checked === true)
+                          }
+                        />
+                      </FormControl>
+                      <FormLabel>Also delete from MyAnimeList</FormLabel>
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="anilist"
+                  render={({ field }) => (
+                    <FormItem orientation="horizontal">
+                      <FormControl>
+                        <Checkbox
+                          checked={field.value}
+                          onCheckedChange={(checked) =>
+                            field.onChange(checked === true)
+                          }
+                        />
+                      </FormControl>
+                      <FormLabel>Also delete from AniList</FormLabel>
+                    </FormItem>
+                  )}
+                />
+              </FieldGroup>
+            </FieldSet>
+          </form>
+        </Form>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
-          <Button variant="destructive" onClick={() => void submit()}>
+          <Button
+            disabled={form.formState.isSubmitting}
+            form={formId}
+            type="submit"
+            variant="destructive"
+          >
             Remove title
           </Button>
         </DialogFooter>
@@ -194,20 +257,21 @@ export function LibraryDialog({
   onSaved: () => void
 }) {
   const save = useAtomSet(upsertLibraryAtom, { mode: "promise" })
-  const [status, setStatus] = useState<LibraryStatus>(entry.status)
-  const [progress, setProgress] = useState(entry.progress)
-  const [score, setScore] = useState(entry.score?.toString() ?? "")
-  const [notes, setNotes] = useState(entry.notes ?? "")
-  const submit = async () => {
+  const formId = useId()
+  const form = useForm<LibraryEntryFormValues>({
+    values: libraryEntryFormDefaults(entry),
+  })
+  const submit = async (values: LibraryEntryFormValues) => {
     try {
       await save({
         payload: {
           anime: entry.anime,
-          status,
-          progress,
-          score: score ? Number(score) : null,
-          notes: notes.trim() || null,
+          status: values.status,
+          progress: decodeLibraryProgress(values.progress),
+          score: decodeLibraryScore(values.score),
+          notes: values.notes.trim() || null,
         },
+        reactivityKeys: libraryMutationKeys(entry.malId),
       })
       toast.success("Library entry updated")
       onSaved()
@@ -224,63 +288,101 @@ export function LibraryDialog({
             Update your local status, progress, score, and notes.
           </DialogDescription>
         </DialogHeader>
-        <div className="grid gap-4">
-          <Field>
-            <FieldLabel htmlFor="edit-library-status">Status</FieldLabel>
-            <Select
-              value={status}
-              onValueChange={(value) =>
-                setStatus(Schema.decodeUnknownSync(LibraryStatus)(value))
-              }
-            >
-              <SelectTrigger id="edit-library-status" className="w-full">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectGroup>
-                  {libraryStatuses
-                    .filter(({ value }) => value !== "all")
-                    .map(({ value, label }) => (
-                      <SelectItem key={value} value={value}>
-                        {label}
-                      </SelectItem>
-                    ))}
-                </SelectGroup>
-              </SelectContent>
-            </Select>
-          </Field>
-          <label className="grid gap-1.5 text-sm">
-            Progress
-            <Input
-              type="number"
-              min={0}
-              value={progress}
-              onChange={(event) => setProgress(Number(event.target.value))}
-            />
-          </label>
-          <label className="grid gap-1.5 text-sm">
-            Score (0–100)
-            <Input
-              type="number"
-              min={0}
-              max={100}
-              value={score}
-              onChange={(event) => setScore(event.target.value)}
-            />
-          </label>
-          <label className="grid gap-1.5 text-sm">
-            Notes
-            <Textarea
-              value={notes}
-              onChange={(event) => setNotes(event.target.value)}
-            />
-          </label>
-        </div>
+        <Form {...form}>
+          <form
+            className="flex flex-col gap-4"
+            id={formId}
+            onSubmit={form.handleSubmit(submit)}
+          >
+            <FieldGroup className="gap-4">
+              <FormField
+                control={form.control}
+                name="status"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Status</FormLabel>
+                    <Select
+                      value={field.value}
+                      onValueChange={(value) =>
+                        field.onChange(
+                          Schema.decodeUnknownSync(LibraryStatus)(value)
+                        )
+                      }
+                    >
+                      <FormControl>
+                        <SelectTrigger className="w-full">
+                          <SelectValue />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectGroup>
+                          {libraryStatuses
+                            .filter(({ value }) => value !== "all")
+                            .map(({ value, label }) => (
+                              <SelectItem key={value} value={value}>
+                                {label}
+                              </SelectItem>
+                            ))}
+                        </SelectGroup>
+                      </SelectContent>
+                    </Select>
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="progress"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Progress</FormLabel>
+                    <FormControl>
+                      <Input type="number" min={0} {...field} />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="score"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Score (0–100)</FormLabel>
+                    <FormControl>
+                      <Input type="number" min={0} max={100} {...field} />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="notes"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Notes</FormLabel>
+                    <FormControl>
+                      <Textarea {...field} />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
+            </FieldGroup>
+          </form>
+        </Form>
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => onOpenChange(false)}
+          >
             Cancel
           </Button>
-          <Button onClick={() => void submit()}>Save changes</Button>
+          <Button
+            disabled={form.formState.isSubmitting}
+            form={formId}
+            type="submit"
+          >
+            Save changes
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
