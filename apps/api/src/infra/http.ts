@@ -19,7 +19,9 @@ export const CorsLive = Layer.unwrapEffect(
           "x-b3-traceid",
           "x-b3-spanid",
           "x-b3-sampled",
+          "Range",
         ],
+        exposedHeaders: ["Accept-Ranges", "Content-Length", "Content-Range"],
         credentials: true,
       })
     )

@@ -11,6 +11,7 @@ import { RedisKeyValueStoreLive } from "./infra/redis"
 import { RpcServerConfigLive } from "./infra/rpc"
 import { AuthRoutesLive } from "./routes/auth"
 import { ExternalListAccountsRoutesLive } from "./routes/external-lists"
+import { StreamingRoutesLive } from "./routes/streaming"
 import { LibraryImportWorkerLive } from "./workers/library-import"
 import { LibrarySyncWorkerLive } from "./workers/library-sync"
 import { ExternalListTokenRefreshWorkerLive } from "./workers/token-refresh"
@@ -18,6 +19,7 @@ import { ExternalListTokenRefreshWorkerLive } from "./workers/token-refresh"
 const RoutesLive = Layer.mergeAll(
   AuthRoutesLive,
   ExternalListAccountsRoutesLive,
+  StreamingRoutesLive,
   RpcLive,
   CorsLive
 )
