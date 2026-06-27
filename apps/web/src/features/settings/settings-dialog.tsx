@@ -37,6 +37,7 @@ import { AccountPanel } from "./account-panel"
 import { AppearancePanel } from "./appearance-panel"
 import { IntegrationsPanel } from "./integrations-panel"
 import { PasskeysPanel } from "./passkeys-panel"
+import { PlayerPanel } from "./player-panel"
 import { PrivacyPanel } from "./privacy-panel"
 import { ProfilePanel } from "./profile-panel"
 import { SessionsPanel } from "./sessions-panel"
@@ -142,6 +143,7 @@ function SectionContent({
   if (section === "Privacy") return <PrivacyPanel open={open} user={user} />
   if (section === "Appearance") return <AppearancePanel />
   if (section === "Site") return <SitePanel />
+  if (section === "Player") return <PlayerPanel />
   if (section === "Integrations")
     return <IntegrationsPanel user={user} onClose={onClose} />
   if (section === "Sessions") return <SessionsPanel open={open} user={user} />
