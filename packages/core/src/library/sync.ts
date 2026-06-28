@@ -75,6 +75,9 @@ const aniListStatus = (
   return "PLANNING"
 }
 
+const aniListScore = (score: number | null) =>
+  score === null ? null : score / 10
+
 const malStatus = (
   status: typeof librarySyncEvent.$inferSelect.payload.status
 ) => {
@@ -216,7 +219,7 @@ export class LibrarySyncService extends Effect.Service<LibrarySyncService>()(
             {
               mediaId: resolved.id,
               status: aniListStatus(event.payload.status),
-              score: event.payload.score,
+              score: aniListScore(event.payload.score),
               progress: event.payload.progress,
               notes: event.payload.notes,
             }
