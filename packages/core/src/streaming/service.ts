@@ -36,9 +36,27 @@ export class StreamingService extends Effect.Service<StreamingService>()(
           )
         )
 
+      const notReleasedMessage = "This anime has not been released yet."
+      const couldNotMatchMessage = "ProviderA could not match this anime."
+
       const listEpisodes = Effect.fn("StreamingService.listEpisodes")(
         function* (malId: number) {
           const anime = yield* getAnime(malId)
+          if (anime.status === "NOT_YET_RELEASED") {
+            return {
+              anime,
+              providers: [
+                {
+                  provider: "provider-a",
+                  providerAnimeId: null,
+                  status: "unavailable",
+                  message: notReleasedMessage,
+                  episodes: [],
+                },
+              ],
+            } as const
+          }
+
           const provider-a = yield* aniKoto.getEpisodes(anime).pipe(
             Effect.tapError((error) =>
               Effect.logWarning("ProviderA episode lookup failed", {
@@ -51,7 +69,7 @@ export class StreamingService extends Effect.Service<StreamingService>()(
                 provider: "provider-a",
                 providerAnimeId: null,
                 status:
-                  error.message === "ProviderA could not match this anime."
+                  error.message === couldNotMatchMessage
                     ? "unmatched"
                     : "unavailable",
                 message: error.message,
@@ -70,6 +88,14 @@ export class StreamingService extends Effect.Service<StreamingService>()(
         audio: StreamAudio
       ) {
         const anime = yield* getAnime(malId)
+        if (anime.status === "NOT_YET_RELEASED") {
+          return yield* new StreamProviderNotFoundError({
+            provider,
+            malId,
+            message: notReleasedMessage,
+          })
+        }
+
         const providers = {
           provider-a: () =>
             aniKoto.getPlayback(anime, episodeId, audio).pipe(
@@ -89,7 +115,7 @@ export class StreamingService extends Effect.Service<StreamingService>()(
                   never,
                   StreamProviderNotFoundError | StreamEpisodeNotFoundError
                 > =>
-                  error.message === "ProviderA could not match this anime."
+                  error.message === couldNotMatchMessage
                     ? Effect.fail(
                         new StreamProviderNotFoundError({
                           provider,
