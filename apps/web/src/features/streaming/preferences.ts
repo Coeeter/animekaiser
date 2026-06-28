@@ -2,17 +2,28 @@ import { Atom } from "@effect-atom/atom-react"
 import * as Option from "effect/Option"
 import * as Schema from "effect/Schema"
 
+export const VideoFit = Schema.Literal("contain", "cover", "fill")
+export type VideoFit = typeof VideoFit.Type
+
 export const PlayerPreferences = Schema.Struct({
-  autoplay: Schema.Boolean,
-  autoNext: Schema.Boolean,
-  syncLibraryOnFinish: Schema.Boolean,
+  autoplay: Schema.optionalWith(Schema.Boolean, { default: () => false }),
+  autoNext: Schema.optionalWith(Schema.Boolean, { default: () => false }),
+  autoSkipIntro: Schema.optionalWith(Schema.Boolean, { default: () => false }),
+  autoSkipOutro: Schema.optionalWith(Schema.Boolean, { default: () => false }),
+  syncLibraryOnFinish: Schema.optionalWith(Schema.Boolean, {
+    default: () => false,
+  }),
+  videoFit: Schema.optionalWith(VideoFit, { default: () => "contain" }),
 })
 export type PlayerPreferences = typeof PlayerPreferences.Type
 
 export const defaultPlayerPreferences: PlayerPreferences = {
   autoplay: false,
   autoNext: false,
+  autoSkipIntro: false,
+  autoSkipOutro: false,
   syncLibraryOnFinish: false,
+  videoFit: "contain",
 }
 
 export const playerPreferencesStorageKey = "kaiser-player-preferences"

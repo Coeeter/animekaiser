@@ -48,13 +48,15 @@ function DialogOverlay({
 function DialogContent({
   className,
   children,
+  portalContainer,
   showCloseButton = true,
   ...props
 }: React.ComponentProps<typeof DialogPrimitive.Content> & {
+  portalContainer?: HTMLElement | null
   showCloseButton?: boolean
 }) {
   return (
-    <DialogPortal>
+    <DialogPortal container={portalContainer}>
       <DialogOverlay />
       <DialogPrimitive.Content
         data-slot="dialog-content"

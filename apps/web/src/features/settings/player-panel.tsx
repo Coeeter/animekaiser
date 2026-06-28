@@ -4,10 +4,14 @@ import {
   playerPreferencesAtom,
   writeStoredPlayerPreferences,
 } from "../streaming/preferences"
-import type { PlayerPreferences } from "../streaming/preferences"
 import { PanelCard } from "./settings-shared"
 
-type PlayerPreferenceKey = keyof PlayerPreferences
+type PlayerPreferenceKey =
+  | "autoplay"
+  | "autoNext"
+  | "autoSkipIntro"
+  | "autoSkipOutro"
+  | "syncLibraryOnFinish"
 
 const preferenceRows: ReadonlyArray<{
   key: PlayerPreferenceKey
@@ -23,6 +27,16 @@ const preferenceRows: ReadonlyArray<{
     key: "autoNext",
     title: "Auto next episode",
     description: "Move to the next available episode when playback ends.",
+  },
+  {
+    key: "autoSkipIntro",
+    title: "Auto skip intro",
+    description: "Skip opening segments automatically when timing data exists.",
+  },
+  {
+    key: "autoSkipOutro",
+    title: "Auto skip outro",
+    description: "Skip ending segments automatically when timing data exists.",
   },
   {
     key: "syncLibraryOnFinish",
