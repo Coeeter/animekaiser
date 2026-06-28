@@ -12,8 +12,13 @@ import {
 } from "../features/anime/detail-page"
 
 const SeriesId = Schema.NumberFromString.pipe(Schema.int(), Schema.positive())
+const PositivePage = Schema.Union(Schema.Number, Schema.NumberFromString).pipe(
+  Schema.int(),
+  Schema.positive()
+)
 const SeriesSearch = Schema.Struct({
   tab: Schema.optional(AnimeDetailTab),
+  episodePage: Schema.optional(PositivePage),
 })
 const rootRoute = getRouteApi("__root__")
 
@@ -36,7 +41,21 @@ function AnimeDetailRoute() {
     void navigate({
       to: "/series/$id",
       params: { id },
-      search: { tab: tab === "episodes" ? undefined : tab },
+      search: {
+        tab: tab === "episodes" ? undefined : tab,
+        episodePage: tab === "episodes" ? search.episodePage : undefined,
+      },
+      replace: true,
+    })
+  }
+  const setEpisodePage = (episodePage: number) => {
+    void navigate({
+      to: "/series/$id",
+      params: { id },
+      search: {
+        tab: search.tab,
+        episodePage: episodePage === 1 ? undefined : episodePage,
+      },
       replace: true,
     })
   }
@@ -47,6 +66,8 @@ function AnimeDetailRoute() {
       initial={Route.useLoaderData()}
       isAuthenticated={session !== null}
       activeTab={activeTab}
+      episodePage={search.episodePage ?? 1}
+      onEpisodePageChange={setEpisodePage}
       onTabChange={setActiveTab}
     />
   )

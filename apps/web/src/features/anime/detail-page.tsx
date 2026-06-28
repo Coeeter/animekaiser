@@ -122,12 +122,16 @@ export function AnimeDetailPage({
   initial,
   isAuthenticated,
   activeTab,
+  episodePage,
+  onEpisodePageChange,
   onTabChange,
 }: {
   id: number
   initial: AnimeDetail
   isAuthenticated: boolean
   activeTab: AnimeDetailTab
+  episodePage: number
+  onEpisodePageChange: (page: number) => void
   onTabChange: (tab: AnimeDetailTab) => void
 }) {
   const result = useAtomValue(detailAtom(id))
@@ -152,6 +156,8 @@ export function AnimeDetailPage({
       libraryEntry={libraryEntry}
       isAuthenticated={isAuthenticated}
       activeTab={activeTab}
+      episodePage={episodePage}
+      onEpisodePageChange={onEpisodePageChange}
       onTabChange={onTabChange}
     />
   )
@@ -162,12 +168,16 @@ function SeriesDetail({
   libraryEntry,
   isAuthenticated,
   activeTab,
+  episodePage,
+  onEpisodePageChange,
   onTabChange,
 }: {
   anime: AnimeDetail
   libraryEntry: LibraryEntry | null
   isAuthenticated: boolean
   activeTab: AnimeDetailTab
+  episodePage: number
+  onEpisodePageChange: (page: number) => void
   onTabChange: (tab: AnimeDetailTab) => void
 }) {
   const description = stripHtml(anime.description)
@@ -464,7 +474,11 @@ function SeriesDetail({
                     </TabsTrigger>
                   </TabsList>
                   <TabsContent value="episodes">
-                    <EpisodesPanel anime={anime} />
+                    <EpisodesPanel
+                      anime={anime}
+                      page={episodePage}
+                      onPageChange={onEpisodePageChange}
+                    />
                   </TabsContent>
                   <TabsContent value="relations">
                     <RelationsPanel relations={relations} />
