@@ -459,11 +459,11 @@ function SeriesDetail({
                   onValueChange={(value) =>
                     onTabChange(decodeAnimeDetailTab(value))
                   }
-                  className="gap-4"
+                  className="max-w-full min-w-0 gap-4"
                 >
                   <TabsList
                     variant="line"
-                    className="w-full justify-start overflow-x-auto"
+                    className="max-w-full justify-start overflow-x-auto"
                   >
                     <TabsTrigger value="episodes">Episodes</TabsTrigger>
                     <TabsTrigger value="relations" disabled={!hasRelations}>

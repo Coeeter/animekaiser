@@ -202,8 +202,8 @@ function LibraryStatusTabs({
   value: LibraryStatus | null
 }) {
   return (
-    <Tabs value={value ?? "all"} className="w-full">
-      <TabsList className="h-auto w-full justify-start overflow-x-auto border bg-card p-1">
+    <Tabs value={value ?? "all"} className="max-w-full min-w-0">
+      <TabsList className="h-auto max-w-full justify-start overflow-x-auto border bg-card p-1">
         {libraryStatuses.map((status) => (
           <TabsTrigger key={status.value} value={status.value} asChild>
             <Link

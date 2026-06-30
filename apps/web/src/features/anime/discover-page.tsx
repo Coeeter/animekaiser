@@ -89,8 +89,8 @@ export function DiscoverPage({
         description="Browse trending shows, seasonal picks, top rated titles, and upcoming releases."
       />
 
-      <Tabs value={search.tab} className="w-full">
-        <TabsList className="mb-4 h-auto w-full justify-start overflow-x-auto border bg-card p-1">
+      <Tabs value={search.tab} className="max-w-full min-w-0">
+        <TabsList className="mb-4 h-auto max-w-full justify-start overflow-x-auto border bg-card p-1">
           {tabs.map(({ value, label }) => (
             <TabsTrigger key={value} value={value} asChild>
               <Link
