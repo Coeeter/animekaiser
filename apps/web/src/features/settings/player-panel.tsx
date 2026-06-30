@@ -1,9 +1,10 @@
-import { useAtom } from "@effect-atom/atom-react"
+import { useAtomSet, useAtomValue } from "@effect-atom/atom-react"
 import { Switch } from "@workspace/ui/components/switch"
 import {
   playerPreferencesAtom,
-  writeStoredPlayerPreferences,
+  updatePlayerPreferencesAtom,
 } from "../streaming/preferences"
+import { SubtitleSettings } from "../streaming/subtitle-settings"
 import { PanelCard } from "./settings-shared"
 
 type PlayerPreferenceKey =
@@ -40,19 +41,17 @@ const preferenceRows: ReadonlyArray<{
   },
   {
     key: "syncLibraryOnFinish",
-    title: "Sync library progress",
-    description:
-      "Update your local library progress after you finish an episode.",
+    title: "External list sync",
+    description: "Update linked list providers after you finish an episode.",
   },
 ]
 
 export function PlayerPanel() {
-  const [preferences, setPreferences] = useAtom(playerPreferencesAtom)
+  const preferences = useAtomValue(playerPreferencesAtom)
+  const updatePreferences = useAtomSet(updatePlayerPreferencesAtom)
 
   const update = (key: PlayerPreferenceKey, checked: boolean) => {
-    const next = { ...preferences, [key]: checked }
-    setPreferences(next)
-    writeStoredPlayerPreferences(next)
+    updatePreferences({ [key]: checked })
   }
 
   return (
@@ -73,6 +72,16 @@ export function PlayerPanel() {
           </div>
         </PanelCard>
       ))}
+      <PanelCard>
+        <div className="mb-4">
+          <h3 className="font-semibold">Subtitle appearance</h3>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Tune captions once; the player popover and watch page use the same
+            settings.
+          </p>
+        </div>
+        <SubtitleSettings />
+      </PanelCard>
     </div>
   )
 }

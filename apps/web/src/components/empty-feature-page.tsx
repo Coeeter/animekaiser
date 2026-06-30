@@ -1,7 +1,7 @@
 import { Link } from "@tanstack/react-router"
 import { Button } from "@workspace/ui/components/button"
-import { Compass } from "lucide-react"
 import type { LucideIcon } from "lucide-react"
+import { Compass } from "lucide-react"
 
 export function EmptyFeaturePage({
   icon: Icon,

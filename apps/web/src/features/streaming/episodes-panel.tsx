@@ -426,7 +426,8 @@ function EpisodeRow({
       <div
         className={cn(
           "grid size-10 shrink-0 place-items-center rounded-full border bg-background text-foreground transition-colors",
-          audio && "group-hover/episode:bg-primary group-hover/episode:text-primary-foreground",
+          audio &&
+            "group-hover/episode:bg-primary group-hover/episode:text-primary-foreground",
           !audio && "text-muted-foreground"
         )}
       >
@@ -507,7 +508,9 @@ function EpisodeNumberButton({
           <span className="font-medium">{label}</span>
           <span className="text-background/70">{episodeLabel(episode)}</span>
           <span className="text-background/70">
-            {audio ? episode.availableAudio.map(audioLabel).join(" / ") : "No streams"}
+            {audio
+              ? episode.availableAudio.map(audioLabel).join(" / ")
+              : "No streams"}
           </span>
           {continueWatching ? (
             <span className="text-background/70">
