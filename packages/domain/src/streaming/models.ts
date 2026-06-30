@@ -7,6 +7,13 @@ export type StreamProviderId = typeof StreamProviderId.Type
 export const StreamAudio = Schema.Literal("sub", "dub")
 export type StreamAudio = typeof StreamAudio.Type
 
+export const StreamServer = Schema.Struct({
+  id: Schema.String.pipe(Schema.minLength(1)),
+  name: Schema.String.pipe(Schema.minLength(1)),
+  audio: StreamAudio,
+})
+export type StreamServer = typeof StreamServer.Type
+
 export const StreamEpisode = Schema.Struct({
   id: Schema.String.pipe(Schema.minLength(1)),
   number: Schema.Number.pipe(Schema.positive()),
@@ -58,6 +65,8 @@ export const StreamPlayback = Schema.Struct({
   providerAnimeId: Schema.String.pipe(Schema.minLength(1)),
   episode: StreamEpisode,
   audio: StreamAudio,
+  server: StreamServer,
+  servers: Schema.Array(StreamServer),
   sourceUrl: Schema.String.pipe(Schema.minLength(1)),
   sourceRefererUrl: Schema.String.pipe(Schema.minLength(1)),
   iframeUrl: Schema.String.pipe(Schema.minLength(1)),

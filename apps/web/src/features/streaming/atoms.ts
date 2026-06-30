@@ -12,11 +12,13 @@ export const streamPlaybackAtom = (
   malId: number,
   provider: StreamProviderId,
   episodeId: string,
-  audio: StreamAudio
+  audio: StreamAudio,
+  serverId?: string | undefined
 ) =>
   KaiserAtomRpc.query("GetStreamPlayback", {
     malId,
     provider,
     episodeId,
     audio,
+    serverId,
   })

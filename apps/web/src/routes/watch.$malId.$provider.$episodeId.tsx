@@ -17,6 +17,7 @@ const WatchMalId = Schema.NumberFromString.pipe(Schema.int(), Schema.positive())
 const WatchEpisodeId = Schema.String.pipe(Schema.minLength(1))
 const WatchSearch = Schema.Struct({
   audio: Schema.optional(StreamAudioSchema),
+  serverId: Schema.optional(Schema.String.pipe(Schema.minLength(1))),
 })
 const decodeWatchSearch = Schema.decodeUnknownSync(WatchSearch)
 
@@ -34,6 +35,7 @@ export const Route = createFileRoute("/watch/$malId/$provider/$episodeId")({
   validateSearch: Schema.decodeUnknownSync(WatchSearch),
   loaderDeps: ({ search }) => ({
     audio: decodeWatchSearch(search).audio ?? defaultAudio,
+    serverId: decodeWatchSearch(search).serverId,
   }),
   loader: ({ params, deps }) =>
     loadStreamPlayback({
@@ -41,6 +43,7 @@ export const Route = createFileRoute("/watch/$malId/$provider/$episodeId")({
       provider: params.provider,
       episodeId: params.episodeId,
       audio: deps.audio,
+      serverId: deps.serverId,
     }),
   pendingComponent: StreamPlayerPendingPage,
   component: WatchRoute,
@@ -54,6 +57,7 @@ function WatchRoute() {
     provider: params.provider,
     episodeId: params.episodeId,
     audio: search.audio ?? defaultAudio,
+    serverId: search.serverId,
   }
 
   return <StreamPlayerPage input={input} initial={Route.useLoaderData()} />

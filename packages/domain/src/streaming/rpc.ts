@@ -29,6 +29,7 @@ export class GetStreamPlayback extends Rpc.make("GetStreamPlayback", {
     provider: StreamProviderId,
     episodeId: Schema.String.pipe(Schema.minLength(1)),
     audio: StreamAudio,
+    serverId: Schema.optional(Schema.String.pipe(Schema.minLength(1))),
   },
   success: StreamPlayback,
   error: streamingFailure,

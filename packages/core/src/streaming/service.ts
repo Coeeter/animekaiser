@@ -85,7 +85,8 @@ export class StreamingService extends Effect.Service<StreamingService>()(
         malId: number,
         provider: StreamProviderId,
         episodeId: string,
-        audio: StreamAudio
+        audio: StreamAudio,
+        serverId?: string | undefined
       ) {
         const anime = yield* getAnime(malId)
         if (anime.status === "NOT_YET_RELEASED") {
@@ -98,12 +99,13 @@ export class StreamingService extends Effect.Service<StreamingService>()(
 
         const providers = {
           provider-a: () =>
-            aniKoto.getPlayback(anime, episodeId, audio).pipe(
+            aniKoto.getPlayback(anime, episodeId, audio, serverId).pipe(
               Effect.tapError((error) =>
                 Effect.logWarning("ProviderA playback lookup failed", {
                   malId,
                   episodeId,
                   audio,
+                  serverId,
                   message: error.message,
                 })
               ),
