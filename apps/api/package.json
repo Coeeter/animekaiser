@@ -5,7 +5,7 @@
   "private": true,
   "scripts": {
     "dev": "bun --watch src/index.ts",
-    "build": "tsc --outDir dist",
+    "build": "bun build ./src/index.ts --outdir ./dist --target bun",
     "lint": "eslint",
     "format": "prettier --write \"**/*.{ts,tsx}\" --ignore-path ../../.prettierignore",
     "typecheck": "tsc --noEmit"

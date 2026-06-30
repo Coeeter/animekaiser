@@ -2,11 +2,13 @@
   "extends": "../../tsconfig.json",
   "compilerOptions": {
     "lib": ["ES2022"],
-    "noEmit": true,
     "paths": {
       "@workspace/api/*": ["./src/*"]
-    }
+    },
+    "noEmit": false,
+    "outDir": "./dist",
+    "emitDeclarationOnly": false
   },
-  "include": ["."],
+  "include": ["src/**/*"],
   "exclude": ["node_modules", "dist"]
 }
