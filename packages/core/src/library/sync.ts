@@ -88,6 +88,21 @@ const malStatus = (
   return "plan_to_watch"
 }
 
+export const malListStatusParams = (
+  payload: typeof librarySyncEvent.$inferSelect.payload
+): Array<readonly [string, string]> => {
+  const params: Array<readonly [string, string]> = [
+    ["status", malStatus(payload.status)],
+    ["num_watched_episodes", String(payload.progress)],
+    ["is_rewatching", payload.status === "rewatching" ? "true" : "false"],
+  ]
+  if (payload.score !== null) {
+    params.push(["score", String(Math.round(payload.score / 10))])
+  }
+  if (payload.notes) params.push(["comments", payload.notes])
+  return params
+}
+
 export class LibrarySyncService extends Effect.Service<LibrarySyncService>()(
   "@workspace/core/LibrarySyncService",
   {
@@ -254,20 +269,12 @@ export class LibrarySyncService extends Effect.Service<LibrarySyncService>()(
           )
           return
         }
-        const params: Array<readonly [string, string]> = [
-          ["status", malStatus(event.payload.status)],
-          ["score", String(Math.round((event.payload.score ?? 0) / 10))],
-          ["num_watched_episodes", String(event.payload.progress)],
-          [
-            "is_rewatching",
-            event.payload.status === "rewatching" ? "true" : "false",
-          ],
-        ]
-        if (event.payload.notes) params.push(["comments", event.payload.notes])
         yield* execute(
-          HttpClientRequest.put(url, {
+          HttpClientRequest.patch(url, {
             headers: { authorization: `Bearer ${accessToken}` },
-          }).pipe(HttpClientRequest.bodyUrlParams(params)),
+          }).pipe(
+            HttpClientRequest.bodyUrlParams(malListStatusParams(event.payload))
+          ),
           "mal"
         )
       })

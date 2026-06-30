@@ -201,6 +201,8 @@ export class JikanAnimeService extends Effect.Service<JikanAnimeService>()(
         const response = yield* get(
           JikanListResponse,
           queryUrl("anime", {
+            sfw: "true",
+            genres_exclude: 19,
             q: input.query,
             page: input.page,
             limit: input.perPage,
@@ -294,7 +296,12 @@ export class JikanAnimeService extends Effect.Service<JikanAnimeService>()(
       ) {
         const response = yield* get(
           JikanListResponse,
-          queryUrl("schedules", { page, limit: perPage })
+          queryUrl("schedules", {
+            sfw: "true",
+            genres_exclude: 19,
+            page,
+            limit: perPage,
+          })
         )
         return {
           items: mapAnimeList(response.data),
