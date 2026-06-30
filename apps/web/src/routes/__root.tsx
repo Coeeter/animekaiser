@@ -10,7 +10,7 @@ import { getAppSession } from "../lib/session"
 import { AppShell } from "../features/layout/app-shell"
 import { ThemeProvider } from "../components/theme"
 
-import appCss from "@workspace/ui/globals.css?url"
+import appCss from "../styles/globals.css?url"
 
 export const Route = createRootRoute({
   loader: () => getAppSession(),
