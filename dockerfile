@@ -23,9 +23,6 @@ RUN turbo run build --filter=@workspace/api
 FROM oven/bun:alpine AS runner
 WORKDIR /app
 
-ENV NODE_ENV=production
-ENV BUN_ENV=production
-
 COPY --from=builder /app/apps/api/dist ./dist
 
 EXPOSE 8080
