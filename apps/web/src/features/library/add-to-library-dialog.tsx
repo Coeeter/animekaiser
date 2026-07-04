@@ -1,4 +1,4 @@
-import { useAtomSet } from "@effect-atom/atom-react"
+import { useAtomSet, useAtomValue } from "@effect-atom/atom-react"
 import { LibraryStatus } from "@workspace/domain"
 import type {
   AnimeDetail,
@@ -42,6 +42,7 @@ import { Trash2 } from "lucide-react"
 import { useId } from "react"
 import { useForm } from "react-hook-form"
 import { toast } from "sonner"
+import { playerPreferencesAtom } from "../streaming/preferences"
 import {
   libraryMutationKeys,
   removeLibraryAtom,
@@ -69,6 +70,7 @@ export function AddToLibraryDialog({
 }) {
   const save = useAtomSet(upsertLibraryAtom, { mode: "promise" })
   const remove = useAtomSet(removeLibraryAtom, { mode: "promise" })
+  const preferences = useAtomValue(playerPreferencesAtom)
   const saveFormId = useId()
   const deleteFormId = useId()
   const saveForm = useForm<LibraryEntryFormValues>({
@@ -93,6 +95,7 @@ export function AddToLibraryDialog({
           score: decodeLibraryScore(values.score),
           progress: decodeLibraryProgress(values.progress),
           notes: values.notes.trim() || null,
+          syncExternal: preferences.syncLibraryOnFinish,
         },
         reactivityKeys: libraryMutationKeys(anime.malId),
       })

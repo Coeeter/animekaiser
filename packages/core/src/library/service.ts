@@ -296,7 +296,8 @@ export class LibraryService extends Effect.Service<LibraryService>()(
       const upsertEntry = Effect.fn("LibraryService.upsertEntry")(function* (
         userId: string,
         metadata: AnimeLibraryMetadata,
-        state: EntryState
+        state: EntryState,
+        syncExternal = true
       ) {
         yield* database
           .execute((db) =>
@@ -340,12 +341,14 @@ export class LibraryService extends Effect.Service<LibraryService>()(
                 })
             )
           )
-        const providers = yield* linkedProviders(userId)
-        yield* enqueue(userId, metadata.malId, providers, "upsert", {
-          ...state,
-          aniListId: metadata.aniListId,
-          aniListEntryId: null,
-        })
+        if (syncExternal) {
+          const providers = yield* linkedProviders(userId)
+          yield* enqueue(userId, metadata.malId, providers, "upsert", {
+            ...state,
+            aniListId: metadata.aniListId,
+            aniListEntryId: null,
+          })
+        }
         return yield* getEntry(userId, metadata.malId)
       })
 

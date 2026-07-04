@@ -35,15 +35,27 @@ export const LibraryHandlersLive = LibraryRpcs.toLayer(
             )
           )
         }),
-      UpsertLibraryEntry: ({ anime, status, score, progress, notes }) =>
+      UpsertLibraryEntry: ({
+        anime,
+        status,
+        score,
+        progress,
+        notes,
+        syncExternal,
+      }) =>
         Effect.gen(function* () {
           const user = yield* CurrentUser
-          const entry = yield* LibraryService.upsertEntry(user.id, anime, {
-            status,
-            score,
-            progress,
-            notes,
-          }).pipe(
+          const entry = yield* LibraryService.upsertEntry(
+            user.id,
+            anime,
+            {
+              status,
+              score,
+              progress,
+              notes,
+            },
+            syncExternal ?? true
+          ).pipe(
             Effect.catchTag("LibraryServiceError", (error) =>
               Effect.fail(new LibraryOperationError({ message: error.message }))
             )

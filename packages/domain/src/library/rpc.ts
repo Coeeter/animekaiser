@@ -44,6 +44,7 @@ export class UpsertLibraryEntry extends Rpc.make("UpsertLibraryEntry", {
     score: Schema.NullOr(Schema.Int.pipe(Schema.between(0, 100))),
     progress: Schema.NonNegativeInt,
     notes: Schema.NullOr(Schema.String.pipe(Schema.maxLength(2000))),
+    syncExternal: Schema.optional(Schema.Boolean),
   },
   success: LibraryEntry,
   error: LibraryOperationError,

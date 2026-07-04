@@ -247,20 +247,13 @@ function StreamPlayer({
   }
 
   const syncLibraryProgress = async () => {
-    if (!preferences.syncLibraryOnFinish || syncedEpisodeKey === episodeKey) {
-      return
-    }
+    if (syncedEpisodeKey === episodeKey) return
 
     const episodeProgress = Math.max(0, Math.floor(playback.episode.number))
     const progress = Math.max(libraryEntry?.progress ?? 0, episodeProgress)
     const totalEpisodes = playback.anime.episodes
     const completed = totalEpisodes !== null && progress >= totalEpisodes
-    const status =
-      completed || libraryEntry?.status === "completed"
-        ? "completed"
-        : "watching"
-
-    setSyncedEpisodeKey(episodeKey)
+    const status = completed ? "completed" : "watching"
 
     try {
       await upsertLibrary({
@@ -276,9 +269,11 @@ function StreamPlayer({
           score: libraryEntry?.score ?? null,
           progress,
           notes: libraryEntry?.notes ?? null,
+          syncExternal: preferences.syncLibraryOnFinish,
         },
         reactivityKeys: libraryMutationKeys(playback.anime.malId),
       })
+      setSyncedEpisodeKey(episodeKey)
     } catch {
       toast.error("Log in to sync episode progress to your library.")
     }

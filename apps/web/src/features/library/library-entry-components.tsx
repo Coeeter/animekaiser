@@ -42,6 +42,7 @@ import { useForm } from "react-hook-form"
 import { toast } from "sonner"
 import { AnimeTitle } from "../anime/anime-title"
 import { animeTitlePreferenceAtom, getAnimeTitle } from "../anime/title"
+import { playerPreferencesAtom } from "../streaming/preferences"
 import {
   libraryMutationKeys,
   removeLibraryAtom,
@@ -257,6 +258,7 @@ export function LibraryDialog({
   onSaved: () => void
 }) {
   const save = useAtomSet(upsertLibraryAtom, { mode: "promise" })
+  const preferences = useAtomValue(playerPreferencesAtom)
   const formId = useId()
   const form = useForm<LibraryEntryFormValues>({
     values: libraryEntryFormDefaults(entry),
@@ -270,6 +272,7 @@ export function LibraryDialog({
           progress: decodeLibraryProgress(values.progress),
           score: decodeLibraryScore(values.score),
           notes: values.notes.trim() || null,
+          syncExternal: preferences.syncLibraryOnFinish,
         },
         reactivityKeys: libraryMutationKeys(entry.malId),
       })
