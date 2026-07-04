@@ -5,6 +5,7 @@ import {
   MalImportResponse,
   normalizeAniListImportEntry,
   normalizeMalImportEntry,
+  sameEntry,
 } from "./import"
 
 test("MAL imports decode display metadata and list state", () => {
@@ -74,4 +75,15 @@ test("AniList imports decode exact nested entries and skip records without MAL i
   const entry =
     response.data?.MediaListCollection?.lists?.[0]?.entries?.[0] ?? null
   expect(normalizeAniListImportEntry(entry)).toBeNull()
+})
+
+test("import detects changed AniList entry ids", () => {
+  const current = {
+    status: "watching",
+    score: 80,
+    progress: 3,
+    notes: null,
+    aniListEntryId: 1,
+  } as const
+  expect(sameEntry(current, { ...current, aniListEntryId: 2 })).toBe(false)
 })

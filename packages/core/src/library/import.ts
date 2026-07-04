@@ -17,7 +17,7 @@ import * as Schema from "effect/Schema"
 export const LIBRARY_IMPORT_JOB_CHANNEL = "library_import_jobs"
 export const LIBRARY_IMPORT_JOB_UPDATE_CHANNEL = "library_import_job_updates"
 
-type Status =
+export type Status =
   | "watching"
   | "completed"
   | "paused"
@@ -25,7 +25,7 @@ type Status =
   | "planning"
   | "rewatching"
 
-type NormalizedEntry = {
+export type NormalizedEntry = {
   malId: number
   aniListId: number | null
   aniListEntryId: number | null
@@ -246,14 +246,21 @@ export const normalizeAniListImportEntry = (
   }
 }
 
-const sameEntry = (
-  left: Pick<NormalizedEntry, "status" | "score" | "progress" | "notes">,
-  right: Pick<NormalizedEntry, "status" | "score" | "progress" | "notes">
+export const sameEntry = (
+  left: Pick<
+    NormalizedEntry,
+    "status" | "score" | "progress" | "notes" | "aniListEntryId"
+  >,
+  right: Pick<
+    NormalizedEntry,
+    "status" | "score" | "progress" | "notes" | "aniListEntryId"
+  >
 ) =>
   left.status === right.status &&
   left.score === right.score &&
   left.progress === right.progress &&
-  left.notes === right.notes
+  left.notes === right.notes &&
+  left.aniListEntryId === right.aniListEntryId
 
 export class LibraryImportService extends Effect.Service<LibraryImportService>()(
   "@workspace/core/LibraryImportService",
