@@ -7,6 +7,7 @@
     ".": "./src/index.ts"
   },
   "scripts": {
+    "dev": "docker compose up",
     "lint": "eslint",
     "format": "prettier --write \"**/*.{ts,tsx}\" --ignore-path ../../.prettierignore",
     "typecheck": "tsc --noEmit",
