@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test"
-import { malListStatusParams } from "./sync"
+import { malListStatusParams, nextSyncFailureStatus } from "./sync"
 
 const payload = {
   status: "watching",
@@ -23,4 +23,10 @@ test("MAL sync sends score only when present", () => {
     "score",
     "8",
   ])
+})
+
+test("sync events retry twice before staying failed", () => {
+  expect(nextSyncFailureStatus(1)).toBe("pending")
+  expect(nextSyncFailureStatus(2)).toBe("pending")
+  expect(nextSyncFailureStatus(3)).toBe("failed")
 })

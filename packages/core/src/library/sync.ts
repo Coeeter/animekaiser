@@ -103,6 +103,9 @@ export const malListStatusParams = (
   return params
 }
 
+export const nextSyncFailureStatus = (attempts: number) =>
+  attempts >= 3 ? "failed" : "pending"
+
 export class LibrarySyncService extends Effect.Service<LibrarySyncService>()(
   "@workspace/core/LibrarySyncService",
   {
@@ -384,7 +387,7 @@ export class LibrarySyncService extends Effect.Service<LibrarySyncService>()(
                   await tx
                     .update(librarySyncEvent)
                     .set({
-                      status: "failed",
+                      status: nextSyncFailureStatus(event.attempts),
                       errorMessage: error.message,
                       updatedAt: new Date(),
                     })
