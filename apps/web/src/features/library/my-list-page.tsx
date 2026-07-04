@@ -37,6 +37,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Download,
+  ListRestart,
   Star,
   Trash2,
 } from "lucide-react"
@@ -158,6 +159,7 @@ function MyListContent({
       </main>
       <aside className="flex flex-col gap-4">
         <StatsPanel page={page} />
+        <SyncActivityPanel />
         <ImportLibraryPanel refresh={refresh} />
         <ClearLibraryPanel
           disabled={page.stats.total === 0}
@@ -191,6 +193,23 @@ function MyListContent({
         />
       ) : null}
     </div>
+  )
+}
+
+function SyncActivityPanel() {
+  return (
+    <section className="rounded-xl border bg-card/60 p-4">
+      <h2 className="text-sm font-semibold">External sync</h2>
+      <p className="mt-1 text-sm leading-6 text-muted-foreground">
+        Review failed provider updates and retry them manually.
+      </p>
+      <Button asChild variant="outline" className="mt-4">
+        <Link to="/sync-activity" search={{ page: 1 }}>
+          <ListRestart data-icon="inline-start" />
+          Sync activity
+        </Link>
+      </Button>
+    </section>
   )
 }
 
