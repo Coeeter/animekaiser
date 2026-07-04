@@ -106,6 +106,23 @@ export const malListStatusParams = (
 export const nextSyncFailureStatus = (attempts: number) =>
   attempts >= 3 ? "failed" : "pending"
 
+export const aniListSaveMutation = (
+  mediaId: number,
+  payload: typeof librarySyncEvent.$inferSelect.payload
+) => {
+  const hasScore = payload.score !== null
+  return {
+    query: `mutation Save($mediaId:Int!,$status:MediaListStatus!${hasScore ? ",$score:Float!" : ""},$progress:Int!,$notes:String){SaveMediaListEntry(mediaId:$mediaId,status:$status${hasScore ? ",score:$score" : ""},progress:$progress,notes:$notes){id}}`,
+    variables: {
+      mediaId,
+      status: aniListStatus(payload.status),
+      ...(hasScore ? { score: aniListScore(payload.score) } : {}),
+      progress: payload.progress,
+      notes: payload.notes,
+    },
+  }
+}
+
 export class LibrarySyncService extends Effect.Service<LibrarySyncService>()(
   "@workspace/core/LibrarySyncService",
   {
@@ -230,17 +247,12 @@ export class LibrarySyncService extends Effect.Service<LibrarySyncService>()(
             }
             return null
           }
+          const mutation = aniListSaveMutation(resolved.id, event.payload)
           const response = yield* aniListGraphQl(
             AniListSaveResponse,
             accessToken,
-            `mutation Save($mediaId:Int!,$status:MediaListStatus!,$score:Float,$progress:Int,$notes:String){SaveMediaListEntry(mediaId:$mediaId,status:$status,score:$score,progress:$progress,notes:$notes){id}}`,
-            {
-              mediaId: resolved.id,
-              status: aniListStatus(event.payload.status),
-              score: aniListScore(event.payload.score),
-              progress: event.payload.progress,
-              notes: event.payload.notes,
-            }
+            mutation.query,
+            mutation.variables
           )
           const error = response.errors?.[0]
           if (error) {

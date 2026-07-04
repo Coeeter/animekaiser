@@ -1,5 +1,9 @@
 import { expect, test } from "bun:test"
-import { malListStatusParams, nextSyncFailureStatus } from "./sync"
+import {
+  aniListSaveMutation,
+  malListStatusParams,
+  nextSyncFailureStatus,
+} from "./sync"
 
 const payload = {
   status: "watching",
@@ -23,6 +27,22 @@ test("MAL sync sends score only when present", () => {
     "score",
     "8",
   ])
+})
+
+test("AniList sync omits score when local score is empty", () => {
+  const mutation = aniListSaveMutation(22, payload)
+
+  expect(mutation.query).not.toContain("$score")
+  expect(mutation.query).not.toContain("score:")
+  expect(mutation.variables).not.toHaveProperty("score")
+})
+
+test("AniList sync sends score only when present", () => {
+  const mutation = aniListSaveMutation(22, { ...payload, score: 80 })
+
+  expect(mutation.query).toContain("$score:Float!")
+  expect(mutation.query).toContain("score:$score")
+  expect(mutation.variables).toMatchObject({ score: 8 })
 })
 
 test("sync events retry twice before staying failed", () => {
