@@ -1,18 +1,16 @@
+import { useForm } from "@tanstack/react-form"
 import { useNavigate, useRouter } from "@tanstack/react-router"
 import { Button } from "@workspace/ui/components/button"
-import { FieldGroup } from "@workspace/ui/components/field"
 import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@workspace/ui/components/form"
+  Field,
+  FieldError,
+  FieldGroup,
+  FieldLabel,
+} from "@workspace/ui/components/field"
 import { Input } from "@workspace/ui/components/input"
 import { Spinner } from "@workspace/ui/components/spinner"
 import { Trash2 } from "lucide-react"
-import { useForm } from "react-hook-form"
+import { useState } from "react"
 import { toast } from "sonner"
 import type { AppUser } from "../../lib/auth-client"
 import { authClient, displayUsername } from "../../lib/auth-client"
@@ -39,23 +37,26 @@ export function AccountPanel({
 }) {
   const router = useRouter()
   const navigate = useNavigate()
-  const passwordForm = useForm<ChangePasswordValues>({
+  const [confirmationError, setConfirmationError] = useState<string | null>(
+    null
+  )
+  const passwordForm = useForm({
     defaultValues: {
       currentPassword: "",
       newPassword: "",
       confirmation: "",
     },
+    onSubmit: ({ value }) => changePassword(value),
   })
-  const deleteForm = useForm<DeleteAccountValues>({
+  const deleteForm = useForm({
     defaultValues: { deletePassword: "" },
+    onSubmit: ({ value }) => deleteAccount(value),
   })
   if (!user) return <AuthRequired />
 
   const changePassword = async (values: ChangePasswordValues) => {
     if (values.newPassword !== values.confirmation) {
-      passwordForm.setError("confirmation", {
-        message: "Passwords do not match.",
-      })
+      setConfirmationError("Passwords do not match.")
       return
     }
     try {
@@ -66,6 +67,7 @@ export function AccountPanel({
       })
       if (result.error) throw result.error
       passwordForm.reset()
+      setConfirmationError(null)
       toast.success("Password updated.")
     } catch (reason) {
       toast.error(errorMessage(reason, "Unable to change password"))
@@ -126,134 +128,143 @@ export function AccountPanel({
         </PanelCard>
       </div>
       <PanelCard>
-        <Form {...passwordForm}>
-          <form
-            className="flex flex-col gap-4"
-            onSubmit={passwordForm.handleSubmit(changePassword)}
-          >
-            <div>
-              <h3 className="font-semibold">Change password</h3>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Use at least eight characters.
-              </p>
-            </div>
-            <FieldGroup className="grid gap-4 lg:grid-cols-3">
-              <FormField
-                control={passwordForm.control}
-                name="currentPassword"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Current password</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="password"
-                        autoComplete="current-password"
-                        required
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={passwordForm.control}
-                name="newPassword"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>New password</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="password"
-                        autoComplete="new-password"
-                        minLength={8}
-                        required
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={passwordForm.control}
-                name="confirmation"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Confirm password</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="password"
-                        autoComplete="new-password"
-                        minLength={8}
-                        required
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </FieldGroup>
-            <Button
-              className="w-fit"
-              disabled={passwordForm.formState.isSubmitting}
-              type="submit"
-            >
-              {passwordForm.formState.isSubmitting ? (
-                <Spinner data-icon="inline-start" />
-              ) : null}
-              Update password
-            </Button>
-          </form>
-        </Form>
+        <form
+          className="flex flex-col gap-4"
+          onSubmit={(event) => {
+            event.preventDefault()
+            void passwordForm.handleSubmit()
+          }}
+        >
+          <div>
+            <h3 className="font-semibold">Change password</h3>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Use at least eight characters.
+            </p>
+          </div>
+          <FieldGroup className="grid gap-4 lg:grid-cols-3">
+            <passwordForm.Field name="currentPassword">
+              {(field) => (
+                <Field>
+                  <FieldLabel htmlFor={field.name}>Current password</FieldLabel>
+                  <Input
+                    id={field.name}
+                    name={field.name}
+                    type="password"
+                    autoComplete="current-password"
+                    required
+                    value={field.state.value}
+                    onBlur={field.handleBlur}
+                    onChange={(event) => field.handleChange(event.target.value)}
+                  />
+                </Field>
+              )}
+            </passwordForm.Field>
+            <passwordForm.Field name="newPassword">
+              {(field) => (
+                <Field>
+                  <FieldLabel htmlFor={field.name}>New password</FieldLabel>
+                  <Input
+                    id={field.name}
+                    name={field.name}
+                    type="password"
+                    autoComplete="new-password"
+                    minLength={8}
+                    required
+                    value={field.state.value}
+                    onBlur={field.handleBlur}
+                    onChange={(event) => field.handleChange(event.target.value)}
+                  />
+                </Field>
+              )}
+            </passwordForm.Field>
+            <passwordForm.Field name="confirmation">
+              {(field) => (
+                <Field data-invalid={Boolean(confirmationError)}>
+                  <FieldLabel htmlFor={field.name}>Confirm password</FieldLabel>
+                  <Input
+                    aria-invalid={Boolean(confirmationError)}
+                    id={field.name}
+                    name={field.name}
+                    type="password"
+                    autoComplete="new-password"
+                    minLength={8}
+                    required
+                    value={field.state.value}
+                    onBlur={field.handleBlur}
+                    onChange={(event) => {
+                      setConfirmationError(null)
+                      field.handleChange(event.target.value)
+                    }}
+                  />
+                  {confirmationError ? (
+                    <FieldError>{confirmationError}</FieldError>
+                  ) : null}
+                </Field>
+              )}
+            </passwordForm.Field>
+          </FieldGroup>
+          <passwordForm.Subscribe selector={(state) => state.isSubmitting}>
+            {(pending) => (
+              <Button className="w-fit" disabled={pending} type="submit">
+                {pending ? <Spinner data-icon="inline-start" /> : null}
+                Update password
+              </Button>
+            )}
+          </passwordForm.Subscribe>
+        </form>
       </PanelCard>
       <PanelCard className="border-destructive/30">
-        <Form {...deleteForm}>
-          <form
-            className="flex flex-col gap-4"
-            onSubmit={deleteForm.handleSubmit(deleteAccount)}
-          >
-            <div>
-              <h3 className="font-semibold text-destructive">Delete account</h3>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Permanently remove your account and profile.
-              </p>
-            </div>
-            <FormField
-              control={deleteForm.control}
-              name="deletePassword"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Confirm with your password</FormLabel>
-                  <FormControl>
-                    <Input
-                      className="max-w-sm"
-                      type="password"
-                      autoComplete="current-password"
-                      required
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <Button
-              className="w-fit"
-              variant="destructive"
-              disabled={deleteForm.formState.isSubmitting}
-              type="submit"
-            >
-              {deleteForm.formState.isSubmitting ? (
-                <Spinner data-icon="inline-start" />
-              ) : (
-                <Trash2 data-icon="inline-start" />
-              )}
-              Delete account
-            </Button>
-          </form>
-        </Form>
+        <form
+          className="flex flex-col gap-4"
+          onSubmit={(event) => {
+            event.preventDefault()
+            void deleteForm.handleSubmit()
+          }}
+        >
+          <div>
+            <h3 className="font-semibold text-destructive">Delete account</h3>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Permanently remove your account and profile.
+            </p>
+          </div>
+          <deleteForm.Field name="deletePassword">
+            {(field) => (
+              <Field>
+                <FieldLabel htmlFor={field.name}>
+                  Confirm with your password
+                </FieldLabel>
+                <Input
+                  id={field.name}
+                  name={field.name}
+                  className="max-w-sm"
+                  type="password"
+                  autoComplete="current-password"
+                  required
+                  value={field.state.value}
+                  onBlur={field.handleBlur}
+                  onChange={(event) => field.handleChange(event.target.value)}
+                />
+              </Field>
+            )}
+          </deleteForm.Field>
+          <deleteForm.Subscribe selector={(state) => state.isSubmitting}>
+            {(pending) => (
+              <Button
+                className="w-fit"
+                variant="destructive"
+                disabled={pending}
+                type="submit"
+              >
+                {pending ? (
+                  <Spinner data-icon="inline-start" />
+                ) : (
+                  <Trash2 data-icon="inline-start" />
+                )}
+                Delete account
+              </Button>
+            )}
+          </deleteForm.Subscribe>
+        </form>
       </PanelCard>
     </div>
   )

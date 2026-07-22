@@ -1,18 +1,21 @@
+import { useForm } from "@tanstack/react-form"
 import { Link, useNavigate, useRouter } from "@tanstack/react-router"
 import { Button } from "@workspace/ui/components/button"
 import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@workspace/ui/components/card"
+import {
+  Field,
   FieldDescription,
   FieldError,
   FieldGroup,
+  FieldLabel,
 } from "@workspace/ui/components/field"
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@workspace/ui/components/form"
 import { Input } from "@workspace/ui/components/input"
 import {
   InputOTP,
@@ -20,9 +23,12 @@ import {
   InputOTPSlot,
 } from "@workspace/ui/components/input-otp"
 import { Spinner } from "@workspace/ui/components/spinner"
+import {
+  ToggleGroup,
+  ToggleGroupItem,
+} from "@workspace/ui/components/toggle-group"
 import { Fingerprint, KeyRound, Mail } from "lucide-react"
 import { useState } from "react"
-import { useForm } from "react-hook-form"
 import { toast } from "sonner"
 import { authClient, safeRedirect } from "../../lib/auth-client"
 import { errorMessage } from "../../lib/error"
@@ -30,228 +36,230 @@ import { AuthFooter, SubmitButton } from "./auth-shared"
 
 type LoginMethod = "password" | "otp" | "passkey"
 
-type PasswordLoginValues = {
-  identifier: string
-  password: string
-}
-
 function PasswordLogin({ onSuccess }: { onSuccess: () => Promise<void> }) {
-  const form = useForm<PasswordLoginValues>({
+  const [error, setError] = useState<string | null>(null)
+  const form = useForm({
     defaultValues: { identifier: "", password: "" },
+    onSubmit: async ({ value }) => {
+      setError(null)
+      const identifier = value.identifier.trim()
+      try {
+        const result = identifier.includes("@")
+          ? await authClient.signIn.email({
+              email: identifier,
+              password: value.password,
+            })
+          : await authClient.signIn.username({
+              username: identifier,
+              password: value.password,
+            })
+        if (result.error) throw result.error
+        await onSuccess()
+      } catch (cause) {
+        setError(errorMessage(cause, "Unable to sign in"))
+      }
+    },
   })
 
-  const submit = async (values: PasswordLoginValues) => {
-    const identifier = values.identifier.trim()
-    try {
-      const result = identifier.includes("@")
-        ? await authClient.signIn.email({
-            email: identifier,
-            password: values.password,
-          })
-        : await authClient.signIn.username({
-            username: identifier,
-            password: values.password,
-          })
-      if (result.error) throw result.error
-      await onSuccess()
-    } catch (cause) {
-      form.setError("root", {
-        message: errorMessage(cause, "Unable to sign in"),
-      })
-    }
-  }
-
   return (
-    <Form {...form}>
-      <form
-        className="flex flex-col gap-6"
-        onSubmit={form.handleSubmit(submit)}
-      >
-        <FieldGroup>
-          <FormField
-            control={form.control}
-            name="identifier"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Email or username</FormLabel>
-                <FormControl>
-                  <Input autoComplete="username" required {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <FormField
-            control={form.control}
-            name="password"
-            render={({ field }) => (
-              <FormItem>
-                <div className="flex items-center">
-                  <FormLabel>Password</FormLabel>
-                  <Link
-                    className="ml-auto text-sm underline-offset-4 hover:underline"
-                    to="/forgot-password"
-                  >
-                    Forgot password?
-                  </Link>
-                </div>
-                <FormControl>
-                  <Input
-                    type="password"
-                    autoComplete="current-password"
-                    minLength={8}
-                    required
-                    {...field}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        </FieldGroup>
-        {form.formState.errors.root?.message ? (
-          <FieldError>{form.formState.errors.root.message}</FieldError>
-        ) : null}
-        <SubmitButton pending={form.formState.isSubmitting}>
-          {form.formState.isSubmitting ? "Logging in…" : "Login"}
-        </SubmitButton>
-      </form>
-    </Form>
+    <form
+      className="flex flex-col gap-6"
+      onSubmit={(event) => {
+        event.preventDefault()
+        void form.handleSubmit()
+      }}
+    >
+      <FieldGroup>
+        <form.Field name="identifier">
+          {(field) => (
+            <Field>
+              <FieldLabel htmlFor={field.name}>Email or username</FieldLabel>
+              <Input
+                autoComplete="username"
+                id={field.name}
+                name={field.name}
+                required
+                value={field.state.value}
+                onBlur={field.handleBlur}
+                onChange={(event) => field.handleChange(event.target.value)}
+              />
+            </Field>
+          )}
+        </form.Field>
+        <form.Field name="password">
+          {(field) => (
+            <Field>
+              <div className="flex items-center">
+                <FieldLabel htmlFor={field.name}>Password</FieldLabel>
+                <Link
+                  className="ml-auto text-sm underline-offset-4 hover:underline"
+                  to="/forgot-password"
+                >
+                  Forgot password?
+                </Link>
+              </div>
+              <Input
+                autoComplete="current-password"
+                id={field.name}
+                minLength={8}
+                name={field.name}
+                required
+                type="password"
+                value={field.state.value}
+                onBlur={field.handleBlur}
+                onChange={(event) => field.handleChange(event.target.value)}
+              />
+            </Field>
+          )}
+        </form.Field>
+      </FieldGroup>
+      {error ? <FieldError>{error}</FieldError> : null}
+      <form.Subscribe selector={(state) => state.isSubmitting}>
+        {(pending) => (
+          <SubmitButton pending={pending}>
+            {pending ? "Logging in…" : "Login"}
+          </SubmitButton>
+        )}
+      </form.Subscribe>
+    </form>
   )
-}
-
-type EmailCodeRequestValues = {
-  email: string
-}
-
-type EmailCodeVerifyValues = {
-  otp: string
 }
 
 function EmailCodeLogin({ onSuccess }: { onSuccess: () => Promise<void> }) {
   const [email, setEmail] = useState<string | null>(null)
-  const requestForm = useForm<EmailCodeRequestValues>({
+  const [requestError, setRequestError] = useState<string | null>(null)
+  const [verifyError, setVerifyError] = useState<string | null>(null)
+  const requestForm = useForm({
     defaultValues: { email: "" },
+    onSubmit: async ({ value }) => {
+      setRequestError(null)
+      const targetEmail = value.email.trim()
+      try {
+        const result = await authClient.emailOtp.sendVerificationOtp({
+          email: targetEmail,
+          type: "sign-in",
+        })
+        if (result.error) throw result.error
+        setEmail(targetEmail)
+      } catch (cause) {
+        setRequestError(errorMessage(cause, "Unable to send sign-in code"))
+      }
+    },
   })
-  const verifyForm = useForm<EmailCodeVerifyValues>({
+  const verifyForm = useForm({
     defaultValues: { otp: "" },
+    onSubmit: async ({ value }) => {
+      if (!email) return
+      setVerifyError(null)
+      try {
+        const result = await authClient.signIn.emailOtp({
+          email,
+          otp: value.otp,
+        })
+        if (result.error) throw result.error
+        await onSuccess()
+      } catch (cause) {
+        setVerifyError(errorMessage(cause, "Unable to verify sign-in code"))
+      }
+    },
   })
-
-  const requestCode = async (values: EmailCodeRequestValues) => {
-    const value = values.email.trim()
-    try {
-      const result = await authClient.emailOtp.sendVerificationOtp({
-        email: value,
-        type: "sign-in",
-      })
-      if (result.error) throw result.error
-      setEmail(value)
-    } catch (cause) {
-      requestForm.setError("root", {
-        message: errorMessage(cause, "Unable to send sign-in code"),
-      })
-    }
-  }
-
-  const verifyCode = async (values: EmailCodeVerifyValues) => {
-    if (!email) return
-    try {
-      const result = await authClient.signIn.emailOtp({
-        email,
-        otp: values.otp,
-      })
-      if (result.error) throw result.error
-      await onSuccess()
-    } catch (cause) {
-      verifyForm.setError("root", {
-        message: errorMessage(cause, "Unable to verify sign-in code"),
-      })
-    }
-  }
 
   if (!email) {
     return (
-      <Form {...requestForm}>
-        <form
-          className="flex flex-col gap-6"
-          onSubmit={requestForm.handleSubmit(requestCode)}
-        >
-          <FormField
-            control={requestForm.control}
-            name="email"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Email</FormLabel>
-                <FormControl>
-                  <Input
-                    type="email"
-                    autoComplete="email"
-                    required
-                    {...field}
-                  />
-                </FormControl>
-                <FieldDescription>
-                  We’ll send a one-time code to this address.
-                </FieldDescription>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          {requestForm.formState.errors.root?.message ? (
-            <FieldError>{requestForm.formState.errors.root.message}</FieldError>
-          ) : null}
-          <SubmitButton pending={requestForm.formState.isSubmitting}>
-            {requestForm.formState.isSubmitting ? "Sending…" : "Send code"}
-          </SubmitButton>
-        </form>
-      </Form>
+      <form
+        className="flex flex-col gap-6"
+        onSubmit={(event) => {
+          event.preventDefault()
+          void requestForm.handleSubmit()
+        }}
+      >
+        <requestForm.Field name="email">
+          {(field) => (
+            <Field>
+              <FieldLabel htmlFor={field.name}>Email</FieldLabel>
+              <Input
+                autoComplete="email"
+                id={field.name}
+                name={field.name}
+                required
+                type="email"
+                value={field.state.value}
+                onBlur={field.handleBlur}
+                onChange={(event) => field.handleChange(event.target.value)}
+              />
+              <FieldDescription>
+                We’ll send a one-time code to this address.
+              </FieldDescription>
+            </Field>
+          )}
+        </requestForm.Field>
+        {requestError ? <FieldError>{requestError}</FieldError> : null}
+        <requestForm.Subscribe selector={(state) => state.isSubmitting}>
+          {(pending) => (
+            <SubmitButton pending={pending}>
+              {pending ? "Sending…" : "Send code"}
+            </SubmitButton>
+          )}
+        </requestForm.Subscribe>
+      </form>
     )
   }
 
   return (
-    <Form {...verifyForm}>
-      <form
-        className="flex flex-col gap-6"
-        onSubmit={verifyForm.handleSubmit(verifyCode)}
+    <form
+      className="flex flex-col gap-6"
+      onSubmit={(event) => {
+        event.preventDefault()
+        void verifyForm.handleSubmit()
+      }}
+    >
+      <verifyForm.Field name="otp">
+        {(field) => (
+          <Field data-invalid={Boolean(verifyError)}>
+            <FieldLabel htmlFor={field.name}>Sign-in code</FieldLabel>
+            <InputOTP
+              autoComplete="one-time-code"
+              autoFocus
+              aria-invalid={Boolean(verifyError)}
+              id={field.name}
+              inputMode="numeric"
+              maxLength={6}
+              name={field.name}
+              required
+              value={field.state.value}
+              onBlur={field.handleBlur}
+              onChange={field.handleChange}
+            >
+              <InputOTPGroup className="mx-auto">
+                {Array.from({ length: 6 }, (_, index) => (
+                  <InputOTPSlot key={index} index={index} />
+                ))}
+              </InputOTPGroup>
+            </InputOTP>
+            <FieldDescription>Code sent to {email}.</FieldDescription>
+          </Field>
+        )}
+      </verifyForm.Field>
+      {verifyError ? <FieldError>{verifyError}</FieldError> : null}
+      <verifyForm.Subscribe selector={(state) => state.isSubmitting}>
+        {(pending) => (
+          <SubmitButton pending={pending}>
+            {pending ? "Verifying…" : "Verify code"}
+          </SubmitButton>
+        )}
+      </verifyForm.Subscribe>
+      <Button
+        type="button"
+        variant="ghost"
+        onClick={() => {
+          setEmail(null)
+          setVerifyError(null)
+          verifyForm.reset()
+        }}
       >
-        <FormField
-          control={verifyForm.control}
-          name="otp"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Sign-in code</FormLabel>
-              <FormControl>
-                <InputOTP maxLength={6} {...field}>
-                  <InputOTPGroup>
-                    {Array.from({ length: 6 }, (_, index) => (
-                      <InputOTPSlot key={index} index={index} />
-                    ))}
-                  </InputOTPGroup>
-                </InputOTP>
-              </FormControl>
-              <FieldDescription>Code sent to {email}.</FieldDescription>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        {verifyForm.formState.errors.root?.message ? (
-          <FieldError>{verifyForm.formState.errors.root.message}</FieldError>
-        ) : null}
-        <SubmitButton pending={verifyForm.formState.isSubmitting}>
-          {verifyForm.formState.isSubmitting ? "Verifying…" : "Verify code"}
-        </SubmitButton>
-        <Button
-          type="button"
-          variant="ghost"
-          onClick={() => {
-            setEmail(null)
-            verifyForm.reset()
-          }}
-        >
-          Use another email
-        </Button>
-      </form>
-    </Form>
+        Use another email
+      </Button>
+    </form>
   )
 }
 
@@ -305,36 +313,48 @@ export function LoginPage({ redirect }: { redirect?: string }) {
 
   return (
     <div className="flex w-full max-w-sm flex-col gap-5">
-      <div className="grid grid-cols-3 gap-2">
+      <ToggleGroup
+        className="grid w-full grid-cols-3"
+        type="single"
+        value={method}
+        variant="outline"
+        onValueChange={(value) => {
+          if (value) setMethod(value as LoginMethod)
+        }}
+      >
         {methods.map((item) => (
-          <Button
+          <ToggleGroupItem
             key={item.value}
             className="h-auto flex-col gap-2 py-3"
-            type="button"
-            variant={method === item.value ? "default" : "outline"}
-            onClick={() => setMethod(item.value)}
+            value={item.value}
           >
-            <item.icon className="size-4" />
+            <item.icon />
             <span className="text-xs">{item.title}</span>
-          </Button>
+          </ToggleGroupItem>
         ))}
-      </div>
-      <div className="flex flex-col gap-6 rounded-3xl border bg-card p-6 shadow-sm">
-        <div className="text-center">
-          <h1 className="font-heading text-2xl font-bold">Welcome back</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Login to your AnimeKaiser account.
-          </p>
-        </div>
-        {method === "password" ? <PasswordLogin onSuccess={complete} /> : null}
-        {method === "otp" ? <EmailCodeLogin onSuccess={complete} /> : null}
-        {method === "passkey" ? <PasskeyLogin onSuccess={complete} /> : null}
-        <AuthFooter
-          prompt="Don’t have an account?"
-          action="Sign up"
-          to="/register"
-        />
-      </div>
+      </ToggleGroup>
+      <Card>
+        <CardHeader className="text-center">
+          <CardTitle>
+            <h1 className="text-2xl font-bold">Welcome back</h1>
+          </CardTitle>
+          <CardDescription>Login to your AnimeKaiser account.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {method === "password" ? (
+            <PasswordLogin onSuccess={complete} />
+          ) : null}
+          {method === "otp" ? <EmailCodeLogin onSuccess={complete} /> : null}
+          {method === "passkey" ? <PasskeyLogin onSuccess={complete} /> : null}
+        </CardContent>
+        <CardFooter className="justify-center">
+          <AuthFooter
+            prompt="Don’t have an account?"
+            action="Sign up"
+            to="/register"
+          />
+        </CardFooter>
+      </Card>
     </div>
   )
 }

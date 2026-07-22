@@ -1,4 +1,5 @@
 import { useAtomSet, useAtomValue } from "@effect-atom/atom-react"
+import { useForm } from "@tanstack/react-form"
 import { LibraryStatus } from "@workspace/domain"
 import type {
   AnimeDetail,
@@ -16,17 +17,12 @@ import {
   DialogTitle,
 } from "@workspace/ui/components/dialog"
 import {
+  Field,
   FieldGroup,
+  FieldLabel,
   FieldLegend,
   FieldSet,
 } from "@workspace/ui/components/field"
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-} from "@workspace/ui/components/form"
 import { Input } from "@workspace/ui/components/input"
 import {
   Select,
@@ -39,8 +35,7 @@ import {
 import { Textarea } from "@workspace/ui/components/textarea"
 import * as Schema from "effect/Schema"
 import { Trash2 } from "lucide-react"
-import { useId } from "react"
-import { useForm } from "react-hook-form"
+import { useEffect, useId } from "react"
 import { toast } from "sonner"
 import { playerPreferencesAtom } from "../streaming/preferences"
 import {
@@ -73,12 +68,19 @@ export function AddToLibraryDialog({
   const preferences = useAtomValue(playerPreferencesAtom)
   const saveFormId = useId()
   const deleteFormId = useId()
-  const saveForm = useForm<LibraryEntryFormValues>({
-    values: libraryEntryFormDefaults(entry),
+  const saveForm = useForm({
+    defaultValues: libraryEntryFormDefaults(entry),
+    onSubmit: ({ value }) => saveEntry(value),
   })
-  const deleteForm = useForm<LibraryDeleteFormValues>({
-    values: libraryDeleteFormDefaults(),
+  const deleteForm = useForm({
+    defaultValues: libraryDeleteFormDefaults(),
+    onSubmit: ({ value }) => deleteEntry(value),
   })
+  useEffect(() => {
+    if (!open) return
+    saveForm.reset(libraryEntryFormDefaults(entry))
+    deleteForm.reset(libraryDeleteFormDefaults())
+  }, [entry, open])
 
   const saveEntry = async (values: LibraryEntryFormValues) => {
     try {
@@ -139,151 +141,158 @@ export function AddToLibraryDialog({
             title.
           </DialogDescription>
         </DialogHeader>
-        <Form {...saveForm}>
-          <form
-            className="flex flex-col gap-4"
-            id={saveFormId}
-            onSubmit={saveForm.handleSubmit(saveEntry)}
-          >
-            <FieldGroup className="gap-4">
-              <FormField
-                control={saveForm.control}
-                name="status"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Status</FormLabel>
-                    <Select
-                      value={field.value}
-                      onValueChange={(value) =>
-                        field.onChange(
-                          Schema.decodeUnknownSync(LibraryStatus)(value)
-                        )
-                      }
-                    >
-                      <FormControl>
-                        <SelectTrigger className="w-full">
-                          <SelectValue />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectGroup>
-                          {libraryStatuses
-                            .filter(({ value }) => value !== "all")
-                            .map(({ value, label }) => (
-                              <SelectItem key={value} value={value}>
-                                {label}
-                              </SelectItem>
-                            ))}
-                        </SelectGroup>
-                      </SelectContent>
-                    </Select>
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={saveForm.control}
-                name="progress"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Progress</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="number"
-                        min={0}
-                        max={anime.episodes ?? undefined}
-                        {...field}
-                      />
-                    </FormControl>
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={saveForm.control}
-                name="score"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Score (0–100)</FormLabel>
-                    <FormControl>
-                      <Input type="number" min={0} max={100} {...field} />
-                    </FormControl>
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={saveForm.control}
-                name="notes"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Notes</FormLabel>
-                    <FormControl>
-                      <Textarea {...field} />
-                    </FormControl>
-                  </FormItem>
-                )}
-              />
-            </FieldGroup>
-          </form>
-        </Form>
+        <form
+          className="flex flex-col gap-4"
+          id={saveFormId}
+          onSubmit={(event) => {
+            event.preventDefault()
+            void saveForm.handleSubmit()
+          }}
+        >
+          <FieldGroup className="gap-4">
+            <saveForm.Field name="status">
+              {(field) => (
+                <Field>
+                  <FieldLabel htmlFor={field.name}>Status</FieldLabel>
+                  <Select
+                    value={field.state.value}
+                    onValueChange={(value) =>
+                      field.handleChange(
+                        Schema.decodeUnknownSync(LibraryStatus)(value)
+                      )
+                    }
+                  >
+                    <SelectTrigger id={field.name} className="w-full">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectGroup>
+                        {libraryStatuses
+                          .filter(({ value }) => value !== "all")
+                          .map(({ value, label }) => (
+                            <SelectItem key={value} value={value}>
+                              {label}
+                            </SelectItem>
+                          ))}
+                      </SelectGroup>
+                    </SelectContent>
+                  </Select>
+                </Field>
+              )}
+            </saveForm.Field>
+            <saveForm.Field name="progress">
+              {(field) => (
+                <Field>
+                  <FieldLabel htmlFor={field.name}>Progress</FieldLabel>
+                  <Input
+                    id={field.name}
+                    name={field.name}
+                    type="number"
+                    min={0}
+                    max={anime.episodes ?? undefined}
+                    value={field.state.value}
+                    onBlur={field.handleBlur}
+                    onChange={(event) => field.handleChange(event.target.value)}
+                  />
+                </Field>
+              )}
+            </saveForm.Field>
+            <saveForm.Field name="score">
+              {(field) => (
+                <Field>
+                  <FieldLabel htmlFor={field.name}>Score (0–100)</FieldLabel>
+                  <Input
+                    id={field.name}
+                    name={field.name}
+                    type="number"
+                    min={0}
+                    max={100}
+                    value={field.state.value}
+                    onBlur={field.handleBlur}
+                    onChange={(event) => field.handleChange(event.target.value)}
+                  />
+                </Field>
+              )}
+            </saveForm.Field>
+            <saveForm.Field name="notes">
+              {(field) => (
+                <Field>
+                  <FieldLabel htmlFor={field.name}>Notes</FieldLabel>
+                  <Textarea
+                    id={field.name}
+                    name={field.name}
+                    value={field.state.value}
+                    onBlur={field.handleBlur}
+                    onChange={(event) => field.handleChange(event.target.value)}
+                  />
+                </Field>
+              )}
+            </saveForm.Field>
+          </FieldGroup>
+        </form>
         {entry ? (
-          <Form {...deleteForm}>
-            <form
-              className="rounded-xl border p-4"
-              id={deleteFormId}
-              onSubmit={deleteForm.handleSubmit(deleteEntry)}
-            >
-              <FieldSet>
-                <FieldLegend variant="label">External delete</FieldLegend>
-                <FieldGroup className="gap-3">
-                  <FormField
-                    control={deleteForm.control}
-                    name="mal"
-                    render={({ field }) => (
-                      <FormItem orientation="horizontal">
-                        <FormControl>
-                          <Checkbox
-                            checked={field.value}
-                            onCheckedChange={(checked) =>
-                              field.onChange(checked === true)
-                            }
-                          />
-                        </FormControl>
-                        <FormLabel>Also delete from MyAnimeList</FormLabel>
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={deleteForm.control}
-                    name="anilist"
-                    render={({ field }) => (
-                      <FormItem orientation="horizontal">
-                        <FormControl>
-                          <Checkbox
-                            checked={field.value}
-                            onCheckedChange={(checked) =>
-                              field.onChange(checked === true)
-                            }
-                          />
-                        </FormControl>
-                        <FormLabel>Also delete from AniList</FormLabel>
-                      </FormItem>
-                    )}
-                  />
-                </FieldGroup>
-              </FieldSet>
-            </form>
-          </Form>
+          <form
+            className="rounded-xl border p-4"
+            id={deleteFormId}
+            onSubmit={(event) => {
+              event.preventDefault()
+              void deleteForm.handleSubmit()
+            }}
+          >
+            <FieldSet>
+              <FieldLegend variant="label">External delete</FieldLegend>
+              <FieldGroup className="gap-3">
+                <deleteForm.Field name="mal">
+                  {(field) => (
+                    <Field orientation="horizontal">
+                      <Checkbox
+                        id={field.name}
+                        checked={field.state.value}
+                        onCheckedChange={(checked) =>
+                          field.handleChange(checked === true)
+                        }
+                      />
+                      <FieldLabel htmlFor={field.name}>
+                        Also delete from MyAnimeList
+                      </FieldLabel>
+                    </Field>
+                  )}
+                </deleteForm.Field>
+                <deleteForm.Field name="anilist">
+                  {(field) => (
+                    <Field orientation="horizontal">
+                      <Checkbox
+                        id={field.name}
+                        checked={field.state.value}
+                        onCheckedChange={(checked) =>
+                          field.handleChange(checked === true)
+                        }
+                      />
+                      <FieldLabel htmlFor={field.name}>
+                        Also delete from AniList
+                      </FieldLabel>
+                    </Field>
+                  )}
+                </deleteForm.Field>
+              </FieldGroup>
+            </FieldSet>
+          </form>
         ) : null}
         <DialogFooter className={entry ? "sm:justify-between" : undefined}>
           {entry ? (
-            <Button
-              disabled={deleteForm.formState.isSubmitting}
-              form={deleteFormId}
-              type="submit"
-              variant="destructive"
-            >
-              <Trash2 data-icon="inline-start" />
-              Remove title
-            </Button>
+            <deleteForm.Subscribe selector={(state) => state.isSubmitting}>
+              {(pending) => (
+                <Button
+                  disabled={pending}
+                  form={deleteFormId}
+                  type="submit"
+                  variant="destructive"
+                >
+                  <Trash2 data-icon="inline-start" />
+                  Remove title
+                </Button>
+              )}
+            </deleteForm.Subscribe>
           ) : null}
           <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
             <Button
@@ -293,13 +302,13 @@ export function AddToLibraryDialog({
             >
               Cancel
             </Button>
-            <Button
-              disabled={saveForm.formState.isSubmitting}
-              form={saveFormId}
-              type="submit"
-            >
-              Save entry
-            </Button>
+            <saveForm.Subscribe selector={(state) => state.isSubmitting}>
+              {(pending) => (
+                <Button disabled={pending} form={saveFormId} type="submit">
+                  Save entry
+                </Button>
+              )}
+            </saveForm.Subscribe>
           </div>
         </DialogFooter>
       </DialogContent>

@@ -1,4 +1,5 @@
 import { useAtomSet, useAtomValue } from "@effect-atom/atom-react"
+import { useForm } from "@tanstack/react-form"
 import { Link } from "@tanstack/react-router"
 import { LibraryStatus } from "@workspace/domain"
 import type { ExternalListProvider, LibraryEntry } from "@workspace/domain"
@@ -14,17 +15,12 @@ import {
   DialogTitle,
 } from "@workspace/ui/components/dialog"
 import {
+  Field,
   FieldGroup,
+  FieldLabel,
   FieldLegend,
   FieldSet,
 } from "@workspace/ui/components/field"
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-} from "@workspace/ui/components/form"
 import { Input } from "@workspace/ui/components/input"
 import {
   Select,
@@ -37,8 +33,7 @@ import {
 import { Textarea } from "@workspace/ui/components/textarea"
 import * as Schema from "effect/Schema"
 import { Edit3, Star, Trash2 } from "lucide-react"
-import { useId } from "react"
-import { useForm } from "react-hook-form"
+import { useEffect, useId } from "react"
 import { toast } from "sonner"
 import { AnimeTitle } from "../anime/anime-title"
 import { animeTitlePreferenceAtom, getAnimeTitle } from "../anime/title"
@@ -149,9 +144,13 @@ export function DeleteLibraryDialog({
 }) {
   const remove = useAtomSet(removeLibraryAtom, { mode: "promise" })
   const formId = useId()
-  const form = useForm<LibraryDeleteFormValues>({
-    values: libraryDeleteFormDefaults(),
+  const form = useForm({
+    defaultValues: libraryDeleteFormDefaults(),
+    onSubmit: ({ value }) => submit(value),
   })
+  useEffect(() => {
+    if (open) form.reset(libraryDeleteFormDefaults())
+  }, [open])
   const submit = async (values: LibraryDeleteFormValues) => {
     const providers: Array<ExternalListProvider> = []
     if (values.mal) providers.push("mal")
@@ -181,65 +180,68 @@ export function DeleteLibraryDialog({
             optional and explicit.
           </DialogDescription>
         </DialogHeader>
-        <Form {...form}>
-          <form
-            className="rounded-xl border p-4"
-            id={formId}
-            onSubmit={form.handleSubmit(submit)}
-          >
-            <FieldSet>
-              <FieldLegend variant="label">External delete</FieldLegend>
-              <FieldGroup className="gap-3">
-                <FormField
-                  control={form.control}
-                  name="mal"
-                  render={({ field }) => (
-                    <FormItem orientation="horizontal">
-                      <FormControl>
-                        <Checkbox
-                          checked={field.value}
-                          onCheckedChange={(checked) =>
-                            field.onChange(checked === true)
-                          }
-                        />
-                      </FormControl>
-                      <FormLabel>Also delete from MyAnimeList</FormLabel>
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="anilist"
-                  render={({ field }) => (
-                    <FormItem orientation="horizontal">
-                      <FormControl>
-                        <Checkbox
-                          checked={field.value}
-                          onCheckedChange={(checked) =>
-                            field.onChange(checked === true)
-                          }
-                        />
-                      </FormControl>
-                      <FormLabel>Also delete from AniList</FormLabel>
-                    </FormItem>
-                  )}
-                />
-              </FieldGroup>
-            </FieldSet>
-          </form>
-        </Form>
+        <form
+          className="rounded-xl border p-4"
+          id={formId}
+          onSubmit={(event) => {
+            event.preventDefault()
+            void form.handleSubmit()
+          }}
+        >
+          <FieldSet>
+            <FieldLegend variant="label">External delete</FieldLegend>
+            <FieldGroup className="gap-3">
+              <form.Field name="mal">
+                {(field) => (
+                  <Field orientation="horizontal">
+                    <Checkbox
+                      id={field.name}
+                      checked={field.state.value}
+                      onCheckedChange={(checked) =>
+                        field.handleChange(checked === true)
+                      }
+                    />
+                    <FieldLabel htmlFor={field.name}>
+                      Also delete from MyAnimeList
+                    </FieldLabel>
+                  </Field>
+                )}
+              </form.Field>
+              <form.Field name="anilist">
+                {(field) => (
+                  <Field orientation="horizontal">
+                    <Checkbox
+                      id={field.name}
+                      checked={field.state.value}
+                      onCheckedChange={(checked) =>
+                        field.handleChange(checked === true)
+                      }
+                    />
+                    <FieldLabel htmlFor={field.name}>
+                      Also delete from AniList
+                    </FieldLabel>
+                  </Field>
+                )}
+              </form.Field>
+            </FieldGroup>
+          </FieldSet>
+        </form>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
-          <Button
-            disabled={form.formState.isSubmitting}
-            form={formId}
-            type="submit"
-            variant="destructive"
-          >
-            Remove title
-          </Button>
+          <form.Subscribe selector={(state) => state.isSubmitting}>
+            {(pending) => (
+              <Button
+                disabled={pending}
+                form={formId}
+                type="submit"
+                variant="destructive"
+              >
+                Remove title
+              </Button>
+            )}
+          </form.Subscribe>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -260,9 +262,13 @@ export function LibraryDialog({
   const save = useAtomSet(upsertLibraryAtom, { mode: "promise" })
   const preferences = useAtomValue(playerPreferencesAtom)
   const formId = useId()
-  const form = useForm<LibraryEntryFormValues>({
-    values: libraryEntryFormDefaults(entry),
+  const form = useForm({
+    defaultValues: libraryEntryFormDefaults(entry),
+    onSubmit: ({ value }) => submit(value),
   })
+  useEffect(() => {
+    if (open) form.reset(libraryEntryFormDefaults(entry))
+  }, [entry, open])
   const submit = async (values: LibraryEntryFormValues) => {
     try {
       await save({
@@ -291,86 +297,94 @@ export function LibraryDialog({
             Update your local status, progress, score, and notes.
           </DialogDescription>
         </DialogHeader>
-        <Form {...form}>
-          <form
-            className="flex flex-col gap-4"
-            id={formId}
-            onSubmit={form.handleSubmit(submit)}
-          >
-            <FieldGroup className="gap-4">
-              <FormField
-                control={form.control}
-                name="status"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Status</FormLabel>
-                    <Select
-                      value={field.value}
-                      onValueChange={(value) =>
-                        field.onChange(
-                          Schema.decodeUnknownSync(LibraryStatus)(value)
-                        )
-                      }
-                    >
-                      <FormControl>
-                        <SelectTrigger className="w-full">
-                          <SelectValue />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectGroup>
-                          {libraryStatuses
-                            .filter(({ value }) => value !== "all")
-                            .map(({ value, label }) => (
-                              <SelectItem key={value} value={value}>
-                                {label}
-                              </SelectItem>
-                            ))}
-                        </SelectGroup>
-                      </SelectContent>
-                    </Select>
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="progress"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Progress</FormLabel>
-                    <FormControl>
-                      <Input type="number" min={0} {...field} />
-                    </FormControl>
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="score"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Score (0–100)</FormLabel>
-                    <FormControl>
-                      <Input type="number" min={0} max={100} {...field} />
-                    </FormControl>
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="notes"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Notes</FormLabel>
-                    <FormControl>
-                      <Textarea {...field} />
-                    </FormControl>
-                  </FormItem>
-                )}
-              />
-            </FieldGroup>
-          </form>
-        </Form>
+        <form
+          className="flex flex-col gap-4"
+          id={formId}
+          onSubmit={(event) => {
+            event.preventDefault()
+            void form.handleSubmit()
+          }}
+        >
+          <FieldGroup className="gap-4">
+            <form.Field name="status">
+              {(field) => (
+                <Field>
+                  <FieldLabel htmlFor={field.name}>Status</FieldLabel>
+                  <Select
+                    value={field.state.value}
+                    onValueChange={(value) =>
+                      field.handleChange(
+                        Schema.decodeUnknownSync(LibraryStatus)(value)
+                      )
+                    }
+                  >
+                    <SelectTrigger id={field.name} className="w-full">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectGroup>
+                        {libraryStatuses
+                          .filter(({ value }) => value !== "all")
+                          .map(({ value, label }) => (
+                            <SelectItem key={value} value={value}>
+                              {label}
+                            </SelectItem>
+                          ))}
+                      </SelectGroup>
+                    </SelectContent>
+                  </Select>
+                </Field>
+              )}
+            </form.Field>
+            <form.Field name="progress">
+              {(field) => (
+                <Field>
+                  <FieldLabel htmlFor={field.name}>Progress</FieldLabel>
+                  <Input
+                    id={field.name}
+                    name={field.name}
+                    type="number"
+                    min={0}
+                    value={field.state.value}
+                    onBlur={field.handleBlur}
+                    onChange={(event) => field.handleChange(event.target.value)}
+                  />
+                </Field>
+              )}
+            </form.Field>
+            <form.Field name="score">
+              {(field) => (
+                <Field>
+                  <FieldLabel htmlFor={field.name}>Score (0–100)</FieldLabel>
+                  <Input
+                    id={field.name}
+                    name={field.name}
+                    type="number"
+                    min={0}
+                    max={100}
+                    value={field.state.value}
+                    onBlur={field.handleBlur}
+                    onChange={(event) => field.handleChange(event.target.value)}
+                  />
+                </Field>
+              )}
+            </form.Field>
+            <form.Field name="notes">
+              {(field) => (
+                <Field>
+                  <FieldLabel htmlFor={field.name}>Notes</FieldLabel>
+                  <Textarea
+                    id={field.name}
+                    name={field.name}
+                    value={field.state.value}
+                    onBlur={field.handleBlur}
+                    onChange={(event) => field.handleChange(event.target.value)}
+                  />
+                </Field>
+              )}
+            </form.Field>
+          </FieldGroup>
+        </form>
         <DialogFooter>
           <Button
             type="button"
@@ -379,13 +393,13 @@ export function LibraryDialog({
           >
             Cancel
           </Button>
-          <Button
-            disabled={form.formState.isSubmitting}
-            form={formId}
-            type="submit"
-          >
-            Save changes
-          </Button>
+          <form.Subscribe selector={(state) => state.isSubmitting}>
+            {(pending) => (
+              <Button disabled={pending} form={formId} type="submit">
+                Save changes
+              </Button>
+            )}
+          </form.Subscribe>
         </DialogFooter>
       </DialogContent>
     </Dialog>

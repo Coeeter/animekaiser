@@ -42,10 +42,10 @@ import {
   SelectValue,
 } from "@workspace/ui/components/select"
 import { cn } from "@workspace/ui/lib/utils"
+import { useForm } from "@tanstack/react-form"
 import * as Schema from "effect/Schema"
 import { Check, ChevronsUpDown, Search, X } from "lucide-react"
-import { useId, useState } from "react"
-import { useForm } from "react-hook-form"
+import { useEffect, useId, useState } from "react"
 import type { CatalogSearch } from "./search"
 
 const decodeSort = Schema.decodeUnknownSync(AnimeSortSchema)
@@ -120,10 +120,6 @@ const yearOptions = Array.from(
   { length: endYear - startYear + 1 },
   (_, index) => endYear - index
 )
-
-type CatalogSearchFormValues = {
-  q: string
-}
 
 const currentSeasonValue: AnimeSeason = (() => {
   const month = new Date().getMonth() + 1
@@ -388,10 +384,13 @@ export function SeriesCatalogFilters({
   showAdvanced?: boolean
 }) {
   const searchId = useId()
-  const form = useForm<CatalogSearchFormValues>({
-    values: { q: search.q ?? "" },
+  const form = useForm({
+    defaultValues: { q: search.q ?? "" },
+    onSubmit: ({ value }) => updateSearch({ q: value.q || undefined }),
   })
-  const query = form.watch("q")
+  useEffect(() => {
+    form.reset({ q: search.q ?? "" })
+  }, [search.q])
 
   const resetFilters = () => {
     form.reset({ q: "" })
@@ -409,38 +408,46 @@ export function SeriesCatalogFilters({
   return (
     <form
       className={cn("flex flex-col gap-6", className)}
-      onSubmit={form.handleSubmit((values) =>
-        updateSearch({ q: values.q || undefined })
-      )}
+      onSubmit={(event) => {
+        event.preventDefault()
+        void form.handleSubmit()
+      }}
     >
       {showSearch ? (
         <div className="grid gap-4 xl:grid-cols-[minmax(0,1.5fr)_auto] xl:items-end">
-          <Field>
-            <FieldLabel htmlFor={searchId}>Search title</FieldLabel>
-            <InputGroup>
-              <InputGroupAddon>
-                <Search />
-              </InputGroupAddon>
-              <InputGroupInput
-                id={searchId}
-                {...form.register("q")}
-                placeholder="Search by title, alternate name, or franchise"
-              />
-              {query ? (
-                <InputGroupAddon align="inline-end">
-                  <InputGroupButton
-                    aria-label="Clear search"
-                    onClick={() => {
-                      form.setValue("q", "")
-                      updateSearch({ q: undefined })
-                    }}
-                  >
-                    <X />
-                  </InputGroupButton>
-                </InputGroupAddon>
-              ) : null}
-            </InputGroup>
-          </Field>
+          <form.Field name="q">
+            {(field) => (
+              <Field>
+                <FieldLabel htmlFor={searchId}>Search title</FieldLabel>
+                <InputGroup>
+                  <InputGroupAddon>
+                    <Search />
+                  </InputGroupAddon>
+                  <InputGroupInput
+                    id={searchId}
+                    name={field.name}
+                    placeholder="Search by title, alternate name, or franchise"
+                    value={field.state.value}
+                    onBlur={field.handleBlur}
+                    onChange={(event) => field.handleChange(event.target.value)}
+                  />
+                  {field.state.value ? (
+                    <InputGroupAddon align="inline-end">
+                      <InputGroupButton
+                        aria-label="Clear search"
+                        onClick={() => {
+                          field.handleChange("")
+                          updateSearch({ q: undefined })
+                        }}
+                      >
+                        <X />
+                      </InputGroupButton>
+                    </InputGroupAddon>
+                  ) : null}
+                </InputGroup>
+              </Field>
+            )}
+          </form.Field>
 
           {showActions ? (
             <div className="flex flex-col gap-2 sm:flex-row xl:justify-end">

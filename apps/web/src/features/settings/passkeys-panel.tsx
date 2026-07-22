@@ -1,15 +1,9 @@
+import { useForm } from "@tanstack/react-form"
 import { Button } from "@workspace/ui/components/button"
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-} from "@workspace/ui/components/form"
+import { Field, FieldLabel } from "@workspace/ui/components/field"
 import { Input } from "@workspace/ui/components/input"
 import { Fingerprint } from "lucide-react"
-import { useState } from "react"
-import { useForm } from "react-hook-form"
+import { useId, useState } from "react"
 import { toast } from "sonner"
 import type { AppUser } from "../../lib/auth-client"
 import { authClient } from "../../lib/auth-client"
@@ -20,15 +14,13 @@ type AddPasskeyValues = {
   name: string
 }
 
-type RenamePasskeyValues = {
-  name: string
-}
-
 export function PasskeysPanel({ user }: { user: AppUser | null }) {
   const query = authClient.useListPasskeys()
+  const nameId = useId()
   const [pending, setPending] = useState<string | null>(null)
-  const addForm = useForm<AddPasskeyValues>({
+  const addForm = useForm({
     defaultValues: { name: "" },
+    onSubmit: ({ value }) => add(value),
   })
   if (!user) return <AuthRequired />
   const add = async (values: AddPasskeyValues) => {
@@ -78,29 +70,33 @@ export function PasskeysPanel({ user }: { user: AppUser | null }) {
   return (
     <div className="flex flex-col gap-4">
       <PanelCard>
-        <Form {...addForm}>
-          <form
-            className="flex flex-col gap-4 sm:flex-row sm:items-end"
-            onSubmit={addForm.handleSubmit(add)}
-          >
-            <FormField
-              control={addForm.control}
-              name="name"
-              render={({ field }) => (
-                <FormItem className="flex-1">
-                  <FormLabel>New passkey name</FormLabel>
-                  <FormControl>
-                    <Input placeholder="MacBook Touch ID" {...field} />
-                  </FormControl>
-                </FormItem>
-              )}
-            />
-            <Button disabled={pending === "add"} type="submit">
-              <Fingerprint data-icon="inline-start" />
-              Add passkey
-            </Button>
-          </form>
-        </Form>
+        <form
+          className="flex flex-col gap-4 sm:flex-row sm:items-end"
+          onSubmit={(event) => {
+            event.preventDefault()
+            void addForm.handleSubmit()
+          }}
+        >
+          <addForm.Field name="name">
+            {(field) => (
+              <Field className="flex-1">
+                <FieldLabel htmlFor={nameId}>New passkey name</FieldLabel>
+                <Input
+                  id={nameId}
+                  name={field.name}
+                  placeholder="MacBook Touch ID"
+                  value={field.state.value}
+                  onBlur={field.handleBlur}
+                  onChange={(event) => field.handleChange(event.target.value)}
+                />
+              </Field>
+            )}
+          </addForm.Field>
+          <Button disabled={pending === "add"} type="submit">
+            <Fingerprint data-icon="inline-start" />
+            Add passkey
+          </Button>
+        </form>
       </PanelCard>
       <div className="divide-y rounded-2xl border bg-background/60">
         {query.data?.length ? (
@@ -137,42 +133,48 @@ function PasskeyRow({
   rename: (id: string, name: string) => Promise<void>
   remove: (id: string) => Promise<void>
 }) {
-  const form = useForm<RenamePasskeyValues>({
-    values: { name },
+  const form = useForm({
+    defaultValues: { name },
+    onSubmit: ({ value }) => rename(id, value.name.trim()),
   })
+  const nameId = useId()
 
   return (
-    <Form {...form}>
-      <form
-        className="flex flex-wrap items-end justify-between gap-4 p-4"
-        onSubmit={form.handleSubmit((values) => rename(id, values.name.trim()))}
-      >
-        <FormField
-          control={form.control}
-          name="name"
-          render={({ field }) => (
-            <FormItem className="max-w-sm">
-              <FormLabel>Passkey name</FormLabel>
-              <FormControl>
-                <Input required {...field} />
-              </FormControl>
-            </FormItem>
-          )}
-        />
-        <div className="flex gap-2">
-          <Button variant="outline" disabled={pending} type="submit">
-            Rename
-          </Button>
-          <Button
-            type="button"
-            variant="ghost"
-            disabled={pending}
-            onClick={() => void remove(id)}
-          >
-            Remove
-          </Button>
-        </div>
-      </form>
-    </Form>
+    <form
+      className="flex flex-wrap items-end justify-between gap-4 p-4"
+      onSubmit={(event) => {
+        event.preventDefault()
+        void form.handleSubmit()
+      }}
+    >
+      <form.Field name="name">
+        {(field) => (
+          <Field className="max-w-sm">
+            <FieldLabel htmlFor={nameId}>Passkey name</FieldLabel>
+            <Input
+              id={nameId}
+              name={field.name}
+              required
+              value={field.state.value}
+              onBlur={field.handleBlur}
+              onChange={(event) => field.handleChange(event.target.value)}
+            />
+          </Field>
+        )}
+      </form.Field>
+      <div className="flex gap-2">
+        <Button variant="outline" disabled={pending} type="submit">
+          Rename
+        </Button>
+        <Button
+          type="button"
+          variant="ghost"
+          disabled={pending}
+          onClick={() => void remove(id)}
+        >
+          Remove
+        </Button>
+      </div>
+    </form>
   )
 }

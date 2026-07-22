@@ -1,3 +1,4 @@
+import { useForm } from "@tanstack/react-form"
 import { useRouter } from "@tanstack/react-router"
 import {
   Avatar,
@@ -5,18 +6,14 @@ import {
   AvatarImage,
 } from "@workspace/ui/components/avatar"
 import { Button } from "@workspace/ui/components/button"
-import { FieldDescription } from "@workspace/ui/components/field"
 import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-} from "@workspace/ui/components/form"
+  Field,
+  FieldDescription,
+  FieldLabel,
+} from "@workspace/ui/components/field"
 import { Input } from "@workspace/ui/components/input"
 import { Textarea } from "@workspace/ui/components/textarea"
 import { useEffect, useRef, useState } from "react"
-import { useForm } from "react-hook-form"
 import { toast } from "sonner"
 import type { AppUser } from "../../lib/auth-client"
 import {
@@ -55,11 +52,13 @@ export function ProfilePanel({
     ReturnType<typeof loadOwnProfile>
   > | null>(null)
   const [pending, setPending] = useState<string | null>(null)
-  const usernameForm = useForm<UsernameFormValues>({
-    values: { username: user ? displayUsername(user) : "" },
+  const usernameForm = useForm({
+    defaultValues: { username: user ? displayUsername(user) : "" },
+    onSubmit: ({ value }) => updateUsername(value),
   })
-  const bioForm = useForm<BioFormValues>({
-    values: { description: profile?.profile.description ?? "" },
+  const bioForm = useForm({
+    defaultValues: { description: profile?.profile.description ?? "" },
+    onSubmit: ({ value }) => updateBio(value),
   })
 
   const refresh = async () => {
@@ -70,6 +69,12 @@ export function ProfilePanel({
   useEffect(() => {
     if (open && user) void refresh()
   }, [open, user])
+  useEffect(() => {
+    usernameForm.reset({ username: user ? displayUsername(user) : "" })
+  }, [user])
+  useEffect(() => {
+    bioForm.reset({ description: profile?.profile.description ?? "" })
+  }, [profile?.profile.description])
   if (!user) return <AuthRequired />
 
   const upload = async (kind: "avatar" | "banner", file: File) => {
@@ -227,82 +232,88 @@ export function ProfilePanel({
         </div>
       </PanelCard>
       <PanelCard>
-        <Form {...usernameForm}>
-          <form
-            className="flex flex-col gap-4"
-            onSubmit={usernameForm.handleSubmit(updateUsername)}
-          >
-            <div>
-              <h3 className="font-semibold">Username</h3>
-              <p className="text-sm text-muted-foreground">
-                Used across the app and in your profile URL.
-              </p>
-            </div>
-            <FormField
-              control={usernameForm.control}
-              name="username"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Username</FormLabel>
-                  <FormControl>
-                    <Input
-                      className="max-w-sm"
-                      minLength={3}
-                      maxLength={30}
-                      pattern="[A-Za-z0-9_]+"
-                      required
-                      {...field}
-                    />
-                  </FormControl>
-                  <FieldDescription>
-                    Letters, numbers, and underscores only.
-                  </FieldDescription>
-                </FormItem>
-              )}
-            />
-            <Button
-              className="w-fit"
-              disabled={usernameForm.formState.isSubmitting}
-              type="submit"
-            >
-              Save username
-            </Button>
-          </form>
-        </Form>
+        <form
+          className="flex flex-col gap-4"
+          onSubmit={(event) => {
+            event.preventDefault()
+            void usernameForm.handleSubmit()
+          }}
+        >
+          <div>
+            <h3 className="font-semibold">Username</h3>
+            <p className="text-sm text-muted-foreground">
+              Used across the app and in your profile URL.
+            </p>
+          </div>
+          <usernameForm.Field name="username">
+            {(field) => (
+              <Field>
+                <FieldLabel htmlFor={field.name}>Username</FieldLabel>
+                <Input
+                  id={field.name}
+                  name={field.name}
+                  className="max-w-sm"
+                  minLength={3}
+                  maxLength={30}
+                  pattern="[A-Za-z0-9_]+"
+                  required
+                  value={field.state.value}
+                  onBlur={field.handleBlur}
+                  onChange={(event) => field.handleChange(event.target.value)}
+                />
+                <FieldDescription>
+                  Letters, numbers, and underscores only.
+                </FieldDescription>
+              </Field>
+            )}
+          </usernameForm.Field>
+          <usernameForm.Subscribe selector={(state) => state.isSubmitting}>
+            {(isSubmitting) => (
+              <Button className="w-fit" disabled={isSubmitting} type="submit">
+                Save username
+              </Button>
+            )}
+          </usernameForm.Subscribe>
+        </form>
       </PanelCard>
       <PanelCard>
-        <Form {...bioForm}>
-          <form
-            className="flex flex-col gap-4"
-            onSubmit={bioForm.handleSubmit(updateBio)}
-          >
-            <div>
-              <h3 className="font-semibold">Bio</h3>
-              <p className="text-sm text-muted-foreground">
-                A short description shown on your profile.
-              </p>
-            </div>
-            <FormField
-              control={bioForm.control}
-              name="description"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Description</FormLabel>
-                  <FormControl>
-                    <Textarea maxLength={300} rows={5} {...field} />
-                  </FormControl>
-                </FormItem>
-              )}
-            />
-            <Button
-              className="w-fit"
-              disabled={bioForm.formState.isSubmitting}
-              type="submit"
-            >
-              Save bio
-            </Button>
-          </form>
-        </Form>
+        <form
+          className="flex flex-col gap-4"
+          onSubmit={(event) => {
+            event.preventDefault()
+            void bioForm.handleSubmit()
+          }}
+        >
+          <div>
+            <h3 className="font-semibold">Bio</h3>
+            <p className="text-sm text-muted-foreground">
+              A short description shown on your profile.
+            </p>
+          </div>
+          <bioForm.Field name="description">
+            {(field) => (
+              <Field>
+                <FieldLabel htmlFor={field.name}>Description</FieldLabel>
+                <Textarea
+                  id={field.name}
+                  name={field.name}
+                  maxLength={300}
+                  rows={5}
+                  value={field.state.value}
+                  onBlur={field.handleBlur}
+                  onChange={(event) => field.handleChange(event.target.value)}
+                />
+              </Field>
+            )}
+          </bioForm.Field>
+          <bioForm.Subscribe selector={(state) => state.isSubmitting}>
+            {(isSubmitting) => (
+              <Button className="w-fit" disabled={isSubmitting} type="submit">
+                Save bio
+              </Button>
+            )}
+          </bioForm.Subscribe>
+        </form>
       </PanelCard>
     </div>
   )

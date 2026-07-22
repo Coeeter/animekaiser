@@ -1,14 +1,20 @@
+import { useForm } from "@tanstack/react-form"
 import { useNavigate } from "@tanstack/react-router"
 import { Button } from "@workspace/ui/components/button"
-import { FieldError, FieldGroup } from "@workspace/ui/components/field"
 import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@workspace/ui/components/form"
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@workspace/ui/components/card"
+import {
+  Field,
+  FieldError,
+  FieldGroup,
+  FieldLabel,
+} from "@workspace/ui/components/field"
 import { Input } from "@workspace/ui/components/input"
 import {
   InputOTP,
@@ -16,201 +22,216 @@ import {
   InputOTPSlot,
 } from "@workspace/ui/components/input-otp"
 import { useState } from "react"
-import { useForm } from "react-hook-form"
 import { toast } from "sonner"
 import { authClient } from "../../lib/auth-client"
 import { errorMessage } from "../../lib/error"
 import { AuthFooter, SubmitButton } from "./auth-shared"
 
-type ResetRequestValues = {
-  email: string
-}
-
-type ResetPasswordValues = {
-  otp: string
-  password: string
-  confirmation: string
-}
-
 export function ForgotPasswordPage() {
   const navigate = useNavigate()
   const [email, setEmail] = useState<string | null>(null)
-  const requestForm = useForm<ResetRequestValues>({
+  const [requestError, setRequestError] = useState<string | null>(null)
+  const [resetError, setResetError] = useState<string | null>(null)
+  const [confirmationError, setConfirmationError] = useState<string | null>(
+    null
+  )
+  const requestForm = useForm({
     defaultValues: { email: "" },
+    onSubmit: async ({ value }) => {
+      setRequestError(null)
+      const targetEmail = value.email.trim()
+      try {
+        const result = await authClient.emailOtp.requestPasswordReset({
+          email: targetEmail,
+        })
+        if (result.error) throw result.error
+        setEmail(targetEmail)
+      } catch (cause) {
+        setRequestError(errorMessage(cause, "Unable to send reset code"))
+      }
+    },
   })
-  const resetForm = useForm<ResetPasswordValues>({
+  const resetForm = useForm({
     defaultValues: { otp: "", password: "", confirmation: "" },
+    onSubmit: async ({ value }) => {
+      if (!email) return
+      setResetError(null)
+      setConfirmationError(null)
+      if (value.password !== value.confirmation) {
+        setConfirmationError("Passwords do not match")
+        return
+      }
+      try {
+        const result = await authClient.emailOtp.resetPassword({
+          email,
+          otp: value.otp,
+          password: value.password,
+        })
+        if (result.error) throw result.error
+        toast.success("Password reset. You can log in now.")
+        await navigate({ to: "/login", search: { redirect: undefined } })
+      } catch (cause) {
+        setResetError(errorMessage(cause, "Unable to reset password"))
+      }
+    },
   })
-
-  const request = async (values: ResetRequestValues) => {
-    const value = values.email.trim()
-    try {
-      const result = await authClient.emailOtp.requestPasswordReset({
-        email: value,
-      })
-      if (result.error) throw result.error
-      setEmail(value)
-    } catch (cause) {
-      requestForm.setError("root", {
-        message: errorMessage(cause, "Unable to send reset code"),
-      })
-    }
-  }
-
-  const reset = async (values: ResetPasswordValues) => {
-    if (!email) return
-    if (values.password !== values.confirmation) {
-      resetForm.setError("confirmation", { message: "Passwords do not match" })
-      return
-    }
-    try {
-      const result = await authClient.emailOtp.resetPassword({
-        email,
-        otp: values.otp,
-        password: values.password,
-      })
-      if (result.error) throw result.error
-      toast.success("Password reset. You can log in now.")
-      await navigate({ to: "/login", search: { redirect: undefined } })
-    } catch (cause) {
-      resetForm.setError("root", {
-        message: errorMessage(cause, "Unable to reset password"),
-      })
-    }
-  }
 
   return (
-    <div className="w-full max-w-sm rounded-3xl border bg-card p-6 shadow-sm">
-      <div className="text-center">
-        <h1 className="font-heading text-2xl font-bold">Reset your password</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
+    <Card className="w-full max-w-sm">
+      <CardHeader className="text-center">
+        <CardTitle>
+          <h1 className="text-2xl font-bold">Reset your password</h1>
+        </CardTitle>
+        <CardDescription>
           {email
             ? `Enter the code sent to ${email}.`
             : "We’ll email you a reset code."}
-        </p>
-      </div>
-      {!email ? (
-        <Form {...requestForm}>
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        {!email ? (
           <form
-            className="mt-6 flex flex-col gap-6"
-            onSubmit={requestForm.handleSubmit(request)}
+            className="flex flex-col gap-6"
+            onSubmit={(event) => {
+              event.preventDefault()
+              void requestForm.handleSubmit()
+            }}
           >
-            <FormField
-              control={requestForm.control}
-              name="email"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Email</FormLabel>
-                  <FormControl>
-                    <Input
-                      type="email"
-                      autoComplete="email"
-                      required
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
+            <requestForm.Field name="email">
+              {(field) => (
+                <Field>
+                  <FieldLabel htmlFor={field.name}>Email</FieldLabel>
+                  <Input
+                    autoComplete="email"
+                    id={field.name}
+                    name={field.name}
+                    required
+                    type="email"
+                    value={field.state.value}
+                    onBlur={field.handleBlur}
+                    onChange={(event) => field.handleChange(event.target.value)}
+                  />
+                </Field>
               )}
-            />
-            {requestForm.formState.errors.root?.message ? (
-              <FieldError>
-                {requestForm.formState.errors.root.message}
-              </FieldError>
-            ) : null}
-            <SubmitButton pending={requestForm.formState.isSubmitting}>
-              {requestForm.formState.isSubmitting
-                ? "Working…"
-                : "Send reset code"}
-            </SubmitButton>
-            <AuthFooter prompt="Back to" action="login" to="/login" />
+            </requestForm.Field>
+            {requestError ? <FieldError>{requestError}</FieldError> : null}
+            <requestForm.Subscribe selector={(state) => state.isSubmitting}>
+              {(pending) => (
+                <SubmitButton pending={pending}>
+                  {pending ? "Working…" : "Send reset code"}
+                </SubmitButton>
+              )}
+            </requestForm.Subscribe>
           </form>
-        </Form>
-      ) : (
-        <Form {...resetForm}>
+        ) : (
           <form
-            className="mt-6 flex flex-col gap-6"
-            onSubmit={resetForm.handleSubmit(reset)}
+            className="flex flex-col gap-6"
+            onSubmit={(event) => {
+              event.preventDefault()
+              void resetForm.handleSubmit()
+            }}
           >
             <FieldGroup>
-              <FormField
-                control={resetForm.control}
-                name="otp"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Reset code</FormLabel>
-                    <FormControl>
-                      <InputOTP maxLength={6} {...field}>
-                        <InputOTPGroup>
-                          {Array.from({ length: 6 }, (_, index) => (
-                            <InputOTPSlot key={index} index={index} />
-                          ))}
-                        </InputOTPGroup>
-                      </InputOTP>
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
+              <resetForm.Field name="otp">
+                {(field) => (
+                  <Field data-invalid={Boolean(resetError)}>
+                    <FieldLabel htmlFor={field.name}>Reset code</FieldLabel>
+                    <InputOTP
+                      autoComplete="one-time-code"
+                      autoFocus
+                      aria-invalid={Boolean(resetError)}
+                      id={field.name}
+                      inputMode="numeric"
+                      maxLength={6}
+                      name={field.name}
+                      required
+                      value={field.state.value}
+                      onBlur={field.handleBlur}
+                      onChange={field.handleChange}
+                    >
+                      <InputOTPGroup className="mx-auto">
+                        {Array.from({ length: 6 }, (_, index) => (
+                          <InputOTPSlot key={index} index={index} />
+                        ))}
+                      </InputOTPGroup>
+                    </InputOTP>
+                  </Field>
                 )}
-              />
-              <FormField
-                control={resetForm.control}
-                name="password"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>New password</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="password"
-                        autoComplete="new-password"
-                        minLength={8}
-                        required
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
+              </resetForm.Field>
+              <resetForm.Field name="password">
+                {(field) => (
+                  <Field>
+                    <FieldLabel htmlFor={field.name}>New password</FieldLabel>
+                    <Input
+                      autoComplete="new-password"
+                      id={field.name}
+                      minLength={8}
+                      name={field.name}
+                      required
+                      type="password"
+                      value={field.state.value}
+                      onBlur={field.handleBlur}
+                      onChange={(event) =>
+                        field.handleChange(event.target.value)
+                      }
+                    />
+                  </Field>
                 )}
-              />
-              <FormField
-                control={resetForm.control}
-                name="confirmation"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Confirm password</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="password"
-                        autoComplete="new-password"
-                        minLength={8}
-                        required
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
+              </resetForm.Field>
+              <resetForm.Field name="confirmation">
+                {(field) => (
+                  <Field data-invalid={Boolean(confirmationError)}>
+                    <FieldLabel htmlFor={field.name}>
+                      Confirm password
+                    </FieldLabel>
+                    <Input
+                      autoComplete="new-password"
+                      aria-invalid={Boolean(confirmationError)}
+                      id={field.name}
+                      minLength={8}
+                      name={field.name}
+                      required
+                      type="password"
+                      value={field.state.value}
+                      onBlur={field.handleBlur}
+                      onChange={(event) => {
+                        setConfirmationError(null)
+                        field.handleChange(event.target.value)
+                      }}
+                    />
+                    {confirmationError ? (
+                      <FieldError>{confirmationError}</FieldError>
+                    ) : null}
+                  </Field>
                 )}
-              />
+              </resetForm.Field>
             </FieldGroup>
-            {resetForm.formState.errors.root?.message ? (
-              <FieldError>{resetForm.formState.errors.root.message}</FieldError>
-            ) : null}
-            <SubmitButton pending={resetForm.formState.isSubmitting}>
-              {resetForm.formState.isSubmitting ? "Working…" : "Reset password"}
-            </SubmitButton>
+            {resetError ? <FieldError>{resetError}</FieldError> : null}
+            <resetForm.Subscribe selector={(state) => state.isSubmitting}>
+              {(pending) => (
+                <SubmitButton pending={pending}>
+                  {pending ? "Working…" : "Reset password"}
+                </SubmitButton>
+              )}
+            </resetForm.Subscribe>
             <Button
               type="button"
               variant="ghost"
               onClick={() => {
                 setEmail(null)
+                setResetError(null)
+                setConfirmationError(null)
                 resetForm.reset()
               }}
             >
               Use another email
             </Button>
-            <AuthFooter prompt="Back to" action="login" to="/login" />
           </form>
-        </Form>
-      )}
-    </div>
+        )}
+      </CardContent>
+      <CardFooter className="justify-center">
+        <AuthFooter prompt="Back to" action="login" to="/login" />
+      </CardFooter>
+    </Card>
   )
 }

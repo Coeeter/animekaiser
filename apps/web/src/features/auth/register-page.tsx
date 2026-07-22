@@ -1,165 +1,177 @@
+import { useForm } from "@tanstack/react-form"
 import { useNavigate, useRouter } from "@tanstack/react-router"
-import { FieldError, FieldGroup } from "@workspace/ui/components/field"
 import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@workspace/ui/components/form"
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@workspace/ui/components/card"
+import {
+  Field,
+  FieldError,
+  FieldGroup,
+  FieldLabel,
+} from "@workspace/ui/components/field"
 import { Input } from "@workspace/ui/components/input"
-import { useForm } from "react-hook-form"
+import { useState } from "react"
 import { authClient } from "../../lib/auth-client"
 import { errorMessage } from "../../lib/error"
 import { AuthFooter, SubmitButton } from "./auth-shared"
 
-type RegisterFormValues = {
-  username: string
-  email: string
-  password: string
-  confirmation: string
-}
-
 export function RegisterPage() {
   const router = useRouter()
   const navigate = useNavigate()
-  const form = useForm<RegisterFormValues>({
+  const [error, setError] = useState<string | null>(null)
+  const [confirmationError, setConfirmationError] = useState<string | null>(
+    null
+  )
+  const form = useForm({
     defaultValues: {
       username: "",
       email: "",
       password: "",
       confirmation: "",
     },
+    onSubmit: async ({ value }) => {
+      setError(null)
+      setConfirmationError(null)
+      if (value.password !== value.confirmation) {
+        setConfirmationError("Passwords do not match")
+        return
+      }
+      const username = value.username.trim()
+      try {
+        const result = await authClient.signUp.email({
+          name: username,
+          username,
+          email: value.email.trim(),
+          password: value.password,
+        })
+        if (result.error) throw result.error
+        await router.invalidate()
+        await navigate({ to: "/" })
+      } catch (cause) {
+        setError(errorMessage(cause, "Unable to create account"))
+      }
+    },
   })
 
-  const submit = async (values: RegisterFormValues) => {
-    if (values.password !== values.confirmation) {
-      form.setError("confirmation", { message: "Passwords do not match" })
-      return
-    }
-    const username = values.username.trim()
-    try {
-      const result = await authClient.signUp.email({
-        name: username,
-        username,
-        email: values.email.trim(),
-        password: values.password,
-      })
-      if (result.error) throw result.error
-      await router.invalidate()
-      await navigate({ to: "/" })
-    } catch (cause) {
-      form.setError("root", {
-        message: errorMessage(cause, "Unable to create account"),
-      })
-    }
-  }
-
   return (
-    <Form {...form}>
-      <form
-        className="flex w-full max-w-sm flex-col gap-6 rounded-3xl border bg-card p-6 shadow-sm"
-        onSubmit={form.handleSubmit(submit)}
-      >
-        <div className="text-center">
-          <h1 className="font-heading text-2xl font-bold">
-            Create your account
-          </h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Start building your anime library.
-          </p>
-        </div>
-        <FieldGroup>
-          <FormField
-            control={form.control}
-            name="username"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Username</FormLabel>
-                <FormControl>
+    <form
+      className="w-full max-w-sm"
+      onSubmit={(event) => {
+        event.preventDefault()
+        void form.handleSubmit()
+      }}
+    >
+      <Card>
+        <CardHeader className="text-center">
+          <CardTitle>
+            <h1 className="text-2xl font-bold">Create your account</h1>
+          </CardTitle>
+          <CardDescription>Start building your anime library.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <FieldGroup>
+            <form.Field name="username">
+              {(field) => (
+                <Field>
+                  <FieldLabel htmlFor={field.name}>Username</FieldLabel>
                   <Input
                     autoComplete="username"
-                    minLength={3}
+                    id={field.name}
                     maxLength={30}
+                    minLength={3}
+                    name={field.name}
                     pattern="[A-Za-z0-9_]+"
                     required
-                    {...field}
+                    value={field.state.value}
+                    onBlur={field.handleBlur}
+                    onChange={(event) => field.handleChange(event.target.value)}
                   />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <FormField
-            control={form.control}
-            name="email"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Email</FormLabel>
-                <FormControl>
+                </Field>
+              )}
+            </form.Field>
+            <form.Field name="email">
+              {(field) => (
+                <Field>
+                  <FieldLabel htmlFor={field.name}>Email</FieldLabel>
                   <Input
-                    type="email"
                     autoComplete="email"
+                    id={field.name}
+                    name={field.name}
                     required
-                    {...field}
+                    type="email"
+                    value={field.state.value}
+                    onBlur={field.handleBlur}
+                    onChange={(event) => field.handleChange(event.target.value)}
                   />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <FormField
-            control={form.control}
-            name="password"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Password</FormLabel>
-                <FormControl>
+                </Field>
+              )}
+            </form.Field>
+            <form.Field name="password">
+              {(field) => (
+                <Field>
+                  <FieldLabel htmlFor={field.name}>Password</FieldLabel>
                   <Input
-                    type="password"
                     autoComplete="new-password"
+                    id={field.name}
                     minLength={8}
+                    name={field.name}
                     required
-                    {...field}
+                    type="password"
+                    value={field.state.value}
+                    onBlur={field.handleBlur}
+                    onChange={(event) => field.handleChange(event.target.value)}
                   />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <FormField
-            control={form.control}
-            name="confirmation"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Confirm password</FormLabel>
-                <FormControl>
+                </Field>
+              )}
+            </form.Field>
+            <form.Field name="confirmation">
+              {(field) => (
+                <Field data-invalid={Boolean(confirmationError)}>
+                  <FieldLabel htmlFor={field.name}>Confirm password</FieldLabel>
                   <Input
-                    type="password"
                     autoComplete="new-password"
+                    aria-invalid={Boolean(confirmationError)}
+                    id={field.name}
                     minLength={8}
+                    name={field.name}
                     required
-                    {...field}
+                    type="password"
+                    value={field.state.value}
+                    onBlur={field.handleBlur}
+                    onChange={(event) => {
+                      setConfirmationError(null)
+                      field.handleChange(event.target.value)
+                    }}
                   />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
+                  {confirmationError ? (
+                    <FieldError>{confirmationError}</FieldError>
+                  ) : null}
+                </Field>
+              )}
+            </form.Field>
+          </FieldGroup>
+        </CardContent>
+        <CardFooter className="flex-col gap-6">
+          {error ? <FieldError>{error}</FieldError> : null}
+          <form.Subscribe selector={(state) => state.isSubmitting}>
+            {(pending) => (
+              <SubmitButton pending={pending}>
+                {pending ? "Creating account…" : "Create account"}
+              </SubmitButton>
             )}
+          </form.Subscribe>
+          <AuthFooter
+            prompt="Already have an account?"
+            action="Login"
+            to="/login"
           />
-        </FieldGroup>
-        {form.formState.errors.root?.message ? (
-          <FieldError>{form.formState.errors.root.message}</FieldError>
-        ) : null}
-        <SubmitButton pending={form.formState.isSubmitting}>
-          {form.formState.isSubmitting ? "Creating account…" : "Create account"}
-        </SubmitButton>
-        <AuthFooter
-          prompt="Already have an account?"
-          action="Login"
-          to="/login"
-        />
-      </form>
-    </Form>
+        </CardFooter>
+      </Card>
+    </form>
   )
 }
