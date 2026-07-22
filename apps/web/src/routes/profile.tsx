@@ -4,6 +4,7 @@ import { OwnProfilePage } from "../features/profile/profile-page"
 import { getAppSession } from "../lib/session"
 
 export const Route = createFileRoute("/profile")({
+  staticData: { title: "Profile" },
   beforeLoad: async () => {
     if (!(await getAppSession())) {
       throw redirect({ to: "/login", search: { redirect: "/profile" } })

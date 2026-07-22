@@ -6,6 +6,7 @@ import {
 } from "@tanstack/react-router"
 import { Toaster } from "@workspace/ui/components/sonner"
 import { TooltipProvider } from "@workspace/ui/components/tooltip"
+import { DocumentTitle } from "../components/document-title"
 import { ThemeProvider } from "../components/theme"
 import { AppShell } from "../features/layout/app-shell"
 import { getAppSession } from "../lib/session"
@@ -22,9 +23,6 @@ export const Route = createRootRoute({
       {
         name: "viewport",
         content: "width=device-width, initial-scale=1",
-      },
-      {
-        title: "AnimeKaiser",
       },
     ],
     links: [
@@ -48,9 +46,12 @@ export const Route = createRootRoute({
 function RootRouteComponent() {
   const session = Route.useLoaderData()
   return (
-    <AppShell session={session}>
-      <Outlet />
-    </AppShell>
+    <>
+      <DocumentTitle />
+      <AppShell session={session}>
+        <Outlet />
+      </AppShell>
+    </>
   )
 }
 
@@ -63,7 +64,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
       <body className="overflow-x-hidden">
         <ThemeProvider>
           <TooltipProvider>{children}</TooltipProvider>
-          <Toaster richColors />
+          <Toaster position="top-center" richColors />
         </ThemeProvider>
         <Scripts />
       </body>

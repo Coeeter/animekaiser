@@ -1,10 +1,10 @@
 import type { StreamAudio, StreamProviderId } from "@workspace/domain"
 import { KaiserAtomRpc } from "../../lib/rpc-client"
 
-export const streamEpisodesAtom = (malId: number) =>
+export const streamEpisodesAtom = (malId: number, provider: StreamProviderId) =>
   KaiserAtomRpc.query(
     "ListStreamEpisodes",
-    { malId },
+    { malId, provider },
     { timeToLive: "1 minute" }
   )
 

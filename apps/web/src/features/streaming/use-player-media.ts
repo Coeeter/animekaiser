@@ -13,15 +13,22 @@ import {
 export function usePlayerMedia({
   sourceUrl,
   audioEnhancementPercent,
+  failureKey,
+  onFatalError,
 }: {
   sourceUrl: string
   audioEnhancementPercent: number
+  failureKey: string
+  onFatalError: () => boolean
 }) {
   const videoRef = useRef<HTMLVideoElement>(null)
   const hlsRef = useRef<Hls | null>(null)
   const audioContextRef = useRef<AudioContext | null>(null)
   const audioSourceRef = useRef<MediaElementAudioSourceNode | null>(null)
   const audioGainRef = useRef<GainNode | null>(null)
+  const reportedFailureRef = useRef<string | null>(null)
+  const onFatalErrorRef = useRef(onFatalError)
+  onFatalErrorRef.current = onFatalError
   const quality = useAtomValue(playerQualityAtom)
   const setQuality = useAtomSet(playerQualityAtom)
   const speed = useAtomValue(playerSpeedAtom)
@@ -51,6 +58,9 @@ export function usePlayerMedia({
 
   const reportPlayerError = (message: string) => {
     setBuffering(false)
+    if (reportedFailureRef.current === failureKey) return
+    reportedFailureRef.current = failureKey
+    if (onFatalErrorRef.current()) return
     setPlayerError(message)
     toast.error(message)
   }
@@ -93,7 +103,7 @@ export function usePlayerMedia({
     const video = videoRef.current
     if (!video) return
     video.currentTime = seconds
-    void video.play()
+    void video.play().catch(() => undefined)
   }
 
   const togglePlayback = () => {
@@ -101,7 +111,7 @@ export function usePlayerMedia({
     if (!video) return
     if (video.paused) {
       void audioContextRef.current?.resume()
-      void video.play()
+      void video.play().catch(() => undefined)
       return
     }
     video.pause()
@@ -207,7 +217,7 @@ export function usePlayerMedia({
       video.removeAttribute("src")
       video.load()
     }
-  }, [sourceUrl, streamRetryKey])
+  }, [failureKey, sourceUrl, streamRetryKey])
 
   useEffect(() => {
     if (!playerError || streamRetryAttempt >= 3) return
@@ -271,6 +281,7 @@ export function usePlayerMedia({
         setBuffering(false)
         setPlayerError(null)
         setStreamRetryAttempt(0)
+        reportedFailureRef.current = null
       },
       onCanPlayThrough: () => setBuffering(false),
       onError: () => {

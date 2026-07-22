@@ -1,7 +1,15 @@
 import * as Schema from "effect/Schema"
 import { AnimeDetail, MalId } from "../anime/models"
 
-export const StreamProviderId = Schema.Literal("provider-a")
+export const streamProviderIds = [
+  "provider-a",
+  "provider-b",
+  "provider-c",
+  "provider-d",
+  "provider-e",
+] as const
+
+export const StreamProviderId = Schema.Literal(...streamProviderIds)
 export type StreamProviderId = typeof StreamProviderId.Type
 
 export const StreamAudio = Schema.Literal("sub", "dub")

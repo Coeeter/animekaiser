@@ -7,6 +7,7 @@ import {
 import { decodeDiscoverSearch } from "../features/anime/search"
 
 export const Route = createFileRoute("/discover")({
+  staticData: { title: "Discover" },
   validateSearch: decodeDiscoverSearch,
   loaderDeps: ({ search }) => search,
   loader: ({ deps }) => loadAnimeDiscovery(deps.tab, deps.page),

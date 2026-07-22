@@ -53,7 +53,9 @@ export function EpisodeSheet({
   portalContainer: HTMLElement | null
   playback: StreamPlayback
 }) {
-  const result = useAtomValue(streamEpisodesAtom(playback.anime.malId))
+  const result = useAtomValue(
+    streamEpisodesAtom(playback.anime.malId, playback.provider)
+  )
   const catalog = Result.match(result, {
     onInitial: () => null,
     onFailure: () => null,

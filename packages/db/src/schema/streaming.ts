@@ -8,7 +8,13 @@ import {
 } from "drizzle-orm/pg-core"
 import { animeMetadata } from "./library"
 
-export const streamProviders = ["provider-a"] as const
+export const streamProviders = [
+  "provider-a",
+  "provider-b",
+  "provider-c",
+  "provider-d",
+  "provider-e",
+] as const
 
 export const animeStreamProviderMapping = pgTable(
   "anime_stream_provider_mapping",

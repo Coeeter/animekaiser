@@ -2,6 +2,7 @@ import type {
   StreamAudio,
   StreamEpisode,
   StreamProviderId,
+  StreamServer,
 } from "@workspace/domain"
 import type { VideoFit } from "./preferences"
 
@@ -19,6 +20,31 @@ export const seriesEpisodesHref = (malId: number) => `/series/${malId}`
 export const watchEpisodeNumber = (progress: number | null) =>
   progress !== null && progress > 1 ? progress + 1 : 1
 
+export const watchAction = (
+  progress: number | null,
+  episodeNumbers: ReadonlyArray<number>
+) => {
+  const episodes = Array.from(new Set(episodeNumbers)).sort(
+    (left, right) => left - right
+  )
+  const first = episodes[0]
+  if (first === undefined) return null
+
+  const episodeNumber = episodes.find(
+    (number) => number >= watchEpisodeNumber(progress)
+  )
+  if (episodeNumber === undefined)
+    return { episodeNumber: first, label: "Rewatch Anime" as const }
+
+  return {
+    episodeNumber,
+    label:
+      progress !== null && progress > 1
+        ? ("Continue Watching" as const)
+        : ("Start Watching" as const),
+  }
+}
+
 export const formatTime = (seconds: number) => {
   if (!Number.isFinite(seconds)) return "0:00"
   const minutes = Math.floor(seconds / 60)
@@ -27,7 +53,11 @@ export const formatTime = (seconds: number) => {
 }
 
 const providerLabels: Record<StreamProviderId, string> = {
+  "provider-e": "ProviderE",
   provider-a: "ProviderA",
+  provider-b: "ProviderB",
+  provider-c: "ProviderC",
+  provider-d: "ProviderD",
 }
 
 export const providerLabel = (provider: StreamProviderId) =>
@@ -68,6 +98,18 @@ export const preferredAudio = (episode: StreamEpisode): StreamAudio | null => {
   if (episode.availableAudio.includes("sub")) return "sub"
   if (episode.availableAudio.includes("dub")) return "dub"
   return null
+}
+
+export const nextStreamServer = (
+  servers: ReadonlyArray<StreamServer>,
+  currentServerId: string,
+  audio: StreamAudio
+) => {
+  const candidates = servers.filter((server) => server.audio === audio)
+  const currentIndex = candidates.findIndex(
+    (server) => server.id === currentServerId
+  )
+  return candidates[currentIndex + 1] ?? null
 }
 
 export const episodeLabel = (episode: StreamEpisode) =>

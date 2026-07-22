@@ -5,7 +5,7 @@ import type {
   StreamAudio,
   StreamProviderEpisodes,
 } from "@workspace/domain"
-import { StreamProviderId } from "@workspace/domain"
+import { StreamProviderId, streamProviderIds } from "@workspace/domain"
 import { Badge } from "@workspace/ui/components/badge"
 import { Button } from "@workspace/ui/components/button"
 import {
@@ -50,7 +50,11 @@ import { streamEpisodesAtom } from "./atoms"
 const decodeProviderId = Schema.decodeUnknownSync(StreamProviderId)
 
 const providerLabels: Record<StreamProviderId, string> = {
+  "provider-e": "ProviderE",
   provider-a: "ProviderA",
+  provider-b: "ProviderB",
+  provider-c: "ProviderC",
+  provider-d: "ProviderD",
 }
 
 const providerLabel = (provider: StreamProviderId) => providerLabels[provider]
@@ -111,14 +115,17 @@ const clampProgress = (value: number | undefined) =>
 export function EpisodesPanel({
   anime,
   page,
+  provider: selectedProvider,
   onPageChange,
+  onProviderChange,
 }: {
   anime: AnimeDetail
   page: number
+  provider: StreamProviderId
   onPageChange: (page: number) => void
+  onProviderChange: (provider: StreamProviderId) => void
 }) {
-  const result = useAtomValue(streamEpisodesAtom(anime.malId))
-  const [selectedProvider, setSelectedProvider] = useState("provider-a")
+  const result = useAtomValue(streamEpisodesAtom(anime.malId, selectedProvider))
 
   const catalog = Result.match(result, {
     onInitial: () => null,
@@ -167,19 +174,16 @@ export function EpisodesPanel({
         </div>
         <Select
           value={selectValue}
-          onValueChange={(value) => {
-            setSelectedProvider(decodeProviderId(value))
-            onPageChange(1)
-          }}
+          onValueChange={(value) => onProviderChange(decodeProviderId(value))}
         >
           <SelectTrigger className="w-full sm:w-44">
             <SelectValue placeholder="Provider" />
           </SelectTrigger>
           <SelectContent>
             <SelectGroup>
-              {providers.map((provider) => (
-                <SelectItem key={provider.provider} value={provider.provider}>
-                  {providerLabel(provider.provider)}
+              {streamProviderIds.map((provider) => (
+                <SelectItem key={provider} value={provider}>
+                  {providerLabel(provider)}
                 </SelectItem>
               ))}
             </SelectGroup>

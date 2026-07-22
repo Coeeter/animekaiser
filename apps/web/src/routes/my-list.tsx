@@ -4,6 +4,7 @@ import { decodeMyListSearch } from "../features/library/search"
 import { getAppSession } from "../lib/session"
 
 export const Route = createFileRoute("/my-list")({
+  staticData: { title: "My List" },
   validateSearch: decodeMyListSearch,
   beforeLoad: async () => {
     if (!(await getAppSession()))

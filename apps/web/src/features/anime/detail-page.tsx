@@ -6,6 +6,7 @@ import type {
   AnimeTitle as AnimeTitleValue,
   LibraryEntry,
   LibraryStatus,
+  StreamProviderId,
 } from "@workspace/domain"
 import { Badge } from "@workspace/ui/components/badge"
 import { Button } from "@workspace/ui/components/button"
@@ -46,7 +47,7 @@ import { libraryEntryAtom } from "../library/atoms"
 import { libraryStatuses } from "../library/constants"
 import { streamEpisodesAtom } from "../streaming/atoms"
 import { EpisodesPanel } from "../streaming/episodes-panel"
-import { preferredAudio, watchEpisodeNumber } from "../streaming/player-format"
+import { preferredAudio, watchAction } from "../streaming/player-format"
 import { AnimeGrid } from "./anime-grid"
 import { AnimeSubtitle, AnimeTitle } from "./anime-title"
 import { detailAtom, recommendationsAtom } from "./atoms"
@@ -125,7 +126,9 @@ export function AnimeDetailPage({
   isAuthenticated,
   activeTab,
   episodePage,
+  episodeProvider,
   onEpisodePageChange,
+  onEpisodeProviderChange,
   onTabChange,
 }: {
   id: number
@@ -133,7 +136,9 @@ export function AnimeDetailPage({
   isAuthenticated: boolean
   activeTab: AnimeDetailTab
   episodePage: number
+  episodeProvider: StreamProviderId
   onEpisodePageChange: (page: number) => void
+  onEpisodeProviderChange: (provider: StreamProviderId) => void
   onTabChange: (tab: AnimeDetailTab) => void
 }) {
   const result = useAtomValue(detailAtom(id))
@@ -156,10 +161,15 @@ export function AnimeDetailPage({
       key={id}
       anime={anime}
       libraryEntry={libraryEntry}
+      libraryEntryLoading={
+        isAuthenticated && Result.isWaiting(libraryEntryResult)
+      }
       isAuthenticated={isAuthenticated}
       activeTab={activeTab}
       episodePage={episodePage}
+      episodeProvider={episodeProvider}
       onEpisodePageChange={onEpisodePageChange}
+      onEpisodeProviderChange={onEpisodeProviderChange}
       onTabChange={onTabChange}
     />
   )
@@ -168,18 +178,24 @@ export function AnimeDetailPage({
 function SeriesDetail({
   anime,
   libraryEntry,
+  libraryEntryLoading,
   isAuthenticated,
   activeTab,
   episodePage,
+  episodeProvider,
   onEpisodePageChange,
+  onEpisodeProviderChange,
   onTabChange,
 }: {
   anime: AnimeDetail
   libraryEntry: LibraryEntry | null
+  libraryEntryLoading: boolean
   isAuthenticated: boolean
   activeTab: AnimeDetailTab
   episodePage: number
+  episodeProvider: StreamProviderId
   onEpisodePageChange: (page: number) => void
+  onEpisodeProviderChange: (provider: StreamProviderId) => void
   onTabChange: (tab: AnimeDetailTab) => void
 }) {
   const description = stripHtml(anime.description)
@@ -298,7 +314,9 @@ function SeriesDetail({
                 <div className="flex flex-col gap-3 pt-2 sm:flex-row sm:items-center">
                   <WatchButton
                     malId={anime.malId}
+                    provider={episodeProvider}
                     progress={libraryEntry?.progress ?? null}
+                    progressLoading={libraryEntryLoading}
                   />
                   <Button
                     className="w-fit"
@@ -484,7 +502,9 @@ function SeriesDetail({
                     <EpisodesPanel
                       anime={anime}
                       page={episodePage}
+                      provider={episodeProvider}
                       onPageChange={onEpisodePageChange}
+                      onProviderChange={onEpisodeProviderChange}
                     />
                   </TabsContent>
                   <TabsContent value="relations">
@@ -606,12 +626,25 @@ function AnimeTitleText({ title }: { title: AnimeTitleValue }) {
 
 function WatchButton({
   malId,
+  provider: selectedProvider,
   progress,
+  progressLoading,
 }: {
   malId: number
+  provider: StreamProviderId
   progress: number | null
+  progressLoading: boolean
 }) {
-  const result = useAtomValue(streamEpisodesAtom(malId))
+  const result = useAtomValue(streamEpisodesAtom(malId, selectedProvider))
+  if (progressLoading || Result.isWaiting(result))
+    return (
+      <Skeleton
+        className="h-9 w-40 rounded-4xl bg-white/10"
+        role="status"
+        aria-label="Loading watch status"
+      />
+    )
+
   const catalog = Result.match(result, {
     onInitial: () => null,
     onFailure: () => null,
@@ -620,13 +653,19 @@ function WatchButton({
   const provider = catalog?.providers.find(
     (item) => item.status === "available" && item.episodes.length > 0
   )
-  const target = watchEpisodeNumber(progress)
-  const episode = Array.from(provider?.episodes ?? [])
-    .sort((left, right) => left.number - right.number)
-    .find((item) => item.number >= target)
+  const episodes = Array.from(provider?.episodes ?? []).sort(
+    (left, right) => left.number - right.number
+  )
+  const action = watchAction(
+    progress,
+    episodes.map((item) => item.number)
+  )
+  const episode = action
+    ? episodes.find((item) => item.number === action.episodeNumber)
+    : null
   const audio = episode ? preferredAudio(episode) : null
 
-  if (!provider || !episode || !audio) return null
+  if (!provider || !action || !episode || !audio) return null
 
   return (
     <Button className="w-fit" asChild>
@@ -636,9 +675,7 @@ function WatchButton({
         search={{ audio }}
       >
         <PlayCircle data-icon="inline-start" />
-        {progress !== null && progress > 1
-          ? "Continue Watching"
-          : "Start Watching"}
+        {action.label}
       </Link>
     </Button>
   )

@@ -31,6 +31,7 @@ import { EpisodeSheet } from "./player-episode-sheet"
 import {
   episodeLabel,
   episodeTitle,
+  nextStreamServer,
   preferredAudio,
   providerLabel,
   seriesEpisodesHref,
@@ -156,7 +157,9 @@ function StreamPlayer({
   const updatePlayerUi = useAtomSet(updatePlayerUiAtom)
   const caption = useAtomValue(playerCaptionAtom)
   const setCaption = useAtomSet(playerCaptionAtom)
-  const episodesResult = useAtomValue(streamEpisodesAtom(playback.anime.malId))
+  const episodesResult = useAtomValue(
+    streamEpisodesAtom(playback.anime.malId, playback.provider)
+  )
   const libraryEntryResult = useAtomValue(
     libraryEntryAtom(playback.anime.malId)
   )
@@ -178,9 +181,31 @@ function StreamPlayer({
     playback.sourceUrl,
     playback.sourceRefererUrl
   )
+  const handleFatalPlaybackError = () => {
+    const nextServer = nextStreamServer(
+      playback.servers,
+      playback.server.id,
+      playback.audio
+    )
+    if (!nextServer) return false
+    toast.message(`Trying ${nextServer.name}…`)
+    void navigate({
+      to: "/watch/$malId/$provider/$episodeId",
+      params: {
+        malId: playback.anime.malId,
+        provider: playback.provider,
+        episodeId: playback.episode.id,
+      },
+      search: { audio: playback.audio, serverId: nextServer.id },
+      replace: true,
+    })
+    return true
+  }
   const media = usePlayerMedia({
     sourceUrl,
     audioEnhancementPercent: preferences.audioEnhancementPercent,
+    failureKey: `${playback.provider}:${playback.episode.id}:${playback.audio}:${playback.server.id}`,
+    onFatalError: handleFatalPlaybackError,
   })
   const defaultCaption = defaultCaptionValue(playback)
   const selectedCaptionTrack =

@@ -8,6 +8,7 @@ import {
 import { decodeScheduleSearch } from "../features/anime/search"
 
 export const Route = createFileRoute("/schedule")({
+  staticData: { title: "Schedule" },
   validateSearch: decodeScheduleSearch,
   loaderDeps: ({ search }) => ({ ...search, ...scheduleRange(search.day) }),
   loader: ({ deps }) => loadAnimeSchedule(deps.from, deps.to),

@@ -4,6 +4,7 @@ import { CatalogPage, CatalogPendingPage } from "../features/anime/catalog-page"
 import { catalogInput, decodeCatalogSearch } from "../features/anime/search"
 
 export const Route = createFileRoute("/series/")({
+  staticData: { title: "Browse" },
   validateSearch: decodeCatalogSearch,
   loaderDeps: ({ search }) => search,
   loader: ({ deps }) => loadAnimeCatalog(catalogInput(deps)),

@@ -18,7 +18,7 @@ const streamingFailure = Schema.Union(
 )
 
 export class ListStreamEpisodes extends Rpc.make("ListStreamEpisodes", {
-  payload: { malId: MalId },
+  payload: { malId: MalId, provider: StreamProviderId },
   success: StreamEpisodeCatalog,
   error: StreamingUnavailableError,
 }) {}

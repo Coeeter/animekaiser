@@ -4,6 +4,7 @@ import { SyncActivityPage } from "../features/library/sync-activity-page"
 import { getAppSession } from "../lib/session"
 
 export const Route = createFileRoute("/sync-activity")({
+  staticData: { title: "Sync Activity" },
   validateSearch: decodeSyncActivitySearch,
   beforeLoad: async () => {
     if (!(await getAppSession()))

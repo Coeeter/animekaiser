@@ -22,6 +22,7 @@ const WatchSearch = Schema.Struct({
 const decodeWatchSearch = Schema.decodeUnknownSync(WatchSearch)
 
 export const Route = createFileRoute("/watch/$malId/$provider/$episodeId")({
+  staticData: { title: "Watch" },
   parseParams: ({ malId, provider, episodeId }) => ({
     malId: Schema.decodeUnknownSync(WatchMalId)(malId),
     provider: Schema.decodeUnknownSync(StreamProviderId)(provider),

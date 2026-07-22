@@ -1,2 +1,6 @@
 export * from "./provider-a"
+export * from "./provider-d"
+export * from "./provider-b"
+export * from "./provider-c"
+export * from "./provider-e"
 export * from "./service"
