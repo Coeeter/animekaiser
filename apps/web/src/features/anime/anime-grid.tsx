@@ -1,5 +1,5 @@
-import { AnimeCard } from "./anime-card"
 import type { AnimeItem } from "@workspace/domain"
+import { AnimeCard } from "./anime-card"
 
 export function AnimeGrid({
   items,

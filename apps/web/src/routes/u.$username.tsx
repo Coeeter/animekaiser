@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router"
-import { PublicProfilePage } from "../features/profile/profile-page"
 import { getPublicProfile } from "../features/profile/profile.functions"
+import { PublicProfilePage } from "../features/profile/profile-page"
 
 export const Route = createFileRoute("/u/$username")({
   loader: ({ params }) =>

@@ -1,3 +1,4 @@
+import { useForm } from "@tanstack/react-form"
 import type {
   AnimeCatalogStatus,
   AnimeFormat,
@@ -42,7 +43,6 @@ import {
   SelectValue,
 } from "@workspace/ui/components/select"
 import { cn } from "@workspace/ui/lib/utils"
-import { useForm } from "@tanstack/react-form"
 import * as Schema from "effect/Schema"
 import { Check, ChevronsUpDown, Search, X } from "lucide-react"
 import { useEffect, useId, useState } from "react"

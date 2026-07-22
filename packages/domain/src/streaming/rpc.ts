@@ -5,10 +5,10 @@ import {
   StreamAudio,
   StreamEpisodeCatalog,
   StreamEpisodeNotFoundError,
+  StreamingUnavailableError,
   StreamPlayback,
   StreamProviderId,
   StreamProviderNotFoundError,
-  StreamingUnavailableError,
 } from "./models"
 
 const streamingFailure = Schema.Union(

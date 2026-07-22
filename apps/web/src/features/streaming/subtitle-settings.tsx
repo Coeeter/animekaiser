@@ -88,7 +88,7 @@ export function SubtitleSettings({
           updatePreferences({ subtitleBackgroundOpacityPercent })
         }
       />
-      <label
+      <div
         className={cn(
           "flex items-center justify-between gap-3",
           compact ? "px-4 text-sm" : "text-sm"
@@ -96,12 +96,13 @@ export function SubtitleSettings({
       >
         <span className="font-medium">Shadow</span>
         <Switch
+          aria-label="Shadow"
           checked={preferences.subtitleShadow}
           onCheckedChange={(subtitleShadow) =>
             updatePreferences({ subtitleShadow })
           }
         />
-      </label>
+      </div>
       <Button
         type="button"
         variant="outline"

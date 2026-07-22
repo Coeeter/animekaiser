@@ -1,6 +1,6 @@
+import { useRouter } from "@tanstack/react-router"
 import { Field, FieldDescription } from "@workspace/ui/components/field"
 import { Switch } from "@workspace/ui/components/switch"
-import { useRouter } from "@tanstack/react-router"
 import { useEffect, useState } from "react"
 import { toast } from "sonner"
 import type { AppUser } from "../../lib/auth-client"

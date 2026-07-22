@@ -1,24 +1,22 @@
 {
   "name": "@workspace/api",
   "version": "0.0.0",
-  "type": "module",
   "private": true,
+  "type": "module",
   "scripts": {
-    "dev": "bun --watch src/index.ts",
     "build": "bun build ./src/index.ts --outdir ./dist --target bun",
-    "lint": "eslint",
-    "format": "prettier --write \"**/*.{ts,tsx}\" --ignore-path ../../.prettierignore",
+    "dev": "bun --watch src/index.ts",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@effect/platform": "^0.96.1",
+    "@effect/platform-bun": "^0.90.0",
+    "@effect/rpc": "^0.75.1",
     "@workspace/auth": "workspace:*",
     "@workspace/core": "workspace:*",
     "@workspace/db": "workspace:*",
     "@workspace/domain": "workspace:*",
     "@workspace/rpc": "workspace:*",
-    "@effect/platform": "^0.96.1",
-    "@effect/platform-bun": "^0.90.0",
-    "@effect/rpc": "^0.75.1",
     "effect": "^3.21.3",
     "ioredis": "^5.8.2",
     "resend": "^6.12.4"

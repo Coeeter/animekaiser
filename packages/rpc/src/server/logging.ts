@@ -1,8 +1,8 @@
-import * as RpcMiddleware from "@effect/rpc/RpcMiddleware";
-import * as Cause from "effect/Cause";
-import * as Clock from "effect/Clock";
-import * as Effect from "effect/Effect";
-import * as Layer from "effect/Layer";
+import * as RpcMiddleware from "@effect/rpc/RpcMiddleware"
+import * as Cause from "effect/Cause"
+import * as Clock from "effect/Clock"
+import * as Effect from "effect/Effect"
+import * as Layer from "effect/Layer"
 
 export class RpcRequestLogging extends RpcMiddleware.Tag<RpcRequestLogging>()(
   "@workspace/rpc/RpcRequestLogging",
@@ -29,7 +29,9 @@ export const RpcRequestLoggingLive = Layer.succeed(
         Effect.tap(() =>
           fields("ok").pipe(
             Effect.flatMap((annotations) =>
-              Effect.logInfo("rpc.request").pipe(Effect.annotateLogs(annotations))
+              Effect.logInfo("rpc.request").pipe(
+                Effect.annotateLogs(annotations)
+              )
             )
           )
         ),

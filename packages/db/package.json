@@ -1,19 +1,17 @@
 {
   "name": "@workspace/db",
   "version": "0.0.0",
-  "type": "module",
   "private": true,
+  "type": "module",
   "exports": {
     ".": "./src/index.ts"
   },
   "scripts": {
-    "dev": "docker compose up",
-    "lint": "eslint",
-    "format": "prettier --write \"**/*.{ts,tsx}\" --ignore-path ../../.prettierignore",
-    "typecheck": "tsc --noEmit",
     "db:generate": "bunx --bun drizzle-kit generate --config ./drizzle.config.ts",
     "db:migrate": "bunx --bun drizzle-kit migrate --config ./drizzle.config.ts",
-    "db:studio": "bunx --bun drizzle-kit studio --config ./drizzle.config.ts"
+    "db:studio": "bunx --bun drizzle-kit studio --config ./drizzle.config.ts",
+    "dev": "docker compose up",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "drizzle-orm": "^0.45.2",

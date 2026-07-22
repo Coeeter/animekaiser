@@ -1,6 +1,6 @@
 import { AuthServer } from "@workspace/auth/server"
-import { ProfileMediaService, ProfileService } from "@workspace/core"
 import type { ProfileRecord } from "@workspace/core"
+import { ProfileMediaService, ProfileService } from "@workspace/core"
 import {
   CurrentUser,
   OptionalCurrentUser,

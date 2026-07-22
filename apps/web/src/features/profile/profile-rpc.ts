@@ -1,8 +1,8 @@
 import { ProfileImageContentType } from "@workspace/domain"
 import { KaiserRpcClient } from "@workspace/rpc/client"
+import * as Effect from "effect/Effect"
 import * as Option from "effect/Option"
 import * as Schema from "effect/Schema"
-import * as Effect from "effect/Effect"
 import { runRpc } from "../../lib/rpc-client"
 
 export const loadOwnProfile = () =>

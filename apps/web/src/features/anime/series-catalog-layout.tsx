@@ -8,8 +8,8 @@ import {
   SheetTitle,
 } from "@workspace/ui/components/sheet"
 import { Compass, SlidersHorizontal } from "lucide-react"
-import { useState } from "react"
 import type { ReactNode } from "react"
+import { useState } from "react"
 import { PageHero } from "../../components/page-hero"
 import type { CatalogSearch } from "./search"
 import {

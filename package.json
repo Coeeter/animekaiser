@@ -1,26 +1,25 @@
 {
   "name": "kaiser",
   "version": "0.0.1",
-  "type": "module",
   "private": true,
+  "type": "module",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
   "scripts": {
     "build": "turbo build",
     "dev": "turbo dev",
-    "lint": "turbo lint",
-    "format": "turbo format",
-    "typecheck": "turbo typecheck",
-    "prepare": "effect-language-service patch"
+    "format": "biome format --write .",
+    "lint": "biome check .",
+    "prepare": "effect-tsgo patch",
+    "typecheck": "turbo typecheck"
   },
   "devDependencies": {
-    "@effect/eslint-plugin": "^0.3.2",
-    "@effect/language-service": "^0.86.2",
-    "@tanstack/eslint-config": "^0.4.0",
-    "eslint": "^9",
-    "eslint-plugin-unused-imports": "^4.4.1",
-    "prettier": "^3.8.3",
-    "prettier-plugin-tailwindcss": "^0.8.0",
+    "@biomejs/biome": "^2.5.3",
+    "@effect/tsgo": "^0.21.0",
     "turbo": "^2.9.15",
-    "typescript": "^6"
+    "typescript": "^7.0.2"
   },
   "packageManager": "bun@1.3.3",
   "engines": {
@@ -31,9 +30,5 @@
       "esbuild",
       "lightningcss"
     ]
-  },
-  "workspaces": [
-    "apps/*",
-    "packages/*"
-  ]
+  }
 }

@@ -2,8 +2,8 @@ import { drizzle } from "drizzle-orm/node-postgres"
 import * as Data from "effect/Data"
 import * as Effect from "effect/Effect"
 import * as Queue from "effect/Queue"
-import { DatabaseError as PgDatabaseError, escapeIdentifier, Pool } from "pg"
 import type { Notification } from "pg"
+import { escapeIdentifier, DatabaseError as PgDatabaseError, Pool } from "pg"
 import * as schema from "./schema"
 
 export type DatabaseConnectionConfig = {

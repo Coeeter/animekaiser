@@ -26,6 +26,7 @@ import {
   TabsTrigger,
 } from "@workspace/ui/components/tabs"
 import { cn } from "@workspace/ui/lib/utils"
+import * as Schema from "effect/Schema"
 import type { LucideIcon } from "lucide-react"
 import {
   BookmarkPlus,
@@ -40,11 +41,12 @@ import {
   XCircle,
 } from "lucide-react"
 import { useState } from "react"
-import * as Schema from "effect/Schema"
 import { AddToLibraryDialog } from "../library/add-to-library-dialog"
 import { libraryEntryAtom } from "../library/atoms"
 import { libraryStatuses } from "../library/constants"
+import { streamEpisodesAtom } from "../streaming/atoms"
 import { EpisodesPanel } from "../streaming/episodes-panel"
+import { preferredAudio, watchEpisodeNumber } from "../streaming/player-format"
 import { AnimeGrid } from "./anime-grid"
 import { AnimeSubtitle, AnimeTitle } from "./anime-title"
 import { detailAtom, recommendationsAtom } from "./atoms"
@@ -294,8 +296,13 @@ function SeriesDetail({
                 ) : null}
 
                 <div className="flex flex-col gap-3 pt-2 sm:flex-row sm:items-center">
+                  <WatchButton
+                    malId={anime.malId}
+                    progress={libraryEntry?.progress ?? null}
+                  />
                   <Button
                     className="w-fit"
+                    variant="outline"
                     onClick={() =>
                       isAuthenticated
                         ? setLibraryDialogOpen(true)
@@ -597,6 +604,46 @@ function AnimeTitleText({ title }: { title: AnimeTitleValue }) {
   return <AnimeTitle title={title} />
 }
 
+function WatchButton({
+  malId,
+  progress,
+}: {
+  malId: number
+  progress: number | null
+}) {
+  const result = useAtomValue(streamEpisodesAtom(malId))
+  const catalog = Result.match(result, {
+    onInitial: () => null,
+    onFailure: () => null,
+    onSuccess: ({ value }) => value,
+  })
+  const provider = catalog?.providers.find(
+    (item) => item.status === "available" && item.episodes.length > 0
+  )
+  const target = watchEpisodeNumber(progress)
+  const episode = Array.from(provider?.episodes ?? [])
+    .sort((left, right) => left.number - right.number)
+    .find((item) => item.number >= target)
+  const audio = episode ? preferredAudio(episode) : null
+
+  if (!provider || !episode || !audio) return null
+
+  return (
+    <Button className="w-fit" asChild>
+      <Link
+        to="/watch/$malId/$provider/$episodeId"
+        params={{ malId, provider: provider.provider, episodeId: episode.id }}
+        search={{ audio }}
+      >
+        <PlayCircle data-icon="inline-start" />
+        {progress !== null && progress > 1
+          ? "Continue Watching"
+          : "Start Watching"}
+      </Link>
+    </Button>
+  )
+}
+
 function LibraryEntrySummary({ entry }: { entry: LibraryEntry }) {
   const StatusIcon = libraryStatusIcons[entry.status]
   const score = formatLibraryScore(entry.score)
@@ -635,7 +682,10 @@ function RelationsPanel({
     <div className="grid gap-2 sm:grid-cols-2">
       {relations.slice(0, 8).map((relation) => {
         const content = (
-          <div className="flex min-w-0 gap-3 rounded-xl border bg-card/80 p-3 transition hover:bg-accent">
+          <div
+            key={`${relation.relationType}-${relation.malId ?? relation.aniListId}`}
+            className="flex min-w-0 gap-3 rounded-xl border bg-card/80 p-3 transition hover:bg-accent"
+          >
             {relation.coverImage ? (
               <img
                 src={relation.coverImage}

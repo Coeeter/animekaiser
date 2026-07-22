@@ -3,8 +3,8 @@ import { KaiserRpcs } from "@workspace/domain"
 import * as Layer from "effect/Layer"
 import { AnimeHandlersLive } from "./server/anime"
 import {
-  AuthHandlersLive,
   AuthenticationMiddlewareLive,
+  AuthHandlersLive,
 } from "./server/authentication"
 import { IntegrationHandlersLive } from "./server/integrations"
 import { LibraryHandlersLive } from "./server/library"

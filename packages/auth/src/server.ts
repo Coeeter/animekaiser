@@ -8,5 +8,5 @@ export class AuthServer extends Context.Tag("@workspace/auth/AuthServer")<
   KaiserAuth
 >() {}
 
-export { initAuth }
 export type { AuthConfig, AuthLogger, AuthMailer } from "./init-auth"
+export { initAuth }

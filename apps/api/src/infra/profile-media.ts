@@ -1,6 +1,6 @@
-import { S3Client } from "bun"
 import { ProfileMediaStorage } from "@workspace/core"
 import { ProfileOperationError } from "@workspace/domain"
+import { S3Client } from "bun"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 import * as Redacted from "effect/Redacted"

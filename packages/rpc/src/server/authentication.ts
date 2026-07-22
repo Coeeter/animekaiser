@@ -1,9 +1,9 @@
-import { AuthServer } from "@workspace/auth/server"
 import type { KaiserAuth } from "@workspace/auth/server"
+import { AuthServer } from "@workspace/auth/server"
 import {
-  AuthRpcs,
   Authentication,
   AuthenticationRequiredError,
+  AuthRpcs,
   OptionalAuthentication,
   SessionOperationError,
 } from "@workspace/domain"

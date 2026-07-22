@@ -1,6 +1,6 @@
 import { createFileRoute, redirect } from "@tanstack/react-router"
-import { OwnProfilePage } from "../features/profile/profile-page"
 import { getOwnProfile } from "../features/profile/profile.functions"
+import { OwnProfilePage } from "../features/profile/profile-page"
 import { getAppSession } from "../lib/session"
 
 export const Route = createFileRoute("/profile")({

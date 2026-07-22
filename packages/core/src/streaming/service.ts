@@ -6,8 +6,8 @@ import type {
 } from "@workspace/domain"
 import {
   StreamEpisodeNotFoundError,
-  StreamProviderNotFoundError,
   StreamingUnavailableError,
+  StreamProviderNotFoundError,
 } from "@workspace/domain"
 import * as Effect from "effect/Effect"
 import { AnimeService } from "../anime"

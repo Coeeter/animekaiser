@@ -17,4 +17,4 @@ export const userInitials = (user: Parameters<typeof displayUsername>[0]) =>
   displayUsername(user).slice(0, 2).toUpperCase()
 
 export const safeRedirect = (value: string | undefined) =>
-  value && value.startsWith("/") && !value.startsWith("//") ? value : "/"
+  value?.startsWith("/") && !value.startsWith("//") ? value : "/"

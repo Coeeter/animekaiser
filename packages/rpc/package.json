@@ -1,15 +1,13 @@
 {
   "name": "@workspace/rpc",
   "version": "0.0.0",
-  "type": "module",
   "private": true,
+  "type": "module",
   "exports": {
     "./client": "./src/client.ts",
     "./server": "./src/server.ts"
   },
   "scripts": {
-    "lint": "eslint",
-    "format": "prettier --write \"**/*.{ts,tsx}\" --ignore-path ../../.prettierignore",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
@@ -25,4 +23,3 @@
     "typescript": "^6"
   }
 }
-

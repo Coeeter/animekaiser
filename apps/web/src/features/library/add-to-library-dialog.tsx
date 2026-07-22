@@ -1,11 +1,11 @@
 import { useAtomSet, useAtomValue } from "@effect-atom/atom-react"
 import { useForm } from "@tanstack/react-form"
-import { LibraryStatus } from "@workspace/domain"
 import type {
   AnimeDetail,
   ExternalListProvider,
   LibraryEntry,
 } from "@workspace/domain"
+import { LibraryStatus } from "@workspace/domain"
 import { Button } from "@workspace/ui/components/button"
 import { Checkbox } from "@workspace/ui/components/checkbox"
 import {
@@ -44,13 +44,13 @@ import {
   upsertLibraryAtom,
 } from "./atoms"
 import { libraryStatuses } from "./constants"
+import type { LibraryDeleteFormValues, LibraryEntryFormValues } from "./form"
 import {
   decodeLibraryProgress,
   decodeLibraryScore,
   libraryDeleteFormDefaults,
   libraryEntryFormDefaults,
 } from "./form"
-import type { LibraryDeleteFormValues, LibraryEntryFormValues } from "./form"
 
 export function AddToLibraryDialog({
   anime,

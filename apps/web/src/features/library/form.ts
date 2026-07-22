@@ -1,6 +1,6 @@
+import type { LibraryEntry, LibraryStatus } from "@workspace/domain"
 import * as Option from "effect/Option"
 import * as Schema from "effect/Schema"
-import type { LibraryEntry, LibraryStatus } from "@workspace/domain"
 
 const ProgressInput = Schema.NumberFromString.pipe(
   Schema.int(),

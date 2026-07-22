@@ -1,17 +1,15 @@
 {
   "name": "@workspace/auth",
   "version": "0.0.0",
-  "type": "module",
   "private": true,
+  "type": "module",
   "exports": {
     "./server": "./src/server.ts",
     "./web": "./src/web.ts"
   },
   "scripts": {
-    "lint": "eslint",
-    "format": "prettier --write \"**/*.{ts,tsx}\" --ignore-path ../../.prettierignore",
-    "typecheck": "tsc --noEmit",
-    "auth:generate": "bunx --bun @better-auth/cli generate --config script/auth-cli.ts --output ../db/src/schema/auth.ts"
+    "auth:generate": "bunx --bun @better-auth/cli generate --config script/auth-cli.ts --output ../db/src/schema/auth.ts",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@better-auth/drizzle-adapter": "^1.6.14",

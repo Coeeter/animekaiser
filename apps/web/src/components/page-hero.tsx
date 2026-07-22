@@ -1,7 +1,6 @@
+import { cn } from "@workspace/ui/lib/utils"
 import type { LucideIcon } from "lucide-react"
 import type { ReactNode } from "react"
-
-import { cn } from "@workspace/ui/lib/utils"
 
 function PageHero({
   icon: Icon,

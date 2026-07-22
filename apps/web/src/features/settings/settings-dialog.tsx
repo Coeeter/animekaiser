@@ -16,6 +16,7 @@ import {
 } from "@workspace/ui/components/empty"
 import { Separator } from "@workspace/ui/components/separator"
 import { cn } from "@workspace/ui/lib/utils"
+import * as Schema from "effect/Schema"
 import {
   Bell,
   Captions,
@@ -30,7 +31,6 @@ import {
   User,
 } from "lucide-react"
 import { useEffect, useState } from "react"
-import * as Schema from "effect/Schema"
 import type { AppUser } from "../../lib/auth-client"
 import type { AppSession } from "../../lib/session"
 import { AccountPanel } from "./account-panel"

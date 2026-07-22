@@ -27,6 +27,7 @@ import {
   upsertLibraryAtom,
 } from "../library/atoms"
 import { streamEpisodesAtom, streamPlaybackAtom } from "./atoms"
+import { EpisodeSheet } from "./player-episode-sheet"
 import {
   episodeLabel,
   episodeTitle,
@@ -35,7 +36,6 @@ import {
   seriesEpisodesHref,
   videoFitClass,
 } from "./player-format"
-import { EpisodeSheet } from "./player-episode-sheet"
 import { PlayerSettingsPopover } from "./player-settings-popover"
 import { PlayerTimeline } from "./player-timeline"
 import {
@@ -46,9 +46,9 @@ import {
 import { playerPreferencesAtom } from "./preferences"
 import { streamProxyUrl } from "./proxy"
 import type { StreamPlaybackInput } from "./streaming.functions"
+import { subtitleStyle } from "./subtitle-settings"
 import type { SubtitleCue } from "./subtitles"
 import { parseSubtitleVtt, subtitleHtmlAtTime } from "./subtitles"
-import { subtitleStyle } from "./subtitle-settings"
 import { usePlayerMedia } from "./use-player-media"
 
 const PlayerShell = forwardRef<HTMLDivElement, ComponentPropsWithoutRef<"div">>(

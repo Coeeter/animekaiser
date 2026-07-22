@@ -15,6 +15,7 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from "@workspace/ui/components/empty"
+import { Input } from "@workspace/ui/components/input"
 import {
   Select,
   SelectContent,
@@ -23,7 +24,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@workspace/ui/components/select"
-import { Input } from "@workspace/ui/components/input"
 import { Skeleton } from "@workspace/ui/components/skeleton"
 import {
   Tooltip,
@@ -32,6 +32,7 @@ import {
   TooltipTrigger,
 } from "@workspace/ui/components/tooltip"
 import { cn } from "@workspace/ui/lib/utils"
+import * as Schema from "effect/Schema"
 import {
   ArrowDownUp,
   CheckCircle2,
@@ -44,7 +45,6 @@ import {
   TvMinimalPlay,
 } from "lucide-react"
 import { useMemo, useState } from "react"
-import * as Schema from "effect/Schema"
 import { streamEpisodesAtom } from "./atoms"
 
 const decodeProviderId = Schema.decodeUnknownSync(StreamProviderId)

@@ -1,10 +1,10 @@
-import { useTheme } from "next-themes"
-import * as Option from "effect/Option"
-import * as Schema from "effect/Schema"
 import {
   ToggleGroup,
   ToggleGroupItem,
 } from "@workspace/ui/components/toggle-group"
+import * as Option from "effect/Option"
+import * as Schema from "effect/Schema"
+import { useTheme } from "next-themes"
 import { PanelCard } from "./settings-shared"
 
 const ThemeChoice = Schema.Literal("light", "dark", "system")

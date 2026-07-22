@@ -26,6 +26,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@workspace/ui/components/tooltip"
+import type { LucideIcon } from "lucide-react"
 import {
   Bookmark,
   CalendarDays,
@@ -40,12 +41,11 @@ import {
   Sparkles,
   User,
 } from "lucide-react"
-import type { LucideIcon } from "lucide-react"
 import type { ReactNode } from "react"
 import { useEffect } from "react"
+import { ModeToggle } from "../../components/theme"
 import type { AppUser } from "../../lib/auth-client"
 import { displayUsername, userInitials } from "../../lib/auth-client"
-import { ModeToggle } from "../../components/theme"
 
 type NavItem = { title: string; href: string; icon: LucideIcon }
 

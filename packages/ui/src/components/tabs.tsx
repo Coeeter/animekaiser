@@ -1,9 +1,8 @@
+import { cn } from "@workspace/ui/lib/utils"
 import type { VariantProps } from "class-variance-authority"
 import { cva } from "class-variance-authority"
 import { Tabs as TabsPrimitive } from "radix-ui"
-import * as React from "react"
-
-import { cn } from "@workspace/ui/lib/utils"
+import type * as React from "react"
 
 function Tabs({
   className,
@@ -86,4 +85,4 @@ function TabsContent({
   )
 }
 
-export { Tabs, TabsContent, TabsList, tabsListVariants, TabsTrigger }
+export { Tabs, TabsContent, TabsList, TabsTrigger, tabsListVariants }

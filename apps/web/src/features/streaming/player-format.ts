@@ -16,6 +16,9 @@ export const megaPlayServerId = "default-server"
 
 export const seriesEpisodesHref = (malId: number) => `/series/${malId}`
 
+export const watchEpisodeNumber = (progress: number | null) =>
+  progress !== null && progress > 1 ? progress + 1 : 1
+
 export const formatTime = (seconds: number) => {
   if (!Number.isFinite(seconds)) return "0:00"
   const minutes = Math.floor(seconds / 60)

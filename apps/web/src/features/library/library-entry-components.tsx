@@ -1,8 +1,8 @@
 import { useAtomSet, useAtomValue } from "@effect-atom/atom-react"
 import { useForm } from "@tanstack/react-form"
 import { Link } from "@tanstack/react-router"
-import { LibraryStatus } from "@workspace/domain"
 import type { ExternalListProvider, LibraryEntry } from "@workspace/domain"
+import { LibraryStatus } from "@workspace/domain"
 import { Badge } from "@workspace/ui/components/badge"
 import { Button } from "@workspace/ui/components/button"
 import { Checkbox } from "@workspace/ui/components/checkbox"
@@ -44,13 +44,13 @@ import {
   upsertLibraryAtom,
 } from "./atoms"
 import { libraryStatuses } from "./constants"
+import type { LibraryDeleteFormValues, LibraryEntryFormValues } from "./form"
 import {
   decodeLibraryProgress,
   decodeLibraryScore,
   libraryDeleteFormDefaults,
   libraryEntryFormDefaults,
 } from "./form"
-import type { LibraryDeleteFormValues, LibraryEntryFormValues } from "./form"
 
 const libraryStatusLabel = (status: LibraryStatus) =>
   libraryStatuses.find((item) => item.value === status)?.label ?? status

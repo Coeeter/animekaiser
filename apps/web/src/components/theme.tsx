@@ -1,6 +1,3 @@
-import { MoonIcon, SunIcon } from "lucide-react"
-import { ThemeProvider as NextThemeProvider, useTheme } from "next-themes"
-import type { ReactNode } from "react"
 import { Button } from "@workspace/ui/components/button"
 import {
   DropdownMenu,
@@ -9,6 +6,9 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@workspace/ui/components/dropdown-menu"
+import { MoonIcon, SunIcon } from "lucide-react"
+import { ThemeProvider as NextThemeProvider, useTheme } from "next-themes"
+import type { ReactNode } from "react"
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
   return (
