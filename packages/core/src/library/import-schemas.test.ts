@@ -4,6 +4,7 @@ import {
   AniListImportResponse,
   MalImportResponse,
   normalizeAniListImportEntry,
+  normalizeLibraryStatus,
   normalizeMalImportEntry,
   sameEntry,
 } from "./import"
@@ -42,6 +43,51 @@ test("MAL imports decode display metadata and list state", () => {
     score: 80,
     progress: 3,
     notes: "great",
+  })
+})
+
+test("external library statuses map to Kaiser library language", () => {
+  expect([
+    normalizeLibraryStatus("CURRENT"),
+    normalizeLibraryStatus("COMPLETED"),
+    normalizeLibraryStatus("PAUSED"),
+    normalizeLibraryStatus("DROPPED"),
+    normalizeLibraryStatus("REPEATING"),
+    normalizeLibraryStatus("PLANNING"),
+  ]).toEqual([
+    "watching",
+    "completed",
+    "paused",
+    "dropped",
+    "rewatching",
+    "planning",
+  ])
+})
+
+test("AniList imports preserve MAL identity and normalize display fields", () => {
+  expect(
+    normalizeAniListImportEntry({
+      id: 12,
+      status: "COMPLETED",
+      score: 87.6,
+      progress: 26,
+      notes: "  classic  ",
+      media: {
+        id: 22,
+        idMal: 1,
+        title: { romaji: "Cowboy Bebop", english: "Cowboy Bebop" },
+        coverImage: { extraLarge: "cover.webp", large: null, medium: null },
+        episodes: 26,
+      },
+    })
+  ).toMatchObject({
+    malId: 1,
+    aniListId: 22,
+    aniListEntryId: 12,
+    status: "completed",
+    score: 88,
+    progress: 26,
+    notes: "classic",
   })
 })
 

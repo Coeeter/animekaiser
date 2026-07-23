@@ -14,6 +14,12 @@ const extension = {
   "image/webp": "webp",
 } as const
 
+export const isValidProfileImageSize = (size: number) =>
+  Number.isInteger(size) && size >= 1 && size <= maxImageSize
+
+export const isValidProfileImage = (object: { size: number; type: string }) =>
+  isValidProfileImageSize(object.size) && Object.hasOwn(extension, object.type)
+
 export type ProfileMediaStorageShape = {
   presign: (
     key: string,
@@ -46,7 +52,7 @@ export class ProfileMediaService extends Effect.Service<ProfileMediaService>()(
           contentType: ProfileImageContentType,
           size: number
         ) {
-          if (!Number.isInteger(size) || size < 1 || size > maxImageSize) {
+          if (!isValidProfileImageSize(size)) {
             return yield* new ProfileOperationError({
               message: "Upload an image up to 5 MB.",
             })
@@ -64,11 +70,7 @@ export class ProfileMediaService extends Effect.Service<ProfileMediaService>()(
             })
           }
           const object = yield* storage.stat(key)
-          if (
-            object.size < 1 ||
-            object.size > maxImageSize ||
-            !Object.hasOwn(extension, object.type)
-          ) {
+          if (!isValidProfileImage(object)) {
             yield* storage.remove(key)
             return yield* new ProfileOperationError({
               message: "Upload a JPEG, PNG, or WebP image up to 5 MB.",

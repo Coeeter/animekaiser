@@ -75,18 +75,29 @@ const requireProvider = Effect.gen(function* () {
   })
 })
 
+export const safeCallbackUrl = (value: string, appURL: string) => {
+  try {
+    const callbackURL = new URL(value, appURL)
+    return callbackURL.origin === new URL(appURL).origin
+      ? callbackURL.toString()
+      : null
+  } catch {
+    return null
+  }
+}
+
 const getSafeCallbackURL = (
   request: HttpServerRequest.HttpServerRequest,
   appURL: string
 ) =>
   Effect.try({
     try: () => {
-      const callbackURL = new URL(
+      const callbackURL = safeCallbackUrl(
         getQueryParam(request, "callbackURL") ?? appURL,
         appURL
       )
-      if (callbackURL.origin !== new URL(appURL).origin) throw new Error()
-      return callbackURL.toString()
+      if (!callbackURL) throw new Error()
+      return callbackURL
     },
     catch: () =>
       new ExternalListRouteError({

@@ -29,6 +29,23 @@ test("MAL sync sends score only when present", () => {
   ])
 })
 
+test("rewatching syncs with provider-specific statuses and notes", () => {
+  const rewatching = {
+    ...payload,
+    status: "rewatching" as const,
+    notes: "round two",
+  }
+  expect(malListStatusParams(rewatching)).toContainEqual([
+    "is_rewatching",
+    "true",
+  ])
+  expect(malListStatusParams(rewatching)).toContainEqual([
+    "comments",
+    "round two",
+  ])
+  expect(aniListSaveMutation(22, rewatching).variables.status).toBe("REPEATING")
+})
+
 test("AniList sync omits score when local score is empty", () => {
   const mutation = aniListSaveMutation(22, payload)
 

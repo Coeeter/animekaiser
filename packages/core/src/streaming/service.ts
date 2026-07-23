@@ -9,6 +9,7 @@ import {
   StreamEpisodeNotFoundError,
   StreamingUnavailableError,
   StreamProviderNotFoundError,
+  StreamProviderUnavailableError,
 } from "@workspace/domain"
 import * as Effect from "effect/Effect"
 import { AnimeService } from "../anime"
@@ -17,6 +18,26 @@ import { ProviderDProvider } from "./provider-d"
 import { ProviderBProvider } from "./provider-b"
 import { ProviderCProvider } from "./provider-c"
 import { FourAnimoProvider } from "./provider-e"
+
+const unmatchedMessages = new Set([
+  "ProviderA could not match this anime.",
+  "ProviderB could not match this anime.",
+  "ProviderC could not match this anime.",
+  "ProviderD could not match this anime.",
+  "ProviderE could not match this anime.",
+])
+
+export const streamProviderFailureStatus = (message: string) =>
+  unmatchedMessages.has(message) ? "unmatched" : "unavailable"
+
+export const streamPlaybackFailureKind = (message: string) =>
+  unmatchedMessages.has(message)
+    ? "provider"
+    : /(episode was not found|episode audio is unavailable|server was not found)/i.test(
+          message
+        )
+      ? "episode"
+      : "unavailable"
 
 export class StreamingService extends Effect.Service<StreamingService>()(
   "@workspace/core/StreamingService",
@@ -53,13 +74,6 @@ export class StreamingService extends Effect.Service<StreamingService>()(
         )
 
       const notReleasedMessage = "This anime has not been released yet."
-      const unmatchedMessages = new Set([
-        "ProviderA could not match this anime.",
-        "ProviderB could not match this anime.",
-        "ProviderC could not match this anime.",
-        "ProviderD could not match this anime.",
-        "ProviderE could not match this anime.",
-      ])
       const listEpisodes = Effect.fn("StreamingService.listEpisodes")(
         function* (malId: number, provider: StreamProviderId) {
           const anime = yield* getAnime(malId)
@@ -89,9 +103,7 @@ export class StreamingService extends Effect.Service<StreamingService>()(
               Effect.succeed({
                 provider: "provider-a",
                 providerAnimeId: null,
-                status: unmatchedMessages.has(error.message)
-                  ? "unmatched"
-                  : "unavailable",
+                status: streamProviderFailureStatus(error.message),
                 message: error.message,
                 episodes: [],
               } as const)
@@ -108,9 +120,7 @@ export class StreamingService extends Effect.Service<StreamingService>()(
               Effect.succeed({
                 provider: "provider-b",
                 providerAnimeId: null,
-                status: unmatchedMessages.has(error.message)
-                  ? "unmatched"
-                  : "unavailable",
+                status: streamProviderFailureStatus(error.message),
                 message: error.message,
                 episodes: [],
               } as const)
@@ -127,9 +137,7 @@ export class StreamingService extends Effect.Service<StreamingService>()(
               Effect.succeed({
                 provider: "provider-c",
                 providerAnimeId: null,
-                status: unmatchedMessages.has(error.message)
-                  ? "unmatched"
-                  : "unavailable",
+                status: streamProviderFailureStatus(error.message),
                 message: error.message,
                 episodes: [],
               } as const)
@@ -146,9 +154,7 @@ export class StreamingService extends Effect.Service<StreamingService>()(
               Effect.succeed({
                 provider: "provider-d",
                 providerAnimeId: null,
-                status: unmatchedMessages.has(error.message)
-                  ? "unmatched"
-                  : "unavailable",
+                status: streamProviderFailureStatus(error.message),
                 message: error.message,
                 episodes: [],
               } as const)
@@ -165,9 +171,7 @@ export class StreamingService extends Effect.Service<StreamingService>()(
               Effect.succeed({
                 provider: "provider-e",
                 providerAnimeId: null,
-                status: unmatchedMessages.has(error.message)
-                  ? "unmatched"
-                  : "unavailable",
+                status: streamProviderFailureStatus(error.message),
                 message: error.message,
                 episodes: [],
               } as const)
@@ -207,20 +211,30 @@ export class StreamingService extends Effect.Service<StreamingService>()(
           message: string
         ): Effect.Effect<
           never,
-          StreamProviderNotFoundError | StreamEpisodeNotFoundError
+          | StreamProviderNotFoundError
+          | StreamProviderUnavailableError
+          | StreamEpisodeNotFoundError
         > =>
-          unmatchedMessages.has(message)
+          streamPlaybackFailureKind(message) === "provider"
             ? Effect.fail(
                 new StreamProviderNotFoundError({ provider, malId, message })
               )
-            : Effect.fail(
-                new StreamEpisodeNotFoundError({
-                  provider,
-                  malId,
-                  episodeId,
-                  message,
-                })
-              )
+            : streamPlaybackFailureKind(message) === "episode"
+              ? Effect.fail(
+                  new StreamEpisodeNotFoundError({
+                    provider,
+                    malId,
+                    episodeId,
+                    message,
+                  })
+                )
+              : Effect.fail(
+                  new StreamProviderUnavailableError({
+                    provider,
+                    malId,
+                    message,
+                  })
+                )
 
         const providers = {
           provider-a: () =>
@@ -302,7 +316,9 @@ export class StreamingService extends Effect.Service<StreamingService>()(
           StreamProviderId,
           () => Effect.Effect<
             StreamPlayback,
-            StreamProviderNotFoundError | StreamEpisodeNotFoundError
+            | StreamProviderNotFoundError
+            | StreamProviderUnavailableError
+            | StreamEpisodeNotFoundError
           >
         >
 

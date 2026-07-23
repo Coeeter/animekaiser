@@ -9,11 +9,13 @@ import {
   StreamPlayback,
   StreamProviderId,
   StreamProviderNotFoundError,
+  StreamProviderUnavailableError,
 } from "./models"
 
 const streamingFailure = Schema.Union(
   StreamingUnavailableError,
   StreamProviderNotFoundError,
+  StreamProviderUnavailableError,
   StreamEpisodeNotFoundError
 )
 

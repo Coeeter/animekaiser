@@ -32,6 +32,28 @@ type EntryState = {
   notes: string | null
 }
 
+export const calculateLibraryStats = (
+  rows: ReadonlyArray<{ status: LibraryStatus; score: number | null }>
+) => {
+  const byStatus = Object.fromEntries(
+    libraryStatuses.map((status) => [status, 0])
+  ) as Record<LibraryStatus, number>
+  let scoreTotal = 0
+  let scoreCount = 0
+  for (const row of rows) {
+    byStatus[row.status] += 1
+    if (row.score !== null) {
+      scoreTotal += row.score
+      scoreCount += 1
+    }
+  }
+  return {
+    total: rows.length,
+    byStatus,
+    meanScore: scoreCount ? Math.round(scoreTotal / scoreCount) : null,
+  }
+}
+
 const toEntry = (row: {
   entry: typeof userLibraryEntry.$inferSelect
   anime: typeof animeMetadata.$inferSelect
@@ -203,23 +225,7 @@ export class LibraryService extends Effect.Service<LibraryService>()(
                 })
             )
           )
-        const byStatus = Object.fromEntries(
-          libraryStatuses.map((status) => [status, 0])
-        ) as Record<LibraryStatus, number>
-        let scoreTotal = 0
-        let scoreCount = 0
-        for (const row of rows) {
-          byStatus[row.status] += 1
-          if (row.score !== null) {
-            scoreTotal += row.score
-            scoreCount += 1
-          }
-        }
-        return {
-          total: rows.length,
-          byStatus,
-          meanScore: scoreCount ? Math.round(scoreTotal / scoreCount) : null,
-        }
+        return calculateLibraryStats(rows)
       })
 
       const getPage = Effect.fn("LibraryService.getPage")(function* (

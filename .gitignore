@@ -11,6 +11,8 @@ dist-ssr
 .vinxi
 __unconfig*
 todos.json
+.playwright
+playwright-report
 
 # turbo
 .turbo

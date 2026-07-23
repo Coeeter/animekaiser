@@ -99,6 +99,15 @@ export class StreamProviderNotFoundError extends Schema.TaggedError<StreamProvid
   }
 ) {}
 
+export class StreamProviderUnavailableError extends Schema.TaggedError<StreamProviderUnavailableError>()(
+  "StreamProviderUnavailableError",
+  {
+    provider: StreamProviderId,
+    malId: MalId,
+    message: Schema.String,
+  }
+) {}
+
 export class StreamEpisodeNotFoundError extends Schema.TaggedError<StreamEpisodeNotFoundError>()(
   "StreamEpisodeNotFoundError",
   {

@@ -19,6 +19,7 @@ import { useState } from "react"
 import { authClient } from "../../lib/auth-client"
 import { errorMessage } from "../../lib/error"
 import { AuthFooter, SubmitButton } from "./auth-shared"
+import { passwordConfirmationError } from "./validation"
 
 export function RegisterPage() {
   const router = useRouter()
@@ -37,8 +38,12 @@ export function RegisterPage() {
     onSubmit: async ({ value }) => {
       setError(null)
       setConfirmationError(null)
-      if (value.password !== value.confirmation) {
-        setConfirmationError("Passwords do not match")
+      const passwordError = passwordConfirmationError(
+        value.password,
+        value.confirmation
+      )
+      if (passwordError) {
+        setConfirmationError(passwordError)
         return
       }
       const username = value.username.trim()

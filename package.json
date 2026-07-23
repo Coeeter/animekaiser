@@ -13,11 +13,16 @@
     "format": "biome format --write .",
     "lint": "biome check .",
     "prepare": "effect-tsgo patch",
+    "test": "bun test --path-ignore-patterns=tests/e2e",
+    "test:e2e": "playwright test",
+    "test:e2e:install": "playwright install chromium",
+    "test:providers": "bun scripts/check-providers.ts",
     "typecheck": "turbo typecheck"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.5.3",
     "@effect/tsgo": "^0.21.0",
+    "@playwright/test": "^1.61.1",
     "turbo": "^2.9.15",
     "typescript": "^7.0.2"
   },
