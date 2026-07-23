@@ -12,6 +12,7 @@
     "dev": "turbo dev",
     "format": "biome format --write .",
     "lint": "biome check .",
+    "lint:fix": "biome check --write .",
     "prepare": "effect-tsgo patch",
     "test": "bun test --path-ignore-patterns=tests/e2e",
     "test:e2e": "playwright test",

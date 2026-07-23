@@ -30,7 +30,11 @@
       "correctness": {
         "noUnreachable": "off",
         "useExhaustiveDependencies": "off",
-        "useHookAtTopLevel": "error"
+        "useHookAtTopLevel": "error",
+        "noUnusedImports": {
+          "fix": "safe",
+          "level": "warn"
+        }
       },
       "complexity": {
         "noUselessSwitchCase": "on"
