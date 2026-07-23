@@ -29,6 +29,13 @@
       "when": 1782533148110,
       "tag": "0003_left_silver_sable",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1784809971803,
+      "tag": "0004_nice_mephistopheles",
+      "breakpoints": true
     }
   ]
 }

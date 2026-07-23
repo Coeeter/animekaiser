@@ -1,5 +1,6 @@
 export * from "./auth"
 export * from "./external-list-account"
+export * from "./history"
 export * from "./library"
 export * from "./profile"
 export * from "./streaming"

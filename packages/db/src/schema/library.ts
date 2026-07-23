@@ -1,4 +1,4 @@
-import { sql } from "drizzle-orm"
+import { relations, sql } from "drizzle-orm"
 import {
   index,
   integer,
@@ -10,6 +10,7 @@ import {
   uniqueIndex,
 } from "drizzle-orm/pg-core"
 import { user } from "./auth"
+import { watchHistory } from "./history"
 
 export const libraryStatuses = [
   "watching",
@@ -38,6 +39,12 @@ export const animeMetadata = pgTable(
   (table) => [uniqueIndex("anime_metadata_anilist_id_idx").on(table.aniListId)]
 )
 
+export const animeMetadataRelations = relations(animeMetadata, ({ many }) => ({
+  userLibraryEntries: many(userLibraryEntry),
+  librarySyncEvents: many(librarySyncEvent),
+  watchHistory: many(watchHistory),
+}))
+
 export const userLibraryEntry = pgTable(
   "user_library_entry",
   {
@@ -62,6 +69,20 @@ export const userLibraryEntry = pgTable(
     primaryKey({ columns: [table.userId, table.malId] }),
     index("user_library_entry_user_status_idx").on(table.userId, table.status),
   ]
+)
+
+export const userLibraryEntryRelations = relations(
+  userLibraryEntry,
+  ({ one }) => ({
+    user: one(user, {
+      fields: [userLibraryEntry.userId],
+      references: [user.id],
+    }),
+    animeMetadata: one(animeMetadata, {
+      fields: [userLibraryEntry.malId],
+      references: [animeMetadata.malId],
+    }),
+  })
 )
 
 export type LibraryImportJobPayload = {
@@ -104,6 +125,13 @@ export const job = pgTable(
     index("job_claim_idx").on(table.type, table.status, table.availableAt),
   ]
 )
+
+export const jobRelations = relations(job, ({ one }) => ({
+  user: one(user, {
+    fields: [job.userId],
+    references: [user.id],
+  }),
+}))
 
 export type LibrarySyncEventPayload = {
   status: (typeof libraryStatuses)[number]
@@ -148,4 +176,18 @@ export const librarySyncEvent = pgTable(
       .on(table.userId, table.malId, table.provider)
       .where(sql`${table.status} = 'pending'`),
   ]
+)
+
+export const librarySyncEventRelations = relations(
+  librarySyncEvent,
+  ({ one }) => ({
+    user: one(user, {
+      fields: [librarySyncEvent.userId],
+      references: [user.id],
+    }),
+    animeMetadata: one(animeMetadata, {
+      fields: [librarySyncEvent.malId],
+      references: [animeMetadata.malId],
+    }),
+  })
 )
