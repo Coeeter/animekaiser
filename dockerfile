@@ -25,7 +25,9 @@ FROM base AS runtime
 ENV NODE_ENV=production
 COPY --from=prod-deps /app/ /app/
 COPY --from=build /app/apps/api/dist /app/apps/api/dist
-COPY --from=build /app/packages/db/ /app/packages/db/
+COPY --from=build /app/packages/db/drizzle /app/packages/db/drizzle
+COPY --from=build /app/packages/db/drizzle.config.ts /app/packages/db/drizzle.config.ts
+COPY --from=build /app/packages/db/src /app/packages/db/src
 COPY entrypoint.sh /app/entrypoint.sh
 RUN chmod +x /app/entrypoint.sh
 
