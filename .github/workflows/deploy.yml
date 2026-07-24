@@ -1,12 +1,15 @@
-name: Publish API docker image
+name: Deploy
 
 on:
   push:
-    branches:
-      - main
+    branches: [main]
     paths-ignore:
       - "apps/web/**"
   workflow_dispatch:
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: true
 
 permissions:
   contents: read
@@ -16,33 +19,54 @@ jobs:
   typecheck:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: oven-sh/setup-bun@v2
-      - run: bun install
+        with:
+          bun-version: 1.3.3
+      - run: bun install --frozen-lockfile
       - run: bun typecheck
 
   lint:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: oven-sh/setup-bun@v2
-      - run: bun install
+        with:
+          bun-version: 1.3.3
+      - run: bun install --frozen-lockfile
       - run: bun lint
+
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.3
+      - run: bun install --frozen-lockfile
+      - run: bun test
 
   build-and-push-docker-image:
     needs:
       - typecheck
       - lint
+      - test
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: docker/setup-buildx-action@v4
-      - uses: docker/login-action@v4
+      - uses: actions/checkout@v7
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v4
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      - uses: docker/build-push-action@v7
+
+      - name: Build and push
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: ./dockerfile
