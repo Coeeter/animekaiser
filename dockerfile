@@ -1,30 +1,34 @@
-FROM oven/bun:alpine AS base
+FROM oven/bun:slim AS base
 WORKDIR /app
-RUN apk add --no-cache libc6-compat
-RUN bun install -g turbo
 
 FROM base AS pruner
-WORKDIR /app
+RUN bun install -g turbo
 COPY . .
 RUN turbo prune @workspace/api --docker
 
-FROM base AS dev-dependencies
-WORKDIR /app
+FROM base AS deps
 COPY --from=pruner /app/out/json/ .
 COPY --from=pruner /app/out/bun.lock ./bun.lock
-RUN bun install --frozen-lockfile
+RUN bun install --frozen-lockfile --ignore-scripts
 
-FROM base AS builder
-WORKDIR /app
-COPY --from=dev-dependencies /app /app
+FROM deps AS build
 COPY --from=pruner /app/out/full/ .
-RUN turbo run build --filter=@workspace/api
+RUN bun run --cwd apps/api build
 
-FROM oven/bun:alpine AS runner
-WORKDIR /app
 
-COPY --from=builder /app/apps/api/dist ./dist
+FROM base AS prod-deps
+COPY --from=pruner /app/out/json/ .
+COPY --from=pruner /app/out/bun.lock ./bun.lock
+RUN bun install --production --frozen-lockfile --ignore-scripts --linker=hoisted
+
+FROM base AS runtime
+ENV NODE_ENV=production
+COPY --from=prod-deps /app/ /app/
+COPY --from=build /app/apps/api/dist /app/apps/api/dist
+COPY --from=build /app/packages/db/ /app/packages/db/
+COPY entrypoint.sh /app/entrypoint.sh
+RUN chmod +x /app/entrypoint.sh
 
 EXPOSE 8080
-
-CMD ["bun", "./dist/index.js"]
+WORKDIR /app/apps/api
+ENTRYPOINT ["/app/entrypoint.sh"]
