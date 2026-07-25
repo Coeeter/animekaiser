@@ -65,3 +65,6 @@ jobs:
           tags: |
             ghcr.io/coeeter/kaiser-api:latest
             ghcr.io/coeeter/kaiser-api:${{ github.sha }}
+
+      - name: Deploy to prod
+        run: curl -X POST ${{ secrets.DOKPLOY_WEBHOOK_URL }}
