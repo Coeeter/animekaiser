@@ -4,8 +4,7 @@ import { PublicProfilePage } from "../features/profile/profile-page"
 
 export const Route = createFileRoute("/u/$username")({
   staticData: { title: "Profile" },
-  loader: ({ params }) =>
-    getPublicProfile({ data: { username: params.username } }),
+  loader: ({ params }) => getPublicProfile(params.username),
   component: PublicProfileRoute,
 })
 

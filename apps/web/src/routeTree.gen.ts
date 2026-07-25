@@ -9,63 +9,32 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as WatchHistoryRouteImport } from './routes/watch-history'
-import { Route as SyncActivityRouteImport } from './routes/sync-activity'
-import { Route as SeriesRouteImport } from './routes/series'
-import { Route as ScheduleRouteImport } from './routes/schedule'
-import { Route as RandomRouteImport } from './routes/random'
-import { Route as ProfileRouteImport } from './routes/profile'
-import { Route as MyListRouteImport } from './routes/my-list'
-import { Route as LatestEpisodesRouteImport } from './routes/latest-episodes'
-import { Route as DiscoverRouteImport } from './routes/discover'
-import { Route as AuthRouteImport } from './routes/_auth'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as SeriesIndexRouteImport } from './routes/series.index'
-import { Route as UUsernameRouteImport } from './routes/u.$username'
-import { Route as SeriesIdRouteImport } from './routes/series.$id'
-import { Route as AuthRegisterRouteImport } from './routes/_auth.register'
-import { Route as AuthLoginRouteImport } from './routes/_auth.login'
+import { Route as AuthRouteImport } from './routes/_auth'
+import { Route as DiscoverRouteImport } from './routes/discover'
+import { Route as LatestEpisodesRouteImport } from './routes/latest-episodes'
+import { Route as MyListRouteImport } from './routes/my-list'
+import { Route as ProfileRouteImport } from './routes/profile'
+import { Route as RandomRouteImport } from './routes/random'
+import { Route as ScheduleRouteImport } from './routes/schedule'
+import { Route as SeriesRouteImport } from './routes/series'
+import { Route as SyncActivityRouteImport } from './routes/sync-activity'
+import { Route as WatchHistoryRouteImport } from './routes/watch-history'
 import { Route as AuthForgotPasswordRouteImport } from './routes/_auth.forgot-password'
+import { Route as AuthLoginRouteImport } from './routes/_auth.login'
+import { Route as AuthRegisterRouteImport } from './routes/_auth.register'
+import { Route as SeriesIndexRouteImport } from './routes/series.index'
+import { Route as SeriesIdRouteImport } from './routes/series.$id'
+import { Route as UUsernameRouteImport } from './routes/u.$username'
 import { Route as WatchMalIdProviderEpisodeIdRouteImport } from './routes/watch.$malId.$provider.$episodeId'
 
-const WatchHistoryRoute = WatchHistoryRouteImport.update({
-  id: '/watch-history',
-  path: '/watch-history',
+const IndexRoute = IndexRouteImport.update({
+  id: '/',
+  path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const SyncActivityRoute = SyncActivityRouteImport.update({
-  id: '/sync-activity',
-  path: '/sync-activity',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const SeriesRoute = SeriesRouteImport.update({
-  id: '/series',
-  path: '/series',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ScheduleRoute = ScheduleRouteImport.update({
-  id: '/schedule',
-  path: '/schedule',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const RandomRoute = RandomRouteImport.update({
-  id: '/random',
-  path: '/random',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ProfileRoute = ProfileRouteImport.update({
-  id: '/profile',
-  path: '/profile',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const MyListRoute = MyListRouteImport.update({
-  id: '/my-list',
-  path: '/my-list',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const LatestEpisodesRoute = LatestEpisodesRouteImport.update({
-  id: '/latest-episodes',
-  path: '/latest-episodes',
+const AuthRoute = AuthRouteImport.update({
+  id: '/_auth',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DiscoverRoute = DiscoverRouteImport.update({
@@ -73,33 +42,49 @@ const DiscoverRoute = DiscoverRouteImport.update({
   path: '/discover',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AuthRoute = AuthRouteImport.update({
-  id: '/_auth',
+const LatestEpisodesRoute = LatestEpisodesRouteImport.update({
+  id: '/latest-episodes',
+  path: '/latest-episodes',
   getParentRoute: () => rootRouteImport,
 } as any)
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
+const MyListRoute = MyListRouteImport.update({
+  id: '/my-list',
+  path: '/my-list',
   getParentRoute: () => rootRouteImport,
 } as any)
-const SeriesIndexRoute = SeriesIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => SeriesRoute,
-} as any)
-const UUsernameRoute = UUsernameRouteImport.update({
-  id: '/u/$username',
-  path: '/u/$username',
+const ProfileRoute = ProfileRouteImport.update({
+  id: '/profile',
+  path: '/profile',
   getParentRoute: () => rootRouteImport,
 } as any)
-const SeriesIdRoute = SeriesIdRouteImport.update({
-  id: '/$id',
-  path: '/$id',
-  getParentRoute: () => SeriesRoute,
+const RandomRoute = RandomRouteImport.update({
+  id: '/random',
+  path: '/random',
+  getParentRoute: () => rootRouteImport,
 } as any)
-const AuthRegisterRoute = AuthRegisterRouteImport.update({
-  id: '/register',
-  path: '/register',
+const ScheduleRoute = ScheduleRouteImport.update({
+  id: '/schedule',
+  path: '/schedule',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SeriesRoute = SeriesRouteImport.update({
+  id: '/series',
+  path: '/series',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SyncActivityRoute = SyncActivityRouteImport.update({
+  id: '/sync-activity',
+  path: '/sync-activity',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const WatchHistoryRoute = WatchHistoryRouteImport.update({
+  id: '/watch-history',
+  path: '/watch-history',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthForgotPasswordRoute = AuthForgotPasswordRouteImport.update({
+  id: '/forgot-password',
+  path: '/forgot-password',
   getParentRoute: () => AuthRoute,
 } as any)
 const AuthLoginRoute = AuthLoginRouteImport.update({
@@ -107,10 +92,25 @@ const AuthLoginRoute = AuthLoginRouteImport.update({
   path: '/login',
   getParentRoute: () => AuthRoute,
 } as any)
-const AuthForgotPasswordRoute = AuthForgotPasswordRouteImport.update({
-  id: '/forgot-password',
-  path: '/forgot-password',
+const AuthRegisterRoute = AuthRegisterRouteImport.update({
+  id: '/register',
+  path: '/register',
   getParentRoute: () => AuthRoute,
+} as any)
+const SeriesIndexRoute = SeriesIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => SeriesRoute,
+} as any)
+const SeriesIdRoute = SeriesIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => SeriesRoute,
+} as any)
+const UUsernameRoute = UUsernameRouteImport.update({
+  id: '/u/$username',
+  path: '/u/$username',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const WatchMalIdProviderEpisodeIdRoute =
   WatchMalIdProviderEpisodeIdRouteImport.update({
@@ -255,67 +255,11 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/watch-history': {
-      id: '/watch-history'
-      path: '/watch-history'
-      fullPath: '/watch-history'
-      preLoaderRoute: typeof WatchHistoryRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/sync-activity': {
-      id: '/sync-activity'
-      path: '/sync-activity'
-      fullPath: '/sync-activity'
-      preLoaderRoute: typeof SyncActivityRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/series': {
-      id: '/series'
-      path: '/series'
-      fullPath: '/series'
-      preLoaderRoute: typeof SeriesRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/schedule': {
-      id: '/schedule'
-      path: '/schedule'
-      fullPath: '/schedule'
-      preLoaderRoute: typeof ScheduleRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/random': {
-      id: '/random'
-      path: '/random'
-      fullPath: '/random'
-      preLoaderRoute: typeof RandomRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/profile': {
-      id: '/profile'
-      path: '/profile'
-      fullPath: '/profile'
-      preLoaderRoute: typeof ProfileRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/my-list': {
-      id: '/my-list'
-      path: '/my-list'
-      fullPath: '/my-list'
-      preLoaderRoute: typeof MyListRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/latest-episodes': {
-      id: '/latest-episodes'
-      path: '/latest-episodes'
-      fullPath: '/latest-episodes'
-      preLoaderRoute: typeof LatestEpisodesRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/discover': {
-      id: '/discover'
-      path: '/discover'
-      fullPath: '/discover'
-      preLoaderRoute: typeof DiscoverRouteImport
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_auth': {
@@ -325,39 +269,74 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
+    '/discover': {
+      id: '/discover'
+      path: '/discover'
+      fullPath: '/discover'
+      preLoaderRoute: typeof DiscoverRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/series/': {
-      id: '/series/'
-      path: '/'
-      fullPath: '/series/'
-      preLoaderRoute: typeof SeriesIndexRouteImport
-      parentRoute: typeof SeriesRoute
-    }
-    '/u/$username': {
-      id: '/u/$username'
-      path: '/u/$username'
-      fullPath: '/u/$username'
-      preLoaderRoute: typeof UUsernameRouteImport
+    '/latest-episodes': {
+      id: '/latest-episodes'
+      path: '/latest-episodes'
+      fullPath: '/latest-episodes'
+      preLoaderRoute: typeof LatestEpisodesRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/series/$id': {
-      id: '/series/$id'
-      path: '/$id'
-      fullPath: '/series/$id'
-      preLoaderRoute: typeof SeriesIdRouteImport
-      parentRoute: typeof SeriesRoute
+    '/my-list': {
+      id: '/my-list'
+      path: '/my-list'
+      fullPath: '/my-list'
+      preLoaderRoute: typeof MyListRouteImport
+      parentRoute: typeof rootRouteImport
     }
-    '/_auth/register': {
-      id: '/_auth/register'
-      path: '/register'
-      fullPath: '/register'
-      preLoaderRoute: typeof AuthRegisterRouteImport
+    '/profile': {
+      id: '/profile'
+      path: '/profile'
+      fullPath: '/profile'
+      preLoaderRoute: typeof ProfileRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/random': {
+      id: '/random'
+      path: '/random'
+      fullPath: '/random'
+      preLoaderRoute: typeof RandomRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/schedule': {
+      id: '/schedule'
+      path: '/schedule'
+      fullPath: '/schedule'
+      preLoaderRoute: typeof ScheduleRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/series': {
+      id: '/series'
+      path: '/series'
+      fullPath: '/series'
+      preLoaderRoute: typeof SeriesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/sync-activity': {
+      id: '/sync-activity'
+      path: '/sync-activity'
+      fullPath: '/sync-activity'
+      preLoaderRoute: typeof SyncActivityRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/watch-history': {
+      id: '/watch-history'
+      path: '/watch-history'
+      fullPath: '/watch-history'
+      preLoaderRoute: typeof WatchHistoryRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_auth/forgot-password': {
+      id: '/_auth/forgot-password'
+      path: '/forgot-password'
+      fullPath: '/forgot-password'
+      preLoaderRoute: typeof AuthForgotPasswordRouteImport
       parentRoute: typeof AuthRoute
     }
     '/_auth/login': {
@@ -367,12 +346,33 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthLoginRouteImport
       parentRoute: typeof AuthRoute
     }
-    '/_auth/forgot-password': {
-      id: '/_auth/forgot-password'
-      path: '/forgot-password'
-      fullPath: '/forgot-password'
-      preLoaderRoute: typeof AuthForgotPasswordRouteImport
+    '/_auth/register': {
+      id: '/_auth/register'
+      path: '/register'
+      fullPath: '/register'
+      preLoaderRoute: typeof AuthRegisterRouteImport
       parentRoute: typeof AuthRoute
+    }
+    '/series/': {
+      id: '/series/'
+      path: '/'
+      fullPath: '/series/'
+      preLoaderRoute: typeof SeriesIndexRouteImport
+      parentRoute: typeof SeriesRoute
+    }
+    '/series/$id': {
+      id: '/series/$id'
+      path: '/$id'
+      fullPath: '/series/$id'
+      preLoaderRoute: typeof SeriesIdRouteImport
+      parentRoute: typeof SeriesRoute
+    }
+    '/u/$username': {
+      id: '/u/$username'
+      path: '/u/$username'
+      fullPath: '/u/$username'
+      preLoaderRoute: typeof UUsernameRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/watch/$malId/$provider/$episodeId': {
       id: '/watch/$malId/$provider/$episodeId'
@@ -429,12 +429,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { createStart } from '@tanstack/react-start'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-  }
-}
