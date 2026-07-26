@@ -13,6 +13,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  DialogTrigger,
 } from "@workspace/ui/components/dialog"
 import {
   Field,
@@ -33,10 +34,10 @@ import {
 import { Textarea } from "@workspace/ui/components/textarea"
 import * as Schema from "effect/Schema"
 import { Edit3, Star, Trash2 } from "lucide-react"
-import { useEffect, useId } from "react"
+import { useEffect, useId, useState } from "react"
 import { toast } from "sonner"
-import { AnimeTitle } from "../anime/anime-title"
-import { animeTitlePreferenceAtom, getAnimeTitle } from "../anime/title"
+import { AnimeTitle } from "../anime/common/anime-title"
+import { animeTitlePreferenceAtom, getAnimeTitle } from "../anime/common/title"
 import { playerPreferencesAtom } from "../streaming/preferences"
 import {
   libraryMutationKeys,
@@ -68,12 +69,10 @@ const formatProgress = (entry: LibraryEntry) =>
 
 export function LibraryCard({
   entry,
-  onEdit,
-  onDelete,
+  onChanged,
 }: {
   entry: LibraryEntry
-  onEdit: () => void
-  onDelete: () => void
+  onChanged: () => void
 }) {
   const preference = useAtomValue(animeTitlePreferenceAtom)
   const titleText = getAnimeTitle(entry.anime.title, preference)
@@ -117,14 +116,8 @@ export function LibraryCard({
           <Badge variant="secondary">{libraryStatusLabel(entry.status)}</Badge>
         </div>
         <div className="mt-auto flex gap-2">
-          <Button variant="outline" size="sm" onClick={onEdit}>
-            <Edit3 data-icon="inline-start" />
-            Edit
-          </Button>
-          <Button variant="destructive" size="sm" onClick={onDelete}>
-            <Trash2 data-icon="inline-start" />
-            Remove
-          </Button>
+          <LibraryDialog entry={entry} onSaved={onChanged} />
+          <DeleteLibraryDialog entry={entry} onDeleted={onChanged} />
         </div>
       </div>
     </article>
@@ -133,45 +126,56 @@ export function LibraryCard({
 
 export function DeleteLibraryDialog({
   entry,
-  open,
-  onOpenChange,
   onDeleted,
 }: {
   entry: LibraryEntry
-  open: boolean
-  onOpenChange: (open: boolean) => void
   onDeleted: () => void
 }) {
   const remove = useAtomSet(removeLibraryAtom, { mode: "promise" })
+  const [open, setOpen] = useState(false)
   const formId = useId()
+
   const form = useForm({
     defaultValues: libraryDeleteFormDefaults(),
     onSubmit: ({ value }) => submit(value),
   })
+
   useEffect(() => {
     if (open) form.reset(libraryDeleteFormDefaults())
   }, [open])
+
   const submit = async (values: LibraryDeleteFormValues) => {
     const providers: Array<ExternalListProvider> = []
+
     if (values.mal) providers.push("mal")
     if (values.anilist) providers.push("anilist")
+
     try {
       await remove({
         payload: { malId: entry.malId, providers },
         reactivityKeys: libraryMutationKeys(entry.malId),
       })
+
       toast.success(
         providers.length
           ? "Removed locally; external deletes queued"
           : "Removed locally"
       )
+      setOpen(false)
       onDeleted()
     } catch {
       toast.error("Unable to remove title")
     }
   }
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button variant="destructive" size="sm">
+          <Trash2 data-icon="inline-start" />
+          Remove
+        </Button>
+      </DialogTrigger>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Remove from your list?</DialogTitle>
@@ -227,7 +231,7 @@ export function DeleteLibraryDialog({
           </FieldSet>
         </form>
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
+          <Button variant="outline" onClick={() => setOpen(false)}>
             Cancel
           </Button>
           <form.Subscribe selector={(state) => state.isSubmitting}>
@@ -250,25 +254,25 @@ export function DeleteLibraryDialog({
 
 export function LibraryDialog({
   entry,
-  open,
-  onOpenChange,
   onSaved,
 }: {
   entry: LibraryEntry
-  open: boolean
-  onOpenChange: (open: boolean) => void
   onSaved: () => void
 }) {
   const save = useAtomSet(upsertLibraryAtom, { mode: "promise" })
   const preferences = useAtomValue(playerPreferencesAtom)
+  const [open, setOpen] = useState(false)
   const formId = useId()
+
   const form = useForm({
     defaultValues: libraryEntryFormDefaults(entry),
     onSubmit: ({ value }) => submit(value),
   })
+
   useEffect(() => {
     if (open) form.reset(libraryEntryFormDefaults(entry))
   }, [entry, open])
+
   const submit = async (values: LibraryEntryFormValues) => {
     try {
       await save({
@@ -282,14 +286,23 @@ export function LibraryDialog({
         },
         reactivityKeys: libraryMutationKeys(entry.malId),
       })
+
       toast.success("Library entry updated")
+      setOpen(false)
       onSaved()
     } catch {
       toast.error("Unable to update entry")
     }
   }
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button variant="outline" size="sm">
+          <Edit3 data-icon="inline-start" />
+          Edit
+        </Button>
+      </DialogTrigger>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Edit library entry</DialogTitle>
@@ -389,7 +402,7 @@ export function LibraryDialog({
           <Button
             type="button"
             variant="outline"
-            onClick={() => onOpenChange(false)}
+            onClick={() => setOpen(false)}
           >
             Cancel
           </Button>

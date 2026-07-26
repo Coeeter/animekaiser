@@ -5,9 +5,9 @@ import { Input } from "@workspace/ui/components/input"
 import { Fingerprint } from "lucide-react"
 import { useId, useState } from "react"
 import { toast } from "sonner"
-import type { AppUser } from "../../lib/auth-client"
-import { authClient } from "../../lib/auth-client"
-import { errorMessage } from "../../lib/error"
+import { authClient } from "../../services/api-clients"
+import { errorMessage } from "../../utils/error"
+import type { AppUser } from "../auth/user"
 import { AuthRequired, PanelCard } from "./settings-shared"
 
 type AddPasskeyValues = {
@@ -18,19 +18,26 @@ export function PasskeysPanel({ user }: { user: AppUser | null }) {
   const query = authClient.useListPasskeys()
   const nameId = useId()
   const [pending, setPending] = useState<string | null>(null)
+
   const addForm = useForm({
     defaultValues: { name: "" },
     onSubmit: ({ value }) => add(value),
   })
+
   if (!user) return <AuthRequired />
+
   const add = async (values: AddPasskeyValues) => {
     const name = values.name.trim()
+
     setPending("add")
+
     try {
       const result = await authClient.passkey.addPasskey({
         name: name || undefined,
       })
+
       if (result.error) throw result.error
+
       addForm.reset()
       await query.refetch()
       toast.success("Passkey added.")
@@ -40,11 +47,15 @@ export function PasskeysPanel({ user }: { user: AppUser | null }) {
       setPending(null)
     }
   }
+
   const rename = async (id: string, name: string) => {
     setPending(id)
+
     try {
       const result = await authClient.passkey.updatePasskey({ id, name })
+
       if (result.error) throw result.error
+
       await query.refetch()
       toast.success("Passkey renamed.")
     } catch (reason) {
@@ -53,12 +64,17 @@ export function PasskeysPanel({ user }: { user: AppUser | null }) {
       setPending(null)
     }
   }
+
   const remove = async (id: string) => {
     if (!window.confirm("Remove this passkey?")) return
+
     setPending(id)
+
     try {
       const result = await authClient.passkey.deletePasskey({ id })
+
       if (result.error) throw result.error
+
       await query.refetch()
       toast.success("Passkey removed.")
     } catch (reason) {
@@ -67,6 +83,7 @@ export function PasskeysPanel({ user }: { user: AppUser | null }) {
       setPending(null)
     }
   }
+
   return (
     <div className="flex flex-col gap-4">
       <PanelCard>

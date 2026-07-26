@@ -1,4 +1,5 @@
-import { Link } from "@tanstack/react-router"
+import { Result, useAtomSet, useAtomValue } from "@effect-atom/atom-react"
+import { Link, useLocation } from "@tanstack/react-router"
 import {
   Avatar,
   AvatarFallback,
@@ -17,6 +18,7 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarProvider,
   SidebarRail,
   SidebarTrigger,
   useSidebar,
@@ -42,10 +44,12 @@ import {
   User,
 } from "lucide-react"
 import type { ReactNode } from "react"
-import { useEffect } from "react"
+import { useEffect, useState } from "react"
 import { ModeToggle } from "../../components/theme"
-import type { AppUser } from "../../lib/auth-client"
-import { displayUsername, userInitials } from "../../lib/auth-client"
+import { searchOpenAtom } from "../anime/common/search-atoms"
+import { sessionAtom } from "../auth/atoms"
+import { displayUsername, userInitials } from "../auth/user"
+import { settingsOpenAtom, settingsSectionAtom } from "../settings/atoms"
 
 type NavItem = { title: string; href: string; icon: LucideIcon }
 
@@ -125,27 +129,49 @@ function FooterTooltip({
   )
 }
 
-export function MobileSidebarCloser({ pathname }: { pathname: string }) {
+function MobileSidebarCloser({ pathname }: { pathname: string }) {
   const { isMobile, setOpenMobile } = useSidebar()
+
   useEffect(() => {
     if (isMobile) setOpenMobile(false)
   }, [isMobile, pathname, setOpenMobile])
+
   return null
 }
 
-export function AppSidebar({
-  children,
-  pathname,
-  user,
-  onSearch,
-  onSettings,
-}: {
-  children: ReactNode
-  pathname: string
-  user: AppUser | null
-  onSearch: () => void
-  onSettings: () => void
-}) {
+export function AppSidebarProvider({ children }: { children: ReactNode }) {
+  const pathname = useLocation({ select: (l) => l.pathname })
+  const isWatchRoute = pathname.startsWith("/watch/")
+  const [open, setOpen] = useState(!isWatchRoute)
+
+  useEffect(() => {
+    if (isWatchRoute) setOpen(false)
+  }, [isWatchRoute])
+
+  return (
+    <SidebarProvider open={open} onOpenChange={setOpen}>
+      <MobileSidebarCloser pathname={pathname} />
+      {children}
+    </SidebarProvider>
+  )
+}
+
+export function AppSidebar({ children }: { children: ReactNode }) {
+  const pathname = useLocation({ select: (l) => l.pathname })
+  const setSearchOpen = useAtomSet(searchOpenAtom)
+  const setSettingsSection = useAtomSet(settingsSectionAtom)
+  const setSettingsOpen = useAtomSet(settingsOpenAtom)
+  const sessionResult = useAtomValue(sessionAtom)
+
+  const user = Result.builder(sessionResult)
+    .onSuccess((session) => session?.user ?? null)
+    .orNull()
+
+  const openSettings = () => {
+    setSettingsSection("Account")
+    setSettingsOpen(true)
+  }
+
   return (
     <>
       <Sidebar collapsible="icon">
@@ -169,7 +195,7 @@ export function AppSidebar({
           <button
             type="button"
             className="flex h-10 w-full min-w-0 items-center gap-3 overflow-hidden rounded-2xl border border-sidebar-border bg-sidebar-accent/40 px-3 text-sm text-sidebar-foreground/70 transition-colors group-data-[collapsible=icon]:w-8 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:gap-0 group-data-[collapsible=icon]:rounded-xl group-data-[collapsible=icon]:border-0 group-data-[collapsible=icon]:bg-transparent group-data-[collapsible=icon]:px-0 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/30 focus-visible:outline-none"
-            onClick={onSearch}
+            onClick={() => setSearchOpen(true)}
             aria-label="Open command menu"
           >
             <Search className="size-4 shrink-0" />
@@ -249,7 +275,7 @@ export function AppSidebar({
                 variant="ghost"
                 size="icon"
                 aria-label="Open settings"
-                onClick={onSettings}
+                onClick={openSettings}
               >
                 <Settings2 />
               </Button>
@@ -266,7 +292,7 @@ export function AppSidebar({
               <Button
                 variant="ghost"
                 size="icon"
-                onClick={onSearch}
+                onClick={() => setSearchOpen(true)}
                 aria-label="Open command menu"
               >
                 <Search />
@@ -297,7 +323,7 @@ export function AppSidebar({
                 variant="ghost"
                 size="icon"
                 aria-label="Open settings"
-                onClick={onSettings}
+                onClick={openSettings}
               >
                 <Settings2 />
               </Button>

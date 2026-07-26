@@ -3,15 +3,17 @@ import {
   ToggleGroup,
   ToggleGroupItem,
 } from "@workspace/ui/components/toggle-group"
-import { animeTitlePreferenceAtom } from "../anime/title"
+import { animeTitlePreferenceAtom } from "../anime/common/title"
 import { PanelCard } from "./settings-shared"
 
 export function SitePanel() {
   const [title, setTitle] = useAtom(animeTitlePreferenceAtom)
+
   const update = (value: "english" | "romaji") => {
     setTitle(value)
     window.localStorage.setItem("anime-title-preference", value)
   }
+
   return (
     <PanelCard>
       <div className="flex flex-wrap items-center justify-between gap-4">

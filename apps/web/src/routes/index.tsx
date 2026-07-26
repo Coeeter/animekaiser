@@ -1,14 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router"
-import { loadAnimeHome } from "../features/anime/anime.functions"
-import { HomePage, HomePendingPage } from "../features/anime/home-page"
+import { HomePage } from "../features/anime/home/home-page"
 
 export const Route = createFileRoute("/")({
   staticData: { title: "Home" },
-  loader: loadAnimeHome,
-  pendingComponent: HomePendingPage,
-  component: HomeRoute,
+  component: HomePage,
 })
-
-function HomeRoute() {
-  return <HomePage home={Route.useLoaderData()} />
-}

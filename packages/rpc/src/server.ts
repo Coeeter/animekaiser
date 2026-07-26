@@ -28,7 +28,7 @@ const ServerRpcs = KaiserRpcs.middleware(RpcRequestLogging)
 export const RpcLive = RpcServer.layerHttpRouter({
   group: ServerRpcs,
   path: "/rpc",
-  protocol: "http",
+  protocol: "websocket",
 }).pipe(
   Layer.provide(
     Layer.mergeAll(

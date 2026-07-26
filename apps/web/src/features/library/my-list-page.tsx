@@ -1,5 +1,6 @@
 import {
   Result,
+  useAtom,
   useAtomRefresh,
   useAtomSet,
   useAtomValue,
@@ -7,7 +8,6 @@ import {
 import { Link, useNavigate } from "@tanstack/react-router"
 import type {
   ExternalListProvider,
-  LibraryEntry,
   LibraryPage,
   LibraryStatus,
 } from "@workspace/domain"
@@ -41,21 +41,19 @@ import {
   Star,
   Trash2,
 } from "lucide-react"
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { toast } from "sonner"
+import { DataError } from "../../components/data-error"
 import { PageHero } from "../../components/page-hero"
 import {
   clearLibraryAtom,
   libraryPageAtom,
   libraryReactivityKeys,
+  startLibraryImportAtom,
+  watchLibraryImportAtom,
 } from "./atoms"
 import { librarySorts, libraryStatuses } from "./constants"
-import { startLibraryImport, watchLibraryImport } from "./import-rpc"
-import {
-  DeleteLibraryDialog,
-  LibraryCard,
-  LibraryDialog,
-} from "./library-entry-components"
+import { LibraryCard } from "./library-entry-components"
 import type { MyListSearch } from "./search"
 
 const decodeLibrarySort = Schema.decodeUnknownSync(LibrarySort)
@@ -83,11 +81,9 @@ export function MyListPage({ search }: { search: MyListSearch }) {
   )
   const result = useAtomValue(queryAtom)
   const refresh = useAtomRefresh(queryAtom)
-  const page = Result.match(result, {
-    onInitial: () => null,
-    onFailure: () => null,
-    onSuccess: ({ value }) => value,
-  })
+  const page = Result.builder(result)
+    .onSuccess((value) => value)
+    .orNull()
 
   return (
     <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 p-4 pb-8 md:p-6">
@@ -97,11 +93,15 @@ export function MyListPage({ search }: { search: MyListSearch }) {
         title="My list"
         description="Track your anime library, scores, and watch progress."
       />
-      {page ? (
-        <MyListContent page={page} search={search} refresh={refresh} />
-      ) : (
-        <div className="h-64 animate-pulse rounded-xl bg-muted" />
-      )}
+      {Result.builder(result)
+        .onInitialOrWaiting(() => (
+          <div className="h-64 animate-pulse rounded-xl bg-muted" />
+        ))
+        .onFailure(() => <DataError onRetry={refresh} />)
+        .onSuccess((value) => (
+          <MyListContent page={value} search={search} refresh={refresh} />
+        ))
+        .render()}
     </div>
   )
 }
@@ -119,8 +119,6 @@ function MyListContent({
   const totalItems = page.total
   const totalPages = page.totalPages
   const currentPage = Math.min(search.page, totalPages)
-  const [editing, setEditing] = useState<LibraryEntry | null>(null)
-  const [deleting, setDeleting] = useState<LibraryEntry | null>(null)
 
   return (
     <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
@@ -135,8 +133,7 @@ function MyListContent({
               <LibraryCard
                 key={entry.malId}
                 entry={entry}
-                onEdit={() => setEditing(entry)}
-                onDelete={() => setDeleting(entry)}
+                onChanged={refresh}
               />
             ))}
           </div>
@@ -166,32 +163,6 @@ function MyListContent({
           refresh={refresh}
         />
       </aside>
-      {editing ? (
-        <LibraryDialog
-          entry={editing}
-          open
-          onOpenChange={(open) => {
-            if (!open) setEditing(null)
-          }}
-          onSaved={() => {
-            setEditing(null)
-            refresh()
-          }}
-        />
-      ) : null}
-      {deleting ? (
-        <DeleteLibraryDialog
-          entry={deleting}
-          open
-          onOpenChange={(open) => {
-            if (!open) setDeleting(null)
-          }}
-          onDeleted={() => {
-            setDeleting(null)
-            refresh()
-          }}
-        />
-      ) : null}
     </div>
   )
 }
@@ -369,22 +340,19 @@ function StatsPanel({ page }: { page: LibraryPage }) {
 }
 
 function ImportLibraryPanel({ refresh }: { refresh: () => void }) {
+  const startLibraryImport = useAtomSet(startLibraryImportAtom, {
+    mode: "promise",
+  })
   const [pendingProvider, setPendingProvider] =
     useState<ExternalListProvider | null>(null)
+  const [watchingJobId, setWatchingJobId] = useState<string | null>(null)
 
   const start = async (provider: ExternalListProvider) => {
     setPendingProvider(provider)
     try {
-      const job = await startLibraryImport(provider)
+      const job = await startLibraryImport({ payload: { provider } })
       toast.success(`Import queued: ${job.id}`)
-      void watchLibraryImport(job.id, (next) => {
-        if (next.status === "completed") {
-          refresh()
-          toast.success("Import complete")
-        } else if (next.status === "failed") {
-          toast.error(next.errorMessage ?? "Import failed")
-        }
-      })
+      setWatchingJobId(job.id)
     } catch {
       toast.error("Connect this provider in Settings first")
     } finally {
@@ -394,6 +362,13 @@ function ImportLibraryPanel({ refresh }: { refresh: () => void }) {
 
   return (
     <section className="rounded-xl border bg-card/60 p-4">
+      {watchingJobId ? (
+        <ImportWatcher
+          id={watchingJobId}
+          refresh={refresh}
+          stop={() => setWatchingJobId(null)}
+        />
+      ) : null}
       <h2 className="text-sm font-semibold">Import</h2>
       <p className="mt-1 text-sm leading-6 text-muted-foreground">
         Start a provider import after linking your MAL or AniList account in
@@ -421,6 +396,45 @@ function ImportLibraryPanel({ refresh }: { refresh: () => void }) {
   )
 }
 
+function ImportWatcher({
+  id,
+  refresh,
+  stop,
+}: {
+  id: string
+  refresh: () => void
+  stop: () => void
+}) {
+  const atom = watchLibraryImportAtom(id)
+  const result = useAtomValue(atom)
+  const pull = useAtomSet(atom)
+
+  useEffect(() => {
+    Result.builder(result)
+      .onSuccess((value, state) => {
+        if (state.waiting) return
+
+        const job = value.items.at(-1)
+
+        if (!job) return
+
+        if (job.status === "completed") {
+          refresh()
+          toast.success("Import complete")
+          stop()
+        } else if (job.status === "failed") {
+          toast.error(job.errorMessage ?? "Import failed")
+          stop()
+        } else if (!value.done) {
+          pull()
+        }
+      })
+      .orNull()
+  }, [pull, refresh, result, stop])
+
+  return null
+}
+
 function ClearLibraryPanel({
   disabled,
   refresh,
@@ -428,24 +442,21 @@ function ClearLibraryPanel({
   disabled: boolean
   refresh: () => void
 }) {
-  const clear = useAtomSet(clearLibraryAtom, { mode: "promise" })
+  const [clearResult, clear] = useAtom(clearLibraryAtom, { mode: "promise" })
   const [open, setOpen] = useState(false)
-  const [pending, setPending] = useState(false)
 
   const clearList = async () => {
-    setPending(true)
     try {
       const result = await clear({
         payload: void 0,
         reactivityKeys: [libraryReactivityKeys.all],
       })
+
       refresh()
       toast.success(`Removed ${result.removedCount} library entries.`)
       setOpen(false)
     } catch {
       toast.error("Unable to clear library")
-    } finally {
-      setPending(false)
     }
   }
 
@@ -489,9 +500,13 @@ function ClearLibraryPanel({
               >
                 Cancel
               </Button>
-              <Button type="submit" variant="destructive" disabled={pending}>
+              <Button
+                type="submit"
+                variant="destructive"
+                disabled={clearResult.waiting}
+              >
                 <Trash2 data-icon="inline-start" />
-                {pending ? "Clearing..." : "Clear list"}
+                {clearResult.waiting ? "Clearing..." : "Clear list"}
               </Button>
             </DialogFooter>
           </form>

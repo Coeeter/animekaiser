@@ -6,7 +6,10 @@ import type {
   LibrarySyncEventPage,
   LibrarySyncStatus,
 } from "@workspace/domain"
-import { KaiserAtomRpc } from "../../lib/rpc-client"
+import {
+  KaiserRpcClient,
+  refreshOnAuthChange,
+} from "../../services/api-clients"
 
 export const libraryReactivityKeys = {
   all: "library",
@@ -24,17 +27,21 @@ export const libraryPageAtom = (
   page: number,
   perPage: number
 ) =>
-  KaiserAtomRpc.query(
-    "GetLibraryPage",
-    { status, sort, page, perPage },
-    { reactivityKeys: [libraryReactivityKeys.all] }
+  refreshOnAuthChange(
+    KaiserRpcClient.query(
+      "GetLibraryPage",
+      { status, sort, page, perPage },
+      { reactivityKeys: [libraryReactivityKeys.all] }
+    )
   )
 
 export const libraryEntryAtom = (malId: number) =>
-  KaiserAtomRpc.query(
-    "GetLibraryEntry",
-    { malId },
-    { reactivityKeys: [libraryReactivityKeys.entry(malId)] }
+  refreshOnAuthChange(
+    KaiserRpcClient.query(
+      "GetLibraryEntry",
+      { malId },
+      { reactivityKeys: [libraryReactivityKeys.entry(malId)] }
+    )
   )
 
 export const syncEventsAtom = (
@@ -43,19 +50,27 @@ export const syncEventsAtom = (
   status?: typeof LibrarySyncStatus.Type,
   provider?: ExternalListProvider
 ) =>
-  KaiserAtomRpc.query("ListLibrarySyncEvents", {
-    page,
-    perPage,
-    status,
-    provider,
-  })
+  refreshOnAuthChange(
+    KaiserRpcClient.query("ListLibrarySyncEvents", {
+      page,
+      perPage,
+      status,
+      provider,
+    })
+  )
 
-export const upsertLibraryAtom = KaiserAtomRpc.mutation("UpsertLibraryEntry")
+export const upsertLibraryAtom = KaiserRpcClient.mutation("UpsertLibraryEntry")
 
-export const removeLibraryAtom = KaiserAtomRpc.mutation("RemoveLibraryEntry")
+export const removeLibraryAtom = KaiserRpcClient.mutation("RemoveLibraryEntry")
 
-export const clearLibraryAtom = KaiserAtomRpc.mutation("ClearLibrary")
+export const clearLibraryAtom = KaiserRpcClient.mutation("ClearLibrary")
 
-export const retrySyncAtom = KaiserAtomRpc.mutation("RetryLibrarySyncEvents")
+export const retrySyncAtom = KaiserRpcClient.mutation("RetryLibrarySyncEvents")
+
+export const startLibraryImportAtom =
+  KaiserRpcClient.mutation("StartLibraryImport")
+
+export const watchLibraryImportAtom = (id: string) =>
+  KaiserRpcClient.query("WatchLibraryImport", { id })
 
 export type { LibraryPage, LibrarySyncEventPage }

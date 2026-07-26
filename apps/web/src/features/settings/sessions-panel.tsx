@@ -1,18 +1,12 @@
 import { Button } from "@workspace/ui/components/button"
 import { useEffect, useState } from "react"
 import { toast } from "sonner"
-import type { AppUser } from "../../lib/auth-client"
-import { authClient } from "../../lib/auth-client"
-import { errorMessage } from "../../lib/error"
+import { authClient, reconnectKaiserRpc } from "../../services/api-clients"
+import { errorMessage } from "../../utils/error"
+import type { AppUser } from "../auth/user"
 import { AuthRequired } from "./settings-shared"
 
-export function SessionsPanel({
-  open,
-  user,
-}: {
-  open: boolean
-  user: AppUser | null
-}) {
+export function SessionsPanel({ user }: { user: AppUser | null }) {
   const [sessions, setSessions] = useState<
     Array<{
       id: string
@@ -24,20 +18,29 @@ export function SessionsPanel({
     }>
   >([])
   const [pending, setPending] = useState<string | null>(null)
+
   const refresh = async () => {
     const result = await authClient.listSessions()
+
     if (result.error) throw result.error
+
     setSessions(result.data)
   }
+
   useEffect(() => {
-    if (open && user) void refresh().catch(() => setSessions([]))
-  }, [open, user])
+    if (user) void refresh().catch(() => setSessions([]))
+  }, [user])
+
   if (!user) return <AuthRequired />
+
   const revoke = async (token: string) => {
     setPending(token)
+
     try {
       const result = await authClient.revokeSession({ token })
       if (result.error) throw result.error
+
+      await reconnectKaiserRpc()
       await refresh()
       toast.success("Session revoked.")
     } catch (reason) {
@@ -46,8 +49,10 @@ export function SessionsPanel({
       setPending(null)
     }
   }
+
   const revokeOthers = async () => {
     setPending("others")
+
     try {
       const result = await authClient.revokeOtherSessions()
       if (result.error) throw result.error
@@ -59,6 +64,7 @@ export function SessionsPanel({
       setPending(null)
     }
   }
+
   return (
     <div className="flex flex-col gap-4">
       <div className="flex justify-end">

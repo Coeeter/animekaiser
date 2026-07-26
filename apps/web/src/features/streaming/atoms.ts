@@ -1,8 +1,8 @@
 import type { StreamAudio, StreamProviderId } from "@workspace/domain"
-import { KaiserAtomRpc } from "../../lib/rpc-client"
+import { KaiserRpcClient } from "../../services/api-clients"
 
 export const streamEpisodesAtom = (malId: number, provider: StreamProviderId) =>
-  KaiserAtomRpc.query(
+  KaiserRpcClient.query(
     "ListStreamEpisodes",
     { malId, provider },
     { timeToLive: "1 minute" }
@@ -15,7 +15,7 @@ export const streamPlaybackAtom = (
   audio: StreamAudio,
   serverId?: string | undefined
 ) =>
-  KaiserAtomRpc.query("GetStreamPlayback", {
+  KaiserRpcClient.query("GetStreamPlayback", {
     malId,
     provider,
     episodeId,

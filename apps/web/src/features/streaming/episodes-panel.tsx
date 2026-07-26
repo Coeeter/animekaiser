@@ -1,4 +1,4 @@
-import { Result, useAtomValue } from "@effect-atom/atom-react"
+import { Result, useAtomRefresh, useAtomValue } from "@effect-atom/atom-react"
 import { Link } from "@tanstack/react-router"
 import type {
   AnimeDetail,
@@ -45,6 +45,7 @@ import {
   TvMinimalPlay,
 } from "lucide-react"
 import { useMemo, useState } from "react"
+import { DataError } from "../../components/data-error"
 import { streamEpisodesAtom } from "./atoms"
 
 const decodeProviderId = Schema.decodeUnknownSync(StreamProviderId)
@@ -126,30 +127,36 @@ export function EpisodesPanel({
   onProviderChange: (provider: StreamProviderId) => void
 }) {
   const result = useAtomValue(streamEpisodesAtom(anime.malId, selectedProvider))
+  const refresh = useAtomRefresh(
+    streamEpisodesAtom(anime.malId, selectedProvider)
+  )
 
-  const catalog = Result.match(result, {
-    onInitial: () => null,
-    onFailure: () => null,
-    onSuccess: ({ value }) => value,
-  })
+  const state = Result.builder(result)
+    .onInitialOrWaiting(() => ({ catalog: null, loading: true, failed: false }))
+    .onFailure(() => ({ catalog: null, loading: false, failed: true }))
+    .onSuccess((value) => ({ catalog: value, loading: false, failed: false }))
+    .render()
+
+  const { catalog } = state
   const providers = catalog?.providers ?? []
+
   const currentProvider =
     providers.find((provider) => provider.provider === selectedProvider) ??
     providers.at(0) ??
     null
+
   const selectValue = currentProvider
     ? currentProvider.provider
     : selectedProvider
-  const isLoading = Result.isWaiting(result)
-  const isFailed = !isLoading && result._tag === "Failure"
 
-  if (isLoading && !catalog) return <EpisodesPending />
+  if (state.loading) return <EpisodesPending />
 
-  if (isFailed) {
+  if (state.failed) {
     return (
-      <EpisodesEmpty
+      <DataError
         title="Episodes are unavailable"
         description="The streaming providers could not be reached right now."
+        onRetry={refresh}
       />
     )
   }

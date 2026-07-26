@@ -15,6 +15,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  DialogTrigger,
 } from "@workspace/ui/components/dialog"
 import {
   Field,
@@ -34,8 +35,8 @@ import {
 } from "@workspace/ui/components/select"
 import { Textarea } from "@workspace/ui/components/textarea"
 import * as Schema from "effect/Schema"
-import { Trash2 } from "lucide-react"
-import { useEffect, useId } from "react"
+import { BookmarkPlus, Trash2 } from "lucide-react"
+import { useEffect, useId, useState } from "react"
 import { toast } from "sonner"
 import { playerPreferencesAtom } from "../streaming/preferences"
 import {
@@ -54,20 +55,19 @@ import {
 
 export function AddToLibraryDialog({
   anime,
-  open,
-  onOpenChange,
   entry = null,
 }: {
   anime: AnimeDetail
-  open: boolean
-  onOpenChange: (open: boolean) => void
   entry?: LibraryEntry | null
 }) {
   const save = useAtomSet(upsertLibraryAtom, { mode: "promise" })
   const remove = useAtomSet(removeLibraryAtom, { mode: "promise" })
   const preferences = useAtomValue(playerPreferencesAtom)
+  const [open, setOpen] = useState(false)
+
   const saveFormId = useId()
   const deleteFormId = useId()
+
   const saveForm = useForm({
     defaultValues: libraryEntryFormDefaults(entry),
     onSubmit: ({ value }) => saveEntry(value),
@@ -76,8 +76,10 @@ export function AddToLibraryDialog({
     defaultValues: libraryDeleteFormDefaults(),
     onSubmit: ({ value }) => deleteEntry(value),
   })
+
   useEffect(() => {
     if (!open) return
+
     saveForm.reset(libraryEntryFormDefaults(entry))
     deleteForm.reset(libraryDeleteFormDefaults())
   }, [entry, open])
@@ -101,7 +103,8 @@ export function AddToLibraryDialog({
         },
         reactivityKeys: libraryMutationKeys(anime.malId),
       })
-      onOpenChange(false)
+
+      setOpen(false)
       toast.success("Library entry saved")
     } catch {
       toast.error("Log in to add this title to your list")
@@ -110,15 +113,18 @@ export function AddToLibraryDialog({
 
   const deleteEntry = async (values: LibraryDeleteFormValues) => {
     if (!entry) return
+
     const providers: Array<ExternalListProvider> = []
+
     if (values.mal) providers.push("mal")
     if (values.anilist) providers.push("anilist")
+
     try {
       await remove({
         payload: { malId: anime.malId, providers },
         reactivityKeys: libraryMutationKeys(anime.malId),
       })
-      onOpenChange(false)
+      setOpen(false)
       toast.success(
         providers.length
           ? "Removed locally; external deletes queued"
@@ -130,7 +136,13 @@ export function AddToLibraryDialog({
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button className="w-fit" variant="outline">
+          <BookmarkPlus data-icon="inline-start" />
+          {entry ? "Edit Library" : "Add to Library"}
+        </Button>
+      </DialogTrigger>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>
@@ -298,7 +310,7 @@ export function AddToLibraryDialog({
             <Button
               type="button"
               variant="outline"
-              onClick={() => onOpenChange(false)}
+              onClick={() => setOpen(false)}
             >
               Cancel
             </Button>

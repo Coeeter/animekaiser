@@ -1,23 +1,13 @@
 import { createFileRoute } from "@tanstack/react-router"
-import { loadAnimeCatalog } from "../features/anime/anime.functions"
-import { CatalogPage, CatalogPendingPage } from "../features/anime/catalog-page"
-import { catalogInput, decodeCatalogSearch } from "../features/anime/search"
+import { CatalogPage } from "../features/anime/catalog/catalog-page"
+import { decodeCatalogSearch } from "../features/anime/common/search"
 
 export const Route = createFileRoute("/series/")({
   staticData: { title: "Browse" },
   validateSearch: decodeCatalogSearch,
-  loaderDeps: ({ search }) => search,
-  loader: ({ deps }) => loadAnimeCatalog(catalogInput(deps)),
-  pendingComponent: CatalogPendingRoute,
   component: CatalogRoute,
 })
 
 function CatalogRoute() {
-  return (
-    <CatalogPage search={Route.useSearch()} initial={Route.useLoaderData()} />
-  )
-}
-
-function CatalogPendingRoute() {
-  return <CatalogPendingPage search={Route.useSearch()} />
+  return <CatalogPage search={Route.useSearch()} />
 }

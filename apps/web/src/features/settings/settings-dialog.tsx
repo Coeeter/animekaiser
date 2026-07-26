@@ -1,4 +1,11 @@
-import { Link } from "@tanstack/react-router"
+import {
+  Result,
+  useAtom,
+  useAtomMount,
+  useAtomValue,
+} from "@effect-atom/atom-react"
+import { Link, useRouter } from "@tanstack/react-router"
+import type { AppSession } from "@workspace/domain"
 import { Button } from "@workspace/ui/components/button"
 import {
   Dialog,
@@ -16,7 +23,6 @@ import {
 } from "@workspace/ui/components/empty"
 import { Separator } from "@workspace/ui/components/separator"
 import { cn } from "@workspace/ui/lib/utils"
-import * as Schema from "effect/Schema"
 import {
   Bell,
   Captions,
@@ -30,11 +36,16 @@ import {
   Shield,
   User,
 } from "lucide-react"
-import { useEffect, useState } from "react"
-import type { AppUser } from "../../lib/auth-client"
-import type { AppSession } from "../../lib/session"
+import { useState } from "react"
+import { toast } from "sonner"
+import { authClient, reconnectKaiserRpc } from "../../services/api-clients"
+import { errorMessage } from "../../utils/error"
+import { sessionAtom } from "../auth/atoms"
+import type { AppUser } from "../auth/user"
 import { AccountPanel } from "./account-panel"
 import { AppearancePanel } from "./appearance-panel"
+import type { SettingsSection } from "./atoms"
+import { oauthResultAtom, settingsOpenAtom, settingsSectionAtom } from "./atoms"
 import { IntegrationsPanel } from "./integrations-panel"
 import { PasskeysPanel } from "./passkeys-panel"
 import { PlayerPanel } from "./player-panel"
@@ -89,21 +100,6 @@ const sections = [
   },
 ] as const
 
-export const SettingsSection = Schema.Literal(
-  "Account",
-  "Profile",
-  "Privacy",
-  "Appearance",
-  "Site",
-  "Player",
-  "Subtitles",
-  "Notifications",
-  "Integrations",
-  "Sessions",
-  "Passkeys"
-)
-export type SettingsSection = typeof SettingsSection.Type
-
 function PlaceholderPanel({ title }: { title: SettingsSection }) {
   return (
     <Empty className="border">
@@ -122,16 +118,13 @@ function PlaceholderPanel({ title }: { title: SettingsSection }) {
 
 function SectionContent({
   section,
-  open,
   session,
-  onClose,
 }: {
   section: SettingsSection
-  open: boolean
   session: AppSession | null
-  onClose: () => void
 }) {
   const user = session?.user ?? null
+
   if (section === "Account")
     return (
       <AccountPanel
@@ -139,42 +132,60 @@ function SectionContent({
         sessionExpiresAt={session?.session.expiresAt ?? null}
       />
     )
-  if (section === "Profile") return <ProfilePanel open={open} user={user} />
-  if (section === "Privacy") return <PrivacyPanel open={open} user={user} />
+  if (section === "Profile") return <ProfilePanel user={user} />
+  if (section === "Privacy") return <PrivacyPanel user={user} />
   if (section === "Appearance") return <AppearancePanel />
   if (section === "Site") return <SitePanel />
   if (section === "Player") return <PlayerPanel />
-  if (section === "Integrations")
-    return <IntegrationsPanel user={user} onClose={onClose} />
-  if (section === "Sessions") return <SessionsPanel open={open} user={user} />
+  if (section === "Integrations") return <IntegrationsPanel user={user} />
+  if (section === "Sessions") return <SessionsPanel user={user} />
   if (section === "Passkeys") return <PasskeysPanel user={user} />
+
   return <PlaceholderPanel title={section} />
 }
 
-export function SettingsDialog({
-  open,
-  onOpenChange,
-  requestedSection,
-  session,
-  onLogout,
-  logoutPending,
-}: {
-  open: boolean
-  onOpenChange: (open: boolean) => void
-  requestedSection?: SettingsSection | null
-  session: AppSession | null
-  onLogout: () => void
-  logoutPending: boolean
-}) {
-  const [active, setActive] = useState<SettingsSection>("Account")
+export function SettingsDialog() {
+  const router = useRouter()
+  const [open, setOpen] = useAtom(settingsOpenAtom)
+  const [active, setActive] = useAtom(settingsSectionAtom)
+  const sessionResult = useAtomValue(sessionAtom)
+  const [logoutPending, setLogoutPending] = useState(false)
+
+  const session = Result.builder(sessionResult)
+    .onSuccess((value) => value)
+    .orNull()
+
   const user: AppUser | null = session?.user ?? null
-  useEffect(() => {
-    if (open) setActive(requestedSection ?? "Account")
-  }, [open, requestedSection])
+
+  useAtomMount(oauthResultAtom)
+
+  const logout = async () => {
+    setLogoutPending(true)
+
+    try {
+      const result = await authClient.signOut()
+
+      if (result.error) {
+        toast.error(errorMessage(result.error, "Unable to sign out"))
+        return
+      }
+
+      await reconnectKaiserRpc()
+      setOpen(false)
+      await router.invalidate()
+      await router.navigate({ to: "/" })
+    } catch (cause) {
+      toast.error(errorMessage(cause, "Unable to sign out"))
+    } finally {
+      setLogoutPending(false)
+    }
+  }
+
   const selected =
     sections.find((section) => section.title === active) ?? sections[0]
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={setOpen}>
       <DialogContent
         showCloseButton
         className="h-[calc(100svh-1rem)] max-w-[calc(100%-1rem)] grid-rows-[auto_minmax(0,1fr)] gap-0 overflow-hidden rounded-2xl p-0 md:h-[calc(100svh-4rem)] md:max-h-192 md:max-w-6xl"
@@ -191,7 +202,7 @@ export function SettingsDialog({
               <Button
                 variant="destructive"
                 disabled={logoutPending}
-                onClick={onLogout}
+                onClick={() => void logout()}
               >
                 Sign out
               </Button>
@@ -251,12 +262,7 @@ export function SettingsDialog({
               </div>
             </div>
             <Separator className="my-5" />
-            <SectionContent
-              section={active}
-              open={open}
-              session={session}
-              onClose={() => onOpenChange(false)}
-            />
+            <SectionContent section={active} session={session} />
           </main>
         </div>
       </DialogContent>

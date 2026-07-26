@@ -16,8 +16,8 @@ import {
 } from "@workspace/ui/components/field"
 import { Input } from "@workspace/ui/components/input"
 import { useState } from "react"
-import { authClient } from "../../lib/auth-client"
-import { errorMessage } from "../../lib/error"
+import { authClient, reconnectKaiserRpc } from "../../services/api-clients"
+import { errorMessage } from "../../utils/error"
 import { AuthFooter, SubmitButton } from "./auth-shared"
 import { passwordConfirmationError } from "./validation"
 
@@ -55,6 +55,8 @@ export function RegisterPage() {
           password: value.password,
         })
         if (result.error) throw result.error
+
+        await reconnectKaiserRpc()
         await router.invalidate()
         await navigate({ to: "/" })
       } catch (cause) {

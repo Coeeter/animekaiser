@@ -1,3 +1,4 @@
+import { useAtomSet } from "@effect-atom/atom-react"
 import { useForm } from "@tanstack/react-form"
 import { useNavigate, useRouter } from "@tanstack/react-router"
 import { Button } from "@workspace/ui/components/button"
@@ -12,10 +13,11 @@ import { Spinner } from "@workspace/ui/components/spinner"
 import { Trash2 } from "lucide-react"
 import { useState } from "react"
 import { toast } from "sonner"
-import type { AppUser } from "../../lib/auth-client"
-import { authClient, displayUsername } from "../../lib/auth-client"
-import { errorMessage } from "../../lib/error"
-import { deleteAccount as deleteKaiserAccount } from "../profile/profile-rpc"
+import { authClient, reconnectKaiserRpc } from "../../services/api-clients"
+import { errorMessage } from "../../utils/error"
+import type { AppUser } from "../auth/user"
+import { displayUsername } from "../auth/user"
+import { deleteAccountAtom } from "../profile/atoms"
 import { AuthRequired, PanelCard } from "./settings-shared"
 
 type ChangePasswordValues = {
@@ -37,9 +39,15 @@ export function AccountPanel({
 }) {
   const router = useRouter()
   const navigate = useNavigate()
+
+  const deleteKaiserAccount = useAtomSet(deleteAccountAtom, {
+    mode: "promise",
+  })
+
   const [confirmationError, setConfirmationError] = useState<string | null>(
     null
   )
+
   const passwordForm = useForm({
     defaultValues: {
       currentPassword: "",
@@ -52,6 +60,7 @@ export function AccountPanel({
     defaultValues: { deletePassword: "" },
     onSubmit: ({ value }) => deleteAccount(value),
   })
+
   if (!user) return <AuthRequired />
 
   const changePassword = async (values: ChangePasswordValues) => {
@@ -82,8 +91,12 @@ export function AccountPanel({
     )
       return
     try {
-      await deleteKaiserAccount(values.deletePassword)
+      await deleteKaiserAccount({
+        payload: { password: values.deletePassword },
+      })
+
       await authClient.signOut()
+      await reconnectKaiserRpc()
       await router.invalidate()
       await navigate({ to: "/" })
     } catch (reason) {

@@ -1,5 +1,12 @@
+import {
+  Result,
+  useAtomRefresh,
+  useAtomSet,
+  useAtomValue,
+} from "@effect-atom/atom-react"
 import { useForm } from "@tanstack/react-form"
 import { useRouter } from "@tanstack/react-router"
+import { ProfileImageContentType } from "@workspace/domain"
 import {
   Avatar,
   AvatarFallback,
@@ -13,21 +20,23 @@ import {
 } from "@workspace/ui/components/field"
 import { Input } from "@workspace/ui/components/input"
 import { Textarea } from "@workspace/ui/components/textarea"
+import * as Option from "effect/Option"
+import * as Schema from "effect/Schema"
 import { useEffect, useRef, useState } from "react"
 import { toast } from "sonner"
-import type { AppUser } from "../../lib/auth-client"
+import { DataError } from "../../components/data-error"
+import { authClient, reconnectKaiserRpc } from "../../services/api-clients"
+import { errorMessage } from "../../utils/error"
+import type { AppUser } from "../auth/user"
+import { displayUsername, userInitials } from "../auth/user"
 import {
-  authClient,
-  displayUsername,
-  userInitials,
-} from "../../lib/auth-client"
-import { errorMessage } from "../../lib/error"
-import {
-  loadOwnProfile,
-  removeProfileImage,
-  saveProfile,
-  uploadProfileImage,
-} from "../profile/profile-rpc"
+  completeProfileImageUploadAtom,
+  createProfileImageUploadAtom,
+  ownProfileAtom,
+  profileReactivityKeys,
+  removeProfileImageAtom,
+  updateProfileAtom,
+} from "../profile/atoms"
 import { AuthRequired, PanelCard } from "./settings-shared"
 
 type UsernameFormValues = {
@@ -38,20 +47,35 @@ type BioFormValues = {
   description: string
 }
 
-export function ProfilePanel({
-  open,
-  user,
-}: {
-  open: boolean
-  user: AppUser | null
-}) {
+export function ProfilePanel({ user }: { user: AppUser | null }) {
   const router = useRouter()
+
   const avatarInput = useRef<HTMLInputElement>(null)
   const bannerInput = useRef<HTMLInputElement>(null)
-  const [profile, setProfile] = useState<Awaited<
-    ReturnType<typeof loadOwnProfile>
-  > | null>(null)
+
+  const profileResult = useAtomValue(ownProfileAtom)
+  const refreshProfile = useAtomRefresh(ownProfileAtom)
+
+  const profile = Result.builder(profileResult)
+    .onSuccess((value) => value)
+    .orNull()
+
+  const saveProfile = useAtomSet(updateProfileAtom, { mode: "promise" })
+
+  const createUpload = useAtomSet(createProfileImageUploadAtom, {
+    mode: "promise",
+  })
+
+  const completeUpload = useAtomSet(completeProfileImageUploadAtom, {
+    mode: "promise",
+  })
+
+  const removeProfileImage = useAtomSet(removeProfileImageAtom, {
+    mode: "promise",
+  })
+
   const [pending, setPending] = useState<string | null>(null)
+
   const usernameForm = useForm({
     defaultValues: { username: user ? displayUsername(user) : "" },
     onSubmit: ({ value }) => updateUsername(value),
@@ -61,21 +85,21 @@ export function ProfilePanel({
     onSubmit: ({ value }) => updateBio(value),
   })
 
-  const refresh = async () => {
-    const next = await loadOwnProfile()
-    setProfile(next)
-    return next
-  }
-  useEffect(() => {
-    if (open && user) void refresh()
-  }, [open, user])
   useEffect(() => {
     usernameForm.reset({ username: user ? displayUsername(user) : "" })
   }, [user])
+
   useEffect(() => {
     bioForm.reset({ description: profile?.profile.description ?? "" })
   }, [profile?.profile.description])
+
   if (!user) return <AuthRequired />
+
+  const profileError = Result.builder(profileResult)
+    .onFailure(() => <DataError onRetry={refreshProfile} />)
+    .orNull()
+
+  if (profileError) return profileError
 
   const upload = async (kind: "avatar" | "banner", file: File) => {
     if (
@@ -85,11 +109,33 @@ export function ProfilePanel({
       toast.error("Upload a JPEG, PNG, or WebP image up to 5 MB.")
       return
     }
+
     setPending(kind)
+
     try {
-      await uploadProfileImage(kind, file)
-      await refresh()
+      const contentType = Schema.decodeUnknownOption(ProfileImageContentType)(
+        file.type
+      ).pipe(Option.getOrThrowWith(() => new Error("Unsupported image type.")))
+
+      const uploadTarget = await createUpload({
+        payload: { kind, contentType, size: file.size },
+      })
+
+      const response = await fetch(uploadTarget.uploadUrl, {
+        method: "PUT",
+        headers: { "content-type": contentType },
+        body: file,
+      })
+
+      if (!response.ok) throw new Error("Unable to upload image.")
+
+      await completeUpload({
+        payload: { kind, key: uploadTarget.key },
+        reactivityKeys: profileReactivityKeys,
+      })
+
       await router.invalidate()
+
       toast.success(
         `${kind === "avatar" ? "Profile picture" : "Banner"} updated.`
       )
@@ -102,10 +148,15 @@ export function ProfilePanel({
 
   const remove = async (kind: "avatar" | "banner") => {
     setPending(kind)
+
     try {
-      await removeProfileImage(kind)
-      await refresh()
+      await removeProfileImage({
+        payload: { kind },
+        reactivityKeys: profileReactivityKeys,
+      })
+
       await router.invalidate()
+
       toast.success(
         `${kind === "avatar" ? "Profile picture" : "Banner"} removed.`
       )
@@ -118,9 +169,13 @@ export function ProfilePanel({
 
   const updateUsername = async (values: UsernameFormValues) => {
     const username = values.username.trim()
+
     try {
       const result = await authClient.updateUser({ username, name: username })
+
       if (result.error) throw result.error
+
+      await reconnectKaiserRpc()
       await router.invalidate()
       toast.success("Username updated.")
     } catch (reason) {
@@ -130,8 +185,13 @@ export function ProfilePanel({
 
   const updateBio = async (values: BioFormValues) => {
     const description = values.description.trim()
+
     try {
-      setProfile(await saveProfile(description || null))
+      await saveProfile({
+        payload: { description: description || null },
+        reactivityKeys: profileReactivityKeys,
+      })
+
       await router.invalidate()
       toast.success("Bio updated.")
     } catch (reason) {

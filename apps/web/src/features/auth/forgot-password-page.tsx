@@ -23,8 +23,8 @@ import {
 } from "@workspace/ui/components/input-otp"
 import { useState } from "react"
 import { toast } from "sonner"
-import { authClient } from "../../lib/auth-client"
-import { errorMessage } from "../../lib/error"
+import { authClient } from "../../services/api-clients"
+import { errorMessage } from "../../utils/error"
 import { AuthFooter, SubmitButton } from "./auth-shared"
 
 export function ForgotPasswordPage() {

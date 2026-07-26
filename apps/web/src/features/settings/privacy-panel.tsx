@@ -1,42 +1,57 @@
+import {
+  Result,
+  useAtom,
+  useAtomRefresh,
+  useAtomValue,
+} from "@effect-atom/atom-react"
 import { useRouter } from "@tanstack/react-router"
 import { Field, FieldDescription } from "@workspace/ui/components/field"
 import { Switch } from "@workspace/ui/components/switch"
-import { useEffect, useState } from "react"
 import { toast } from "sonner"
-import type { AppUser } from "../../lib/auth-client"
-import { errorMessage } from "../../lib/error"
-import { loadOwnProfile, savePrivacy } from "../profile/profile-rpc"
+import { DataError } from "../../components/data-error"
+import { errorMessage } from "../../utils/error"
+import type { AppUser } from "../auth/user"
+import {
+  ownProfileAtom,
+  profileReactivityKeys,
+  updatePrivacyAtom,
+} from "../profile/atoms"
 import { AuthRequired, PanelCard } from "./settings-shared"
 
-export function PrivacyPanel({
-  open,
-  user,
-}: {
-  open: boolean
-  user: AppUser | null
-}) {
+export function PrivacyPanel({ user }: { user: AppUser | null }) {
   const router = useRouter()
-  const [isPrivate, setPrivate] = useState(false)
-  const [pending, setPending] = useState(false)
-  useEffect(() => {
-    if (open && user)
-      void loadOwnProfile().then((value) => setPrivate(value.profile.private))
-  }, [open, user])
+
+  const profileResult = useAtomValue(ownProfileAtom)
+  const refreshProfile = useAtomRefresh(ownProfileAtom)
+
+  const [saveResult, savePrivacy] = useAtom(updatePrivacyAtom, {
+    mode: "promise",
+  })
+
+  const profile = Result.builder(profileResult)
+    .onSuccess((value) => value.profile)
+    .orNull()
+
   if (!user) return <AuthRequired />
+
+  const profileError = Result.builder(profileResult)
+    .onFailure(() => <DataError onRetry={refreshProfile} />)
+    .orNull()
+
+  if (profileError) return profileError
+
   const update = async (checked: boolean) => {
-    const previous = isPrivate
-    setPrivate(checked)
-    setPending(true)
     try {
-      await savePrivacy(checked)
+      await savePrivacy({
+        payload: { private: checked },
+        reactivityKeys: profileReactivityKeys,
+      })
       await router.invalidate()
     } catch (reason) {
-      setPrivate(previous)
       toast.error(errorMessage(reason, "Unable to update privacy"))
-    } finally {
-      setPending(false)
     }
   }
+
   return (
     <PanelCard>
       <Field orientation="horizontal">
@@ -48,8 +63,8 @@ export function PrivacyPanel({
         </div>
         <Switch
           aria-label="Private profile"
-          checked={isPrivate}
-          disabled={pending}
+          checked={profile?.private ?? false}
+          disabled={saveResult.waiting}
           onCheckedChange={(value) => void update(value)}
         />
       </Field>

@@ -1,6 +1,16 @@
-import { Result, useAtomSet, useAtomValue } from "@effect-atom/atom-react"
+import {
+  Result,
+  useAtomRefresh,
+  useAtomSet,
+  useAtomValue,
+} from "@effect-atom/atom-react"
 import { useNavigate } from "@tanstack/react-router"
-import type { StreamEpisode, StreamPlayback } from "@workspace/domain"
+import type {
+  StreamAudio,
+  StreamEpisode,
+  StreamPlayback,
+  StreamProviderId,
+} from "@workspace/domain"
 import { Badge } from "@workspace/ui/components/badge"
 import { Button } from "@workspace/ui/components/button"
 import { Skeleton } from "@workspace/ui/components/skeleton"
@@ -20,7 +30,8 @@ import {
 import type { ComponentPropsWithoutRef, MouseEvent, PointerEvent } from "react"
 import { forwardRef, useEffect, useRef, useState } from "react"
 import { toast } from "sonner"
-import { AnimeTitle } from "../anime/anime-title"
+import { DataError } from "../../components/data-error"
+import { AnimeTitle } from "../anime/common/anime-title"
 import {
   libraryEntryAtom,
   libraryMutationKeys,
@@ -46,7 +57,6 @@ import {
 } from "./player-ui-state"
 import { playerPreferencesAtom } from "./preferences"
 import { streamProxyUrl } from "./proxy"
-import type { StreamPlaybackInput } from "./streaming.functions"
 import { subtitleStyle } from "./subtitle-settings"
 import type { SubtitleCue } from "./subtitles"
 import { parseSubtitleVtt, subtitleHtmlAtTime } from "./subtitles"
@@ -95,30 +105,48 @@ const isEditingKeyboardTarget = (target: EventTarget | null) => {
   )
 }
 
-export function StreamPlayerPage({
-  input,
-  initial,
-}: {
-  input: StreamPlaybackInput
-  initial: StreamPlayback
-}) {
-  const result = useAtomValue(
-    streamPlaybackAtom(
-      input.malId,
-      input.provider,
-      input.episodeId,
-      input.audio,
-      input.serverId
-    )
+export function StreamPlayerPage({ input }: { input: StreamPlaybackInput }) {
+  const atom = streamPlaybackAtom(
+    input.malId,
+    input.provider,
+    input.episodeId,
+    input.audio,
+    input.serverId
   )
-  const playback = Result.match(result, {
-    onInitial: () => initial,
-    onFailure: () => initial,
-    onSuccess: ({ value }) => value,
-  })
-  const loading = Result.isWaiting(result)
+  const result = useAtomValue(atom)
+  const refresh = useAtomRefresh(atom)
 
-  return <StreamPlayer playback={playback} loading={loading} />
+  return Result.builder(result)
+    .onInitialOrWaiting(() => <StreamPlayerPendingPage />)
+    .onFailure(() => (
+      <PlayerShell>
+        <div className="m-auto w-full max-w-xl p-4">
+          <DataError
+            title="Unable to load this stream"
+            description="Provider may be unavailable. Try again or choose another episode."
+            onRetry={refresh}
+          />
+        </div>
+      </PlayerShell>
+    ))
+    .onSuccess((playback) => {
+      const title = playback.anime.title.english ?? playback.anime.title.romaji
+      return (
+        <>
+          <title>{`${title} – Episode ${playback.episode.number} | AnimeKaiser`}</title>
+          <StreamPlayer playback={playback} loading={false} />
+        </>
+      )
+    })
+    .render()
+}
+
+export type StreamPlaybackInput = {
+  malId: number
+  provider: StreamProviderId
+  episodeId: string
+  audio: StreamAudio
+  serverId?: string
 }
 
 export function StreamPlayerPendingPage() {
@@ -149,46 +177,62 @@ function StreamPlayer({
   loading: boolean
 }) {
   const navigate = useNavigate()
+
   const playerRef = useRef<HTMLDivElement>(null)
   const controlsTimeoutRef = useRef<number | null>(null)
+
   const upsertLibrary = useAtomSet(upsertLibraryAtom, { mode: "promise" })
+
   const preferences = useAtomValue(playerPreferencesAtom)
   const playerUi = useAtomValue(playerUiAtom)
   const updatePlayerUi = useAtomSet(updatePlayerUiAtom)
+
   const caption = useAtomValue(playerCaptionAtom)
   const setCaption = useAtomSet(playerCaptionAtom)
+
   const episodesResult = useAtomValue(
     streamEpisodesAtom(playback.anime.malId, playback.provider)
   )
+
   const libraryEntryResult = useAtomValue(
     libraryEntryAtom(playback.anime.malId)
   )
+
   const settingsOpen = playerUi.settingsOpen
   const episodesOpen = playerUi.episodesOpen
+
   const setEpisodesOpen = (open: boolean) =>
     updatePlayerUi({ episodesOpen: open })
+
   const [controlsVisible, setControlsVisible] = useState(true)
   const controlsVisibleRef = useRef(controlsVisible)
+
   const videoPointerRef = useRef<{
     controlsWereVisible: boolean
     pointerType: string
   } | null>(null)
+
   const [subtitleCues, setSubtitleCues] = useState<Array<SubtitleCue>>([])
   const [syncedEpisodeKey, setSyncedEpisodeKey] = useState<string | null>(null)
   const [fullscreen, setFullscreen] = useState(false)
   const [playerElement, setPlayerElement] = useState<HTMLElement | null>(null)
+
   const sourceUrl = streamProxyUrl(
     playback.sourceUrl,
     playback.sourceRefererUrl
   )
+
   const handleFatalPlaybackError = () => {
     const nextServer = nextStreamServer(
       playback.servers,
       playback.server.id,
       playback.audio
     )
+
     if (!nextServer) return false
+
     toast.message(`Trying ${nextServer.name}…`)
+
     void navigate({
       to: "/watch/$malId/$provider/$episodeId",
       params: {
@@ -199,54 +243,69 @@ function StreamPlayer({
       search: { audio: playback.audio, serverId: nextServer.id },
       replace: true,
     })
+
     return true
   }
+
   const media = usePlayerMedia({
     sourceUrl,
     audioEnhancementPercent: preferences.audioEnhancementPercent,
     failureKey: `${playback.provider}:${playback.episode.id}:${playback.audio}:${playback.server.id}`,
     onFatalError: handleFatalPlaybackError,
   })
+
   const defaultCaption = defaultCaptionValue(playback)
+
   const selectedCaptionTrack =
     caption === "off" ? null : (playback.tracks[Number(caption)] ?? null)
+
   const activeSubtitle = subtitleHtmlAtTime(subtitleCues, media.currentTime)
   const episodeKey = `${playback.provider}:${playback.episode.id}:${playback.audio}`
-  const catalog = Result.match(episodesResult, {
-    onInitial: () => null,
-    onFailure: () => null,
-    onSuccess: ({ value }) => value,
-  })
+
+  const catalog = Result.builder(episodesResult)
+    .onSuccess((value) => value)
+    .orNull()
+
   const playbackProvider: string = playback.provider
+
   const provider =
     catalog?.providers.find((item) => item.provider === playbackProvider) ??
     null
+
   const providerEpisodes =
     provider?.status === "available" ? provider.episodes : []
+
   const episodeIndex = providerEpisodes.findIndex(
     (episode) => episode.id === playback.episode.id
   )
+
   const previousEpisode =
     episodeIndex > 0 ? (providerEpisodes[episodeIndex - 1] ?? null) : null
+
   const nextEpisode =
     episodeIndex >= 0 ? (providerEpisodes[episodeIndex + 1] ?? null) : null
-  const libraryEntry = Result.match(libraryEntryResult, {
-    onInitial: () => null,
-    onFailure: () => null,
-    onSuccess: ({ value }) => value,
-  })
+
+  const libraryEntry = Result.builder(libraryEntryResult)
+    .onSuccess((value) => value)
+    .orNull()
 
   const clearControlsTimeout = () => {
     if (controlsTimeoutRef.current === null) return
+
     window.clearTimeout(controlsTimeoutRef.current)
     controlsTimeoutRef.current = null
   }
 
   const revealControls = () => {
     clearControlsTimeout()
+
+    controlsVisibleRef.current = true
     setControlsVisible(true)
+
     if (!media.playing || settingsOpen || episodesOpen) return
+
     controlsTimeoutRef.current = window.setTimeout(() => {
+      controlsVisibleRef.current = false
       setControlsVisible(false)
     }, 2500)
   }
@@ -258,8 +317,11 @@ function StreamPlayer({
 
   const navigateToEpisode = (episode: StreamEpisode | null) => {
     if (!episode) return
+
     const audio = audioForEpisode(episode)
+
     if (!audio) return
+
     void navigate({
       to: "/watch/$malId/$provider/$episodeId",
       params: {
@@ -311,9 +373,11 @@ function StreamPlayer({
 
   const cycleCaptions = () => {
     if (playback.tracks.length === 0) return
+
     const current = caption === "off" ? -1 : Number(caption)
     const next =
       current + 1 >= playback.tracks.length ? "off" : String(current + 1)
+
     setCaption(next)
   }
 
@@ -432,10 +496,6 @@ function StreamPlayer({
   useEffect(() => {
     setPlayerElement(playerRef.current)
   }, [])
-
-  useEffect(() => {
-    controlsVisibleRef.current = controlsVisible
-  }, [controlsVisible])
 
   useEffect(() => {
     const onFullscreenChange = () => {

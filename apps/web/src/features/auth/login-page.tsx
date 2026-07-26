@@ -30,9 +30,10 @@ import {
 import { Fingerprint, KeyRound, Mail } from "lucide-react"
 import { useState } from "react"
 import { toast } from "sonner"
-import { authClient, safeRedirect } from "../../lib/auth-client"
-import { errorMessage } from "../../lib/error"
+import { authClient, reconnectKaiserRpc } from "../../services/api-clients"
+import { errorMessage } from "../../utils/error"
 import { AuthFooter, SubmitButton } from "./auth-shared"
+import { safeRedirect } from "./user"
 
 type LoginMethod = "password" | "otp" | "passkey"
 
@@ -306,7 +307,9 @@ export function LoginPage({ redirect }: { redirect?: string }) {
   const router = useRouter()
   const navigate = useNavigate()
   const [method, setMethod] = useState<LoginMethod>("password")
+
   const complete = async () => {
+    await reconnectKaiserRpc()
     await router.invalidate()
     await navigate({ href: safeRedirect(redirect) })
   }

@@ -31,7 +31,7 @@ import {
   Search,
 } from "lucide-react"
 import { useState } from "react"
-import { AnimeTitle } from "../anime/anime-title"
+import { AnimeTitle } from "../anime/common/anime-title"
 import { streamEpisodesAtom } from "./atoms"
 import {
   audioLabel,
@@ -56,12 +56,13 @@ export function EpisodeSheet({
   const result = useAtomValue(
     streamEpisodesAtom(playback.anime.malId, playback.provider)
   )
-  const catalog = Result.match(result, {
-    onInitial: () => null,
-    onFailure: () => null,
-    onSuccess: ({ value }) => value,
-  })
+
+  const catalog = Result.builder(result)
+    .onSuccess((value) => value)
+    .orNull()
+
   const playbackProvider: string = playback.provider
+
   const provider =
     catalog?.providers.find((item) => item.provider === playbackProvider) ??
     null
@@ -122,10 +123,12 @@ function EpisodeSheetList({
     .sort((left, right) =>
       descending ? right.number - left.number : left.number - right.number
     )
+
   const compact = provider.episodes.length >= 48
   const pageSize = compact ? 80 : 30
   const totalPages = Math.max(1, Math.ceil(filteredEpisodes.length / pageSize))
   const currentPage = Math.min(page, totalPages)
+
   const visibleEpisodes = filteredEpisodes.slice(
     (currentPage - 1) * pageSize,
     currentPage * pageSize

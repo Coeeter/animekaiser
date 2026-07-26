@@ -1,5 +1,4 @@
 import { Atom } from "@effect-atom/atom-react"
-import * as Effect from "effect/Effect"
 import * as Option from "effect/Option"
 import * as Schema from "effect/Schema"
 
@@ -57,10 +56,6 @@ export const defaultPlayerPreferences: PlayerPreferences = {
 
 export const playerPreferencesStorageKey = "kaiser-player-preferences"
 
-export const playerPreferencesAtom = Atom.make<PlayerPreferences>(
-  defaultPlayerPreferences
-).pipe(Atom.keepAlive)
-
 const StoredPlayerPreferences = Schema.parseJson(PlayerPreferences)
 const decodeStoredPlayerPreferencesOption = Schema.decodeUnknownOption(
   StoredPlayerPreferences
@@ -73,46 +68,24 @@ export const readStoredPlayerPreferences = (value: string | null) =>
         Option.getOrElse(() => defaultPlayerPreferences)
       )
 
+export const playerPreferencesAtom = Atom.make<PlayerPreferences>(
+  typeof window === "undefined"
+    ? defaultPlayerPreferences
+    : readStoredPlayerPreferences(
+        window.localStorage.getItem(playerPreferencesStorageKey)
+      )
+).pipe(Atom.keepAlive)
+
 export const writeStoredPlayerPreferences = (
   preferences: PlayerPreferences
 ) => {
   if (typeof window === "undefined") return
+
   window.localStorage.setItem(
     playerPreferencesStorageKey,
     JSON.stringify(preferences)
   )
 }
-
-export class PlayerPreferencesService extends Effect.Service<PlayerPreferencesService>()(
-  "@workspace/web/PlayerPreferencesService",
-  {
-    accessors: true,
-    effect: Effect.succeed({
-      read: () =>
-        Effect.sync(() => {
-          if (typeof window === "undefined") return defaultPlayerPreferences
-          return readStoredPlayerPreferences(
-            window.localStorage.getItem(playerPreferencesStorageKey)
-          )
-        }),
-
-      write: (preferences: PlayerPreferences) =>
-        Effect.sync(() => writeStoredPlayerPreferences(preferences)),
-
-      update: (current: PlayerPreferences, patch: Partial<PlayerPreferences>) =>
-        Effect.gen(function* () {
-          const next = { ...current, ...patch }
-          yield* Effect.sync(() => writeStoredPlayerPreferences(next))
-          return next
-        }),
-    }),
-  }
-) {}
-
-const runPlayerPreferences = <T>(
-  effect: Effect.Effect<T, never, PlayerPreferencesService>
-) =>
-  Effect.runSync(effect.pipe(Effect.provide(PlayerPreferencesService.Default)))
 
 export const updatePlayerPreferencesAtom = Atom.writable<
   PlayerPreferences,
@@ -120,9 +93,9 @@ export const updatePlayerPreferencesAtom = Atom.writable<
 >(
   (get) => get(playerPreferencesAtom),
   (ctx, patch) => {
-    const next = runPlayerPreferences(
-      PlayerPreferencesService.update(ctx.get(playerPreferencesAtom), patch)
-    )
+    const next = { ...ctx.get(playerPreferencesAtom), ...patch }
+
+    writeStoredPlayerPreferences(next)
     ctx.set(playerPreferencesAtom, next)
   }
 )

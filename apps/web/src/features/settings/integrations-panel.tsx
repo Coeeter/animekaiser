@@ -1,46 +1,71 @@
+import {
+  Result,
+  useAtomRefresh,
+  useAtomSet,
+  useAtomValue,
+} from "@effect-atom/atom-react"
 import { Link } from "@tanstack/react-router"
 import { Badge } from "@workspace/ui/components/badge"
 import { Button } from "@workspace/ui/components/button"
 import { Download, Link2, Unlink } from "lucide-react"
-import { useEffect, useState } from "react"
+import { useState } from "react"
 import { toast } from "sonner"
-import { apiUrl } from "../../lib/api-url"
-import type { AppUser } from "../../lib/auth-client"
-import { errorMessage } from "../../lib/error"
+import { DataError } from "../../components/data-error"
+import { apiUrl } from "../../services/api-clients"
+import { errorMessage } from "../../utils/error"
+import type { AppUser } from "../auth/user"
 import {
-  disconnectExternalAccount,
-  loadExternalAccounts,
-} from "../integrations/integration-rpc"
-import { startLibraryImport } from "../library/import-rpc"
+  accountHealthAtom,
+  disconnectExternalAccountAtom,
+} from "../integrations/atoms"
+import { startLibraryImportAtom } from "../library/atoms"
+import { settingsOpenAtom } from "./atoms"
 import { AuthRequired, PanelCard } from "./settings-shared"
 
-export function IntegrationsPanel({
-  user,
-  onClose,
-}: {
-  user: AppUser | null
-  onClose: () => void
-}) {
-  const [accounts, setAccounts] = useState<
-    Awaited<ReturnType<typeof loadExternalAccounts>>
-  >([])
+export function IntegrationsPanel({ user }: { user: AppUser | null }) {
+  const setSettingsOpen = useAtomSet(settingsOpenAtom)
+  const accountsResult = useAtomValue(accountHealthAtom)
+  const refreshAccounts = useAtomRefresh(accountHealthAtom)
+
+  const accounts = Result.builder(accountsResult)
+    .onSuccess((value) => value)
+    .orElse(() => [])
+
+  const disconnectExternalAccount = useAtomSet(disconnectExternalAccountAtom, {
+    mode: "promise",
+  })
+
+  const startLibraryImport = useAtomSet(startLibraryImportAtom, {
+    mode: "promise",
+  })
+
   const [pending, setPending] = useState<string | null>(null)
-  const refresh = async () => setAccounts(await loadExternalAccounts())
-  useEffect(() => {
-    if (user) void refresh().catch(() => setAccounts([]))
-  }, [user])
+
   if (!user) return <AuthRequired />
+
+  const accountsError = Result.builder(accountsResult)
+    .onFailure(() => <DataError onRetry={refreshAccounts} />)
+    .orNull()
+
+  if (accountsError) return accountsError
+
   const connect = (provider: "mal" | "anilist") => {
     const callbackURL = new URL(window.location.href)
+
     callbackURL.searchParams.set("oauth_result", "connected")
     callbackURL.searchParams.set("oauth_provider", provider)
+
     window.location.href = `${apiUrl}/api/link/${provider}?callbackURL=${encodeURIComponent(callbackURL.toString())}`
   }
+
   const disconnect = async (provider: "mal" | "anilist") => {
     setPending(provider)
+
     try {
-      await disconnectExternalAccount(provider)
-      await refresh()
+      await disconnectExternalAccount({
+        payload: { provider },
+        reactivityKeys: ["integrations"],
+      })
       toast.success("Integration disconnected.")
     } catch (reason) {
       toast.error(errorMessage(reason, "Unable to disconnect"))
@@ -48,10 +73,12 @@ export function IntegrationsPanel({
       setPending(null)
     }
   }
+
   const runImport = async (provider: "mal" | "anilist") => {
     setPending(`${provider}:import`)
+
     try {
-      const job = await startLibraryImport(provider)
+      const job = await startLibraryImport({ payload: { provider } })
       toast.success(`Import queued: ${job.id}`)
     } catch (reason) {
       toast.error(errorMessage(reason, "Unable to start import"))
@@ -59,10 +86,15 @@ export function IntegrationsPanel({
       setPending(null)
     }
   }
+
   return (
     <div className="flex flex-col gap-3">
       <Button asChild variant="outline" className="self-start">
-        <Link to="/sync-activity" search={{ page: 1 }} onClick={onClose}>
+        <Link
+          to="/sync-activity"
+          search={{ page: 1 }}
+          onClick={() => setSettingsOpen(false)}
+        >
           View sync activity
         </Link>
       </Button>
