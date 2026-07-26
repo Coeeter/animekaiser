@@ -48,7 +48,6 @@
         "@tanstack/react-router-devtools": "latest",
         "@workspace/auth": "workspace:*",
         "@workspace/domain": "workspace:*",
-        "@workspace/rpc": "workspace:*",
         "@workspace/ui": "workspace:*",
         "effect": "^3.21.3",
         "embla-carousel-autoplay": "^8.6.0",
