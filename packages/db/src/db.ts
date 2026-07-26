@@ -1,4 +1,5 @@
 import { drizzle } from "drizzle-orm/node-postgres"
+import { migrate } from "drizzle-orm/node-postgres/migrator"
 import * as Data from "effect/Data"
 import * as Effect from "effect/Effect"
 import * as Queue from "effect/Queue"
@@ -9,9 +10,12 @@ import * as schema from "./schema"
 export type DatabaseConnectionConfig = {
   url: string
   ssl?: boolean
+  migrationsFolder: string
 }
 
-export const createPgPool = (config: DatabaseConnectionConfig) =>
+export const createPgPool = (
+  config: Pick<DatabaseConnectionConfig, "url" | "ssl">
+) =>
   new Pool({
     connectionString: config.url,
     ssl: config.ssl,
@@ -81,6 +85,12 @@ const makeService = (config: DatabaseConnectionConfig) =>
     )
 
     const db = createDrizzleClient(pool)
+
+    yield* Effect.logInfo("[Database] Running migrations...")
+    yield* Effect.promise(() =>
+      migrate(db, { migrationsFolder: config.migrationsFolder })
+    )
+    yield* Effect.logInfo("[Database] Migrations complete.")
 
     const setupConnectionListeners = Effect.zipRight(
       Effect.async<void, DatabaseConnectionError>((resume) => {

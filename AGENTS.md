@@ -23,5 +23,6 @@
 - Client applications must not import `core`; shared client contracts belong in `domain` and `rpc/client`.
 - Prefer `Effect.Service` when a service and its sole implementation live together. Use `Context.Tag` for seams implemented by another package.
 - Prefer existing Effect service/layer patterns in the repo when adding services.
+- Generate and commit migration SQL manually. The API applies pending migrations on startup.
 - Update `CONTEXT.md` when domain language is resolved. Keep it a glossary only, not an implementation spec.
 - Before marking implementation work done, verify from the repository root with `bun typecheck` and `bun lint`. Do not run these checks from package directories.

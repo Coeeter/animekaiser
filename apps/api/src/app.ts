@@ -1,10 +1,11 @@
+import { fileURLToPath } from "node:url"
 import * as HttpLayerRouter from "@effect/platform/HttpLayerRouter"
 import * as HttpMiddleware from "@effect/platform/HttpMiddleware"
 import { RpcLive } from "@workspace/rpc/server"
 import * as Layer from "effect/Layer"
 import { BetterAuthLive, ExternalListOAuthConfigLive } from "./auth"
 import { Env } from "./env"
-import { DatabaseListenerLive, DatabaseLive } from "./infra/database"
+import { DatabaseListenerLive, makeDatabaseLive } from "./infra/database"
 import { CorsLive, HttpServerLive } from "./infra/http"
 import { ProfileMediaStorageLive } from "./infra/profile-media"
 import { RedisKeyValueStoreLive } from "./infra/redis"
@@ -24,6 +25,10 @@ const RoutesLive = Layer.mergeAll(
   CorsLive
 )
 
+const migrationsFolder = fileURLToPath(
+  new URL("../../../packages/db/drizzle", import.meta.url)
+)
+
 export const ApiLive = HttpLayerRouter.serve(RoutesLive, {
   middleware: HttpMiddleware.logger,
 }).pipe(
@@ -36,7 +41,7 @@ export const ApiLive = HttpLayerRouter.serve(RoutesLive, {
   Layer.provideMerge(ExternalListOAuthConfigLive),
   Layer.provideMerge(BetterAuthLive),
   Layer.provide(RedisKeyValueStoreLive),
-  Layer.provide(DatabaseLive),
+  Layer.provide(makeDatabaseLive(migrationsFolder)),
   Layer.provide(HttpServerLive),
   Layer.provide(Env.Default)
 )
