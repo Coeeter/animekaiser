@@ -1,5 +1,5 @@
 import { Result, useAtomRefresh, useAtomValue } from "@effect-atom/atom-react"
-import { Link, useNavigate } from "@tanstack/react-router"
+import { Link } from "@tanstack/react-router"
 import type { AnimeItem, AnimeScheduleDay } from "@workspace/domain"
 import { Badge } from "@workspace/ui/components/badge"
 import { Skeleton } from "@workspace/ui/components/skeleton"
@@ -57,7 +57,6 @@ function ScheduleLayout({
   children: ReactNode
   search: ScheduleSearch
 }) {
-  const navigate = useNavigate()
   const week = getCurrentWeek()
 
   return (
@@ -82,15 +81,10 @@ function ScheduleLayout({
           const active = item.day === search.day
 
           return (
-            <button
+            <Link
               key={item.day}
-              type="button"
-              onClick={() =>
-                navigate({
-                  to: "/schedule",
-                  search: { ...search, day: item.day },
-                })
-              }
+              to="/schedule"
+              search={{ ...search, day: item.day }}
               className={cn(
                 "flex min-w-0 flex-1 flex-col items-center gap-0.5 rounded-md px-2 py-2 text-sm transition",
                 active
@@ -109,7 +103,7 @@ function ScheduleLayout({
               >
                 {dateLabel(item.date)}
               </span>
-            </button>
+            </Link>
           )
         })}
       </div>

@@ -1,6 +1,6 @@
 import { Result, useAtomValue } from "@effect-atom/atom-react"
+import { Link } from "@tanstack/react-router"
 import type {
-  StreamAudio,
   StreamEpisode,
   StreamPlayback,
   StreamProviderEpisodes,
@@ -39,7 +39,6 @@ import {
   episodeTitle,
   preferredAudio,
   providerLabel,
-  watchHref,
 } from "./player-format"
 
 export function EpisodeSheet({
@@ -245,23 +244,6 @@ function episodeAudioForPlayback(
     : preferredAudio(episode)
 }
 
-function episodeWatchHref({
-  episode,
-  playback,
-  audio,
-}: {
-  episode: StreamEpisode
-  playback: StreamPlayback
-  audio: StreamAudio
-}) {
-  return watchHref({
-    malId: playback.anime.malId,
-    provider: playback.provider,
-    episodeId: episode.id,
-    audio,
-  })
-}
-
 function EpisodeSheetRow({
   episode,
   playback,
@@ -327,13 +309,19 @@ function EpisodeSheetRow({
   }
 
   return (
-    <a
-      href={episodeWatchHref({ episode, playback, audio })}
+    <Link
+      to="/watch/$malId/$provider/$episodeId"
+      params={{
+        malId: playback.anime.malId,
+        provider: playback.provider,
+        episodeId: episode.id,
+      }}
+      search={{ audio }}
       className={className}
       onClick={onSelect}
     >
       {content}
-    </a>
+    </Link>
   )
 }
 
@@ -360,12 +348,18 @@ function EpisodeSheetNumberButton({
       variant={isCurrent ? "default" : "outline"}
       className={className}
     >
-      <a
-        href={episodeWatchHref({ episode, playback, audio })}
+      <Link
+        to="/watch/$malId/$provider/$episodeId"
+        params={{
+          malId: playback.anime.malId,
+          provider: playback.provider,
+          episodeId: episode.id,
+        }}
+        search={{ audio }}
         onClick={onSelect}
       >
         {episode.number}
-      </a>
+      </Link>
     </Button>
   ) : (
     <span>

@@ -49,13 +49,13 @@ export function IntegrationsPanel({ user }: { user: AppUser | null }) {
 
   if (accountsError) return accountsError
 
-  const connect = (provider: "mal" | "anilist") => {
+  const connectHref = (provider: "mal" | "anilist") => {
     const callbackURL = new URL(window.location.href)
 
     callbackURL.searchParams.set("oauth_result", "connected")
     callbackURL.searchParams.set("oauth_provider", provider)
 
-    window.location.href = `${apiUrl}/api/link/${provider}?callbackURL=${encodeURIComponent(callbackURL.toString())}`
+    return `${apiUrl}/api/link/${provider}?callbackURL=${encodeURIComponent(callbackURL.toString())}`
   }
 
   const disconnect = async (provider: "mal" | "anilist") => {
@@ -143,9 +143,11 @@ export function IntegrationsPanel({ user }: { user: AppUser | null }) {
                 </Button>
               </div>
             ) : (
-              <Button onClick={() => connect(account.provider)}>
-                <Link2 data-icon="inline-start" />
-                Connect
+              <Button asChild>
+                <a href={connectHref(account.provider)}>
+                  <Link2 data-icon="inline-start" />
+                  Connect
+                </a>
               </Button>
             )}
           </div>
