@@ -3,8 +3,6 @@ name: Deploy
 on:
   push:
     branches: [main]
-    paths-ignore:
-      - "apps/web/**"
   workflow_dispatch:
 
 concurrency:
@@ -16,6 +14,29 @@ permissions:
   packages: write
 
 jobs:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      api: ${{ steps.filter.outputs.api }}
+    steps:
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            api:
+              - 'apps/api/**'
+              - 'packages/auth/**'
+              - 'packages/core/**'
+              - 'packages/db/**'
+              - 'packages/domain/**'
+              - 'packages/rpc/**'
+              - 'dockerfile'
+              - '.dockerignore'
+              - 'bun.lock'
+              - 'package.json'
+              - 'turbo.json'
+              - '.github/workflows/deploy.yml'
+
   typecheck:
     runs-on: ubuntu-latest
     steps:
@@ -36,10 +57,23 @@ jobs:
       - run: bun install --frozen-lockfile
       - run: bun lint
 
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.3
+      - run: bun install --frozen-lockfile
+      - run: bun run test
+
   build-and-push-docker-image:
     needs:
       - typecheck
       - lint
+      - test
+      - changes
+    if: ${{ github.event_name == 'workflow_dispatch' || needs.changes.outputs.api == 'true' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
