@@ -1,6 +1,6 @@
+import type { AnimePage } from "@animekaiser/domain"
+import { Button } from "@animekaiser/ui/components/button"
 import { Link } from "@tanstack/react-router"
-import type { AnimePage } from "@workspace/domain"
-import { Button } from "@workspace/ui/components/button"
 import { ChevronLeft, ChevronRight } from "lucide-react"
 import { AnimeGrid } from "../common/anime-grid"
 import type { CatalogSearch } from "../common/search"

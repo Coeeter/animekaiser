@@ -1,5 +1,5 @@
+import { Skeleton } from "@animekaiser/ui/components/skeleton"
 import { Result, useAtomRefresh, useAtomValue } from "@effect-atom/atom-react"
-import { Skeleton } from "@workspace/ui/components/skeleton"
 import { DataError } from "../../../components/data-error"
 import { AnimeScrollRow } from "../common/anime-scroll-row"
 import { homeAtom } from "./atoms"

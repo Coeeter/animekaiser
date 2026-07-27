@@ -1,14 +1,14 @@
-import { Link } from "@tanstack/react-router"
-import type { StreamPlayback } from "@workspace/domain"
-import { Badge } from "@workspace/ui/components/badge"
+import type { StreamPlayback } from "@animekaiser/domain"
+import { Badge } from "@animekaiser/ui/components/badge"
 import {
   Sheet,
   SheetContent,
   SheetDescription,
   SheetHeader,
   SheetTitle,
-} from "@workspace/ui/components/sheet"
-import { cn } from "@workspace/ui/lib/utils"
+} from "@animekaiser/ui/components/sheet"
+import { cn } from "@animekaiser/ui/lib/utils"
+import { Link } from "@tanstack/react-router"
 import { Check, Server } from "lucide-react"
 import { audioLabel, megaPlayServerId } from "./player-format"
 

@@ -1,6 +1,6 @@
 "use client"
 
-import { cn } from "@workspace/ui/lib/utils"
+import { cn } from "@animekaiser/ui/lib/utils"
 import { CheckIcon, ChevronRightIcon } from "lucide-react"
 import { DropdownMenu as DropdownMenuPrimitive } from "radix-ui"
 import type * as React from "react"

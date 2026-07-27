@@ -1,9 +1,9 @@
-import { ExternalListAccountsService } from "@workspace/core"
+import { ExternalListAccountsService } from "@animekaiser/core"
 import {
   CurrentUser,
   ExternalListOperationError,
   IntegrationRpcs,
-} from "@workspace/domain"
+} from "@animekaiser/domain"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 

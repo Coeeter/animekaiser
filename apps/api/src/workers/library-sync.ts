@@ -1,5 +1,8 @@
-import { LIBRARY_SYNC_EVENT_CHANNEL, LibrarySyncService } from "@workspace/core"
-import { Database } from "@workspace/db"
+import {
+  LIBRARY_SYNC_EVENT_CHANNEL,
+  LibrarySyncService,
+} from "@animekaiser/core"
+import { Database } from "@animekaiser/db"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 import * as Queue from "effect/Queue"

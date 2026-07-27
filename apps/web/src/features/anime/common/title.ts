@@ -1,5 +1,5 @@
+import type { AnimeTitle } from "@animekaiser/domain"
 import { Atom } from "@effect-atom/atom-react"
-import type { AnimeTitle } from "@workspace/domain"
 
 export type AnimeTitlePreference = "english" | "romaji"
 

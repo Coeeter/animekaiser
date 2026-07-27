@@ -1,4 +1,4 @@
-import { RpcServerConfig } from "@workspace/rpc/server"
+import { RpcServerConfig } from "@animekaiser/rpc/server"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 import { Env } from "../env"

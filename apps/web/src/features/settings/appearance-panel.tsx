@@ -1,7 +1,7 @@
 import {
   ToggleGroup,
   ToggleGroupItem,
-} from "@workspace/ui/components/toggle-group"
+} from "@animekaiser/ui/components/toggle-group"
 import * as Option from "effect/Option"
 import * as Schema from "effect/Schema"
 import { useTheme } from "next-themes"

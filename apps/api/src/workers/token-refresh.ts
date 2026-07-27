@@ -1,7 +1,7 @@
 import {
   ExternalListAccountsService,
   ExternalListTokenRefreshProgram,
-} from "@workspace/core"
+} from "@animekaiser/core"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"

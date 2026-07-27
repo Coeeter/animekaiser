@@ -9,7 +9,7 @@
     "types": ["bun", "vite/client"],
     "paths": {
       "@/*": ["./src/*"],
-      "@workspace/ui/*": ["../../packages/ui/src/*"]
+      "@animekaiser/ui/*": ["../../packages/ui/src/*"]
     },
 
     /* Bundler mode */

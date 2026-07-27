@@ -1,12 +1,12 @@
-import { AuthServer } from "@workspace/auth/server"
-import type { ProfileRecord } from "@workspace/core"
-import { ProfileMediaService, ProfileService } from "@workspace/core"
+import { AuthServer } from "@animekaiser/auth/server"
+import type { ProfileRecord } from "@animekaiser/core"
+import { ProfileMediaService, ProfileService } from "@animekaiser/core"
 import {
   CurrentUser,
   OptionalCurrentUser,
   ProfileOperationError,
   ProfileRpcs,
-} from "@workspace/domain"
+} from "@animekaiser/domain"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"

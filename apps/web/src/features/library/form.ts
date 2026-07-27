@@ -1,4 +1,4 @@
-import type { LibraryEntry, LibraryStatus } from "@workspace/domain"
+import type { LibraryEntry, LibraryStatus } from "@animekaiser/domain"
 import * as Option from "effect/Option"
 import * as Schema from "effect/Schema"
 

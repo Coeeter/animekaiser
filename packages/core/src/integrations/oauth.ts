@@ -64,7 +64,7 @@ export class ExternalListOAuthStateStoreError extends Data.TaggedError(
 )<{ cause: unknown }> {}
 
 export class ExternalListOAuthStateStore extends Effect.Service<ExternalListOAuthStateStore>()(
-  "@workspace/core/ExternalListOAuthStateStore",
+  "@animekaiser/core/ExternalListOAuthStateStore",
   {
     accessors: true,
     effect: Effect.gen(function* () {

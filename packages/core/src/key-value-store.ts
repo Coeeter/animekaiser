@@ -6,7 +6,9 @@ export class KeyValueStoreError extends Data.TaggedError("KeyValueStoreError")<{
   cause: unknown
 }> {}
 
-export class KeyValueStore extends Context.Tag("@workspace/core/KeyValueStore")<
+export class KeyValueStore extends Context.Tag(
+  "@animekaiser/core/KeyValueStore"
+)<
   KeyValueStore,
   {
     get: (key: string) => Effect.Effect<string | null, KeyValueStoreError>

@@ -13,22 +13,22 @@ export type AuthenticatedUser = {
   readonly image: string | null
 }
 
-export class CurrentUser extends Context.Tag("@workspace/domain/CurrentUser")<
+export class CurrentUser extends Context.Tag("@animekaiser/domain/CurrentUser")<
   CurrentUser,
   AuthenticatedUser
 >() {}
 
 export class OptionalCurrentUser extends Context.Tag(
-  "@workspace/domain/OptionalCurrentUser"
+  "@animekaiser/domain/OptionalCurrentUser"
 )<OptionalCurrentUser, AuthenticatedUser | null>() {}
 
 export class Authentication extends RpcMiddleware.Tag<Authentication>()(
-  "@workspace/domain/Authentication",
+  "@animekaiser/domain/Authentication",
   { provides: CurrentUser, failure: AuthenticationRequiredError }
 ) {}
 
 export class OptionalAuthentication extends RpcMiddleware.Tag<OptionalAuthentication>()(
-  "@workspace/domain/OptionalAuthentication",
+  "@animekaiser/domain/OptionalAuthentication",
   { provides: OptionalCurrentUser }
 ) {}
 

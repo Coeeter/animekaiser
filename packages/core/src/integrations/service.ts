@@ -1,6 +1,6 @@
+import { Database, externalListAccount, job } from "@animekaiser/db"
 import * as FetchHttpClient from "@effect/platform/FetchHttpClient"
 import * as HttpClient from "@effect/platform/HttpClient"
-import { Database, externalListAccount, job } from "@workspace/db"
 import { and, eq, sql } from "drizzle-orm"
 import * as Context from "effect/Context"
 import * as Data from "effect/Data"
@@ -20,7 +20,7 @@ import {
 } from "./oauth"
 
 export class ExternalListOAuthConfig extends Context.Tag(
-  "@workspace/core/ExternalListOAuthConfig"
+  "@animekaiser/core/ExternalListOAuthConfig"
 )<
   ExternalListOAuthConfig,
   {
@@ -38,7 +38,7 @@ export class ExternalListAccountError extends Data.TaggedError(
 }> {}
 
 export class ExternalListAccountsService extends Effect.Service<ExternalListAccountsService>()(
-  "@workspace/core/ExternalListAccountsService",
+  "@animekaiser/core/ExternalListAccountsService",
   {
     accessors: true,
     dependencies: [FetchHttpClient.layer, ExternalListOAuthStateStore.Default],

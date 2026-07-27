@@ -1,4 +1,4 @@
-import { Button } from "@workspace/ui/components/button"
+import { Button } from "@animekaiser/ui/components/button"
 import { useEffect, useState } from "react"
 import { toast } from "sonner"
 import { authClient, reconnectKaiserRpc } from "../../services/api-clients"

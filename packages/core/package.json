@@ -1,5 +1,5 @@
 {
-  "name": "@workspace/core",
+  "name": "@animekaiser/core",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -10,9 +10,9 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@animekaiser/db": "workspace:*",
+    "@animekaiser/domain": "workspace:*",
     "@effect/platform": "^0.96.1",
-    "@workspace/db": "workspace:*",
-    "@workspace/domain": "workspace:*",
     "cheerio": "^1.2.0",
     "drizzle-orm": "^0.45.2",
     "effect": "^3.21.3"

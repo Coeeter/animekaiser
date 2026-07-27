@@ -1,5 +1,5 @@
-import { ProfileMediaStorage } from "@workspace/core"
-import { ProfileOperationError } from "@workspace/domain"
+import { ProfileMediaStorage } from "@animekaiser/core"
+import { ProfileOperationError } from "@animekaiser/domain"
 import { S3Client } from "bun"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"

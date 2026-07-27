@@ -1,12 +1,12 @@
-import type { KaiserAuth } from "@workspace/auth/server"
-import { AuthServer } from "@workspace/auth/server"
+import type { KaiserAuth } from "@animekaiser/auth/server"
+import { AuthServer } from "@animekaiser/auth/server"
 import {
   Authentication,
   AuthenticationRequiredError,
   AuthRpcs,
   OptionalAuthentication,
   SessionOperationError,
-} from "@workspace/domain"
+} from "@animekaiser/domain"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 

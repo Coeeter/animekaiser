@@ -1,8 +1,8 @@
-import { useAtom } from "@effect-atom/atom-react"
 import {
   ToggleGroup,
   ToggleGroupItem,
-} from "@workspace/ui/components/toggle-group"
+} from "@animekaiser/ui/components/toggle-group"
+import { useAtom } from "@effect-atom/atom-react"
 import { animeTitlePreferenceAtom } from "../anime/common/title"
 import { PanelCard } from "./settings-shared"
 

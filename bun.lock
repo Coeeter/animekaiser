@@ -3,7 +3,7 @@
   "configVersion": 1,
   "workspaces": {
     "": {
-      "name": "start-monorepo",
+      "name": "animekaiser",
       "devDependencies": {
         "@biomejs/biome": "^2.5.3",
         "@effect/tsgo": "^0.21.0",
@@ -13,17 +13,17 @@
       },
     },
     "apps/api": {
-      "name": "@workspace/api",
+      "name": "@animekaiser/api",
       "version": "0.0.0",
       "dependencies": {
         "@effect/platform": "^0.96.1",
         "@effect/platform-bun": "^0.90.0",
         "@effect/rpc": "^0.75.1",
-        "@workspace/auth": "workspace:*",
-        "@workspace/core": "workspace:*",
-        "@workspace/db": "workspace:*",
-        "@workspace/domain": "workspace:*",
-        "@workspace/rpc": "workspace:*",
+        "@animekaiser/auth": "workspace:*",
+        "@animekaiser/core": "workspace:*",
+        "@animekaiser/db": "workspace:*",
+        "@animekaiser/domain": "workspace:*",
+        "@animekaiser/rpc": "workspace:*",
         "effect": "^3.21.3",
         "ioredis": "^5.8.2",
         "resend": "^6.12.4",
@@ -35,7 +35,7 @@
       },
     },
     "apps/web": {
-      "name": "web",
+      "name": "@animekaiser/web",
       "version": "0.0.1",
       "dependencies": {
         "@effect-atom/atom-react": "^0.5.0",
@@ -46,9 +46,9 @@
         "@tanstack/react-form": "^1.33.2",
         "@tanstack/react-router": "latest",
         "@tanstack/react-router-devtools": "latest",
-        "@workspace/auth": "workspace:*",
-        "@workspace/domain": "workspace:*",
-        "@workspace/ui": "workspace:*",
+        "@animekaiser/auth": "workspace:*",
+        "@animekaiser/domain": "workspace:*",
+        "@animekaiser/ui": "workspace:*",
         "effect": "^3.21.3",
         "embla-carousel-autoplay": "^8.6.0",
         "embla-carousel-react": "^8.6.0",
@@ -75,12 +75,12 @@
       },
     },
     "packages/auth": {
-      "name": "@workspace/auth",
+      "name": "@animekaiser/auth",
       "version": "0.0.0",
       "dependencies": {
         "@better-auth/drizzle-adapter": "^1.6.14",
         "@better-auth/passkey": "^1.6.14",
-        "@workspace/db": "workspace:*",
+        "@animekaiser/db": "workspace:*",
         "better-auth": "^1.6.14",
         "drizzle-orm": "^0.45.2",
         "effect": "^3.21.3",
@@ -91,12 +91,12 @@
       },
     },
     "packages/core": {
-      "name": "@workspace/core",
+      "name": "@animekaiser/core",
       "version": "0.0.0",
       "dependencies": {
         "@effect/platform": "^0.96.1",
-        "@workspace/db": "workspace:*",
-        "@workspace/domain": "workspace:*",
+        "@animekaiser/db": "workspace:*",
+        "@animekaiser/domain": "workspace:*",
         "cheerio": "^1.2.0",
         "drizzle-orm": "^0.45.2",
         "effect": "^3.21.3",
@@ -108,7 +108,7 @@
       },
     },
     "packages/db": {
-      "name": "@workspace/db",
+      "name": "@animekaiser/db",
       "version": "0.0.0",
       "dependencies": {
         "drizzle-orm": "^0.45.2",
@@ -123,7 +123,7 @@
       },
     },
     "packages/domain": {
-      "name": "@workspace/domain",
+      "name": "@animekaiser/domain",
       "version": "0.0.0",
       "dependencies": {
         "@effect/rpc": "^0.75.1",
@@ -135,14 +135,14 @@
       },
     },
     "packages/rpc": {
-      "name": "@workspace/rpc",
+      "name": "@animekaiser/rpc",
       "version": "0.0.0",
       "dependencies": {
         "@effect/platform": "^0.96.1",
         "@effect/rpc": "^0.75.1",
-        "@workspace/auth": "workspace:*",
-        "@workspace/core": "workspace:*",
-        "@workspace/domain": "workspace:*",
+        "@animekaiser/auth": "workspace:*",
+        "@animekaiser/core": "workspace:*",
+        "@animekaiser/domain": "workspace:*",
         "effect": "^3.21.3",
       },
       "devDependencies": {
@@ -151,7 +151,7 @@
       },
     },
     "packages/ui": {
-      "name": "@workspace/ui",
+      "name": "@animekaiser/ui",
       "version": "0.0.0",
       "dependencies": {
         "@fontsource-variable/geist": "^5.2.9",
@@ -931,19 +931,19 @@
 
     "@vitejs/plugin-react": ["@vitejs/plugin-react@6.0.2", "", { "dependencies": { "@rolldown/pluginutils": "^1.0.0" }, "peerDependencies": { "@rolldown/plugin-babel": "^0.1.7 || ^0.2.0", "babel-plugin-react-compiler": "^1.0.0", "vite": "^8.0.0" }, "optionalPeers": ["@rolldown/plugin-babel", "babel-plugin-react-compiler"] }, "sha512-DlSMqo4WhThw4vB8Mpn0Woe9J+Jfq1geJ61AKW0QEgLzGMNwtIMdxbDUzLxcun8W7NbJO0e2Jg/Nxm3cCSVzzg=="],
 
-    "@workspace/api": ["@workspace/api@workspace:apps/api"],
+    "@animekaiser/api": ["@animekaiser/api@workspace:apps/api"],
 
-    "@workspace/auth": ["@workspace/auth@workspace:packages/auth"],
+    "@animekaiser/auth": ["@animekaiser/auth@workspace:packages/auth"],
 
-    "@workspace/core": ["@workspace/core@workspace:packages/core"],
+    "@animekaiser/core": ["@animekaiser/core@workspace:packages/core"],
 
-    "@workspace/db": ["@workspace/db@workspace:packages/db"],
+    "@animekaiser/db": ["@animekaiser/db@workspace:packages/db"],
 
-    "@workspace/domain": ["@workspace/domain@workspace:packages/domain"],
+    "@animekaiser/domain": ["@animekaiser/domain@workspace:packages/domain"],
 
-    "@workspace/rpc": ["@workspace/rpc@workspace:packages/rpc"],
+    "@animekaiser/rpc": ["@animekaiser/rpc@workspace:packages/rpc"],
 
-    "@workspace/ui": ["@workspace/ui@workspace:packages/ui"],
+    "@animekaiser/ui": ["@animekaiser/ui@workspace:packages/ui"],
 
     "accepts": ["accepts@2.0.0", "", { "dependencies": { "mime-types": "^3.0.0", "negotiator": "^1.0.0" } }, "sha512-5cvg6CtKwfgdmVqY1WIiXKc3Q1bkRqGLi+2W/6ao+6Y7gu/RCwRuAhGEzh5B4KlszSuTLgZYuqFqo5bImjNKng=="],
 
@@ -1823,7 +1823,7 @@
 
     "@types/set-cookie-parser/@types/node": ["@types/node@22.19.20", "", { "dependencies": { "undici-types": "~6.21.0" } }, "sha512-6tELRwSDYWW9EdZhbeZmYGZ1/7Djkt+Ah3/ScEYT9cDord7UJzasR/4D3VONg9tQI5CDp+/CZC1AXj2pCFOvpw=="],
 
-    "@workspace/ui/@types/node": ["@types/node@22.19.20", "", { "dependencies": { "undici-types": "~6.21.0" } }, "sha512-6tELRwSDYWW9EdZhbeZmYGZ1/7Djkt+Ah3/ScEYT9cDord7UJzasR/4D3VONg9tQI5CDp+/CZC1AXj2pCFOvpw=="],
+    "@animekaiser/ui/@types/node": ["@types/node@22.19.20", "", { "dependencies": { "undici-types": "~6.21.0" } }, "sha512-6tELRwSDYWW9EdZhbeZmYGZ1/7Djkt+Ah3/ScEYT9cDord7UJzasR/4D3VONg9tQI5CDp+/CZC1AXj2pCFOvpw=="],
 
     "body-parser/iconv-lite": ["iconv-lite@0.7.2", "", { "dependencies": { "safer-buffer": ">= 2.1.2 < 3.0.0" } }, "sha512-im9DjEDQ55s9fL4EYzOAv0yMqmMBSZp6G0VvFyTMPKWxiSBHUj9NW/qqLmXUwXrrM7AvqSlTCfvqRb0cM8yYqw=="],
 
@@ -1947,7 +1947,7 @@
 
     "@types/set-cookie-parser/@types/node/undici-types": ["undici-types@6.21.0", "", {}, "sha512-iwDZqg0QAGrg9Rav5H4n0M64c3mkR59cJ6wQp+7C4nI0gsmExaedaYLNO44eT4AtBBwjbTiGPMlt2Md0T9H9JQ=="],
 
-    "@workspace/ui/@types/node/undici-types": ["undici-types@6.21.0", "", {}, "sha512-iwDZqg0QAGrg9Rav5H4n0M64c3mkR59cJ6wQp+7C4nI0gsmExaedaYLNO44eT4AtBBwjbTiGPMlt2Md0T9H9JQ=="],
+    "@animekaiser/ui/@types/node/undici-types": ["undici-types@6.21.0", "", {}, "sha512-iwDZqg0QAGrg9Rav5H4n0M64c3mkR59cJ6wQp+7C4nI0gsmExaedaYLNO44eT4AtBBwjbTiGPMlt2Md0T9H9JQ=="],
 
     "cliui/string-width/emoji-regex": ["emoji-regex@8.0.0", "", {}, "sha512-MSjYzcWNOA0ewAHpz0MxpYFvwg6yjy1NG3xteoqz644VCo/RPgnr1/GGt+ic3iJTzQ8Eu3TdM14SawnVUmGE6A=="],
 

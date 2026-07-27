@@ -1,6 +1,4 @@
-import { useForm } from "@tanstack/react-form"
-import { useNavigate } from "@tanstack/react-router"
-import { Button } from "@workspace/ui/components/button"
+import { Button } from "@animekaiser/ui/components/button"
 import {
   Card,
   CardContent,
@@ -8,19 +6,21 @@ import {
   CardFooter,
   CardHeader,
   CardTitle,
-} from "@workspace/ui/components/card"
+} from "@animekaiser/ui/components/card"
 import {
   Field,
   FieldError,
   FieldGroup,
   FieldLabel,
-} from "@workspace/ui/components/field"
-import { Input } from "@workspace/ui/components/input"
+} from "@animekaiser/ui/components/field"
+import { Input } from "@animekaiser/ui/components/input"
 import {
   InputOTP,
   InputOTPGroup,
   InputOTPSlot,
-} from "@workspace/ui/components/input-otp"
+} from "@animekaiser/ui/components/input-otp"
+import { useForm } from "@tanstack/react-form"
+import { useNavigate } from "@tanstack/react-router"
 import { useState } from "react"
 import { toast } from "sonner"
 import { authClient } from "../../services/api-clients"

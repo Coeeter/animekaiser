@@ -1,13 +1,13 @@
-import { Link } from "@tanstack/react-router"
-import { Button } from "@workspace/ui/components/button"
+import { Button } from "@animekaiser/ui/components/button"
 import {
   Empty,
   EmptyDescription,
   EmptyHeader,
   EmptyMedia,
   EmptyTitle,
-} from "@workspace/ui/components/empty"
-import { cn } from "@workspace/ui/lib/utils"
+} from "@animekaiser/ui/components/empty"
+import { cn } from "@animekaiser/ui/lib/utils"
+import { Link } from "@tanstack/react-router"
 import { LogIn } from "lucide-react"
 import type { ReactNode } from "react"
 

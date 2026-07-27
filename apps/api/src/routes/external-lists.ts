@@ -1,12 +1,12 @@
+import {
+  ExternalListAccountError,
+  ExternalListAccountsService,
+} from "@animekaiser/core"
+import { AuthenticationRequiredError } from "@animekaiser/domain"
 import * as HttpLayerRouter from "@effect/platform/HttpLayerRouter"
 import * as HttpRouter from "@effect/platform/HttpRouter"
 import * as HttpServerRequest from "@effect/platform/HttpServerRequest"
 import * as HttpServerResponse from "@effect/platform/HttpServerResponse"
-import {
-  ExternalListAccountError,
-  ExternalListAccountsService,
-} from "@workspace/core"
-import { AuthenticationRequiredError } from "@workspace/domain"
 import * as Data from "effect/Data"
 import * as Effect from "effect/Effect"
 import { BetterAuth, requireCurrentUser } from "../auth"

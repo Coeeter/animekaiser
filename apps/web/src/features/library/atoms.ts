@@ -5,7 +5,7 @@ import type {
   LibraryStatus,
   LibrarySyncEventPage,
   LibrarySyncStatus,
-} from "@workspace/domain"
+} from "@animekaiser/domain"
 import {
   KaiserRpcClient,
   refreshOnAuthChange,

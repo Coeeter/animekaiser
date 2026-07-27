@@ -5,7 +5,7 @@ import {
   libraryStatuses,
   librarySyncEvent,
   userLibraryEntry,
-} from "@workspace/db"
+} from "@animekaiser/db"
 import type {
   AnimeLibraryMetadata,
   ExternalListProvider,
@@ -13,7 +13,7 @@ import type {
   LibrarySort,
   LibraryStatus,
   LibrarySyncRetryTarget,
-} from "@workspace/domain"
+} from "@animekaiser/domain"
 import { and, asc, count, desc, eq, inArray, sql } from "drizzle-orm"
 import * as Effect from "effect/Effect"
 import * as Schema from "effect/Schema"
@@ -87,7 +87,7 @@ const listOrder = (sort: LibrarySort) => {
 }
 
 export class LibraryService extends Effect.Service<LibraryService>()(
-  "@workspace/core/LibraryService",
+  "@animekaiser/core/LibraryService",
   {
     accessors: true,
     effect: Effect.gen(function* () {

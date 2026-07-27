@@ -1,8 +1,8 @@
 import {
   LIBRARY_IMPORT_JOB_CHANNEL,
   LibraryImportService,
-} from "@workspace/core"
-import { Database } from "@workspace/db"
+} from "@animekaiser/core"
+import { Database } from "@animekaiser/db"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 import * as Queue from "effect/Queue"

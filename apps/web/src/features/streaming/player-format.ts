@@ -3,7 +3,7 @@ import type {
   StreamEpisode,
   StreamProviderId,
   StreamServer,
-} from "@workspace/domain"
+} from "@animekaiser/domain"
 import type { VideoFit } from "./preferences"
 
 export type QualityLevel = {

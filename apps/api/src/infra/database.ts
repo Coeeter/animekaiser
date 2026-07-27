@@ -1,4 +1,4 @@
-import { Database } from "@workspace/db"
+import { Database } from "@animekaiser/db"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 import { Env } from "../env"

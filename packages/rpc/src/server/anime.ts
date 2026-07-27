@@ -1,5 +1,5 @@
-import { AnimeService } from "@workspace/core"
-import { AnimeRpcs, AnimeUnavailableError } from "@workspace/domain"
+import { AnimeService } from "@animekaiser/core"
+import { AnimeRpcs, AnimeUnavailableError } from "@animekaiser/domain"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 

@@ -4,7 +4,7 @@ WORKDIR /app
 FROM base AS pruner
 RUN bun install -g turbo
 COPY . .
-RUN turbo prune @workspace/api --docker
+RUN turbo prune @animekaiser/api --docker
 
 FROM base AS deps
 COPY --from=pruner /app/out/json/ .

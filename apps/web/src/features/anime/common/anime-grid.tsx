@@ -1,4 +1,4 @@
-import type { AnimeItem } from "@workspace/domain"
+import type { AnimeItem } from "@animekaiser/domain"
 import { AnimeCard } from "./anime-card"
 
 export function AnimeGrid({

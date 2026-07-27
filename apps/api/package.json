@@ -1,5 +1,5 @@
 {
-  "name": "@workspace/api",
+  "name": "@animekaiser/api",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -10,14 +10,14 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@animekaiser/auth": "workspace:*",
+    "@animekaiser/core": "workspace:*",
+    "@animekaiser/db": "workspace:*",
+    "@animekaiser/domain": "workspace:*",
+    "@animekaiser/rpc": "workspace:*",
     "@effect/platform": "^0.96.1",
     "@effect/platform-bun": "^0.90.0",
     "@effect/rpc": "^0.75.1",
-    "@workspace/auth": "workspace:*",
-    "@workspace/core": "workspace:*",
-    "@workspace/db": "workspace:*",
-    "@workspace/domain": "workspace:*",
-    "@workspace/rpc": "workspace:*",
     "effect": "^3.21.3",
     "ioredis": "^5.8.2",
     "resend": "^6.12.4"

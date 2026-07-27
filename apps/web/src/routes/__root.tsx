@@ -1,6 +1,6 @@
+import { Toaster } from "@animekaiser/ui/components/sonner"
+import { TooltipProvider } from "@animekaiser/ui/components/tooltip"
 import { createRootRoute, Outlet } from "@tanstack/react-router"
-import { Toaster } from "@workspace/ui/components/sonner"
-import { TooltipProvider } from "@workspace/ui/components/tooltip"
 import { DocumentTitle } from "../components/document-title"
 import { RouteErrorPage } from "../components/route-error-page"
 import { ThemeProvider } from "../components/theme"

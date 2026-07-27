@@ -1,4 +1,4 @@
-import type { AnimeFormat, AnimeReleaseStatus } from "@workspace/domain"
+import type { AnimeFormat, AnimeReleaseStatus } from "@animekaiser/domain"
 
 export const formatAnimeFormat = (format: AnimeFormat | null) => {
   if (format === "TV_SHORT") return "TV Short"

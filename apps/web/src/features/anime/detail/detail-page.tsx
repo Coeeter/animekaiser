@@ -1,5 +1,3 @@
-import { Result, useAtomRefresh, useAtomValue } from "@effect-atom/atom-react"
-import { Link } from "@tanstack/react-router"
 import type {
   AnimeDetail,
   AnimeItem,
@@ -7,9 +5,9 @@ import type {
   LibraryEntry,
   LibraryStatus,
   StreamProviderId,
-} from "@workspace/domain"
-import { Badge } from "@workspace/ui/components/badge"
-import { Button } from "@workspace/ui/components/button"
+} from "@animekaiser/domain"
+import { Badge } from "@animekaiser/ui/components/badge"
+import { Button } from "@animekaiser/ui/components/button"
 import {
   Dialog,
   DialogClose,
@@ -19,16 +17,18 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@workspace/ui/components/dialog"
-import { Separator } from "@workspace/ui/components/separator"
-import { Skeleton } from "@workspace/ui/components/skeleton"
+} from "@animekaiser/ui/components/dialog"
+import { Separator } from "@animekaiser/ui/components/separator"
+import { Skeleton } from "@animekaiser/ui/components/skeleton"
 import {
   Tabs,
   TabsContent,
   TabsList,
   TabsTrigger,
-} from "@workspace/ui/components/tabs"
-import { cn } from "@workspace/ui/lib/utils"
+} from "@animekaiser/ui/components/tabs"
+import { cn } from "@animekaiser/ui/lib/utils"
+import { Result, useAtomRefresh, useAtomValue } from "@effect-atom/atom-react"
+import { Link } from "@tanstack/react-router"
 import * as Schema from "effect/Schema"
 import type { LucideIcon } from "lucide-react"
 import {

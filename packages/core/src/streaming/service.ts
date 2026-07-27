@@ -4,13 +4,13 @@ import type {
   StreamPlayback,
   StreamProviderEpisodes,
   StreamProviderId,
-} from "@workspace/domain"
+} from "@animekaiser/domain"
 import {
   StreamEpisodeNotFoundError,
   StreamingUnavailableError,
   StreamProviderNotFoundError,
   StreamProviderUnavailableError,
-} from "@workspace/domain"
+} from "@animekaiser/domain"
 import * as Effect from "effect/Effect"
 import { AnimeService } from "../anime"
 import { ProviderAProvider } from "./provider-a"
@@ -40,7 +40,7 @@ export const streamPlaybackFailureKind = (message: string) =>
       : "unavailable"
 
 export class StreamingService extends Effect.Service<StreamingService>()(
-  "@workspace/core/StreamingService",
+  "@animekaiser/core/StreamingService",
   {
     accessors: true,
     dependencies: [

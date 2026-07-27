@@ -1,4 +1,4 @@
-import type { LibrarySort, LibraryStatus } from "@workspace/domain"
+import type { LibrarySort, LibraryStatus } from "@animekaiser/domain"
 
 export const libraryStatuses: ReadonlyArray<{
   value: "all" | LibraryStatus

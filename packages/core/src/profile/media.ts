@@ -1,8 +1,8 @@
 import type {
   ProfileImageContentType,
   ProfileImageKind,
-} from "@workspace/domain"
-import { ProfileOperationError } from "@workspace/domain"
+} from "@animekaiser/domain"
+import { ProfileOperationError } from "@animekaiser/domain"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import { ProfileService } from "./service"
@@ -34,11 +34,11 @@ export type ProfileMediaStorageShape = {
 }
 
 export class ProfileMediaStorage extends Context.Tag(
-  "@workspace/core/ProfileMediaStorage"
+  "@animekaiser/core/ProfileMediaStorage"
 )<ProfileMediaStorage, ProfileMediaStorageShape>() {}
 
 export class ProfileMediaService extends Effect.Service<ProfileMediaService>()(
-  "@workspace/core/ProfileMediaService",
+  "@animekaiser/core/ProfileMediaService",
   {
     accessors: true,
     dependencies: [ProfileService.Default],

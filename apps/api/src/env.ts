@@ -2,7 +2,7 @@ import * as Config from "effect/Config"
 import * as Effect from "effect/Effect"
 import * as Redacted from "effect/Redacted"
 
-export class Env extends Effect.Service<Env>()("@workspace/api/env", {
+export class Env extends Effect.Service<Env>()("@animekaiser/api/env", {
   effect: Effect.gen(function* () {
     return {
       server: {

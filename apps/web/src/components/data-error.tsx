@@ -1,4 +1,4 @@
-import { Button } from "@workspace/ui/components/button"
+import { Button } from "@animekaiser/ui/components/button"
 import { AlertCircle } from "lucide-react"
 
 export function DataError({

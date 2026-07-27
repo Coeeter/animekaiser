@@ -1,4 +1,4 @@
-import type { AppSession } from "@workspace/domain"
+import type { AppSession } from "@animekaiser/domain"
 
 export type AppUser = AppSession["user"]
 

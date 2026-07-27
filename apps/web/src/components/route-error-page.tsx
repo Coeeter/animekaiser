@@ -1,5 +1,5 @@
+import { Button } from "@animekaiser/ui/components/button"
 import { Link } from "@tanstack/react-router"
-import { Button } from "@workspace/ui/components/button"
 import { AlertTriangle } from "lucide-react"
 
 export function RouteErrorPage({

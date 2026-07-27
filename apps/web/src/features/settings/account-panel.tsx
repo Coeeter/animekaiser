@@ -1,15 +1,15 @@
-import { useAtomSet } from "@effect-atom/atom-react"
-import { useForm } from "@tanstack/react-form"
-import { useNavigate, useRouter } from "@tanstack/react-router"
-import { Button } from "@workspace/ui/components/button"
+import { Button } from "@animekaiser/ui/components/button"
 import {
   Field,
   FieldError,
   FieldGroup,
   FieldLabel,
-} from "@workspace/ui/components/field"
-import { Input } from "@workspace/ui/components/input"
-import { Spinner } from "@workspace/ui/components/spinner"
+} from "@animekaiser/ui/components/field"
+import { Input } from "@animekaiser/ui/components/input"
+import { Spinner } from "@animekaiser/ui/components/spinner"
+import { useAtomSet } from "@effect-atom/atom-react"
+import { useForm } from "@tanstack/react-form"
+import { useNavigate, useRouter } from "@tanstack/react-router"
 import { Trash2 } from "lucide-react"
 import { useState } from "react"
 import { toast } from "sonner"

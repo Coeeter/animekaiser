@@ -1,4 +1,4 @@
-import { cn } from "@workspace/ui/lib/utils"
+import { cn } from "@animekaiser/ui/lib/utils"
 import { Tooltip as TooltipPrimitive } from "radix-ui"
 import type * as React from "react"
 

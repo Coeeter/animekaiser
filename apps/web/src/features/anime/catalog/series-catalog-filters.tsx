@@ -1,19 +1,18 @@
-import { useForm } from "@tanstack/react-form"
 import type {
   AnimeCatalogStatus,
   AnimeFormat,
   AnimeRating,
   AnimeSeason,
   AnimeSort,
-} from "@workspace/domain"
+} from "@animekaiser/domain"
 import {
   AnimeCatalogStatus as AnimeCatalogStatusSchema,
   AnimeFormat as AnimeFormatSchema,
   AnimeRating as AnimeRatingSchema,
   AnimeSort as AnimeSortSchema,
-} from "@workspace/domain"
-import { Badge } from "@workspace/ui/components/badge"
-import { Button } from "@workspace/ui/components/button"
+} from "@animekaiser/domain"
+import { Badge } from "@animekaiser/ui/components/badge"
+import { Button } from "@animekaiser/ui/components/button"
 import {
   Command,
   CommandEmpty,
@@ -21,19 +20,19 @@ import {
   CommandInput,
   CommandItem,
   CommandList,
-} from "@workspace/ui/components/command"
-import { Field, FieldGroup, FieldLabel } from "@workspace/ui/components/field"
+} from "@animekaiser/ui/components/command"
+import { Field, FieldGroup, FieldLabel } from "@animekaiser/ui/components/field"
 import {
   InputGroup,
   InputGroupAddon,
   InputGroupButton,
   InputGroupInput,
-} from "@workspace/ui/components/input-group"
+} from "@animekaiser/ui/components/input-group"
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from "@workspace/ui/components/popover"
+} from "@animekaiser/ui/components/popover"
 import {
   Select,
   SelectContent,
@@ -41,8 +40,9 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@workspace/ui/components/select"
-import { cn } from "@workspace/ui/lib/utils"
+} from "@animekaiser/ui/components/select"
+import { cn } from "@animekaiser/ui/lib/utils"
+import { useForm } from "@tanstack/react-form"
 import * as Schema from "effect/Schema"
 import { Check, ChevronsUpDown, Search, X } from "lucide-react"
 import { useEffect, useId, useState } from "react"

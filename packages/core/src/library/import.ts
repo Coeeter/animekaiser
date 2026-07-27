@@ -1,14 +1,14 @@
-import * as FetchHttpClient from "@effect/platform/FetchHttpClient"
-import * as HttpClient from "@effect/platform/HttpClient"
-import * as HttpClientRequest from "@effect/platform/HttpClientRequest"
-import * as HttpClientResponse from "@effect/platform/HttpClientResponse"
 import {
   animeMetadata,
   Database,
   externalListAccount,
   job,
   userLibraryEntry,
-} from "@workspace/db"
+} from "@animekaiser/db"
+import * as FetchHttpClient from "@effect/platform/FetchHttpClient"
+import * as HttpClient from "@effect/platform/HttpClient"
+import * as HttpClientRequest from "@effect/platform/HttpClientRequest"
+import * as HttpClientResponse from "@effect/platform/HttpClientResponse"
 import { and, asc, eq, sql } from "drizzle-orm"
 import * as Effect from "effect/Effect"
 import * as Schema from "effect/Schema"
@@ -263,7 +263,7 @@ export const sameEntry = (
   left.aniListEntryId === right.aniListEntryId
 
 export class LibraryImportService extends Effect.Service<LibraryImportService>()(
-  "@workspace/core/LibraryImportService",
+  "@animekaiser/core/LibraryImportService",
   {
     accessors: true,
     dependencies: [FetchHttpClient.layer],

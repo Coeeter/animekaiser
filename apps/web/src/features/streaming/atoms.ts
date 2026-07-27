@@ -1,4 +1,4 @@
-import type { StreamAudio, StreamProviderId } from "@workspace/domain"
+import type { StreamAudio, StreamProviderId } from "@animekaiser/domain"
 import { KaiserRpcClient } from "../../services/api-clients"
 
 export const streamEpisodesAtom = (malId: number, provider: StreamProviderId) =>

@@ -1,11 +1,11 @@
-import type { AnimeDiscoveryCategory } from "@workspace/domain"
+import type { AnimeDiscoveryCategory } from "@animekaiser/domain"
 import {
   AnimeDetail,
   AnimeHome,
   AnimeNotFoundError,
   AnimePage,
   AnimeUnavailableError,
-} from "@workspace/domain"
+} from "@animekaiser/domain"
 import * as Effect from "effect/Effect"
 import * as Option from "effect/Option"
 import * as Schema from "effect/Schema"
@@ -19,7 +19,7 @@ const cacheKey = (scope: string, value: object) =>
 const NullableAnimeDetail = Schema.NullOr(AnimeDetail)
 
 export class AnimeService extends Effect.Service<AnimeService>()(
-  "@workspace/core/AnimeService",
+  "@animekaiser/core/AnimeService",
   {
     accessors: true,
     dependencies: [

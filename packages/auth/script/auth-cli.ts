@@ -1,4 +1,4 @@
-import { createDrizzleClient, createPgPool } from "@workspace/db"
+import { createDrizzleClient, createPgPool } from "@animekaiser/db"
 import { initAuth } from "../src/init-auth"
 
 const pool = createPgPool({

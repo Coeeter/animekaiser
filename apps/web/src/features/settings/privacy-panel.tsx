@@ -1,3 +1,5 @@
+import { Field, FieldDescription } from "@animekaiser/ui/components/field"
+import { Switch } from "@animekaiser/ui/components/switch"
 import {
   Result,
   useAtom,
@@ -5,8 +7,6 @@ import {
   useAtomValue,
 } from "@effect-atom/atom-react"
 import { useRouter } from "@tanstack/react-router"
-import { Field, FieldDescription } from "@workspace/ui/components/field"
-import { Switch } from "@workspace/ui/components/switch"
 import { toast } from "sonner"
 import { DataError } from "../../components/data-error"
 import { errorMessage } from "../../utils/error"

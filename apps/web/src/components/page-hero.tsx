@@ -1,4 +1,4 @@
-import { cn } from "@workspace/ui/lib/utils"
+import { cn } from "@animekaiser/ui/lib/utils"
 import type { LucideIcon } from "lucide-react"
 import type { ReactNode } from "react"
 

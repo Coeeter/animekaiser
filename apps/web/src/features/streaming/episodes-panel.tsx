@@ -1,21 +1,19 @@
-import { Result, useAtomRefresh, useAtomValue } from "@effect-atom/atom-react"
-import { Link } from "@tanstack/react-router"
 import type {
   AnimeDetail,
   StreamAudio,
   StreamProviderEpisodes,
-} from "@workspace/domain"
-import { StreamProviderId, streamProviderIds } from "@workspace/domain"
-import { Badge } from "@workspace/ui/components/badge"
-import { Button } from "@workspace/ui/components/button"
+} from "@animekaiser/domain"
+import { StreamProviderId, streamProviderIds } from "@animekaiser/domain"
+import { Badge } from "@animekaiser/ui/components/badge"
+import { Button } from "@animekaiser/ui/components/button"
 import {
   Empty,
   EmptyDescription,
   EmptyHeader,
   EmptyMedia,
   EmptyTitle,
-} from "@workspace/ui/components/empty"
-import { Input } from "@workspace/ui/components/input"
+} from "@animekaiser/ui/components/empty"
+import { Input } from "@animekaiser/ui/components/input"
 import {
   Select,
   SelectContent,
@@ -23,15 +21,17 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@workspace/ui/components/select"
-import { Skeleton } from "@workspace/ui/components/skeleton"
+} from "@animekaiser/ui/components/select"
+import { Skeleton } from "@animekaiser/ui/components/skeleton"
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from "@workspace/ui/components/tooltip"
-import { cn } from "@workspace/ui/lib/utils"
+} from "@animekaiser/ui/components/tooltip"
+import { cn } from "@animekaiser/ui/lib/utils"
+import { Result, useAtomRefresh, useAtomValue } from "@effect-atom/atom-react"
+import { Link } from "@tanstack/react-router"
 import * as Schema from "effect/Schema"
 import {
   ArrowDownUp,

@@ -1,6 +1,4 @@
-import { useForm } from "@tanstack/react-form"
-import { Link, useNavigate, useRouter } from "@tanstack/react-router"
-import { Button } from "@workspace/ui/components/button"
+import { Button } from "@animekaiser/ui/components/button"
 import {
   Card,
   CardContent,
@@ -8,25 +6,27 @@ import {
   CardFooter,
   CardHeader,
   CardTitle,
-} from "@workspace/ui/components/card"
+} from "@animekaiser/ui/components/card"
 import {
   Field,
   FieldDescription,
   FieldError,
   FieldGroup,
   FieldLabel,
-} from "@workspace/ui/components/field"
-import { Input } from "@workspace/ui/components/input"
+} from "@animekaiser/ui/components/field"
+import { Input } from "@animekaiser/ui/components/input"
 import {
   InputOTP,
   InputOTPGroup,
   InputOTPSlot,
-} from "@workspace/ui/components/input-otp"
-import { Spinner } from "@workspace/ui/components/spinner"
+} from "@animekaiser/ui/components/input-otp"
+import { Spinner } from "@animekaiser/ui/components/spinner"
 import {
   ToggleGroup,
   ToggleGroupItem,
-} from "@workspace/ui/components/toggle-group"
+} from "@animekaiser/ui/components/toggle-group"
+import { useForm } from "@tanstack/react-form"
+import { Link, useNavigate, useRouter } from "@tanstack/react-router"
 import { Fingerprint, KeyRound, Mail } from "lucide-react"
 import { useState } from "react"
 import { toast } from "sonner"

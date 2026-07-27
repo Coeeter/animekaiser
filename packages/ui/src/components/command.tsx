@@ -6,13 +6,13 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-} from "@workspace/ui/components/dialog"
+} from "@animekaiser/ui/components/dialog"
 import {
   InputGroup,
   InputGroupAddon,
-} from "@workspace/ui/components/input-group"
+} from "@animekaiser/ui/components/input-group"
 
-import { cn } from "@workspace/ui/lib/utils"
+import { cn } from "@animekaiser/ui/lib/utils"
 import { Command as CommandPrimitive } from "cmdk"
 import { CheckIcon, SearchIcon } from "lucide-react"
 import type * as React from "react"

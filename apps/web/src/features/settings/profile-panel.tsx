@@ -1,3 +1,17 @@
+import { ProfileImageContentType } from "@animekaiser/domain"
+import {
+  Avatar,
+  AvatarFallback,
+  AvatarImage,
+} from "@animekaiser/ui/components/avatar"
+import { Button } from "@animekaiser/ui/components/button"
+import {
+  Field,
+  FieldDescription,
+  FieldLabel,
+} from "@animekaiser/ui/components/field"
+import { Input } from "@animekaiser/ui/components/input"
+import { Textarea } from "@animekaiser/ui/components/textarea"
 import {
   Result,
   useAtomRefresh,
@@ -6,20 +20,6 @@ import {
 } from "@effect-atom/atom-react"
 import { useForm } from "@tanstack/react-form"
 import { useRouter } from "@tanstack/react-router"
-import { ProfileImageContentType } from "@workspace/domain"
-import {
-  Avatar,
-  AvatarFallback,
-  AvatarImage,
-} from "@workspace/ui/components/avatar"
-import { Button } from "@workspace/ui/components/button"
-import {
-  Field,
-  FieldDescription,
-  FieldLabel,
-} from "@workspace/ui/components/field"
-import { Input } from "@workspace/ui/components/input"
-import { Textarea } from "@workspace/ui/components/textarea"
 import * as Option from "effect/Option"
 import * as Schema from "effect/Schema"
 import { useEffect, useRef, useState } from "react"

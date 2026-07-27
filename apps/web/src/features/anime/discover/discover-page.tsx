@@ -1,14 +1,14 @@
-import { Result, useAtomRefresh, useAtomValue } from "@effect-atom/atom-react"
-import { Link } from "@tanstack/react-router"
-import type { AnimeDiscoveryCategory } from "@workspace/domain"
-import { Button } from "@workspace/ui/components/button"
-import { Skeleton } from "@workspace/ui/components/skeleton"
+import type { AnimeDiscoveryCategory } from "@animekaiser/domain"
+import { Button } from "@animekaiser/ui/components/button"
+import { Skeleton } from "@animekaiser/ui/components/skeleton"
 import {
   Tabs,
   TabsContent,
   TabsList,
   TabsTrigger,
-} from "@workspace/ui/components/tabs"
+} from "@animekaiser/ui/components/tabs"
+import { Result, useAtomRefresh, useAtomValue } from "@effect-atom/atom-react"
+import { Link } from "@tanstack/react-router"
 import { ArrowRight, ChevronLeft, ChevronRight, Sparkles } from "lucide-react"
 import type { ReactNode } from "react"
 import { DataError } from "../../../components/data-error"

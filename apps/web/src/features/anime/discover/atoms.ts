@@ -1,4 +1,4 @@
-import type { AnimeDiscoveryCategory } from "@workspace/domain"
+import type { AnimeDiscoveryCategory } from "@animekaiser/domain"
 import { KaiserRpcClient } from "../../../services/api-clients"
 
 export const discoveryAtom = (

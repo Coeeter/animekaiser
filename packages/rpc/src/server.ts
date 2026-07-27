@@ -1,5 +1,5 @@
+import { KaiserRpcs } from "@animekaiser/domain"
 import { RpcSerialization, RpcServer } from "@effect/rpc"
-import { KaiserRpcs } from "@workspace/domain"
 import * as Layer from "effect/Layer"
 import { AnimeHandlersLive } from "./server/anime"
 import {

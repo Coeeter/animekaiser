@@ -1,12 +1,4 @@
 import {
-  Result,
-  useAtom,
-  useAtomMount,
-  useAtomSet,
-  useAtomValue,
-} from "@effect-atom/atom-react"
-import { useNavigate } from "@tanstack/react-router"
-import {
   Command,
   CommandDialog,
   CommandEmpty,
@@ -14,7 +6,15 @@ import {
   CommandInput,
   CommandItem,
   CommandList,
-} from "@workspace/ui/components/command"
+} from "@animekaiser/ui/components/command"
+import {
+  Result,
+  useAtom,
+  useAtomMount,
+  useAtomSet,
+  useAtomValue,
+} from "@effect-atom/atom-react"
+import { useNavigate } from "@tanstack/react-router"
 import { Search } from "lucide-react"
 import { useState } from "react"
 import { useDebouncedText } from "../../../hooks/use-debounced-text"

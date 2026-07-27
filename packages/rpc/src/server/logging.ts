@@ -5,7 +5,7 @@ import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 
 export class RpcRequestLogging extends RpcMiddleware.Tag<RpcRequestLogging>()(
-  "@workspace/rpc/RpcRequestLogging",
+  "@animekaiser/rpc/RpcRequestLogging",
   { wrap: true }
 ) {}
 

@@ -1,5 +1,5 @@
-import { StreamingService } from "@workspace/core"
-import { StreamingRpcs } from "@workspace/domain"
+import { StreamingService } from "@animekaiser/core"
+import { StreamingRpcs } from "@animekaiser/domain"
 import * as Layer from "effect/Layer"
 
 export const StreamingHandlersLive = StreamingRpcs.toLayer(

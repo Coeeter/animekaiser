@@ -5,7 +5,7 @@ import {
   AnimeScheduleDay,
   AnimeSeason,
   AnimeSort,
-} from "@workspace/domain"
+} from "@animekaiser/domain"
 import * as Schema from "effect/Schema"
 import { getTodayScheduleDay } from "../schedule/schedule"
 

@@ -3,7 +3,7 @@ import { initAuth } from "./init-auth"
 
 export type KaiserAuth = ReturnType<typeof initAuth>
 
-export class AuthServer extends Context.Tag("@workspace/auth/AuthServer")<
+export class AuthServer extends Context.Tag("@animekaiser/auth/AuthServer")<
   AuthServer,
   KaiserAuth
 >() {}

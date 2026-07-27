@@ -1,5 +1,5 @@
-import { Database, profile, user } from "@workspace/db"
-import { ProfileOperationError } from "@workspace/domain"
+import { Database, profile, user } from "@animekaiser/db"
+import { ProfileOperationError } from "@animekaiser/domain"
 import { eq } from "drizzle-orm"
 import * as Effect from "effect/Effect"
 import * as Option from "effect/Option"
@@ -29,7 +29,7 @@ const emptyProfile = {
 } as const
 
 export class ProfileService extends Effect.Service<ProfileService>()(
-  "@workspace/core/ProfileService",
+  "@animekaiser/core/ProfileService",
   {
     accessors: true,
     effect: Effect.gen(function* () {

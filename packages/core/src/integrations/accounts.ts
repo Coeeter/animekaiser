@@ -1,5 +1,5 @@
-import type { DatabaseService } from "@workspace/db"
-import { externalListAccount } from "@workspace/db"
+import type { DatabaseService } from "@animekaiser/db"
+import { externalListAccount } from "@animekaiser/db"
 import { and, eq, lte } from "drizzle-orm"
 import * as Effect from "effect/Effect"
 import type { ExternalListProvider, ProviderOAuthConfig } from "./oauth"

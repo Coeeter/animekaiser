@@ -1,5 +1,3 @@
-import { useForm } from "@tanstack/react-form"
-import { useNavigate, useRouter } from "@tanstack/react-router"
 import {
   Card,
   CardContent,
@@ -7,14 +5,16 @@ import {
   CardFooter,
   CardHeader,
   CardTitle,
-} from "@workspace/ui/components/card"
+} from "@animekaiser/ui/components/card"
 import {
   Field,
   FieldError,
   FieldGroup,
   FieldLabel,
-} from "@workspace/ui/components/field"
-import { Input } from "@workspace/ui/components/input"
+} from "@animekaiser/ui/components/field"
+import { Input } from "@animekaiser/ui/components/input"
+import { useForm } from "@tanstack/react-form"
+import { useNavigate, useRouter } from "@tanstack/react-router"
 import { useState } from "react"
 import { authClient, reconnectKaiserRpc } from "../../services/api-clients"
 import { errorMessage } from "../../utils/error"

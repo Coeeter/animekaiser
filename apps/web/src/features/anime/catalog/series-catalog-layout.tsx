@@ -1,12 +1,12 @@
-import { Link, useNavigate } from "@tanstack/react-router"
-import { Button } from "@workspace/ui/components/button"
+import { Button } from "@animekaiser/ui/components/button"
 import {
   Sheet,
   SheetContent,
   SheetDescription,
   SheetHeader,
   SheetTitle,
-} from "@workspace/ui/components/sheet"
+} from "@animekaiser/ui/components/sheet"
+import { Link, useNavigate } from "@tanstack/react-router"
 import { Compass, SlidersHorizontal } from "lucide-react"
 import type { ReactNode } from "react"
 import { useState } from "react"

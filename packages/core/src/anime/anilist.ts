@@ -1,7 +1,3 @@
-import * as FetchHttpClient from "@effect/platform/FetchHttpClient"
-import * as HttpClient from "@effect/platform/HttpClient"
-import * as HttpClientRequest from "@effect/platform/HttpClientRequest"
-import * as HttpClientResponse from "@effect/platform/HttpClientResponse"
 import type {
   AnimeCatalogStatus,
   AnimeDetail,
@@ -12,11 +8,15 @@ import type {
   AnimeRating,
   AnimeSeason,
   AnimeSort,
-} from "@workspace/domain"
+} from "@animekaiser/domain"
 import {
   AnimeDetail as AnimeDetailSchema,
   AnimePage as AnimePageSchema,
-} from "@workspace/domain"
+} from "@animekaiser/domain"
+import * as FetchHttpClient from "@effect/platform/FetchHttpClient"
+import * as HttpClient from "@effect/platform/HttpClient"
+import * as HttpClientRequest from "@effect/platform/HttpClientRequest"
+import * as HttpClientResponse from "@effect/platform/HttpClientResponse"
 import * as Effect from "effect/Effect"
 import * as Schema from "effect/Schema"
 
@@ -376,7 +376,7 @@ export type AnimeCatalogRequest = {
 }
 
 export class AniListAnimeService extends Effect.Service<AniListAnimeService>()(
-  "@workspace/core/AniListAnimeService",
+  "@animekaiser/core/AniListAnimeService",
   {
     accessors: true,
     dependencies: [FetchHttpClient.layer],

@@ -1,5 +1,5 @@
+import { StreamProviderId } from "@animekaiser/domain"
 import { createFileRoute, useNavigate } from "@tanstack/react-router"
-import { StreamProviderId } from "@workspace/domain"
 import * as Schema from "effect/Schema"
 import {
   AnimeDetailPage,

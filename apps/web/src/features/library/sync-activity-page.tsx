@@ -1,3 +1,5 @@
+import { Badge } from "@animekaiser/ui/components/badge"
+import { Button } from "@animekaiser/ui/components/button"
 import {
   Result,
   useAtomRefresh,
@@ -5,8 +7,6 @@ import {
   useAtomValue,
 } from "@effect-atom/atom-react"
 import { Link } from "@tanstack/react-router"
-import { Badge } from "@workspace/ui/components/badge"
-import { Button } from "@workspace/ui/components/button"
 import { ListRestart, RefreshCw } from "lucide-react"
 import { toast } from "sonner"
 import { DataError } from "../../components/data-error"

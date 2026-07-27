@@ -1,7 +1,7 @@
 import { fileURLToPath } from "node:url"
+import { RpcLive } from "@animekaiser/rpc/server"
 import * as HttpLayerRouter from "@effect/platform/HttpLayerRouter"
 import * as HttpMiddleware from "@effect/platform/HttpMiddleware"
-import { RpcLive } from "@workspace/rpc/server"
 import * as Layer from "effect/Layer"
 import { BetterAuthLive, ExternalListOAuthConfigLive } from "./auth"
 import { Env } from "./env"

@@ -1,11 +1,11 @@
-import { Button } from "@workspace/ui/components/button"
+import { Button } from "@animekaiser/ui/components/button"
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "@workspace/ui/components/dropdown-menu"
+} from "@animekaiser/ui/components/dropdown-menu"
 import { MoonIcon, SunIcon } from "lucide-react"
 import { ThemeProvider as NextThemeProvider, useTheme } from "next-themes"
 import type { ReactNode } from "react"

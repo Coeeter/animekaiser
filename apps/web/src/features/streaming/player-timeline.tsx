@@ -1,4 +1,4 @@
-import type { StreamPlayback } from "@workspace/domain"
+import type { StreamPlayback } from "@animekaiser/domain"
 import type { PointerEvent } from "react"
 import { useEffect, useState } from "react"
 import { formatTime } from "./player-format"

@@ -1,5 +1,5 @@
 {
-  "name": "@workspace/rpc",
+  "name": "@animekaiser/rpc",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -10,11 +10,11 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@animekaiser/auth": "workspace:*",
+    "@animekaiser/core": "workspace:*",
+    "@animekaiser/domain": "workspace:*",
     "@effect/platform": "^0.96.1",
     "@effect/rpc": "^0.75.1",
-    "@workspace/auth": "workspace:*",
-    "@workspace/core": "workspace:*",
-    "@workspace/domain": "workspace:*",
     "effect": "^3.21.3"
   },
   "devDependencies": {

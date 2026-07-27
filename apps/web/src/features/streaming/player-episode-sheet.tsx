@@ -1,15 +1,13 @@
-import { Result, useAtomValue } from "@effect-atom/atom-react"
-import { Link } from "@tanstack/react-router"
 import type {
   StreamAudio,
   StreamEpisode,
   StreamProviderEpisodes,
   StreamProviderId,
-} from "@workspace/domain"
-import { streamProviderIds } from "@workspace/domain"
-import { Badge } from "@workspace/ui/components/badge"
-import { Button } from "@workspace/ui/components/button"
-import { Input } from "@workspace/ui/components/input"
+} from "@animekaiser/domain"
+import { streamProviderIds } from "@animekaiser/domain"
+import { Badge } from "@animekaiser/ui/components/badge"
+import { Button } from "@animekaiser/ui/components/button"
+import { Input } from "@animekaiser/ui/components/input"
 import {
   Select,
   SelectContent,
@@ -17,22 +15,24 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@workspace/ui/components/select"
+} from "@animekaiser/ui/components/select"
 import {
   Sheet,
   SheetContent,
   SheetDescription,
   SheetHeader,
   SheetTitle,
-} from "@workspace/ui/components/sheet"
-import { Skeleton } from "@workspace/ui/components/skeleton"
+} from "@animekaiser/ui/components/sheet"
+import { Skeleton } from "@animekaiser/ui/components/skeleton"
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from "@workspace/ui/components/tooltip"
-import { cn } from "@workspace/ui/lib/utils"
+} from "@animekaiser/ui/components/tooltip"
+import { cn } from "@animekaiser/ui/lib/utils"
+import { Result, useAtomValue } from "@effect-atom/atom-react"
+import { Link } from "@tanstack/react-router"
 import {
   ArrowDownUp,
   ChevronLeft,

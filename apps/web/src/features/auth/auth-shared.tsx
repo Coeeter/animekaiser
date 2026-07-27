@@ -1,6 +1,6 @@
+import { Button } from "@animekaiser/ui/components/button"
+import { Spinner } from "@animekaiser/ui/components/spinner"
 import { Link } from "@tanstack/react-router"
-import { Button } from "@workspace/ui/components/button"
-import { Spinner } from "@workspace/ui/components/spinner"
 import type { ReactNode } from "react"
 
 export function SubmitButton({

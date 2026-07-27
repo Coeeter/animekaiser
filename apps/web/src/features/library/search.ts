@@ -1,4 +1,4 @@
-import { LibrarySort, LibraryStatus } from "@workspace/domain"
+import { LibrarySort, LibraryStatus } from "@animekaiser/domain"
 import * as Schema from "effect/Schema"
 
 const PositivePage = Schema.Union(Schema.Number, Schema.NumberFromString).pipe(

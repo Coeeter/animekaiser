@@ -1,4 +1,4 @@
-import type { AnimeItem, AnimeScheduleDay } from "@workspace/domain"
+import type { AnimeItem, AnimeScheduleDay } from "@animekaiser/domain"
 import { getAnimeTitle } from "../common/title"
 
 export const scheduleDays: ReadonlyArray<AnimeScheduleDay> = [

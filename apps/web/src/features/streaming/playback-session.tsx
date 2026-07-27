@@ -1,6 +1,6 @@
+import { useIsMobile } from "@animekaiser/ui/hooks/use-mobile"
 import { Atom, useAtomSet, useAtomValue } from "@effect-atom/atom-react"
 import { useLocation, useNavigate } from "@tanstack/react-router"
-import { useIsMobile } from "@workspace/ui/hooks/use-mobile"
 import { useEffect } from "react"
 import { type StreamPlaybackInput, StreamPlayerPage } from "./player-page"
 

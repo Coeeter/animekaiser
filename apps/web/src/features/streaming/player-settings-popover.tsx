@@ -1,26 +1,26 @@
-import { useAtomSet, useAtomValue } from "@effect-atom/atom-react"
-import { Link } from "@tanstack/react-router"
 import type {
   StreamAudio,
   StreamPlayback,
   StreamProviderId,
-} from "@workspace/domain"
-import { Button } from "@workspace/ui/components/button"
+} from "@animekaiser/domain"
+import { Button } from "@animekaiser/ui/components/button"
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from "@workspace/ui/components/popover"
+} from "@animekaiser/ui/components/popover"
 import {
   Sheet,
   SheetContent,
   SheetDescription,
   SheetTitle,
   SheetTrigger,
-} from "@workspace/ui/components/sheet"
-import { Switch } from "@workspace/ui/components/switch"
-import { useIsMobile } from "@workspace/ui/hooks/use-mobile"
-import { cn } from "@workspace/ui/lib/utils"
+} from "@animekaiser/ui/components/sheet"
+import { Switch } from "@animekaiser/ui/components/switch"
+import { useIsMobile } from "@animekaiser/ui/hooks/use-mobile"
+import { cn } from "@animekaiser/ui/lib/utils"
+import { useAtomSet, useAtomValue } from "@effect-atom/atom-react"
+import { Link } from "@tanstack/react-router"
 import {
   Captions,
   Check,

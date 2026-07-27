@@ -1,10 +1,10 @@
-import { useAtomMount } from "@effect-atom/atom-react"
-import { createFileRoute } from "@tanstack/react-router"
-import type { StreamAudio } from "@workspace/domain"
+import type { StreamAudio } from "@animekaiser/domain"
 import {
   StreamAudio as StreamAudioSchema,
   StreamProviderId,
-} from "@workspace/domain"
+} from "@animekaiser/domain"
+import { useAtomMount } from "@effect-atom/atom-react"
+import { createFileRoute } from "@tanstack/react-router"
 import * as Schema from "effect/Schema"
 import { mountPlaybackSessionAtom } from "../features/streaming/playback-session"
 

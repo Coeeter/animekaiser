@@ -10,7 +10,7 @@ export class AnimeCacheError extends Data.TaggedError("AnimeCacheError")<{
 }> {}
 
 export class AnimeCache extends Effect.Service<AnimeCache>()(
-  "@workspace/core/AnimeCache",
+  "@animekaiser/core/AnimeCache",
   {
     effect: Effect.gen(function* () {
       const storage = yield* KeyValueStore

@@ -1,5 +1,5 @@
+import { Switch } from "@animekaiser/ui/components/switch"
 import { useAtomSet, useAtomValue } from "@effect-atom/atom-react"
-import { Switch } from "@workspace/ui/components/switch"
 import {
   playerPreferencesAtom,
   updatePlayerPreferencesAtom,

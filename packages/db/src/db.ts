@@ -205,6 +205,6 @@ type Shape = Effect.Effect.Success<ReturnType<typeof makeService>>
 export type DatabaseService = Shape
 
 export class Database extends Effect.Service<Database>()(
-  "@workspace/db/Database",
+  "@animekaiser/db/Database",
   { scoped: makeService }
 ) {}

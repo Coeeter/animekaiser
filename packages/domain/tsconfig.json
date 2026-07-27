@@ -4,7 +4,7 @@
     "lib": ["ES2022"],
     "noEmit": true,
     "paths": {
-      "@workspace/domain/*": ["./src/*"]
+      "@animekaiser/domain/*": ["./src/*"]
     }
   },
   "include": ["."],

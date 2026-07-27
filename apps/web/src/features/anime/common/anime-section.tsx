@@ -1,5 +1,5 @@
+import type { AnimeItem } from "@animekaiser/domain"
 import { Link } from "@tanstack/react-router"
-import type { AnimeItem } from "@workspace/domain"
 import { ArrowRight } from "lucide-react"
 import { AnimeGrid } from "./anime-grid"
 

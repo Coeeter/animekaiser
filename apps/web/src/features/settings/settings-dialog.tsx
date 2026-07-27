@@ -1,3 +1,21 @@
+import type { AppSession } from "@animekaiser/domain"
+import { Button } from "@animekaiser/ui/components/button"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@animekaiser/ui/components/dialog"
+import {
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from "@animekaiser/ui/components/empty"
+import { Separator } from "@animekaiser/ui/components/separator"
+import { cn } from "@animekaiser/ui/lib/utils"
 import {
   Result,
   useAtom,
@@ -5,24 +23,6 @@ import {
   useAtomValue,
 } from "@effect-atom/atom-react"
 import { Link, useRouter } from "@tanstack/react-router"
-import type { AppSession } from "@workspace/domain"
-import { Button } from "@workspace/ui/components/button"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@workspace/ui/components/dialog"
-import {
-  Empty,
-  EmptyDescription,
-  EmptyHeader,
-  EmptyMedia,
-  EmptyTitle,
-} from "@workspace/ui/components/empty"
-import { Separator } from "@workspace/ui/components/separator"
-import { cn } from "@workspace/ui/lib/utils"
 import {
   Bell,
   Captions,

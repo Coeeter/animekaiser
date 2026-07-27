@@ -1,8 +1,8 @@
+import { createKaiserAuthClient } from "@animekaiser/auth/web"
+import { KaiserRpcs } from "@animekaiser/domain"
 import * as Socket from "@effect/platform/Socket"
 import { RpcClient, RpcSerialization } from "@effect/rpc"
 import { Atom, AtomRpc } from "@effect-atom/atom-react"
-import { createKaiserAuthClient } from "@workspace/auth/web"
-import { KaiserRpcs } from "@workspace/domain"
 import * as Layer from "effect/Layer"
 
 export const apiUrl = import.meta.env.VITE_API_URL

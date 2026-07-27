@@ -1,25 +1,25 @@
-import {
-  Result,
-  useAtomRefresh,
-  useAtomSet,
-  useAtomValue,
-} from "@effect-atom/atom-react"
-import type { OwnProfile, PublicProfile } from "@workspace/domain"
+import type { OwnProfile, PublicProfile } from "@animekaiser/domain"
 import {
   Avatar,
   AvatarFallback,
   AvatarImage,
-} from "@workspace/ui/components/avatar"
-import { Button } from "@workspace/ui/components/button"
+} from "@animekaiser/ui/components/avatar"
+import { Button } from "@animekaiser/ui/components/button"
 import {
   Empty,
   EmptyDescription,
   EmptyHeader,
   EmptyMedia,
   EmptyTitle,
-} from "@workspace/ui/components/empty"
-import { Separator } from "@workspace/ui/components/separator"
-import { Skeleton } from "@workspace/ui/components/skeleton"
+} from "@animekaiser/ui/components/empty"
+import { Separator } from "@animekaiser/ui/components/separator"
+import { Skeleton } from "@animekaiser/ui/components/skeleton"
+import {
+  Result,
+  useAtomRefresh,
+  useAtomSet,
+  useAtomValue,
+} from "@effect-atom/atom-react"
 import { LockKeyhole, Settings2, UserRoundX } from "lucide-react"
 import { DataError } from "../../components/data-error"
 import { settingsOpenAtom, settingsSectionAtom } from "../settings/atoms"

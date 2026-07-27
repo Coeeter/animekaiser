@@ -5,7 +5,7 @@
     "types": ["bun"],
     "noEmit": true,
     "paths": {
-      "@workspace/core/*": ["./src/*"]
+      "@animekaiser/core/*": ["./src/*"]
     }
   },
   "include": ["."],

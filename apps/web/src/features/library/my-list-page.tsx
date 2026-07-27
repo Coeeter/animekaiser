@@ -1,3 +1,27 @@
+import type {
+  ExternalListProvider,
+  LibraryPage,
+  LibraryStatus,
+} from "@animekaiser/domain"
+import { LibrarySort } from "@animekaiser/domain"
+import { Button } from "@animekaiser/ui/components/button"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@animekaiser/ui/components/dialog"
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@animekaiser/ui/components/select"
+import { Tabs, TabsList, TabsTrigger } from "@animekaiser/ui/components/tabs"
 import {
   Result,
   useAtom,
@@ -6,30 +30,6 @@ import {
   useAtomValue,
 } from "@effect-atom/atom-react"
 import { Link, useNavigate } from "@tanstack/react-router"
-import type {
-  ExternalListProvider,
-  LibraryPage,
-  LibraryStatus,
-} from "@workspace/domain"
-import { LibrarySort } from "@workspace/domain"
-import { Button } from "@workspace/ui/components/button"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@workspace/ui/components/dialog"
-import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@workspace/ui/components/select"
-import { Tabs, TabsList, TabsTrigger } from "@workspace/ui/components/tabs"
 import * as Schema from "effect/Schema"
 import {
   ArrowDownWideNarrow,

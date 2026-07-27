@@ -1,11 +1,9 @@
-import { Result, useAtomSet, useAtomValue } from "@effect-atom/atom-react"
-import { Link, useLocation } from "@tanstack/react-router"
 import {
   Avatar,
   AvatarFallback,
   AvatarImage,
-} from "@workspace/ui/components/avatar"
-import { Button } from "@workspace/ui/components/button"
+} from "@animekaiser/ui/components/avatar"
+import { Button } from "@animekaiser/ui/components/button"
 import {
   Sidebar,
   SidebarContent,
@@ -22,12 +20,14 @@ import {
   SidebarRail,
   SidebarTrigger,
   useSidebar,
-} from "@workspace/ui/components/sidebar"
+} from "@animekaiser/ui/components/sidebar"
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
-} from "@workspace/ui/components/tooltip"
+} from "@animekaiser/ui/components/tooltip"
+import { Result, useAtomSet, useAtomValue } from "@effect-atom/atom-react"
+import { Link, useLocation } from "@tanstack/react-router"
 import type { LucideIcon } from "lucide-react"
 import {
   Bookmark,

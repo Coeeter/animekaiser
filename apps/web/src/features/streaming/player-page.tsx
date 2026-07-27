@@ -1,3 +1,12 @@
+import type {
+  StreamAudio,
+  StreamEpisode,
+  StreamPlayback,
+  StreamProviderId,
+} from "@animekaiser/domain"
+import { Button } from "@animekaiser/ui/components/button"
+import { Skeleton } from "@animekaiser/ui/components/skeleton"
+import { cn } from "@animekaiser/ui/lib/utils"
 import {
   Result,
   useAtomRefresh,
@@ -5,15 +14,6 @@ import {
   useAtomValue,
 } from "@effect-atom/atom-react"
 import { Link, useNavigate } from "@tanstack/react-router"
-import type {
-  StreamAudio,
-  StreamEpisode,
-  StreamPlayback,
-  StreamProviderId,
-} from "@workspace/domain"
-import { Button } from "@workspace/ui/components/button"
-import { Skeleton } from "@workspace/ui/components/skeleton"
-import { cn } from "@workspace/ui/lib/utils"
 import {
   ArrowLeft,
   ListVideo,

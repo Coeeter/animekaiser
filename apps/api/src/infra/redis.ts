@@ -1,4 +1,4 @@
-import { KeyValueStore, KeyValueStoreError } from "@workspace/core"
+import { KeyValueStore, KeyValueStoreError } from "@animekaiser/core"
 import * as Data from "effect/Data"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
@@ -10,7 +10,7 @@ export class RedisConnectionError extends Data.TaggedError(
 )<{ cause: unknown }> {}
 
 export class RedisClient extends Effect.Service<RedisClient>()(
-  "@workspace/api/RedisClient",
+  "@animekaiser/api/RedisClient",
   {
     scoped: Effect.gen(function* () {
       const env = yield* Env

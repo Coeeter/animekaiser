@@ -1,4 +1,4 @@
-import { cn } from "@workspace/ui/lib/utils"
+import { cn } from "@animekaiser/ui/lib/utils"
 import type { VariantProps } from "class-variance-authority"
 import { cva } from "class-variance-authority"
 

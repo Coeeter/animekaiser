@@ -2,13 +2,13 @@ import {
   ExternalListAccountsService,
   LibraryImportService,
   LibraryService,
-} from "@workspace/core"
+} from "@animekaiser/core"
 import {
   CurrentUser,
   ExternalListOperationError,
   LibraryOperationError,
   LibraryRpcs,
-} from "@workspace/domain"
+} from "@animekaiser/domain"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 import * as Stream from "effect/Stream"

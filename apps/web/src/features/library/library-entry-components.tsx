@@ -1,11 +1,8 @@
-import { useAtomSet, useAtomValue } from "@effect-atom/atom-react"
-import { useForm } from "@tanstack/react-form"
-import { Link } from "@tanstack/react-router"
-import type { ExternalListProvider, LibraryEntry } from "@workspace/domain"
-import { LibraryStatus } from "@workspace/domain"
-import { Badge } from "@workspace/ui/components/badge"
-import { Button } from "@workspace/ui/components/button"
-import { Checkbox } from "@workspace/ui/components/checkbox"
+import type { ExternalListProvider, LibraryEntry } from "@animekaiser/domain"
+import { LibraryStatus } from "@animekaiser/domain"
+import { Badge } from "@animekaiser/ui/components/badge"
+import { Button } from "@animekaiser/ui/components/button"
+import { Checkbox } from "@animekaiser/ui/components/checkbox"
 import {
   Dialog,
   DialogContent,
@@ -14,15 +11,15 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@workspace/ui/components/dialog"
+} from "@animekaiser/ui/components/dialog"
 import {
   Field,
   FieldGroup,
   FieldLabel,
   FieldLegend,
   FieldSet,
-} from "@workspace/ui/components/field"
-import { Input } from "@workspace/ui/components/input"
+} from "@animekaiser/ui/components/field"
+import { Input } from "@animekaiser/ui/components/input"
 import {
   Select,
   SelectContent,
@@ -30,8 +27,11 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@workspace/ui/components/select"
-import { Textarea } from "@workspace/ui/components/textarea"
+} from "@animekaiser/ui/components/select"
+import { Textarea } from "@animekaiser/ui/components/textarea"
+import { useAtomSet, useAtomValue } from "@effect-atom/atom-react"
+import { useForm } from "@tanstack/react-form"
+import { Link } from "@tanstack/react-router"
 import * as Schema from "effect/Schema"
 import { Edit3, Star, Trash2 } from "lucide-react"
 import { useEffect, useId, useState } from "react"

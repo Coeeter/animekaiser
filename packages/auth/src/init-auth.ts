@@ -1,6 +1,6 @@
+import type { KaiserDb } from "@animekaiser/db"
 import { drizzleAdapter } from "@better-auth/drizzle-adapter"
 import { passkey } from "@better-auth/passkey"
-import type { KaiserDb } from "@workspace/db"
 import { betterAuth } from "better-auth/minimal"
 import {
   emailOTP,

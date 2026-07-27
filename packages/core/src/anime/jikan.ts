@@ -1,8 +1,8 @@
+import type { AnimeDetail, AnimeItem, AnimePage } from "@animekaiser/domain"
 import * as FetchHttpClient from "@effect/platform/FetchHttpClient"
 import * as HttpClient from "@effect/platform/HttpClient"
 import * as HttpClientRequest from "@effect/platform/HttpClientRequest"
 import * as HttpClientResponse from "@effect/platform/HttpClientResponse"
-import type { AnimeDetail, AnimeItem, AnimePage } from "@workspace/domain"
 import * as Effect from "effect/Effect"
 import * as Schema from "effect/Schema"
 import type { AnimeCatalogRequest } from "./anilist"
@@ -174,7 +174,7 @@ const queryUrl = (
 }
 
 export class JikanAnimeService extends Effect.Service<JikanAnimeService>()(
-  "@workspace/core/JikanAnimeService",
+  "@animekaiser/core/JikanAnimeService",
   {
     accessors: true,
     dependencies: [FetchHttpClient.layer],

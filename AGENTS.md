@@ -1,4 +1,4 @@
-# Kaiser Agent Guide
+# AnimeKaiser Agent Guide
 
 ## Architecture
 
@@ -12,7 +12,7 @@
 
 - Anime identity is always MAL-backed. Do not introduce separate local anime IDs.
 - Discovery data may come from MAL, Jikan, AniList, or other sources, but records without a MAL ID must not enter the domain surface.
-- User library writes update Kaiser locally first, then enqueue outbound sync jobs for linked external providers.
+- User library writes update AnimeKaiser locally first, then enqueue outbound sync jobs for linked external providers.
 - Library imports overwrite matching local entries, preserve local-only entries, and never enqueue outbound sync.
 - Streaming resolution persists only stable anime-to-provider title mappings. Do not persist playable stream data.
 

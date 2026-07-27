@@ -1,4 +1,4 @@
-import { Skeleton } from "@workspace/ui/components/skeleton"
+import { Skeleton } from "@animekaiser/ui/components/skeleton"
 
 export function SeriesCatalogPending() {
   return (

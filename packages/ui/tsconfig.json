@@ -10,7 +10,7 @@
     "strict": true,
     "noEmit": true,
     "paths": {
-      "@workspace/ui/*": ["./src/*"]
+      "@animekaiser/ui/*": ["./src/*"]
     }
   },
   "include": ["."],
