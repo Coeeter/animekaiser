@@ -4,7 +4,7 @@ import {
   useAtomSet,
   useAtomValue,
 } from "@effect-atom/atom-react"
-import { useNavigate } from "@tanstack/react-router"
+import { Link, useNavigate } from "@tanstack/react-router"
 import type {
   StreamAudio,
   StreamEpisode,
@@ -17,6 +17,7 @@ import { Skeleton } from "@workspace/ui/components/skeleton"
 import { cn } from "@workspace/ui/lib/utils"
 import {
   ArrowLeft,
+  GripHorizontal,
   ListVideo,
   Loader2,
   Maximize,
@@ -26,9 +27,10 @@ import {
   SkipForward,
   Volume2,
   VolumeX,
+  X,
 } from "lucide-react"
 import type { ComponentPropsWithoutRef, MouseEvent, PointerEvent } from "react"
-import { forwardRef, useEffect, useRef, useState } from "react"
+import { forwardRef, useEffect, useLayoutEffect, useRef, useState } from "react"
 import { toast } from "sonner"
 import { DataError } from "../../components/data-error"
 import { AnimeTitle } from "../anime/common/anime-title"
@@ -45,7 +47,6 @@ import {
   nextStreamServer,
   preferredAudio,
   providerLabel,
-  seriesEpisodesHref,
   videoFitClass,
 } from "./player-format"
 import { PlayerSettingsPopover } from "./player-settings-popover"
@@ -67,7 +68,7 @@ const PlayerShell = forwardRef<HTMLDivElement, ComponentPropsWithoutRef<"div">>(
     <div
       ref={ref}
       className={cn(
-        "fixed inset-0 z-50 flex flex-col bg-black text-white [@media_(max-width:767px)_and_(orientation:portrait)]:top-0 [@media_(max-width:767px)_and_(orientation:portrait)]:right-auto [@media_(max-width:767px)_and_(orientation:portrait)]:bottom-auto [@media_(max-width:767px)_and_(orientation:portrait)]:left-[100dvw] [@media_(max-width:767px)_and_(orientation:portrait)]:h-[100dvw] [@media_(max-width:767px)_and_(orientation:portrait)]:w-[100dvh] [@media_(max-width:767px)_and_(orientation:portrait)]:origin-top-left [@media_(max-width:767px)_and_(orientation:portrait)]:rotate-90",
+        "fixed inset-0 z-50 flex flex-col bg-black text-white md:left-[var(--sidebar-width-icon)] [@media_(max-width:767px)_and_(orientation:portrait)]:top-0 [@media_(max-width:767px)_and_(orientation:portrait)]:right-auto [@media_(max-width:767px)_and_(orientation:portrait)]:bottom-auto [@media_(max-width:767px)_and_(orientation:portrait)]:left-[100dvw] [@media_(max-width:767px)_and_(orientation:portrait)]:h-[100dvw] [@media_(max-width:767px)_and_(orientation:portrait)]:w-[100dvh] [@media_(max-width:767px)_and_(orientation:portrait)]:origin-top-left [@media_(max-width:767px)_and_(orientation:portrait)]:rotate-90",
         className
       )}
       {...props}
@@ -105,7 +106,15 @@ const isEditingKeyboardTarget = (target: EventTarget | null) => {
   )
 }
 
-export function StreamPlayerPage({ input }: { input: StreamPlaybackInput }) {
+export function StreamPlayerPage({
+  input,
+  mode = "full",
+  onClose,
+}: {
+  input: StreamPlaybackInput
+  mode?: "full" | "mini"
+  onClose?: () => void
+}) {
   const atom = streamPlaybackAtom(
     input.malId,
     input.provider,
@@ -117,9 +126,9 @@ export function StreamPlayerPage({ input }: { input: StreamPlaybackInput }) {
   const refresh = useAtomRefresh(atom)
 
   return Result.builder(result)
-    .onInitialOrWaiting(() => <StreamPlayerPendingPage />)
+    .onInitialOrWaiting(() => <StreamPlayerPendingPage mode={mode} />)
     .onFailure(() => (
-      <PlayerShell>
+      <PlayerShell className={mode === "mini" ? miniPlayerClass : undefined}>
         <div className="m-auto w-full max-w-xl p-4">
           <DataError
             title="Unable to load this stream"
@@ -133,8 +142,15 @@ export function StreamPlayerPage({ input }: { input: StreamPlaybackInput }) {
       const title = playback.anime.title.english ?? playback.anime.title.romaji
       return (
         <>
-          <title>{`${title} – Episode ${playback.episode.number} | AnimeKaiser`}</title>
-          <StreamPlayer playback={playback} loading={false} />
+          {mode === "full" ? (
+            <title>{`${title} – Episode ${playback.episode.number} | AnimeKaiser`}</title>
+          ) : null}
+          <StreamPlayer
+            playback={playback}
+            loading={false}
+            mode={mode}
+            onClose={onClose}
+          />
         </>
       )
     })
@@ -149,9 +165,16 @@ export type StreamPlaybackInput = {
   serverId?: string
 }
 
-export function StreamPlayerPendingPage() {
+const miniPlayerClass =
+  "inset-auto right-3 bottom-3 h-auto aspect-video w-[min(24rem,calc(100vw-1.5rem))] min-w-64 max-w-[calc(100vw-1.5rem)] resize overflow-hidden rounded-xl border border-white/15 shadow-[0_24px_80px_rgba(0,0,0,0.65)] sm:right-5 sm:bottom-5 md:left-auto [@media_(max-width:767px)_and_(orientation:portrait)]:inset-auto [@media_(max-width:767px)_and_(orientation:portrait)]:right-3 [@media_(max-width:767px)_and_(orientation:portrait)]:bottom-3 [@media_(max-width:767px)_and_(orientation:portrait)]:h-auto [@media_(max-width:767px)_and_(orientation:portrait)]:w-[min(24rem,calc(100vw-1.5rem))] [@media_(max-width:767px)_and_(orientation:portrait)]:rotate-0"
+
+export function StreamPlayerPendingPage({
+  mode = "full",
+}: {
+  mode?: "full" | "mini"
+}) {
   return (
-    <PlayerShell>
+    <PlayerShell className={mode === "mini" ? miniPlayerClass : undefined}>
       <div className="flex items-center justify-between gap-3 p-4">
         <Skeleton className="h-9 w-28 bg-white/10" />
         <Skeleton className="h-9 w-24 bg-white/10" />
@@ -172,9 +195,13 @@ export function StreamPlayerPendingPage() {
 function StreamPlayer({
   playback,
   loading,
+  mode,
+  onClose,
 }: {
   playback: StreamPlayback
   loading: boolean
+  mode: "full" | "mini"
+  onClose?: () => void
 }) {
   const navigate = useNavigate()
 
@@ -216,6 +243,12 @@ function StreamPlayer({
   const [syncedEpisodeKey, setSyncedEpisodeKey] = useState<string | null>(null)
   const [fullscreen, setFullscreen] = useState(false)
   const [playerElement, setPlayerElement] = useState<HTMLElement | null>(null)
+  const dragRef = useRef<{
+    x: number
+    y: number
+    left: number
+    top: number
+  } | null>(null)
 
   const sourceUrl = streamProxyUrl(
     playback.sourceUrl,
@@ -493,6 +526,50 @@ function StreamPlayer({
     void player.requestFullscreen()
   }
 
+  const beginMiniPlayerDrag = (event: PointerEvent<HTMLDivElement>) => {
+    if (mode !== "mini" || !playerRef.current) return
+    const bounds = playerRef.current.getBoundingClientRect()
+    dragRef.current = {
+      x: event.clientX,
+      y: event.clientY,
+      left: bounds.left,
+      top: bounds.top,
+    }
+    event.currentTarget.setPointerCapture(event.pointerId)
+  }
+
+  const dragMiniPlayer = (event: PointerEvent<HTMLDivElement>) => {
+    const drag = dragRef.current
+    const player = playerRef.current
+    if (!drag || !player) return
+    const left = Math.min(
+      Math.max(0, drag.left + event.clientX - drag.x),
+      window.innerWidth - player.offsetWidth
+    )
+    const top = Math.min(
+      Math.max(0, drag.top + event.clientY - drag.y),
+      window.innerHeight - player.offsetHeight
+    )
+    player.style.left = `${left}px`
+    player.style.top = `${top}px`
+    player.style.right = "auto"
+    player.style.bottom = "auto"
+  }
+
+  useLayoutEffect(() => {
+    if (mode !== "full" || !playerRef.current) return
+
+    for (const property of [
+      "left",
+      "top",
+      "right",
+      "bottom",
+      "width",
+      "height",
+    ])
+      playerRef.current.style.removeProperty(property)
+  }, [mode])
+
   useEffect(() => {
     setPlayerElement(playerRef.current)
   }, [])
@@ -595,7 +672,10 @@ function StreamPlayer({
   return (
     <PlayerShell
       ref={playerRef}
-      className={cn(!controlsVisible && media.playing && "cursor-none")}
+      className={cn(
+        mode === "mini" && miniPlayerClass,
+        mode === "full" && !controlsVisible && media.playing && "cursor-none"
+      )}
       onPointerMove={revealControls}
       onPointerDown={revealControls}
     >
@@ -613,6 +693,59 @@ function StreamPlayer({
           {...media.videoHandlers}
           onEnded={finishEpisode}
         />
+
+        {mode === "mini" ? (
+          <div className="absolute inset-x-0 top-0 z-30 flex items-center gap-1 bg-gradient-to-b from-black/85 to-transparent p-2 opacity-0 transition-opacity hover:opacity-100 focus-within:opacity-100">
+            <div
+              className="flex min-w-0 flex-1 touch-none cursor-move items-center gap-2 px-1"
+              onPointerDown={beginMiniPlayerDrag}
+              onPointerMove={dragMiniPlayer}
+              onPointerUp={() => {
+                dragRef.current = null
+              }}
+              onPointerCancel={() => {
+                dragRef.current = null
+              }}
+            >
+              <GripHorizontal className="size-4 shrink-0 text-white/55" />
+              <span className="truncate text-xs font-medium">
+                <AnimeTitle title={playback.anime.title} /> ·{" "}
+                {episodeLabel(playback.episode)}
+              </span>
+            </div>
+            <Button
+              asChild
+              variant="ghost"
+              size="icon-sm"
+              className="text-white hover:bg-white/15 hover:text-white"
+            >
+              <Link
+                to="/watch/$malId/$provider/$episodeId"
+                params={{
+                  malId: playback.anime.malId,
+                  provider: playback.provider,
+                  episodeId: playback.episode.id,
+                }}
+                search={{
+                  audio: playback.audio,
+                  serverId: playback.server.id,
+                }}
+              >
+                <Maximize />
+                <span className="sr-only">Return to player</span>
+              </Link>
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              className="text-white hover:bg-white/15 hover:text-white"
+              onClick={onClose}
+            >
+              <X />
+              <span className="sr-only">Close player</span>
+            </Button>
+          </div>
+        ) : null}
 
         <div
           className={cn(
@@ -636,7 +769,7 @@ function StreamPlayer({
           </div>
         ) : null}
 
-        {activeSubtitle ? (
+        {mode === "full" && activeSubtitle ? (
           <div
             className={cn(
               "pointer-events-none absolute inset-x-6 z-10 mx-auto max-w-5xl text-center text-xl font-semibold text-white transition-[bottom] duration-200 md:text-2xl",
@@ -651,162 +784,192 @@ function StreamPlayer({
           </div>
         ) : null}
 
-        <div className="pointer-events-none absolute inset-x-4 bottom-32 z-30 flex flex-wrap justify-center gap-2 md:bottom-36">
-          {showIntroSkip && intro ? (
-            <Button
-              className="pointer-events-auto border border-white/35 bg-black/70 text-white shadow-[0_8px_30px_rgba(0,0,0,0.55)] backdrop-blur-md hover:border-white hover:bg-white hover:text-black"
-              variant="secondary"
-              size="sm"
-              onClick={() => media.skipTo(skipTarget(intro, media.duration))}
-            >
-              <SkipForward data-icon="inline-start" />
-              Skip intro
-            </Button>
-          ) : null}
-          {showOutroSkip && outro ? (
-            <Button
-              className="pointer-events-auto border border-white/35 bg-black/70 text-white shadow-[0_8px_30px_rgba(0,0,0,0.55)] backdrop-blur-md hover:border-white hover:bg-white hover:text-black"
-              variant="secondary"
-              size="sm"
-              onClick={() => media.skipTo(skipTarget(outro, media.duration))}
-            >
-              <SkipForward data-icon="inline-start" />
-              Skip outro
-            </Button>
-          ) : null}
-        </div>
-
-        <div
-          className={cn(
-            "absolute inset-x-0 bottom-0 z-20 flex flex-col gap-2 bg-gradient-to-t from-black via-black/75 to-transparent p-3 transition-opacity duration-200 sm:gap-3 sm:p-4",
-            controlsVisible ? "opacity-100" : "pointer-events-none opacity-0"
-          )}
-        >
-          <div className="flex items-center gap-2">
-            <Button
-              asChild
-              variant="ghost"
-              size="icon-sm"
-              className="shrink-0 text-white hover:bg-white/10 hover:text-white"
-            >
-              <a href={seriesEpisodesHref(playback.anime.malId)}>
-                <ArrowLeft />
-                <span className="sr-only">Back to series</span>
-              </a>
-            </Button>
-            <button
-              type="button"
-              className="min-w-0 flex-1 text-left"
-              onClick={media.togglePlayback}
-            >
-              <p className="truncate text-sm font-medium text-white">
-                <AnimeTitle title={playback.anime.title} />
-              </p>
-              <p className="truncate text-xs text-white/55">
-                {episodeLabel(playback.episode)}
-                {displayEpisodeTitle ? ` · ${displayEpisodeTitle}` : ""}
-              </p>
-            </button>
-            <Badge className="hidden border-white/10 bg-white/10 text-white md:inline-flex">
-              {providerLabel(playback.provider)}
-            </Badge>
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              className="text-white hover:bg-white/10 hover:text-white"
-              onClick={() => setEpisodesOpen(true)}
-            >
-              <ListVideo />
-              <span className="sr-only">Episodes</span>
-            </Button>
+        {mode === "full" ? (
+          <div className="pointer-events-none absolute inset-x-4 bottom-32 z-30 flex flex-wrap justify-center gap-2 md:bottom-36">
+            {showIntroSkip && intro ? (
+              <Button
+                className="pointer-events-auto border border-white/35 bg-black/70 text-white shadow-[0_8px_30px_rgba(0,0,0,0.55)] backdrop-blur-md hover:border-white hover:bg-white hover:text-black"
+                variant="secondary"
+                size="sm"
+                onClick={() => media.skipTo(skipTarget(intro, media.duration))}
+              >
+                <SkipForward data-icon="inline-start" />
+                Skip intro
+              </Button>
+            ) : null}
+            {showOutroSkip && outro ? (
+              <Button
+                className="pointer-events-auto border border-white/35 bg-black/70 text-white shadow-[0_8px_30px_rgba(0,0,0,0.55)] backdrop-blur-md hover:border-white hover:bg-white hover:text-black"
+                variant="secondary"
+                size="sm"
+                onClick={() => media.skipTo(skipTarget(outro, media.duration))}
+              >
+                <SkipForward data-icon="inline-start" />
+                Skip outro
+              </Button>
+            ) : null}
           </div>
+        ) : null}
 
-          <PlayerTimeline
-            playback={playback}
-            currentTime={media.currentTime}
-            duration={media.duration}
-            bufferedEnd={media.bufferedEnd}
-            onSeek={media.seekTo}
-          />
-
-          <div className="flex items-center justify-between gap-3">
+        {mode === "full" ? (
+          <div
+            className={cn(
+              "absolute inset-x-0 bottom-0 z-20 flex flex-col gap-2 bg-gradient-to-t from-black via-black/75 to-transparent p-3 transition-opacity duration-200 sm:gap-3 sm:p-4",
+              controlsVisible ? "opacity-100" : "pointer-events-none opacity-0"
+            )}
+          >
             <div className="flex items-center gap-2">
+              <Button
+                asChild
+                variant="ghost"
+                size="icon-sm"
+                className="shrink-0 text-white hover:bg-white/10 hover:text-white"
+              >
+                <Link to="/series/$id" params={{ id: playback.anime.malId }}>
+                  <ArrowLeft />
+                  <span className="sr-only">Back to series</span>
+                </Link>
+              </Button>
+              <button
+                type="button"
+                className="min-w-0 flex-1 text-left"
+                onClick={media.togglePlayback}
+              >
+                <p className="truncate text-sm font-medium text-white">
+                  <AnimeTitle title={playback.anime.title} />
+                </p>
+                <p className="truncate text-xs text-white/55">
+                  {episodeLabel(playback.episode)}
+                  {displayEpisodeTitle ? ` · ${displayEpisodeTitle}` : ""}
+                </p>
+              </button>
+              <Badge className="hidden border-white/10 bg-white/10 text-white md:inline-flex">
+                {providerLabel(playback.provider)}
+              </Badge>
               <Button
                 variant="ghost"
                 size="icon-sm"
                 className="text-white hover:bg-white/10 hover:text-white"
-                onClick={media.togglePlayback}
+                onClick={() => setEpisodesOpen(true)}
               >
-                {mediaLoading ? (
-                  <Loader2 className="animate-spin" />
-                ) : media.playing ? (
-                  <Pause />
-                ) : (
-                  <Play />
-                )}
-                <span className="sr-only">
-                  {mediaLoading ? "Loading" : media.playing ? "Pause" : "Play"}
-                </span>
+                <ListVideo />
+                <span className="sr-only">Episodes</span>
               </Button>
-              <div className="group/volume flex items-center gap-1 rounded-full focus-within:bg-white/10 hover:bg-white/10">
+            </div>
+
+            <PlayerTimeline
+              playback={playback}
+              currentTime={media.currentTime}
+              duration={media.duration}
+              bufferedEnd={media.bufferedEnd}
+              onSeek={media.seekTo}
+            />
+
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
                 <Button
                   variant="ghost"
                   size="icon-sm"
-                  className="text-white hover:bg-transparent hover:text-white"
-                  onClick={media.toggleMute}
+                  className="text-white hover:bg-white/10 hover:text-white"
+                  onClick={media.togglePlayback}
                 >
-                  {media.muted || media.volume === 0 ? (
-                    <VolumeX />
+                  {mediaLoading ? (
+                    <Loader2 className="animate-spin" />
+                  ) : media.playing ? (
+                    <Pause />
                   ) : (
-                    <Volume2 />
+                    <Play />
                   )}
                   <span className="sr-only">
-                    {media.muted ? "Unmute" : "Mute"}
+                    {mediaLoading
+                      ? "Loading"
+                      : media.playing
+                        ? "Pause"
+                        : "Play"}
                   </span>
                 </Button>
-                <div className="grid w-0 overflow-hidden opacity-0 transition-[width,opacity] duration-150 group-focus-within/volume:w-24 group-focus-within/volume:opacity-100 group-hover/volume:w-24 group-hover/volume:opacity-100">
-                  <input
-                    aria-label="Volume"
-                    type="range"
-                    min={0}
-                    max={1}
-                    step={0.01}
-                    value={media.muted ? 0 : media.volume}
-                    onChange={(event) => {
-                      media.setVideoVolume(Number(event.currentTarget.value))
-                    }}
-                    className="h-8 w-24 cursor-pointer accent-white"
-                  />
+                <div className="group/volume flex items-center gap-1 rounded-full focus-within:bg-white/10 hover:bg-white/10">
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    className="text-white hover:bg-transparent hover:text-white"
+                    onClick={media.toggleMute}
+                  >
+                    {media.muted || media.volume === 0 ? (
+                      <VolumeX />
+                    ) : (
+                      <Volume2 />
+                    )}
+                    <span className="sr-only">
+                      {media.muted ? "Unmute" : "Mute"}
+                    </span>
+                  </Button>
+                  <div className="grid w-0 overflow-hidden opacity-0 transition-[width,opacity] duration-150 group-focus-within/volume:w-24 group-focus-within/volume:opacity-100 group-hover/volume:w-24 group-hover/volume:opacity-100">
+                    <input
+                      aria-label="Volume"
+                      type="range"
+                      min={0}
+                      max={1}
+                      step={0.01}
+                      value={media.muted ? 0 : media.volume}
+                      onChange={(event) => {
+                        media.setVideoVolume(Number(event.currentTarget.value))
+                      }}
+                      className="h-8 w-24 cursor-pointer accent-white"
+                    />
+                  </div>
                 </div>
               </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <PlayerSettingsPopover
-                portalContainer={playerPortalContainer}
-                playback={playback}
-              />
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                className="text-white hover:bg-white/10 hover:text-white"
-                onClick={toggleFullscreen}
-              >
-                {fullscreen ? <Minimize /> : <Maximize />}
-                <span className="sr-only">
-                  {fullscreen ? "Exit full screen" : "Full screen"}
-                </span>
-              </Button>
+              <div className="flex items-center gap-2">
+                <PlayerSettingsPopover
+                  portalContainer={playerPortalContainer}
+                  playback={playback}
+                />
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  className="text-white hover:bg-white/10 hover:text-white"
+                  onClick={toggleFullscreen}
+                >
+                  {fullscreen ? <Minimize /> : <Maximize />}
+                  <span className="sr-only">
+                    {fullscreen ? "Exit full screen" : "Full screen"}
+                  </span>
+                </Button>
+              </div>
             </div>
           </div>
-        </div>
+        ) : (
+          <div className="absolute inset-x-0 bottom-0 z-30 flex items-center justify-center bg-gradient-to-t from-black/90 to-transparent p-3 pt-10 opacity-0 transition-opacity hover:opacity-100 focus-within:opacity-100">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="text-white hover:bg-white/15 hover:text-white"
+              onClick={media.togglePlayback}
+            >
+              {mediaLoading ? (
+                <Loader2 className="animate-spin" />
+              ) : media.playing ? (
+                <Pause />
+              ) : (
+                <Play />
+              )}
+              <span className="sr-only">
+                {media.playing ? "Pause" : "Play"}
+              </span>
+            </Button>
+          </div>
+        )}
       </main>
 
-      <EpisodeSheet
-        open={episodesOpen}
-        onOpenChange={setEpisodesOpen}
-        portalContainer={playerPortalContainer}
-        playback={playback}
-      />
+      {mode === "full" ? (
+        <EpisodeSheet
+          open={episodesOpen}
+          onOpenChange={setEpisodesOpen}
+          portalContainer={playerPortalContainer}
+          playback={playback}
+        />
+      ) : null}
     </PlayerShell>
   )
 }

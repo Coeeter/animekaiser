@@ -44,7 +44,7 @@ import {
   User,
 } from "lucide-react"
 import type { ReactNode } from "react"
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { ModeToggle } from "../../components/theme"
 import { searchOpenAtom } from "../anime/common/search-atoms"
 import { sessionAtom } from "../auth/atoms"
@@ -143,10 +143,19 @@ export function AppSidebarProvider({ children }: { children: ReactNode }) {
   const pathname = useLocation({ select: (l) => l.pathname })
   const isWatchRoute = pathname.startsWith("/watch/")
   const [open, setOpen] = useState(!isWatchRoute)
+  const openBeforeWatchRef = useRef(open)
+  const wasWatchRouteRef = useRef(isWatchRoute)
 
   useEffect(() => {
-    if (isWatchRoute) setOpen(false)
-  }, [isWatchRoute])
+    if (isWatchRoute && !wasWatchRouteRef.current) {
+      openBeforeWatchRef.current = open
+      setOpen(false)
+    } else if (!isWatchRoute && wasWatchRouteRef.current) {
+      setOpen(openBeforeWatchRef.current)
+    }
+
+    wasWatchRouteRef.current = isWatchRoute
+  }, [isWatchRoute, open])
 
   return (
     <SidebarProvider open={open} onOpenChange={setOpen}>

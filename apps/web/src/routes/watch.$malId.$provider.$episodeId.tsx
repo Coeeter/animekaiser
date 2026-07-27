@@ -1,3 +1,4 @@
+import { useAtomSet } from "@effect-atom/atom-react"
 import { createFileRoute } from "@tanstack/react-router"
 import type { StreamAudio } from "@workspace/domain"
 import {
@@ -5,7 +6,8 @@ import {
   StreamProviderId,
 } from "@workspace/domain"
 import * as Schema from "effect/Schema"
-import { StreamPlayerPage } from "../features/streaming/player-page"
+import { useEffect } from "react"
+import { playbackSessionAtom } from "../features/streaming/playback-session"
 
 const defaultAudio: StreamAudio = "sub"
 
@@ -46,5 +48,18 @@ function WatchRoute() {
     serverId: search.serverId,
   }
 
-  return <StreamPlayerPage input={input} />
+  const play = useAtomSet(playbackSessionAtom)
+
+  useEffect(() => {
+    play(input)
+  }, [
+    input.audio,
+    input.episodeId,
+    input.malId,
+    input.provider,
+    input.serverId,
+    play,
+  ])
+
+  return null
 }

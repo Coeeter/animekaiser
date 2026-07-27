@@ -1,12 +1,25 @@
 import { useAtomSet, useAtomValue } from "@effect-atom/atom-react"
-import type { StreamPlayback } from "@workspace/domain"
+import { Link } from "@tanstack/react-router"
+import type {
+  StreamAudio,
+  StreamPlayback,
+  StreamProviderId,
+} from "@workspace/domain"
 import { Button } from "@workspace/ui/components/button"
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from "@workspace/ui/components/popover"
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetTitle,
+  SheetTrigger,
+} from "@workspace/ui/components/sheet"
 import { Switch } from "@workspace/ui/components/switch"
+import { useIsMobile } from "@workspace/ui/hooks/use-mobile"
 import { cn } from "@workspace/ui/lib/utils"
 import {
   Captions,
@@ -22,12 +35,7 @@ import {
 } from "lucide-react"
 import type { ReactNode } from "react"
 import { useId, useState } from "react"
-import {
-  audioLabel,
-  megaPlayServerId,
-  speedOptions,
-  watchHref,
-} from "./player-format"
+import { audioLabel, megaPlayServerId, speedOptions } from "./player-format"
 import {
   playerCaptionAtom,
   playerQualityAtom,
@@ -60,6 +68,7 @@ export function PlayerSettingsPopover({
   const setSpeed = useAtomSet(playerSpeedAtom)
   const preferences = useAtomValue(playerPreferencesAtom)
   const updatePreferences = useAtomSet(updatePlayerPreferencesAtom)
+  const isMobile = useIsMobile()
   const [view, setView] = useState<
     "main" | "quality" | "captions" | "speed" | "audio" | "server"
   >("main")
@@ -82,18 +91,232 @@ export function PlayerSettingsPopover({
     setView("main")
   }
 
+  const trigger = (
+    <Button
+      variant="ghost"
+      size="icon-sm"
+      className="text-white hover:bg-white/10 hover:text-white"
+    >
+      <Settings />
+      <span className="sr-only">Player settings</span>
+    </Button>
+  )
+
+  const content = (
+    <div className="max-h-[inherit] overflow-y-auto overscroll-contain">
+      {view === "main" ? (
+        <div className="flex flex-col py-2">
+          <PlayerPreferenceSwitch
+            icon={<Play />}
+            label="Autoplay"
+            checked={preferences.autoplay}
+            onCheckedChange={(checked) =>
+              updatePreferences({ autoplay: checked })
+            }
+          />
+          <PlayerPreferenceSwitch
+            icon={<SkipForward />}
+            label="Auto next"
+            checked={preferences.autoNext}
+            onCheckedChange={(checked) =>
+              updatePreferences({ autoNext: checked })
+            }
+          />
+          <PlayerPreferenceSwitch
+            icon={<SkipForward />}
+            label="Auto skip intro"
+            checked={preferences.autoSkipIntro}
+            onCheckedChange={(checked) =>
+              updatePreferences({ autoSkipIntro: checked })
+            }
+          />
+          <PlayerPreferenceSwitch
+            icon={<SkipForward />}
+            label="Auto skip outro"
+            checked={preferences.autoSkipOutro}
+            onCheckedChange={(checked) =>
+              updatePreferences({ autoSkipOutro: checked })
+            }
+          />
+          <PlayerPreferenceSwitch
+            icon={<ListVideo />}
+            label="External list sync"
+            checked={preferences.syncLibraryOnFinish}
+            onCheckedChange={(checked) =>
+              updatePreferences({ syncLibraryOnFinish: checked })
+            }
+          />
+          <div className="my-2 h-px bg-white/10" />
+          <SettingSegmented
+            label="Video fit"
+            value={preferences.videoFit}
+            options={[
+              ["contain", "Contain"],
+              ["cover", "Cover"],
+              ["fill", "Fill"],
+            ]}
+            onValueChange={(videoFit) => updatePreferences({ videoFit })}
+          />
+          <div className="my-2 h-px bg-white/10" />
+          <SettingNavRow
+            icon={<Gauge />}
+            label="Quality"
+            value={currentQuality}
+            onClick={() => setView("quality")}
+          />
+          <SettingNavRow
+            icon={<Play />}
+            label="Speed"
+            value={currentSpeed}
+            onClick={() => setView("speed")}
+          />
+          <SettingNavRow
+            icon={<Volume2 />}
+            label="Audio"
+            value={audioLabel(playback.audio)}
+            onClick={() => setView("audio")}
+          />
+          <SettingNavRow
+            icon={<ListVideo />}
+            label="Server"
+            value={currentServer}
+            onClick={() => setView("server")}
+          />
+          <SettingNavRow
+            icon={<Captions />}
+            label="Subtitles"
+            value={currentCaption}
+            onClick={() => setView("captions")}
+          />
+        </div>
+      ) : null}
+
+      {view === "quality" ? (
+        <SettingsOptionPage title="Quality" onBack={() => setView("main")}>
+          <SettingsOption
+            label="Auto"
+            selected={quality === "-1"}
+            onClick={() => choose(() => setQuality("-1"))}
+          />
+          {qualityLevels.map((level) => (
+            <SettingsOption
+              key={level.index}
+              label={level.label}
+              selected={quality === String(level.index)}
+              onClick={() => choose(() => setQuality(String(level.index)))}
+            />
+          ))}
+        </SettingsOptionPage>
+      ) : null}
+
+      {view === "captions" ? (
+        <SettingsOptionPage title="Subtitles" onBack={() => setView("main")}>
+          <SettingsOption
+            label="Off"
+            selected={caption === "off"}
+            onClick={() => choose(() => setCaption("off"))}
+          />
+          {playback.tracks.map((track, index) => (
+            <SettingsOption
+              key={`${track.file}-${index}`}
+              label={track.label}
+              selected={caption === String(index)}
+              onClick={() => choose(() => setCaption(String(index)))}
+            />
+          ))}
+          <div className="my-2 h-px bg-white/10" />
+          <SubtitleSettings compact />
+        </SettingsOptionPage>
+      ) : null}
+
+      {view === "speed" ? (
+        <SettingsOptionPage title="Speed" onBack={() => setView("main")}>
+          {speedOptions.map((option) => (
+            <SettingsOption
+              key={option}
+              label={option === "1" ? "Normal" : `${option}x`}
+              selected={speed === option}
+              onClick={() => choose(() => setSpeed(option))}
+            />
+          ))}
+        </SettingsOptionPage>
+      ) : null}
+
+      {view === "audio" ? (
+        <SettingsOptionPage title="Audio" onBack={() => setView("main")}>
+          {playback.episode.availableAudio.map((audio) => (
+            <SettingsOption
+              key={audio}
+              label={audioLabel(audio)}
+              selected={audio === playback.audio}
+              watchRoute={{
+                malId: playback.anime.malId,
+                provider: playback.provider,
+                episodeId: playback.episode.id,
+                audio,
+              }}
+            />
+          ))}
+          <div className="my-2 h-px bg-white/10" />
+          <SettingRange
+            label="Audio enhancer"
+            value={preferences.audioEnhancementPercent}
+            min={100}
+            max={300}
+            step={25}
+            valueLabel={`${preferences.audioEnhancementPercent}%`}
+            onValueChange={(audioEnhancementPercent) =>
+              updatePreferences({ audioEnhancementPercent })
+            }
+          />
+        </SettingsOptionPage>
+      ) : null}
+
+      {view === "server" ? (
+        <SettingsOptionPage title="Server" onBack={() => setView("main")}>
+          {playback.servers.map((server) => (
+            <SettingsOption
+              key={server.id}
+              label={server.name}
+              selected={server.id === playback.server.id}
+              watchRoute={{
+                malId: playback.anime.malId,
+                provider: playback.provider,
+                episodeId: playback.episode.id,
+                audio: playback.audio,
+                serverId:
+                  server.id === megaPlayServerId ? undefined : server.id,
+              }}
+            />
+          ))}
+        </SettingsOptionPage>
+      ) : null}
+    </div>
+  )
+
+  if (isMobile) {
+    return (
+      <Sheet open={open} onOpenChange={setOpen}>
+        <SheetTrigger asChild>{trigger}</SheetTrigger>
+        <SheetContent
+          portalContainer={portalContainer}
+          side="bottom"
+          className="max-h-[82dvh] gap-0 overflow-hidden rounded-t-2xl border-white/10 bg-black/95 p-0 text-white shadow-2xl backdrop-blur-xl [@media_(orientation:portrait)]:max-h-[82dvw]"
+        >
+          <SheetTitle className="sr-only">Player settings</SheetTitle>
+          <SheetDescription className="sr-only">
+            Playback, audio, video, and subtitle settings.
+          </SheetDescription>
+          <div className="mx-auto mt-2 h-1 w-10 shrink-0 rounded-full bg-white/25" />
+          {content}
+        </SheetContent>
+      </Sheet>
+    )
+  }
+
   return (
     <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <Button
-          variant="ghost"
-          size="icon-sm"
-          className="text-white hover:bg-white/10 hover:text-white"
-        >
-          <Settings />
-          <span className="sr-only">Player settings</span>
-        </Button>
-      </PopoverTrigger>
+      <PopoverTrigger asChild>{trigger}</PopoverTrigger>
       <PopoverContent
         portalContainer={portalContainer}
         align="end"
@@ -101,198 +324,7 @@ export function PlayerSettingsPopover({
         sideOffset={12}
         className="max-h-[calc(100dvh-6rem)] w-[min(23rem,calc(100vw-1.5rem))] gap-0 overflow-hidden rounded-xl border border-white/10 bg-black/90 p-0 text-white shadow-2xl ring-white/10 backdrop-blur-md md:max-h-none"
       >
-        <div className="max-h-[inherit] overflow-y-auto md:overflow-visible">
-          {view === "main" ? (
-            <div className="flex flex-col py-2">
-              <PlayerPreferenceSwitch
-                icon={<Play />}
-                label="Autoplay"
-                checked={preferences.autoplay}
-                onCheckedChange={(checked) =>
-                  updatePreferences({ autoplay: checked })
-                }
-              />
-              <PlayerPreferenceSwitch
-                icon={<SkipForward />}
-                label="Auto next"
-                checked={preferences.autoNext}
-                onCheckedChange={(checked) =>
-                  updatePreferences({ autoNext: checked })
-                }
-              />
-              <PlayerPreferenceSwitch
-                icon={<SkipForward />}
-                label="Auto skip intro"
-                checked={preferences.autoSkipIntro}
-                onCheckedChange={(checked) =>
-                  updatePreferences({ autoSkipIntro: checked })
-                }
-              />
-              <PlayerPreferenceSwitch
-                icon={<SkipForward />}
-                label="Auto skip outro"
-                checked={preferences.autoSkipOutro}
-                onCheckedChange={(checked) =>
-                  updatePreferences({ autoSkipOutro: checked })
-                }
-              />
-              <PlayerPreferenceSwitch
-                icon={<ListVideo />}
-                label="External list sync"
-                checked={preferences.syncLibraryOnFinish}
-                onCheckedChange={(checked) =>
-                  updatePreferences({ syncLibraryOnFinish: checked })
-                }
-              />
-              <div className="my-2 h-px bg-white/10" />
-              <SettingSegmented
-                label="Video fit"
-                value={preferences.videoFit}
-                options={[
-                  ["contain", "Contain"],
-                  ["cover", "Cover"],
-                  ["fill", "Fill"],
-                ]}
-                onValueChange={(videoFit) => updatePreferences({ videoFit })}
-              />
-              <div className="my-2 h-px bg-white/10" />
-              <SettingNavRow
-                icon={<Gauge />}
-                label="Quality"
-                value={currentQuality}
-                onClick={() => setView("quality")}
-              />
-              <SettingNavRow
-                icon={<Play />}
-                label="Speed"
-                value={currentSpeed}
-                onClick={() => setView("speed")}
-              />
-              <SettingNavRow
-                icon={<Volume2 />}
-                label="Audio"
-                value={audioLabel(playback.audio)}
-                onClick={() => setView("audio")}
-              />
-              <SettingNavRow
-                icon={<ListVideo />}
-                label="Server"
-                value={currentServer}
-                onClick={() => setView("server")}
-              />
-              <SettingNavRow
-                icon={<Captions />}
-                label="Subtitles"
-                value={currentCaption}
-                onClick={() => setView("captions")}
-              />
-            </div>
-          ) : null}
-
-          {view === "quality" ? (
-            <SettingsOptionPage title="Quality" onBack={() => setView("main")}>
-              <SettingsOption
-                label="Auto"
-                selected={quality === "-1"}
-                onClick={() => choose(() => setQuality("-1"))}
-              />
-              {qualityLevels.map((level) => (
-                <SettingsOption
-                  key={level.index}
-                  label={level.label}
-                  selected={quality === String(level.index)}
-                  onClick={() => choose(() => setQuality(String(level.index)))}
-                />
-              ))}
-            </SettingsOptionPage>
-          ) : null}
-
-          {view === "captions" ? (
-            <SettingsOptionPage
-              title="Subtitles"
-              onBack={() => setView("main")}
-            >
-              <SettingsOption
-                label="Off"
-                selected={caption === "off"}
-                onClick={() => choose(() => setCaption("off"))}
-              />
-              {playback.tracks.map((track, index) => (
-                <SettingsOption
-                  key={`${track.file}-${index}`}
-                  label={track.label}
-                  selected={caption === String(index)}
-                  onClick={() => choose(() => setCaption(String(index)))}
-                />
-              ))}
-              <div className="my-2 h-px bg-white/10" />
-              <SubtitleSettings compact />
-            </SettingsOptionPage>
-          ) : null}
-
-          {view === "speed" ? (
-            <SettingsOptionPage title="Speed" onBack={() => setView("main")}>
-              {speedOptions.map((option) => (
-                <SettingsOption
-                  key={option}
-                  label={option === "1" ? "Normal" : `${option}x`}
-                  selected={speed === option}
-                  onClick={() => choose(() => setSpeed(option))}
-                />
-              ))}
-            </SettingsOptionPage>
-          ) : null}
-
-          {view === "audio" ? (
-            <SettingsOptionPage title="Audio" onBack={() => setView("main")}>
-              {playback.episode.availableAudio.map((audio) => (
-                <SettingsOption
-                  key={audio}
-                  label={audioLabel(audio)}
-                  selected={audio === playback.audio}
-                  href={watchHref({
-                    malId: playback.anime.malId,
-                    provider: playback.provider,
-                    episodeId: playback.episode.id,
-                    audio,
-                  })}
-                />
-              ))}
-              <div className="my-2 h-px bg-white/10" />
-              <SettingRange
-                label="Audio enhancer"
-                value={preferences.audioEnhancementPercent}
-                min={100}
-                max={300}
-                step={25}
-                valueLabel={`${preferences.audioEnhancementPercent}%`}
-                onValueChange={(audioEnhancementPercent) =>
-                  updatePreferences({ audioEnhancementPercent })
-                }
-              />
-            </SettingsOptionPage>
-          ) : null}
-
-          {view === "server" ? (
-            <SettingsOptionPage title="Server" onBack={() => setView("main")}>
-              {playback.servers.map((server) => (
-                <SettingsOption
-                  key={server.id}
-                  label={server.name}
-                  selected={server.id === playback.server.id}
-                  href={watchHref({
-                    malId: playback.anime.malId,
-                    provider: playback.provider,
-                    episodeId: playback.episode.id,
-                    audio: playback.audio,
-                    serverId:
-                      server.id === megaPlayServerId ? undefined : server.id,
-                  })}
-                />
-              ))}
-            </SettingsOptionPage>
-          ) : null}
-        </div>
+        {content}
       </PopoverContent>
     </Popover>
   )
@@ -456,12 +488,18 @@ function SettingsOption({
   label,
   selected,
   onClick,
-  href,
+  watchRoute,
 }: {
   label: string
   selected: boolean
   onClick?: () => void
-  href?: string | undefined
+  watchRoute?: {
+    malId: number
+    provider: StreamProviderId
+    episodeId: string
+    audio: StreamAudio
+    serverId?: string | undefined
+  }
 }) {
   const className =
     "grid w-full grid-cols-[1.5rem_1fr] items-center gap-3 px-4 py-2.5 text-left text-sm transition hover:bg-white/10"
@@ -472,15 +510,21 @@ function SettingsOption({
     </>
   )
 
-  if (href) {
+  if (watchRoute) {
     return (
-      <a
-        href={href}
+      <Link
+        to="/watch/$malId/$provider/$episodeId"
+        params={{
+          malId: watchRoute.malId,
+          provider: watchRoute.provider,
+          episodeId: watchRoute.episodeId,
+        }}
+        search={{ audio: watchRoute.audio, serverId: watchRoute.serverId }}
         className={className}
         aria-current={selected ? "page" : undefined}
       >
         {content}
-      </a>
+      </Link>
     )
   }
 

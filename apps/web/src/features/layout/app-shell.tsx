@@ -5,6 +5,7 @@ import { DataError } from "../../components/data-error"
 import { SearchDialog } from "../anime/common/search-dialog"
 import { isProtectedRoute, sessionAtom } from "../auth/atoms"
 import { SettingsDialog } from "../settings/settings-dialog"
+import { PlaybackSessionHost } from "../streaming/playback-session"
 import { AppSidebar, AppSidebarProvider } from "./app-sidebar"
 
 const authRoutes = new Set(["/login", "/register", "/forgot-password"])
@@ -56,6 +57,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         <AppSidebar>{children}</AppSidebar>
         <SearchDialog />
         <SettingsDialog />
+        <PlaybackSessionHost />
       </AppSidebarProvider>
     </>
   )
