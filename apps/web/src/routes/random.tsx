@@ -1,13 +1,15 @@
 import { Result, useAtomRefresh, useAtomValue } from "@effect-atom/atom-react"
 import { createFileRoute, Navigate } from "@tanstack/react-router"
+import { useState } from "react"
 import { DataError } from "../components/data-error"
-import { randomAnimeAtom } from "../features/anime/home/atoms"
+import { makeRandomAnimeAtom } from "../features/anime/home/atoms"
 
 export const Route = createFileRoute("/random")({
   component: RandomRoute,
 })
 
 function RandomRoute() {
+  const [randomAnimeAtom] = useState(makeRandomAnimeAtom)
   const result = useAtomValue(randomAnimeAtom)
   const refresh = useAtomRefresh(randomAnimeAtom)
   return Result.builder(result)
