@@ -103,7 +103,7 @@ export function PlayerSettingsPopover({
   )
 
   const content = (
-    <div className="max-h-[inherit] overflow-y-auto overscroll-contain">
+    <div className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain">
       {view === "main" ? (
         <div className="flex flex-col py-2">
           <PlayerPreferenceSwitch
