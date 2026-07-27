@@ -16,7 +16,16 @@ const PositivePage = Schema.Union(Schema.Number, Schema.NumberFromString).pipe(
 const SeriesSearch = Schema.Struct({
   tab: Schema.optional(AnimeDetailTab),
   episodePage: Schema.optional(PositivePage),
-  provider: Schema.optional(StreamProviderId),
+  provider: Schema.optional(
+    Schema.String.pipe(
+      Schema.transform(Schema.Union(StreamProviderId, Schema.Undefined), {
+        strict: true,
+        decode: (provider) =>
+          Schema.is(StreamProviderId)(provider) ? provider : undefined,
+        encode: (provider) => provider ?? "",
+      })
+    )
+  ),
 })
 
 export const Route = createFileRoute("/series/$id")({

@@ -11,7 +11,6 @@ import type {
   StreamPlayback,
   StreamProviderId,
 } from "@workspace/domain"
-import { Badge } from "@workspace/ui/components/badge"
 import { Button } from "@workspace/ui/components/button"
 import { Skeleton } from "@workspace/ui/components/skeleton"
 import { cn } from "@workspace/ui/lib/utils"
@@ -25,6 +24,7 @@ import {
   Play,
   RotateCcw,
   RotateCw,
+  Server,
   SkipForward,
   Volume2,
   VolumeX,
@@ -50,6 +50,7 @@ import {
   providerLabel,
   videoFitClass,
 } from "./player-format"
+import { ServerSheet } from "./player-server-sheet"
 import { PlayerSettingsPopover } from "./player-settings-popover"
 import { PlayerTimeline } from "./player-timeline"
 import {
@@ -125,20 +126,57 @@ export function StreamPlayerPage({
   )
   const result = useAtomValue(atom)
   const refresh = useAtomRefresh(atom)
+  const [recoveryEpisodesOpen, setRecoveryEpisodesOpen] = useState(false)
 
   return Result.builder(result)
-    .onInitialOrWaiting(() => <StreamPlayerPendingPage mode={mode} />)
-    .onFailure(() => (
-      <PlayerShell className={mode === "mini" ? miniPlayerClass : undefined}>
-        <div className="m-auto w-full max-w-xl p-4">
-          <DataError
-            title="Unable to load this stream"
-            description="Provider may be unavailable. Try again or choose another episode."
-            onRetry={refresh}
+    .onInitialOrWaiting(() =>
+      mode === "mini" ? null : <StreamPlayerPendingPage mode="full" />
+    )
+    .onFailure(() =>
+      mode === "mini" ? null : (
+        <>
+          <PlayerShell>
+            <div className="m-auto flex w-full max-w-xl flex-col gap-4 p-4">
+              <DataError
+                title="Unable to load this stream"
+                description="The selected server or provider may be unavailable."
+                onRetry={refresh}
+              />
+              <div className="flex flex-wrap justify-center gap-2">
+                <Button asChild>
+                  <Link
+                    to="/watch/$malId/$provider/$episodeId"
+                    params={{
+                      malId: input.malId,
+                      provider: input.provider,
+                      episodeId: input.episodeId,
+                    }}
+                    search={{ audio: input.audio }}
+                    replace
+                  >
+                    <Server data-icon="inline-start" />
+                    Default server
+                  </Link>
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => setRecoveryEpisodesOpen(true)}
+                >
+                  <ListVideo data-icon="inline-start" />
+                  Change provider or episode
+                </Button>
+              </div>
+            </div>
+          </PlayerShell>
+          <EpisodeSheet
+            open={recoveryEpisodesOpen}
+            onOpenChange={setRecoveryEpisodesOpen}
+            portalContainer={null}
+            selection={input}
           />
-        </div>
-      </PlayerShell>
-    ))
+        </>
+      )
+    )
     .onSuccess((playback) => {
       const title = playback.anime.title.english ?? playback.anime.title.romaji
       return (
@@ -252,6 +290,7 @@ function StreamPlayer({
     updatePlayerUi({ episodesOpen: open })
 
   const [controlsVisible, setControlsVisible] = useState(true)
+  const [serversOpen, setServersOpen] = useState(false)
   const controlsVisibleRef = useRef(controlsVisible)
 
   const videoPointerRef = useRef<{
@@ -359,7 +398,7 @@ function StreamPlayer({
     controlsVisibleRef.current = true
     setControlsVisible(true)
 
-    if (!media.playing || settingsOpen || episodesOpen) return
+    if (!media.playing || settingsOpen || episodesOpen || serversOpen) return
 
     controlsTimeoutRef.current = window.setTimeout(() => {
       controlsVisibleRef.current = false
@@ -889,22 +928,38 @@ function StreamPlayer({
                 <p className="truncate text-sm font-medium text-white">
                   <AnimeTitle title={playback.anime.title} />
                 </p>
-                <p className="truncate text-xs text-white/55">
+                <p
+                  className="truncate text-xs text-white/55"
+                  title={`${episodeLabel(playback.episode)}${displayEpisodeTitle ? ` · ${displayEpisodeTitle}` : ""}`}
+                >
                   {episodeLabel(playback.episode)}
                   {displayEpisodeTitle ? ` · ${displayEpisodeTitle}` : ""}
                 </p>
               </button>
-              <Badge className="hidden border-white/10 bg-white/10 text-white md:inline-flex">
-                {providerLabel(playback.provider)}
-              </Badge>
               <Button
                 variant="ghost"
-                size="icon-sm"
-                className="text-white hover:bg-white/10 hover:text-white"
+                size="sm"
+                className="max-w-44 text-white hover:bg-white/10 hover:text-white"
                 onClick={() => setEpisodesOpen(true)}
               >
                 <ListVideo />
-                <span className="sr-only">Episodes</span>
+                <span
+                  className="truncate"
+                  title={`${providerLabel(playback.provider)} episodes`}
+                >
+                  {providerLabel(playback.provider)} episodes
+                </span>
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="max-w-40 text-white hover:bg-white/10 hover:text-white"
+                onClick={() => setServersOpen(true)}
+              >
+                <Server />
+                <span className="truncate" title={playback.server.name}>
+                  {playback.server.name}
+                </span>
               </Button>
             </div>
 
@@ -1074,12 +1129,27 @@ function StreamPlayer({
       </main>
 
       {mode === "full" ? (
-        <EpisodeSheet
-          open={episodesOpen}
-          onOpenChange={setEpisodesOpen}
-          portalContainer={playerPortalContainer}
-          playback={playback}
-        />
+        <>
+          <EpisodeSheet
+            key={playback.provider}
+            open={episodesOpen}
+            onOpenChange={setEpisodesOpen}
+            portalContainer={playerPortalContainer}
+            selection={{
+              malId: playback.anime.malId,
+              provider: playback.provider,
+              episodeId: playback.episode.id,
+              audio: playback.audio,
+            }}
+          />
+          <ServerSheet
+            key={playback.server.id}
+            open={serversOpen}
+            onOpenChange={setServersOpen}
+            portalContainer={playerPortalContainer}
+            playback={playback}
+          />
+        </>
       ) : null}
     </PlayerShell>
   )

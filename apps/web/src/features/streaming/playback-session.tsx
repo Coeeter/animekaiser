@@ -1,5 +1,7 @@
 import { Atom, useAtomSet, useAtomValue } from "@effect-atom/atom-react"
 import { useLocation, useNavigate } from "@tanstack/react-router"
+import { useIsMobile } from "@workspace/ui/hooks/use-mobile"
+import { useEffect } from "react"
 import { type StreamPlaybackInput, StreamPlayerPage } from "./player-page"
 
 export const playbackSessionAtom = Atom.make<StreamPlaybackInput | null>(
@@ -19,6 +21,11 @@ export function PlaybackSessionHost() {
   const input = useAtomValue(playbackSessionAtom)
   const setInput = useAtomSet(playbackSessionAtom)
   const expanded = location.pathname.startsWith("/watch/")
+  const isMobile = useIsMobile()
+
+  useEffect(() => {
+    if (isMobile && !expanded) setInput(null)
+  }, [expanded, isMobile, setInput])
 
   const close = () => {
     setInput(null)
@@ -26,11 +33,14 @@ export function PlaybackSessionHost() {
       void navigate({ to: "/series/$id", params: { id: input.malId } })
   }
 
-  return input ? (
+  if (!input) return null
+  if (isMobile && !expanded) return null
+
+  return (
     <StreamPlayerPage
       input={input}
       mode={expanded ? "full" : "mini"}
       onClose={close}
     />
-  ) : null
+  )
 }

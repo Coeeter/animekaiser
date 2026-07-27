@@ -47,9 +47,12 @@ export const watchAction = (
 
 export const formatTime = (seconds: number) => {
   if (!Number.isFinite(seconds)) return "0:00"
-  const minutes = Math.floor(seconds / 60)
-  const remainingSeconds = Math.floor(seconds % 60)
-  return `${minutes}:${remainingSeconds.toString().padStart(2, "0")}`
+  const totalSeconds = Math.max(0, Math.floor(seconds))
+  const hours = Math.floor(totalSeconds / 3600)
+  const minutes = Math.floor((totalSeconds % 3600) / 60)
+  const remainingSeconds = totalSeconds % 60
+  const time = `${minutes.toString().padStart(hours > 0 ? 2 : 1, "0")}:${remainingSeconds.toString().padStart(2, "0")}`
+  return hours > 0 ? `${hours}:${time}` : time
 }
 
 const providerLabels: Record<StreamProviderId, string> = {

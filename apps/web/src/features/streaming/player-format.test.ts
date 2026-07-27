@@ -1,9 +1,19 @@
 import { describe, expect, test } from "bun:test"
 import {
+  formatTime,
   nextStreamServer,
   watchAction,
   watchEpisodeNumber,
 } from "./player-format"
+
+describe("formatTime", () => {
+  test("includes hours for long media", () => {
+    expect(formatTime(65)).toBe("1:05")
+    expect(formatTime(3599)).toBe("59:59")
+    expect(formatTime(3600)).toBe("1:00:00")
+    expect(formatTime(5997)).toBe("1:39:57")
+  })
+})
 
 describe("watchEpisodeNumber", () => {
   test("starts new viewers at one and resumes after completed progress", () => {

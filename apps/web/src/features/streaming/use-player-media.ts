@@ -26,6 +26,7 @@ export function usePlayerMedia({
   const audioContextRef = useRef<AudioContext | null>(null)
   const audioSourceRef = useRef<MediaElementAudioSourceNode | null>(null)
   const audioGainRef = useRef<GainNode | null>(null)
+  const audioCleanupTimerRef = useRef<number | null>(null)
   const reportedFailureRef = useRef<string | null>(null)
   const onFatalErrorRef = useRef(onFatalError)
   onFatalErrorRef.current = onFatalError
@@ -249,12 +250,25 @@ export function usePlayerMedia({
     graph.gain.gain.value = audioEnhancementPercent / 100
   }, [audioEnhancementPercent])
 
-  useEffect(
-    () => () => {
-      void audioContextRef.current?.close()
-    },
-    []
-  )
+  useEffect(() => {
+    if (audioCleanupTimerRef.current !== null) {
+      window.clearTimeout(audioCleanupTimerRef.current)
+      audioCleanupTimerRef.current = null
+    }
+
+    return () => {
+      audioCleanupTimerRef.current = window.setTimeout(() => {
+        const context = audioContextRef.current
+        audioSourceRef.current?.disconnect()
+        audioGainRef.current?.disconnect()
+        audioContextRef.current = null
+        audioSourceRef.current = null
+        audioGainRef.current = null
+        audioCleanupTimerRef.current = null
+        void context?.close()
+      }, 0)
+    }
+  }, [])
 
   return {
     videoRef,

@@ -138,65 +138,76 @@ export function EpisodesPanel({
     .render()
 
   const { catalog } = state
-  const providers = catalog?.providers ?? []
-
   const currentProvider =
-    providers.find((provider) => provider.provider === selectedProvider) ??
-    providers.at(0) ??
-    null
+    catalog?.providers.find(
+      (provider) => provider.provider === selectedProvider
+    ) ?? null
 
-  const selectValue = currentProvider
-    ? currentProvider.provider
-    : selectedProvider
+  const providerSelector = (
+    <div className="flex flex-col gap-3 rounded-xl border bg-card/80 p-4 sm:flex-row sm:items-center sm:justify-between">
+      <div>
+        <p className="text-sm font-medium">Episodes</p>
+        <p className="text-xs text-muted-foreground">
+          Choose a provider, then pick an episode to watch.
+        </p>
+      </div>
+      <Select
+        value={selectedProvider}
+        onValueChange={(value) => onProviderChange(decodeProviderId(value))}
+      >
+        <SelectTrigger className="w-full sm:w-44">
+          <SelectValue placeholder="Provider" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectGroup>
+            {streamProviderIds.map((provider) => (
+              <SelectItem key={provider} value={provider}>
+                {providerLabel(provider)}
+              </SelectItem>
+            ))}
+          </SelectGroup>
+        </SelectContent>
+      </Select>
+    </div>
+  )
 
-  if (state.loading) return <EpisodesPending />
+  if (state.loading) {
+    return (
+      <div className="flex flex-col gap-4">
+        {providerSelector}
+        <EpisodesPending />
+      </div>
+    )
+  }
 
   if (state.failed) {
     return (
-      <DataError
-        title="Episodes are unavailable"
-        description="The streaming providers could not be reached right now."
-        onRetry={refresh}
-      />
+      <div className="flex flex-col gap-4">
+        {providerSelector}
+        <DataError
+          title="Episodes are unavailable"
+          description="The streaming providers could not be reached right now."
+          onRetry={refresh}
+        />
+      </div>
     )
   }
 
   if (!currentProvider) {
     return (
-      <EpisodesEmpty
-        title="Episodes are not available yet"
-        description="No streaming provider is configured for this title."
-      />
+      <div className="flex flex-col gap-4">
+        {providerSelector}
+        <EpisodesEmpty
+          title="Episodes are not available yet"
+          description="No streaming provider is configured for this title."
+        />
+      </div>
     )
   }
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-col gap-3 rounded-xl border bg-card/80 p-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <p className="text-sm font-medium">Episodes</p>
-          <p className="text-xs text-muted-foreground">
-            Choose a provider, then pick an episode to watch.
-          </p>
-        </div>
-        <Select
-          value={selectValue}
-          onValueChange={(value) => onProviderChange(decodeProviderId(value))}
-        >
-          <SelectTrigger className="w-full sm:w-44">
-            <SelectValue placeholder="Provider" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectGroup>
-              {streamProviderIds.map((provider) => (
-                <SelectItem key={provider} value={provider}>
-                  {providerLabel(provider)}
-                </SelectItem>
-              ))}
-            </SelectGroup>
-          </SelectContent>
-        </Select>
-      </div>
+      {providerSelector}
 
       <ProviderEpisodes
         anime={anime}

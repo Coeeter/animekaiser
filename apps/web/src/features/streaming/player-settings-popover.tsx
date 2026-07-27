@@ -35,7 +35,7 @@ import {
 } from "lucide-react"
 import type { ReactNode } from "react"
 import { useId, useState } from "react"
-import { audioLabel, megaPlayServerId, speedOptions } from "./player-format"
+import { audioLabel, speedOptions } from "./player-format"
 import {
   playerCaptionAtom,
   playerQualityAtom,
@@ -70,7 +70,7 @@ export function PlayerSettingsPopover({
   const updatePreferences = useAtomSet(updatePlayerPreferencesAtom)
   const isMobile = useIsMobile()
   const [view, setView] = useState<
-    "main" | "quality" | "captions" | "speed" | "audio" | "server"
+    "main" | "quality" | "captions" | "speed" | "audio"
   >("main")
   const open = playerUi.settingsOpen
   const setOpen = (settingsOpen: boolean) => updatePlayerUi({ settingsOpen })
@@ -84,7 +84,6 @@ export function PlayerSettingsPopover({
       ? "Off"
       : (playback.tracks[Number(caption)]?.label ?? "Off")
   const currentSpeed = speed === "1" ? "Normal" : `${speed}x`
-  const currentServer = playback.server.name
 
   const choose = (action: () => void) => {
     action()
@@ -177,12 +176,6 @@ export function PlayerSettingsPopover({
             onClick={() => setView("audio")}
           />
           <SettingNavRow
-            icon={<ListVideo />}
-            label="Server"
-            value={currentServer}
-            onClick={() => setView("server")}
-          />
-          <SettingNavRow
             icon={<Captions />}
             label="Subtitles"
             value={currentCaption}
@@ -269,26 +262,6 @@ export function PlayerSettingsPopover({
               updatePreferences({ audioEnhancementPercent })
             }
           />
-        </SettingsOptionPage>
-      ) : null}
-
-      {view === "server" ? (
-        <SettingsOptionPage title="Server" onBack={() => setView("main")}>
-          {playback.servers.map((server) => (
-            <SettingsOption
-              key={server.id}
-              label={server.name}
-              selected={server.id === playback.server.id}
-              watchRoute={{
-                malId: playback.anime.malId,
-                provider: playback.provider,
-                episodeId: playback.episode.id,
-                audio: playback.audio,
-                serverId:
-                  server.id === megaPlayServerId ? undefined : server.id,
-              }}
-            />
-          ))}
         </SettingsOptionPage>
       ) : null}
     </div>

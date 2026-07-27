@@ -1,13 +1,23 @@
 import { Result, useAtomValue } from "@effect-atom/atom-react"
 import { Link } from "@tanstack/react-router"
 import type {
+  StreamAudio,
   StreamEpisode,
-  StreamPlayback,
   StreamProviderEpisodes,
+  StreamProviderId,
 } from "@workspace/domain"
+import { streamProviderIds } from "@workspace/domain"
 import { Badge } from "@workspace/ui/components/badge"
 import { Button } from "@workspace/ui/components/button"
 import { Input } from "@workspace/ui/components/input"
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@workspace/ui/components/select"
 import {
   Sheet,
   SheetContent,
@@ -45,25 +55,29 @@ export function EpisodeSheet({
   open,
   onOpenChange,
   portalContainer,
-  playback,
+  selection,
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
   portalContainer: HTMLElement | null
-  playback: StreamPlayback
+  selection: {
+    malId: number
+    provider: StreamProviderId
+    episodeId: string
+    audio: StreamAudio
+  }
 }) {
+  const [selectedProvider, setSelectedProvider] = useState(selection.provider)
   const result = useAtomValue(
-    streamEpisodesAtom(playback.anime.malId, playback.provider)
+    streamEpisodesAtom(selection.malId, selectedProvider)
   )
 
   const catalog = Result.builder(result)
     .onSuccess((value) => value)
     .orNull()
 
-  const playbackProvider: string = playback.provider
-
   const provider =
-    catalog?.providers.find((item) => item.provider === playbackProvider) ??
+    catalog?.providers.find((item) => item.provider === selectedProvider) ??
     null
 
   return (
@@ -74,17 +88,43 @@ export function EpisodeSheet({
         side="right"
       >
         <SheetHeader>
-          <SheetTitle>Episodes</SheetTitle>
+          <SheetTitle>Choose a stream</SheetTitle>
           <SheetDescription>
-            {providerLabel(playback.provider)} episodes for{" "}
-            <AnimeTitle title={playback.anime.title} />.
+            Switch providers and choose an episode of{" "}
+            {catalog ? (
+              <AnimeTitle title={catalog.anime.title} />
+            ) : (
+              "this anime"
+            )}
+            .
           </SheetDescription>
         </SheetHeader>
         <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto px-6 pb-6">
+          <Select
+            value={selectedProvider}
+            onValueChange={(value) => {
+              setSelectedProvider(value as StreamProviderId)
+            }}
+          >
+            <SelectTrigger className="mb-2 w-full">
+              <SelectValue placeholder="Provider" />
+            </SelectTrigger>
+            <SelectContent portalContainer={portalContainer}>
+              <SelectGroup>
+                {streamProviderIds.map((providerId) => (
+                  <SelectItem key={providerId} value={providerId}>
+                    {providerLabel(providerId)}
+                  </SelectItem>
+                ))}
+              </SelectGroup>
+            </SelectContent>
+          </Select>
           {provider ? (
             <EpisodeSheetList
+              key={selectedProvider}
               provider={provider}
-              playback={playback}
+              selectedProvider={selectedProvider}
+              selection={selection}
               onSelect={() => onOpenChange(false)}
             />
           ) : (
@@ -98,11 +138,18 @@ export function EpisodeSheet({
 
 function EpisodeSheetList({
   provider,
-  playback,
+  selectedProvider,
+  selection,
   onSelect,
 }: {
   provider: StreamProviderEpisodes
-  playback: StreamPlayback
+  selectedProvider: StreamProviderId
+  selection: {
+    malId: number
+    provider: StreamProviderId
+    episodeId: string
+    audio: StreamAudio
+  }
   onSelect: () => void
 }) {
   const [query, setQuery] = useState("")
@@ -188,14 +235,16 @@ function EpisodeSheetList({
                 <EpisodeSheetNumberButton
                   key={episode.id}
                   episode={episode}
-                  playback={playback}
+                  selection={selection}
+                  selectedProvider={selectedProvider}
                   onSelect={onSelect}
                 />
               ) : (
                 <EpisodeSheetRow
                   key={episode.id}
                   episode={episode}
-                  playback={playback}
+                  selection={selection}
+                  selectedProvider={selectedProvider}
                   onSelect={onSelect}
                 />
               )
@@ -237,24 +286,33 @@ function EpisodeSheetList({
 
 function episodeAudioForPlayback(
   episode: StreamEpisode,
-  playback: StreamPlayback
+  playbackAudio: StreamAudio
 ) {
-  return episode.availableAudio.includes(playback.audio)
-    ? playback.audio
+  return episode.availableAudio.includes(playbackAudio)
+    ? playbackAudio
     : preferredAudio(episode)
 }
 
 function EpisodeSheetRow({
   episode,
-  playback,
+  selection,
+  selectedProvider,
   onSelect,
 }: {
   episode: StreamEpisode
-  playback: StreamPlayback
+  selection: {
+    malId: number
+    provider: StreamProviderId
+    episodeId: string
+    audio: StreamAudio
+  }
+  selectedProvider: StreamProviderId
   onSelect: () => void
 }) {
-  const audio = episodeAudioForPlayback(episode, playback)
-  const isCurrent = episode.id === playback.episode.id
+  const audio = episodeAudioForPlayback(episode, selection.audio)
+  const isCurrent =
+    selectedProvider === selection.provider &&
+    episode.id === selection.episodeId
   const title = episodeTitle(episode)
   const content = (
     <>
@@ -268,7 +326,10 @@ function EpisodeSheetRow({
       </div>
       <div className="min-w-0 flex-1">
         <div className="flex min-w-0 flex-wrap items-center gap-2">
-          <span className="truncate text-sm font-medium">
+          <span
+            className="truncate text-sm font-medium"
+            title={title ?? episodeLabel(episode)}
+          >
             {title ?? episodeLabel(episode)}
           </span>
           {isCurrent ? <Badge>Now playing</Badge> : null}
@@ -312,8 +373,8 @@ function EpisodeSheetRow({
     <Link
       to="/watch/$malId/$provider/$episodeId"
       params={{
-        malId: playback.anime.malId,
-        provider: playback.provider,
+        malId: selection.malId,
+        provider: selectedProvider,
         episodeId: episode.id,
       }}
       search={{ audio }}
@@ -327,15 +388,24 @@ function EpisodeSheetRow({
 
 function EpisodeSheetNumberButton({
   episode,
-  playback,
+  selection,
+  selectedProvider,
   onSelect,
 }: {
   episode: StreamEpisode
-  playback: StreamPlayback
+  selection: {
+    malId: number
+    provider: StreamProviderId
+    episodeId: string
+    audio: StreamAudio
+  }
+  selectedProvider: StreamProviderId
   onSelect: () => void
 }) {
-  const audio = episodeAudioForPlayback(episode, playback)
-  const isCurrent = episode.id === playback.episode.id
+  const audio = episodeAudioForPlayback(episode, selection.audio)
+  const isCurrent =
+    selectedProvider === selection.provider &&
+    episode.id === selection.episodeId
   const title = episodeTitle(episode)
   const label = title ?? episodeLabel(episode)
   const className = cn(
@@ -351,8 +421,8 @@ function EpisodeSheetNumberButton({
       <Link
         to="/watch/$malId/$provider/$episodeId"
         params={{
-          malId: playback.anime.malId,
-          provider: playback.provider,
+          malId: selection.malId,
+          provider: selectedProvider,
           episodeId: episode.id,
         }}
         search={{ audio }}
