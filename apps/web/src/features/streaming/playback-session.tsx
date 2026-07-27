@@ -6,6 +6,13 @@ export const playbackSessionAtom = Atom.make<StreamPlaybackInput | null>(
   null
 ).pipe(Atom.keepAlive)
 
+export const mountPlaybackSessionAtom = Atom.family(
+  (input: StreamPlaybackInput) =>
+    Atom.make((get) => {
+      get.set(playbackSessionAtom, input)
+    })
+)
+
 export function PlaybackSessionHost() {
   const location = useLocation()
   const navigate = useNavigate()
