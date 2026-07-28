@@ -76,20 +76,14 @@ export class ExternalListOAuthStateStore extends Effect.Service<ExternalListOAut
             const id = crypto.randomUUID()
             const value = yield* Schema.encode(
               Schema.parseJson(ExternalListOAuthState)
-            )(state).pipe(
-              Effect.mapError(
-                (cause) => new ExternalListOAuthStateStoreError({ cause })
-              )
-            )
-            yield* storage
-              .set(key(id), value, 600)
-              .pipe(
-                Effect.mapError(
-                  (cause) => new ExternalListOAuthStateStoreError({ cause })
-                )
-              )
+            )(state)
+            yield* storage.set(key(id), value, 600)
             return id
-          }),
+          }).pipe(
+            Effect.mapError(
+              (cause) => new ExternalListOAuthStateStoreError({ cause })
+            )
+          ),
         take: (id: string) =>
           storage.getDelete(key(id)).pipe(
             Effect.mapError(

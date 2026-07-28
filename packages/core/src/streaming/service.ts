@@ -1,5 +1,4 @@
 import type {
-  AnimeNotFoundError,
   StreamAudio,
   StreamPlayback,
   StreamProviderEpisodes,
@@ -61,16 +60,16 @@ export class StreamingService extends Effect.Service<StreamingService>()(
 
       const getAnime = (malId: number) =>
         animeService.getDetail(malId).pipe(
-          Effect.catchTag("AnimeNotFoundError", (error: AnimeNotFoundError) =>
-            Effect.fail(
-              new StreamingUnavailableError({ message: error.message })
-            )
-          ),
-          Effect.catchTag("AnimeUnavailableError", (error) =>
-            Effect.fail(
-              new StreamingUnavailableError({ message: error.message })
-            )
-          )
+          Effect.catchTags({
+            AnimeNotFoundError: (error) =>
+              Effect.fail(
+                new StreamingUnavailableError({ message: error.message })
+              ),
+            AnimeUnavailableError: (error) =>
+              Effect.fail(
+                new StreamingUnavailableError({ message: error.message })
+              ),
+          })
         )
 
       const notReleasedMessage = "This anime has not been released yet."

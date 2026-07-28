@@ -353,7 +353,7 @@ const anilistSort = (sort: AnimeSort, hasSearch: boolean) => {
   return ["POPULARITY_DESC"]
 }
 
-const anilistStatus = (status?: typeof AnimeCatalogStatus.Type) => {
+const anilistStatus = (status?: AnimeCatalogStatus) => {
   if (status === "airing") return "RELEASING"
   if (status === "complete") return "FINISHED"
   if (status === "upcoming") return "NOT_YET_RELEASED"
@@ -365,12 +365,12 @@ export type AnimeCatalogRequest = {
   page: number
   perPage: number
   sort: AnimeSort
-  status?: typeof AnimeCatalogStatus.Type
+  status?: AnimeCatalogStatus
   format?: AnimeFormat
   genres?: ReadonlyArray<string>
   season?: AnimeSeason
   seasonYear?: number
-  rating?: typeof AnimeRating.Type
+  rating?: AnimeRating
   minScore?: number
   maxScore?: number
 }
