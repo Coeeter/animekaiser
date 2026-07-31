@@ -87,7 +87,20 @@ function DialogHeader({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
       data-slot="dialog-header"
-      className={cn("flex flex-col gap-1.5", className)}
+      className={cn("flex shrink-0 flex-col gap-1.5", className)}
+      {...props}
+    />
+  )
+}
+
+function DialogBody({ className, ...props }: React.ComponentProps<"div">) {
+  return (
+    <div
+      data-slot="dialog-body"
+      className={cn(
+        "min-h-0 flex-1 overflow-y-auto overscroll-contain",
+        className
+      )}
       {...props}
     />
   )
@@ -154,6 +167,7 @@ function DialogDescription({
 
 export {
   Dialog,
+  DialogBody,
   DialogClose,
   DialogContent,
   DialogDescription,

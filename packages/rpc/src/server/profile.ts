@@ -1,6 +1,10 @@
 import { AuthServer } from "@animekaiser/auth/server"
 import type { ProfileRecord } from "@animekaiser/core"
-import { ProfileMediaService, ProfileService } from "@animekaiser/core"
+import {
+  ProfileMediaService,
+  ProfileService,
+  ProfileStatsService,
+} from "@animekaiser/core"
 import {
   CurrentUser,
   OptionalCurrentUser,
@@ -20,6 +24,8 @@ const profileView = (record: ProfileRecord, publicUrl: string) => ({
       : null,
     description: record.profile.description,
     private: record.profile.private,
+    shareStats: record.profile.shareStats,
+    shareActivity: record.profile.shareActivity,
   },
 })
 
@@ -53,6 +59,66 @@ export const ProfileHandlersLive = ProfileRpcs.toLayer(
             },
           })
         }),
+      GetOwnProfileStats: () =>
+        Effect.gen(function* () {
+          const current = yield* CurrentUser
+          return yield* ProfileStatsService.forUser(current.id).pipe(
+            Effect.catchTag("ProfileStatsServiceError", (error) =>
+              Effect.fail(new ProfileOperationError({ message: error.message }))
+            )
+          )
+        }),
+      GetPublicProfileStats: ({ username }) =>
+        Effect.gen(function* () {
+          const current = yield* OptionalCurrentUser
+          const result = yield* ProfileService.getPublicProfile(username)
+
+          return yield* Option.match(result, {
+            onNone: () => Effect.succeed(null),
+            onSome: (record) => {
+              const isOwner = current?.id === record.user.id
+              if (record.profile.private && !isOwner) {
+                return Effect.succeed(null)
+              }
+
+              const shareStats = isOwner || record.profile.shareStats
+              const shareActivity = isOwner || record.profile.shareActivity
+              if (!shareStats && !shareActivity) return Effect.succeed(null)
+
+              return ProfileStatsService.forUser(record.user.id).pipe(
+                Effect.map((stats) => ({
+                  stats: shareStats
+                    ? {
+                        totalTitles: stats.totalTitles,
+                        byStatus: stats.byStatus,
+                        meanScore: stats.meanScore,
+                        scoredCount: stats.scoredCount,
+                        scoreDistribution: stats.scoreDistribution,
+                        episodesWatched: stats.episodesWatched,
+                        estimatedMinutes: stats.estimatedMinutes,
+                        topRated: stats.topRated,
+                      }
+                    : null,
+                  activity: shareActivity
+                    ? {
+                        trackedMinutes: stats.trackedMinutes,
+                        episodesPlayed: stats.episodesPlayed,
+                        titlesStarted: stats.titlesStarted,
+                        currentStreakDays: stats.currentStreakDays,
+                        longestStreakDays: stats.longestStreakDays,
+                        activity: stats.activity,
+                      }
+                    : null,
+                })),
+                Effect.catchTag("ProfileStatsServiceError", (error) =>
+                  Effect.fail(
+                    new ProfileOperationError({ message: error.message })
+                  )
+                )
+              )
+            },
+          })
+        }),
       UpdateProfile: ({ description }) =>
         Effect.gen(function* () {
           const current = yield* CurrentUser
@@ -67,11 +133,11 @@ export const ProfileHandlersLive = ProfileRpcs.toLayer(
             config.mediaPublicUrl
           )
         }),
-      UpdatePrivacy: ({ private: isPrivate }) =>
+      UpdatePrivacy: (patch) =>
         Effect.gen(function* () {
           const current = yield* CurrentUser
           return profileView(
-            yield* ProfileService.updatePrivacy(current.id, isPrivate),
+            yield* ProfileService.updatePrivacy(current.id, patch),
             config.mediaPublicUrl
           )
         }),
@@ -180,6 +246,10 @@ export const ProfileHandlersLive = ProfileRpcs.toLayer(
   })
 ).pipe(
   Layer.provide(
-    Layer.mergeAll(ProfileMediaService.Default, ProfileService.Default)
+    Layer.mergeAll(
+      ProfileMediaService.Default,
+      ProfileService.Default,
+      ProfileStatsService.Default
+    )
   )
 )

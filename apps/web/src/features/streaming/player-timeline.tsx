@@ -280,10 +280,12 @@ export function PlayerTimeline({
   }
 
   return (
-    <div className="flex items-center gap-3 text-xs text-white/70">
-      <span className="w-12 tabular-nums">{formatTime(currentTime)}</span>
+    <div className="flex items-center gap-2 text-xs text-white/70 md:gap-3">
+      <span className="w-10 tabular-nums md:w-12">
+        {formatTime(currentTime)}
+      </span>
       <div
-        className="relative h-5 flex-1"
+        className="relative h-8 flex-1 md:h-5"
         onPointerMove={updateHoverPreview}
         onPointerLeave={() => setHoverTime(null)}
       >
@@ -348,10 +350,10 @@ export function PlayerTimeline({
           step={0.1}
           value={currentTime}
           onChange={(event) => onSeek(event.currentTarget.value)}
-          className="absolute inset-0 h-5 w-full cursor-pointer opacity-0"
+          className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
         />
       </div>
-      <span className="w-12 text-right tabular-nums">
+      <span className="w-10 text-right tabular-nums md:w-12">
         {formatTime(duration)}
       </span>
     </div>

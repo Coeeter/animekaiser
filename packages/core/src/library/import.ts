@@ -11,6 +11,7 @@ import * as HttpClientRequest from "@effect/platform/HttpClientRequest"
 import * as HttpClientResponse from "@effect/platform/HttpClientResponse"
 import { and, asc, eq, sql } from "drizzle-orm"
 import * as Effect from "effect/Effect"
+import * as Either from "effect/Either"
 import * as Schema from "effect/Schema"
 import * as Stream from "effect/Stream"
 
@@ -37,6 +38,22 @@ export type NormalizedEntry = {
   score: number | null
   progress: number
   notes: string | null
+  genres: Array<string>
+  seasonYear: number | null
+  updatedAt: Date | null
+  createdAt: Date | null
+}
+
+const parseProviderDate = (value: string | null | undefined) => {
+  if (!value) return null
+  const parsed = new Date(value)
+  return Number.isNaN(parsed.getTime()) ? null : parsed
+}
+
+const parseUnixSeconds = (value: number | null | undefined) => {
+  if (!value || value <= 0) return null
+  const parsed = new Date(value * 1000)
+  return Number.isNaN(parsed.getTime()) ? null : parsed
 }
 
 export class LibraryImportError extends Schema.TaggedError<LibraryImportError>()(
@@ -78,6 +95,12 @@ const MalImportEntry = Schema.Struct({
       })
     ),
     num_episodes: Schema.optional(Schema.NonNegativeInt),
+    genres: Schema.optional(
+      Schema.Array(Schema.Struct({ name: Schema.String }))
+    ),
+    start_season: Schema.optional(
+      Schema.Struct({ year: Schema.optional(Schema.Int) })
+    ),
   }),
   list_status: Schema.Struct({
     status: MalStatus,
@@ -85,6 +108,7 @@ const MalImportEntry = Schema.Struct({
     num_episodes_watched: Schema.NonNegativeInt,
     is_rewatching: Schema.Boolean,
     comments: Schema.optional(Schema.String),
+    updated_at: Schema.optional(Schema.String),
   }),
 })
 
@@ -96,12 +120,28 @@ export const MalImportResponse = Schema.Struct({
   }),
 })
 
+// `data` stays Unknown so one unexpected entry is skipped and counted rather
+// than failing the decode for the whole page.
+const MalImportPage = Schema.Struct({
+  data: Schema.Array(Schema.Unknown),
+  paging: Schema.Struct({
+    previous: Schema.optional(Schema.String),
+    next: Schema.optional(Schema.String),
+  }),
+})
+
+const decodeMalEntry = Schema.decodeUnknownEither(MalImportEntry)
+
+const malImportPageSize = 100
+
 const AniListImportEntry = Schema.Struct({
   id: PositiveInt,
   status: Schema.NullOr(AniListStatus),
   score: Schema.NullOr(Schema.Number.pipe(Schema.between(0, 100))),
   progress: Schema.NullOr(Schema.NonNegativeInt),
   notes: Schema.NullOr(Schema.String),
+  updatedAt: Schema.optional(Schema.NullOr(Schema.Number)),
+  createdAt: Schema.optional(Schema.NullOr(Schema.Number)),
   media: Schema.NullOr(
     Schema.Struct({
       id: PositiveInt,
@@ -120,6 +160,8 @@ const AniListImportEntry = Schema.Struct({
         })
       ),
       episodes: Schema.NullOr(PositiveInt),
+      genres: Schema.optional(Schema.NullOr(Schema.Array(Schema.String))),
+      seasonYear: Schema.optional(Schema.NullOr(Schema.Int)),
     })
   ),
 })
@@ -163,10 +205,11 @@ const aniListImportQuery = `
       lists {
         entries {
           id status score(format: POINT_100) progress notes
+          updatedAt createdAt
           media {
             id idMal title { romaji english }
             coverImage { extraLarge large medium }
-            episodes
+            episodes genres seasonYear
           }
         }
       }
@@ -217,6 +260,10 @@ export const normalizeMalImportEntry = (
   score: value.list_status.score > 0 ? value.list_status.score * 10 : null,
   progress: value.list_status.num_episodes_watched,
   notes: value.list_status.comments?.trim() || null,
+  genres: (value.node.genres ?? []).map((genre) => genre.name),
+  seasonYear: value.node.start_season?.year ?? null,
+  updatedAt: parseProviderDate(value.list_status.updated_at),
+  createdAt: parseProviderDate(value.list_status.updated_at),
 })
 
 export const normalizeAniListImportEntry = (
@@ -243,6 +290,10 @@ export const normalizeAniListImportEntry = (
     score: value.score && value.score > 0 ? Math.round(value.score) : null,
     progress: value.progress ?? 0,
     notes: value.notes?.trim() || null,
+    genres: [...(value.media.genres ?? [])],
+    seasonYear: value.media.seasonYear ?? null,
+    updatedAt: parseUnixSeconds(value.updatedAt),
+    createdAt: parseUnixSeconds(value.createdAt),
   }
 }
 
@@ -276,33 +327,68 @@ export class LibraryImportService extends Effect.Service<LibraryImportService>()
       const fetchMalEntries = Effect.fn("LibraryImportService.fetchMalEntries")(
         function* (accessToken: string) {
           const entries: Array<NormalizedEntry> = []
-          let next: string | null =
-            "https://api.myanimelist.net/v2/users/@me/animelist?fields=list_status,alternative_titles,main_picture,num_episodes&limit=1000"
+          const seen = new Set<number>()
+          let skippedCount = 0
+          let offset = 0
 
-          while (next) {
-            const response: typeof MalImportResponse.Type = yield* http
+          while (true) {
+            // MAL omits `paging.next` inconsistently on large lists, and
+            // excludes entries it rates as adult unless `nsfw=true`.
+            const url =
+              "https://api.myanimelist.net/v2/users/@me/animelist" +
+              "?fields=list_status,alternative_titles,main_picture,num_episodes,genres,start_season" +
+              `&limit=${malImportPageSize}&offset=${offset}&nsfw=true`
+
+            const response: typeof MalImportPage.Type = yield* http
               .execute(
-                HttpClientRequest.get(next, {
+                HttpClientRequest.get(url, {
                   headers: { authorization: `Bearer ${accessToken}` },
                 })
               )
               .pipe(
                 Effect.flatMap(HttpClientResponse.filterStatusOk),
                 Effect.flatMap(
-                  HttpClientResponse.schemaBodyJson(MalImportResponse)
+                  HttpClientResponse.schemaBodyJson(MalImportPage)
+                ),
+                Effect.tapError((cause) =>
+                  Effect.logError("MAL import page failed", { offset, cause })
                 ),
                 Effect.mapError(
-                  () =>
-                    new LibraryImportError({ message: "MAL import failed." })
+                  (cause) =>
+                    new LibraryImportError({
+                      message: `MAL import failed at offset ${offset}: ${String(cause)}`,
+                    })
                 )
               )
 
+            if (response.data.length === 0) break
+
             for (const item of response.data) {
-              entries.push(normalizeMalImportEntry(item))
+              const decoded = decodeMalEntry(item)
+              if (Either.isLeft(decoded)) {
+                skippedCount += 1
+                yield* Effect.logWarning("Skipped unparseable MAL entry", {
+                  reason: String(decoded.left),
+                })
+                continue
+              }
+
+              const normalized = normalizeMalImportEntry(decoded.right)
+              if (seen.has(normalized.malId)) continue
+              seen.add(normalized.malId)
+              entries.push(normalized)
             }
-            next = response.paging.next ?? null
+
+            if (response.data.length < malImportPageSize) break
+            offset += malImportPageSize
           }
-          return { entries, skippedCount: 0 }
+
+          yield* Effect.logInfo("MAL import fetched", {
+            imported: entries.length,
+            skippedCount,
+          })
+
+          return { entries, skippedCount }
         }
       )
 
@@ -510,6 +596,8 @@ export class LibraryImportService extends Effect.Service<LibraryImportService>()
                     titleEnglish: entry.titleEnglish,
                     coverImage: entry.coverImage,
                     episodes: entry.episodes,
+                    genres: entry.genres,
+                    seasonYear: entry.seasonYear,
                   })
                   .onConflictDoUpdate({
                     target: animeMetadata.malId,
@@ -519,9 +607,20 @@ export class LibraryImportService extends Effect.Service<LibraryImportService>()
                       titleEnglish: entry.titleEnglish,
                       coverImage: entry.coverImage,
                       episodes: entry.episodes,
+                      ...(entry.genres.length > 0
+                        ? { genres: entry.genres }
+                        : {}),
+                      ...(entry.seasonYear === null
+                        ? {}
+                        : { seasonYear: entry.seasonYear }),
                       updatedAt: new Date(),
                     },
                   })
+                const importedAt = new Date()
+                const sourceUpdatedAt = entry.updatedAt ?? importedAt
+                const sourceCreatedAt =
+                  entry.createdAt ?? entry.updatedAt ?? importedAt
+
                 const existing = byMalId.get(entry.malId)
                 if (!existing) {
                   await tx.insert(userLibraryEntry).values({
@@ -532,6 +631,8 @@ export class LibraryImportService extends Effect.Service<LibraryImportService>()
                     progress: entry.progress,
                     notes: entry.notes,
                     aniListEntryId: entry.aniListEntryId,
+                    createdAt: sourceCreatedAt,
+                    updatedAt: sourceUpdatedAt,
                   })
                   insertedCount += 1
                   continue
@@ -549,7 +650,7 @@ export class LibraryImportService extends Effect.Service<LibraryImportService>()
                     progress: entry.progress,
                     notes: entry.notes,
                     aniListEntryId: entry.aniListEntryId,
-                    updatedAt: new Date(),
+                    updatedAt: sourceUpdatedAt,
                   })
                   .where(
                     and(

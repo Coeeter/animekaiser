@@ -11,6 +11,7 @@ export const MyListSearch = Schema.Struct({
     Schema.Union(Schema.Literal("all"), LibraryStatus),
     { default: () => "all" }
   ),
+  q: Schema.optional(Schema.String),
   sort: Schema.optionalWith(LibrarySort, { default: () => "updated_desc" }),
   page: Schema.optionalWith(PositivePage, { default: () => 1 }),
 })

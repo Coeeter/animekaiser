@@ -7,7 +7,11 @@ import type {
 import { streamProviderIds } from "@animekaiser/domain"
 import { Badge } from "@animekaiser/ui/components/badge"
 import { Button } from "@animekaiser/ui/components/button"
-import { Input } from "@animekaiser/ui/components/input"
+import {
+  InputGroup,
+  InputGroupAddon,
+  InputGroupInput,
+} from "@animekaiser/ui/components/input-group"
 import {
   Select,
   SelectContent,
@@ -18,6 +22,7 @@ import {
 } from "@animekaiser/ui/components/select"
 import {
   Sheet,
+  SheetBody,
   SheetContent,
   SheetDescription,
   SheetHeader,
@@ -99,7 +104,7 @@ export function EpisodeSheet({
             .
           </SheetDescription>
         </SheetHeader>
-        <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto px-6 pb-6">
+        <SheetBody className="flex flex-col gap-2">
           <Select
             value={selectedProvider}
             onValueChange={(value) => {
@@ -130,7 +135,7 @@ export function EpisodeSheet({
           ) : (
             <EpisodeSheetPending />
           )}
-        </div>
+        </SheetBody>
       </SheetContent>
     </Sheet>
   )
@@ -191,18 +196,20 @@ function EpisodeSheetList({
   return (
     <>
       <div className="flex flex-col gap-2 pb-2">
-        <div className="relative">
-          <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
+        <InputGroup className="h-11 md:h-9">
+          <InputGroupAddon>
+            <Search />
+          </InputGroupAddon>
+          <InputGroupInput
             value={query}
             onChange={(event) => {
               setQuery(event.currentTarget.value)
               setPage(1)
             }}
-            className="pl-9"
             placeholder="Search episodes"
+            aria-label="Search episodes"
           />
-        </div>
+        </InputGroup>
         <Button
           type="button"
           variant="outline"

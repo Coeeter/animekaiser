@@ -801,7 +801,7 @@ function RecommendationsPanel({
     )
   }
 
-  return <AnimeGrid items={recommendations ?? []} compact />
+  return <AnimeGrid items={recommendations ?? []} />
 }
 
 function MetaField({

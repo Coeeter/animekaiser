@@ -26,12 +26,12 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@animekaiser/ui/components/tooltip"
+import { cn } from "@animekaiser/ui/lib/utils"
 import { Result, useAtomSet, useAtomValue } from "@effect-atom/atom-react"
 import { Link, useLocation } from "@tanstack/react-router"
 import type { LucideIcon } from "lucide-react"
 import {
   Bookmark,
-  CalendarDays,
   Clapperboard,
   Compass,
   History,
@@ -50,6 +50,7 @@ import { searchOpenAtom } from "../anime/common/search-atoms"
 import { sessionAtom } from "../auth/atoms"
 import { displayUsername, userInitials } from "../auth/user"
 import { settingsOpenAtom, settingsSectionAtom } from "../settings/atoms"
+import { MobileNav } from "./mobile-nav"
 
 type NavItem = { title: string; href: string; icon: LucideIcon }
 
@@ -59,7 +60,6 @@ const mainLinks: ReadonlyArray<NavItem> = [
   { title: "Discover", href: "/discover", icon: Sparkles },
   { title: "Random", href: "/random", icon: Shuffle },
   { title: "Latest Episodes", href: "/latest-episodes", icon: Clapperboard },
-  { title: "Schedule", href: "/schedule", icon: CalendarDays },
 ]
 
 const personalLinks: ReadonlyArray<NavItem> = [
@@ -167,6 +167,7 @@ export function AppSidebarProvider({ children }: { children: ReactNode }) {
 
 export function AppSidebar({ children }: { children: ReactNode }) {
   const pathname = useLocation({ select: (l) => l.pathname })
+  const isWatchRoute = pathname.startsWith("/watch/")
   const setSearchOpen = useAtomSet(searchOpenAtom)
   const setSettingsSection = useAtomSet(settingsSectionAtom)
   const setSettingsOpen = useAtomSet(settingsOpenAtom)
@@ -219,10 +220,10 @@ export function AppSidebar({ children }: { children: ReactNode }) {
           </button>
         </SidebarHeader>
         <SidebarContent className="pb-4">
-          <NavGroup label="Main Group" items={mainLinks} pathname={pathname} />
+          <NavGroup label="Discover" items={mainLinks} pathname={pathname} />
           {user ? (
             <NavGroup
-              label="Personal Group"
+              label="Your library"
               items={personalLinks}
               pathname={pathname}
             />
@@ -293,54 +294,75 @@ export function AppSidebar({ children }: { children: ReactNode }) {
         </SidebarFooter>
         <SidebarRail />
       </Sidebar>
-      <SidebarInset className="min-h-svh bg-background/55 backdrop-blur-xl">
-        <header className="fixed inset-x-0 top-0 z-40 border-b bg-background/70 backdrop-blur-xl md:hidden">
-          <div className="relative flex h-16 items-center justify-between px-3">
-            <div className="flex items-center gap-1">
-              <SidebarTrigger />
-              <Button
-                variant="ghost"
-                size="icon"
+      <SidebarInset className="min-h-svh bg-transparent">
+        {isWatchRoute ? null : (
+          <header className="sticky top-0 z-40 border-b border-white/5 bg-background/70 backdrop-blur-xl md:hidden">
+            <div className="flex h-14 items-center gap-2 px-3">
+              <Link to="/" className="flex shrink-0 items-center gap-2">
+                <img
+                  className="size-8 rounded-xl"
+                  src="/logo.svg"
+                  alt="AnimeKaiser"
+                />
+                <span className="font-heading text-sm font-semibold tracking-wide lowercase">
+                  animekaiser
+                </span>
+              </Link>
+
+              <button
+                type="button"
                 onClick={() => setSearchOpen(true)}
-                aria-label="Open command menu"
+                aria-label="Search anime"
+                className="ml-auto flex h-9 flex-1 items-center gap-2 overflow-hidden rounded-2xl border bg-input/40 px-3 text-sm text-muted-foreground transition active:bg-input/70"
               >
-                <Search />
-              </Button>
-            </div>
+                <Search className="size-4 shrink-0" />
+                <span className="truncate">Search</span>
+              </button>
 
-            <Link
-              to="/"
-              className="absolute left-1/2 -translate-x-1/2 rounded-2xl"
-            >
-              <img
-                className="size-8 rounded-xl"
-                src="/logo.svg"
-                alt="AnimeKaiser"
-              />
-            </Link>
-
-            <div className="flex items-center gap-1">
-              <ModeToggle />
-              {!user ? (
-                <Button asChild variant="ghost" size="icon" aria-label="Login">
+              {user ? (
+                <Link
+                  to="/profile"
+                  aria-label="Your profile"
+                  className="shrink-0 rounded-full"
+                >
+                  <Avatar className="size-8">
+                    <AvatarImage
+                      src={user.image ?? undefined}
+                      alt={displayUsername(user)}
+                    />
+                    <AvatarFallback className="text-xs">
+                      {userInitials(user)}
+                    </AvatarFallback>
+                  </Avatar>
+                </Link>
+              ) : (
+                <Button
+                  asChild
+                  size="sm"
+                  className="shrink-0"
+                  aria-label="Login"
+                >
                   <Link to="/login" search={{ redirect: undefined }}>
-                    <LogIn />
+                    <LogIn data-icon="inline-start" />
+                    Login
                   </Link>
                 </Button>
-              ) : null}
-              <Button
-                variant="ghost"
-                size="icon"
-                aria-label="Open settings"
-                onClick={openSettings}
-              >
-                <Settings2 />
-              </Button>
+              )}
             </div>
-          </div>
-        </header>
-        <div className="flex-1 px-4 pt-20 pb-6 md:px-6 md:pt-6">{children}</div>
+          </header>
+        )}
+        <div
+          className={cn(
+            "flex min-w-0 flex-1 flex-col",
+            isWatchRoute
+              ? undefined
+              : "pb-[calc(3.5rem+env(safe-area-inset-bottom))] md:pb-0"
+          )}
+        >
+          {children}
+        </div>
       </SidebarInset>
+      <MobileNav />
     </>
   )
 }

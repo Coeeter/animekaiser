@@ -10,6 +10,7 @@ export const SettingsSection = Schema.Literal(
   "Site",
   "Player",
   "Subtitles",
+  "History",
   "Notifications",
   "Integrations",
   "Sessions",

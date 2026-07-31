@@ -19,6 +19,8 @@ test("MAL imports decode display metadata and list state", () => {
           alternative_titles: { en: "Cowboy Bebop" },
           main_picture: { large: "https://example.com/cover.webp" },
           num_episodes: 26,
+          genres: [{ name: "Action" }, { name: "Sci-Fi" }],
+          start_season: { year: 1998 },
         },
         list_status: {
           status: "watching",
@@ -26,6 +28,7 @@ test("MAL imports decode display metadata and list state", () => {
           num_episodes_watched: 3,
           is_rewatching: false,
           comments: "great",
+          updated_at: "2024-03-02T10:20:30+00:00",
         },
       },
     ],
@@ -43,7 +46,49 @@ test("MAL imports decode display metadata and list state", () => {
     score: 80,
     progress: 3,
     notes: "great",
+    genres: ["Action", "Sci-Fi"],
+    seasonYear: 1998,
+    updatedAt: new Date("2024-03-02T10:20:30+00:00"),
+    createdAt: new Date("2024-03-02T10:20:30+00:00"),
   })
+})
+
+test("MAL entries without a source timestamp import with null timestamps", () => {
+  const entry = normalizeMalImportEntry({
+    node: { id: 5, title: "No timestamp" },
+    list_status: {
+      status: "completed",
+      score: 0,
+      num_episodes_watched: 12,
+      is_rewatching: false,
+    },
+  })
+
+  expect(entry.updatedAt).toBeNull()
+  expect(entry.createdAt).toBeNull()
+  expect(entry.score).toBeNull()
+})
+
+test("AniList entries mirror provider unix timestamps", () => {
+  const entry = normalizeAniListImportEntry({
+    id: 12,
+    status: "COMPLETED",
+    score: 90,
+    progress: 26,
+    notes: null,
+    updatedAt: 1709375430,
+    createdAt: 1700000000,
+    media: {
+      id: 22,
+      idMal: 1,
+      title: { romaji: "Cowboy Bebop", english: null },
+      coverImage: null,
+      episodes: 26,
+    },
+  })
+
+  expect(entry?.updatedAt).toEqual(new Date(1709375430 * 1000))
+  expect(entry?.createdAt).toEqual(new Date(1700000000 * 1000))
 })
 
 test("external library statuses map to Kaiser library language", () => {

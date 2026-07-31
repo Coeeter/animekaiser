@@ -8,17 +8,17 @@ export function SeriesCatalogPending() {
         <Skeleton className="h-4 w-32" />
       </div>
 
-      <div className="grid grid-cols-2 gap-x-4 gap-y-6 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-6">
-        {Array.from({ length: 12 }, (_, index) => (
+      <div className="grid grid-cols-3 gap-x-3 gap-y-5 sm:grid-cols-4 md:gap-x-4 md:gap-y-6 lg:grid-cols-6">
+        {Array.from({ length: 24 }, (_, index) => (
           <div key={index} className="flex flex-col gap-2.5">
-            <Skeleton className="aspect-2/3 w-full rounded-xl" />
+            <Skeleton className="aspect-2/3 w-full rounded-2xl" />
             <Skeleton className="h-4 w-full" />
             <Skeleton className="h-3 w-2/3" />
           </div>
         ))}
       </div>
 
-      <div className="flex items-center justify-between rounded-xl border bg-card/80 p-3">
+      <div className="flex items-center justify-between rounded-2xl border bg-card/80 p-3">
         <Skeleton className="h-9 w-24" />
         <Skeleton className="h-4 w-16" />
         <Skeleton className="h-9 w-20" />

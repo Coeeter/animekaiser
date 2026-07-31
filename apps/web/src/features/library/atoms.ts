@@ -25,12 +25,13 @@ export const libraryPageAtom = (
   status: LibraryStatus | undefined,
   sort: LibrarySort,
   page: number,
-  perPage: number
+  perPage: number,
+  query?: string
 ) =>
   refreshOnAuthChange(
     KaiserRpcClient.query(
       "GetLibraryPage",
-      { status, sort, page, perPage },
+      { status, sort, page, perPage, query },
       { reactivityKeys: [libraryReactivityKeys.all] }
     )
   )

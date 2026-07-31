@@ -274,13 +274,13 @@ export function PlayerSettingsPopover({
         <SheetContent
           portalContainer={portalContainer}
           side="bottom"
-          className="max-h-[82dvh] gap-0 overflow-hidden rounded-t-2xl border-white/10 bg-black/95 p-0 text-white shadow-2xl backdrop-blur-xl [@media_(orientation:portrait)]:max-h-[82dvw]"
+          showCloseButton={false}
+          className="gap-0 overflow-hidden border-white/10 bg-black/95 p-0 pb-[env(safe-area-inset-bottom)] text-white shadow-2xl backdrop-blur-xl [&_[data-slot=sheet-handle]]:bg-white/25"
         >
           <SheetTitle className="sr-only">Player settings</SheetTitle>
           <SheetDescription className="sr-only">
             Playback, audio, video, and subtitle settings.
           </SheetDescription>
-          <div className="mx-auto mt-2 h-1 w-10 shrink-0 rounded-full bg-white/25" />
           {content}
         </SheetContent>
       </Sheet>

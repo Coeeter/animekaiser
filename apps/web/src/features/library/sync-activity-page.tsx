@@ -32,7 +32,7 @@ export function SyncActivityPage({ page }: SyncActivitySearch) {
   }
 
   return (
-    <main className="mx-auto flex w-full max-w-6xl flex-col gap-7 p-4 pb-10 md:p-6">
+    <main className="mx-auto flex w-full max-w-7xl flex-col gap-7 p-4 pb-10 md:p-6">
       <nav className="flex gap-2 text-sm text-muted-foreground">
         <Link
           to="/my-list"

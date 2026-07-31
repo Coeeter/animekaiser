@@ -1,5 +1,6 @@
 export * from "./anime"
 export * from "./auth"
+export * from "./history"
 export * from "./integrations"
 export * from "./library"
 export * from "./profile"

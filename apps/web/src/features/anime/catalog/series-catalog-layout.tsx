@@ -1,6 +1,7 @@
 import { Button } from "@animekaiser/ui/components/button"
 import {
   Sheet,
+  SheetBody,
   SheetContent,
   SheetDescription,
   SheetHeader,
@@ -95,17 +96,14 @@ export function SeriesCatalogLayout({
               </Button>
             </div>
             <Sheet open={mobileFiltersOpen} onOpenChange={setMobileFiltersOpen}>
-              <SheetContent
-                side="bottom"
-                className="flex max-h-[60svh] flex-col rounded-t-2xl border-t"
-              >
-                <SheetHeader>
+              <SheetContent side="bottom" showCloseButton={false}>
+                <SheetHeader className="pb-3">
                   <SheetTitle>Filters</SheetTitle>
                   <SheetDescription className="sr-only">
                     Refine your search results.
                   </SheetDescription>
                 </SheetHeader>
-                <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-4">
+                <SheetBody className="px-4">
                   <SeriesCatalogFilters
                     search={search}
                     updateSearch={(next) => {
@@ -116,7 +114,7 @@ export function SeriesCatalogLayout({
                     showSearch={false}
                     showActions={false}
                   />
-                </div>
+                </SheetBody>
               </SheetContent>
             </Sheet>
           </div>

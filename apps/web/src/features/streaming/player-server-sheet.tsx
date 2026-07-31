@@ -2,6 +2,7 @@ import type { StreamPlayback } from "@animekaiser/domain"
 import { Badge } from "@animekaiser/ui/components/badge"
 import {
   Sheet,
+  SheetBody,
   SheetContent,
   SheetDescription,
   SheetHeader,
@@ -36,7 +37,7 @@ export function ServerSheet({
             Choose another server if playback is slow or unavailable.
           </SheetDescription>
         </SheetHeader>
-        <div className="flex flex-col gap-2 overflow-y-auto px-6 pb-6">
+        <SheetBody className="flex flex-col gap-2">
           {playback.servers.map((server) => {
             const selected = server.id === playback.server.id
             return (
@@ -88,7 +89,7 @@ export function ServerSheet({
               </Link>
             )
           })}
-        </div>
+        </SheetBody>
       </SheetContent>
     </Sheet>
   )

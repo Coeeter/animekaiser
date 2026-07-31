@@ -10,6 +10,8 @@ export const ProfileDetails = Schema.Struct({
   bannerUrl: Schema.NullOr(Schema.String),
   description: Schema.NullOr(Schema.String),
   private: Schema.Boolean,
+  shareStats: Schema.Boolean,
+  shareActivity: Schema.Boolean,
 })
 export type ProfileDetails = typeof ProfileDetails.Type
 

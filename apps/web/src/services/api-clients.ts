@@ -50,13 +50,21 @@ function onAuthChange(listener: () => void) {
   return () => authEvents.removeEventListener("change", listener)
 }
 
+/**
+ * The refresh argument is essential: `registry.refresh` invalidates only the
+ * atom it is given, so without forwarding, refreshing this wrapper re-runs the
+ * read and hands back the wrapped atom's cached value.
+ */
 export const refreshOnAuthChange = Atom.family(<A>(atom: Atom.Atom<A>) =>
-  Atom.make((get) => {
-    get.addFinalizer(onAuthChange(() => get.refresh(atom)))
-    get.subscribe(atom, (value) => get.setSelf(value))
+  Atom.readable(
+    (get) => {
+      get.addFinalizer(onAuthChange(() => get.refresh(atom)))
+      get.subscribe(atom, (value) => get.setSelf(value))
 
-    return get(atom)
-  })
+      return get(atom)
+    },
+    (refresh) => refresh(atom)
+  )
 )
 
 export class KaiserRpcClient extends AtomRpc.Tag<KaiserRpcClient>()(

@@ -1,4 +1,5 @@
 export * from "./anime"
+export * from "./history"
 export * from "./integrations"
 export * from "./key-value-store"
 export * from "./library"

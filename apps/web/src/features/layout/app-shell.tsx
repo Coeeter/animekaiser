@@ -22,10 +22,12 @@ export function AppShell({ children }: { children: ReactNode }) {
     const element = Result.builder(sessionResult)
       .onInitialOrWaiting(() => <div className="min-h-svh" />)
       .onFailure(() => (
-        <DataError
-          title="Unable to check your session"
-          onRetry={refreshSession}
-        />
+        <div className="mx-auto w-full max-w-3xl p-4 md:p-6">
+          <DataError
+            title="Unable to check your session"
+            onRetry={refreshSession}
+          />
+        </div>
       ))
       .onSuccess((value) => {
         if (!value)

@@ -14,7 +14,7 @@
 - Discovery data may come from MAL, Jikan, AniList, or other sources, but records without a MAL ID must not enter the domain surface.
 - User library writes update AnimeKaiser locally first, then enqueue outbound sync jobs for linked external providers.
 - Library imports overwrite matching local entries, preserve local-only entries, and never enqueue outbound sync.
-- Streaming resolution persists only stable anime-to-provider title mappings. Do not persist playable stream data.
+- Streaming resolution persists only stable anime-to-provider title mappings. Do not persist playable stream data except identifiers required to resume user watch history.
 
 ## Implementation Rules
 

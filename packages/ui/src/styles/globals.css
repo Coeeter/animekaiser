@@ -129,3 +129,33 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Hides the scrollbar while keeping the element scrollable. Referenced by
+   command lists, the sidebar, and horizontal media rows. */
+@utility no-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* Horizontal media rows: snap each card to the start edge so flick-scrolling on
+   touch lands on a card boundary instead of mid-poster. */
+@utility snap-row {
+  scroll-snap-type: x mandatory;
+  scroll-padding-inline-start: 0px;
+
+  & > * {
+    scroll-snap-align: start;
+  }
+}
+
+@layer base {
+  /* The player and any element that owns touch gestures must not also trigger
+     the browser's pull-to-refresh / overscroll chrome. */
+  html {
+    overscroll-behavior-y: none;
+  }
+}

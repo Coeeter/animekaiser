@@ -37,7 +37,7 @@ export function AnimeSection({
           </Link>
         ) : null}
       </div>
-      <AnimeGrid items={items} compact />
+      <AnimeGrid items={items} />
     </section>
   )
 }

@@ -30,6 +30,8 @@ export const animeMetadata = pgTable(
     titleEnglish: text("title_english"),
     coverImage: text("cover_image"),
     episodes: integer("episodes"),
+    genres: text("genres").array().default([]).notNull(),
+    seasonYear: integer("season_year"),
     createdAt: timestamp("created_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at")
       .defaultNow()

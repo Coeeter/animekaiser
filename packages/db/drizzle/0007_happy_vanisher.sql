@@ -1,0 +1,1 @@
+ALTER TABLE "watch_history" ADD COLUMN "audio" text DEFAULT 'sub' NOT NULL;

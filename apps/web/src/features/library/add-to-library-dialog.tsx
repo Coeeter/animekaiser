@@ -94,6 +94,8 @@ export function AddToLibraryDialog({
             title: anime.title,
             coverImage: anime.coverImage,
             episodes: anime.episodes,
+            genres: anime.genres,
+            seasonYear: anime.seasonYear,
           },
           status: values.status,
           score: decodeLibraryScore(values.score),

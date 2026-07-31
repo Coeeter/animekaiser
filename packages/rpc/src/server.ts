@@ -6,6 +6,7 @@ import {
   AuthenticationMiddlewareLive,
   AuthHandlersLive,
 } from "./server/authentication"
+import { WatchHistoryHandlersLive } from "./server/history"
 import { IntegrationHandlersLive } from "./server/integrations"
 import { LibraryHandlersLive } from "./server/library"
 import { RpcRequestLogging, RpcRequestLoggingLive } from "./server/logging"
@@ -20,7 +21,8 @@ const HandlersLive = Layer.mergeAll(
   IntegrationHandlersLive,
   LibraryHandlersLive,
   ProfileHandlersLive,
-  StreamingHandlersLive
+  StreamingHandlersLive,
+  WatchHistoryHandlersLive
 )
 
 const ServerRpcs = KaiserRpcs.middleware(RpcRequestLogging)

@@ -13,7 +13,11 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from "@animekaiser/ui/components/empty"
-import { Input } from "@animekaiser/ui/components/input"
+import {
+  InputGroup,
+  InputGroupAddon,
+  InputGroupInput,
+} from "@animekaiser/ui/components/input-group"
 import {
   Select,
   SelectContent,
@@ -285,18 +289,20 @@ function ProviderEpisodes({
   return (
     <div className="flex flex-col gap-3">
       <div className="flex flex-col gap-2 sm:flex-row">
-        <div className="relative min-w-0 flex-1">
-          <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
+        <InputGroup className="h-11 min-w-0 flex-1 md:h-9">
+          <InputGroupAddon>
+            <Search />
+          </InputGroupAddon>
+          <InputGroupInput
             value={query}
             onChange={(event) => {
               setQuery(event.currentTarget.value)
               onPageChange(1)
             }}
-            className="pl-9"
             placeholder="Search episodes"
+            aria-label="Search episodes"
           />
-        </div>
+        </InputGroup>
         <Button
           type="button"
           variant="outline"

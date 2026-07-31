@@ -134,6 +134,7 @@ export function ProfilePanel({ user }: { user: AppUser | null }) {
         reactivityKeys: profileReactivityKeys,
       })
 
+      refreshProfile()
       await router.invalidate()
 
       toast.success(
@@ -155,6 +156,7 @@ export function ProfilePanel({ user }: { user: AppUser | null }) {
         reactivityKeys: profileReactivityKeys,
       })
 
+      refreshProfile()
       await router.invalidate()
 
       toast.success(
@@ -176,6 +178,7 @@ export function ProfilePanel({ user }: { user: AppUser | null }) {
       if (result.error) throw result.error
 
       await reconnectKaiserRpc()
+      refreshProfile()
       await router.invalidate()
       toast.success("Username updated.")
     } catch (reason) {
@@ -192,6 +195,7 @@ export function ProfilePanel({ user }: { user: AppUser | null }) {
         reactivityKeys: profileReactivityKeys,
       })
 
+      refreshProfile()
       await router.invalidate()
       toast.success("Bio updated.")
     } catch (reason) {

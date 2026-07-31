@@ -23,6 +23,7 @@ import {
 export class GetLibraryPage extends Rpc.make("GetLibraryPage", {
   payload: {
     status: Schema.optional(LibraryStatus),
+    query: Schema.optional(Schema.String.pipe(Schema.maxLength(200))),
     sort: LibrarySort,
     page: Schema.Int.pipe(Schema.positive()),
     perPage: Schema.Int.pipe(Schema.between(1, 100)),

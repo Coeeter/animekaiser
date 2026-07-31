@@ -75,15 +75,28 @@ const toEntry = (row: {
   updatedAt: row.entry.updatedAt,
 })
 
+// Postgres sorts NULLs FIRST for DESC, and `malId` breaks ties so paging
+// cannot repeat or skip rows that share a value.
 const listOrder = (sort: LibrarySort) => {
-  if (sort === "updated_asc") return [asc(userLibraryEntry.updatedAt)]
-  if (sort === "title_asc") return [asc(animeMetadata.titleRomaji)]
+  const tiebreak = asc(userLibraryEntry.malId)
+
+  if (sort === "updated_asc") return [asc(userLibraryEntry.updatedAt), tiebreak]
+  if (sort === "title_asc")
+    return [asc(sql`lower(${animeMetadata.titleRomaji})`), tiebreak]
   if (sort === "score_desc")
-    return [desc(userLibraryEntry.score), desc(userLibraryEntry.updatedAt)]
-  if (sort === "progress_desc") {
-    return [desc(userLibraryEntry.progress), desc(userLibraryEntry.updatedAt)]
-  }
-  return [desc(userLibraryEntry.updatedAt)]
+    return [
+      sql`${userLibraryEntry.score} desc nulls last`,
+      desc(userLibraryEntry.updatedAt),
+      tiebreak,
+    ]
+  if (sort === "progress_desc")
+    return [
+      desc(userLibraryEntry.progress),
+      desc(userLibraryEntry.updatedAt),
+      tiebreak,
+    ]
+
+  return [desc(userLibraryEntry.updatedAt), tiebreak]
 }
 
 export class LibraryService extends Effect.Service<LibraryService>()(
@@ -232,17 +245,22 @@ export class LibraryService extends Effect.Service<LibraryService>()(
         userId: string,
         input: {
           status?: LibraryStatus
+          query?: string
           sort: LibrarySort
           page: number
           perPage: number
         }
       ) {
-        const where = input.status
-          ? and(
-              eq(userLibraryEntry.userId, userId),
-              eq(userLibraryEntry.status, input.status)
-            )
-          : eq(userLibraryEntry.userId, userId)
+        const search = input.query?.trim()
+        const searchFilter = search
+          ? sql`(${animeMetadata.titleRomaji} ilike ${`%${search}%`} or coalesce(${animeMetadata.titleEnglish}, '') ilike ${`%${search}%`})`
+          : undefined
+
+        const where = and(
+          eq(userLibraryEntry.userId, userId),
+          input.status ? eq(userLibraryEntry.status, input.status) : undefined,
+          searchFilter
+        )
         const [rows, totals, stats] = yield* Effect.all(
           [
             database
@@ -273,6 +291,10 @@ export class LibraryService extends Effect.Service<LibraryService>()(
                 db
                   .select({ value: count() })
                   .from(userLibraryEntry)
+                  .innerJoin(
+                    animeMetadata,
+                    eq(userLibraryEntry.malId, animeMetadata.malId)
+                  )
                   .where(where)
               )
               .pipe(
@@ -317,6 +339,8 @@ export class LibraryService extends Effect.Service<LibraryService>()(
                   titleEnglish: metadata.title.english,
                   coverImage: metadata.coverImage,
                   episodes: metadata.episodes,
+                  genres: [...(metadata.genres ?? [])],
+                  seasonYear: metadata.seasonYear ?? null,
                 })
                 .onConflictDoUpdate({
                   target: animeMetadata.malId,
@@ -326,6 +350,12 @@ export class LibraryService extends Effect.Service<LibraryService>()(
                     titleEnglish: metadata.title.english,
                     coverImage: metadata.coverImage,
                     episodes: metadata.episodes,
+                    ...(metadata.genres && metadata.genres.length > 0
+                      ? { genres: [...metadata.genres] }
+                      : {}),
+                    ...(metadata.seasonYear == null
+                      ? {}
+                      : { seasonYear: metadata.seasonYear }),
                     updatedAt: new Date(),
                   },
                 })

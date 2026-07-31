@@ -13,7 +13,11 @@ function RandomRoute() {
   const result = useAtomValue(randomAnimeAtom)
   const refresh = useAtomRefresh(randomAnimeAtom)
   return Result.builder(result)
-    .onFailure(() => <DataError onRetry={refresh} />)
+    .onFailure(() => (
+      <div className="mx-auto w-full max-w-3xl p-4 md:p-6">
+        <DataError onRetry={refresh} />
+      </div>
+    ))
     .onSuccess((id) => <Navigate to="/series/$id" params={{ id }} replace />)
     .orNull()
 }

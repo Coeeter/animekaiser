@@ -14,6 +14,13 @@ import {
   DialogTitle,
 } from "@animekaiser/ui/components/dialog"
 import {
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from "@animekaiser/ui/components/empty"
+import {
   Select,
   SelectContent,
   SelectGroup,
@@ -21,6 +28,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@animekaiser/ui/components/select"
+import { Skeleton } from "@animekaiser/ui/components/skeleton"
 import { Tabs, TabsList, TabsTrigger } from "@animekaiser/ui/components/tabs"
 import {
   Result,
@@ -38,12 +46,14 @@ import {
   ChevronRight,
   Download,
   ListRestart,
+  SearchX,
   Star,
   Trash2,
 } from "lucide-react"
 import { useEffect, useState } from "react"
 import { toast } from "sonner"
 import { DataError } from "../../components/data-error"
+import { DebouncedSearchInput } from "../../components/debounced-search-input"
 import { PageHero } from "../../components/page-hero"
 import {
   clearLibraryAtom,
@@ -77,7 +87,8 @@ export function MyListPage({ search }: { search: MyListSearch }) {
     search.status === "all" ? undefined : search.status,
     search.sort,
     search.page,
-    30
+    30,
+    search.q?.trim() || undefined
   )
   const result = useAtomValue(queryAtom)
   const refresh = useAtomRefresh(queryAtom)
@@ -94,14 +105,33 @@ export function MyListPage({ search }: { search: MyListSearch }) {
         description="Track your anime library, scores, and watch progress."
       />
       {Result.builder(result)
-        .onInitialOrWaiting(() => (
-          <div className="h-64 animate-pulse rounded-xl bg-muted" />
-        ))
+        .onInitialOrWaiting(() => <MyListPending />)
         .onFailure(() => <DataError onRetry={refresh} />)
         .onSuccess((value) => (
           <MyListContent page={value} search={search} refresh={refresh} />
         ))
         .render()}
+    </div>
+  )
+}
+
+function MyListPending() {
+  return (
+    <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
+      <div className="flex min-w-0 flex-col gap-4">
+        <Skeleton className="h-10 w-full rounded-2xl" />
+        <Skeleton className="h-11 w-full rounded-2xl" />
+        <div className="grid gap-3 md:grid-cols-2">
+          {Array.from({ length: 6 }).map((_, index) => (
+            <Skeleton key={index} className="h-28 rounded-2xl" />
+          ))}
+        </div>
+      </div>
+      <div className="hidden flex-col gap-4 lg:flex">
+        {Array.from({ length: 3 }).map((_, index) => (
+          <Skeleton key={index} className="h-32 rounded-2xl" />
+        ))}
+      </div>
     </div>
   )
 }
@@ -115,6 +145,7 @@ function MyListContent({
   search: MyListSearch
   refresh: () => void
 }) {
+  const navigate = useNavigate()
   const status = search.status === "all" ? null : search.status
   const totalItems = page.total
   const totalPages = page.totalPages
@@ -123,9 +154,26 @@ function MyListContent({
   return (
     <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
       <main className="flex min-w-0 flex-col gap-4">
+        <DebouncedSearchInput
+          committed={search.q?.trim() ?? ""}
+          placeholder="Search your list…"
+          label="Search your list"
+          onCommit={(q) =>
+            void navigate({
+              to: "/my-list",
+              search: {
+                status: search.status,
+                sort: search.sort,
+                q,
+                page: 1,
+              },
+              replace: true,
+            })
+          }
+        />
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <LibraryStatusTabs sort={search.sort} value={status} />
-          <LibrarySortSelect sort={search.sort} status={status} />
+          <LibraryStatusTabs search={search} value={status} />
+          <LibrarySortSelect search={search} status={status} />
         </div>
         {page.items.length > 0 ? (
           <div className="grid gap-3 md:grid-cols-2">
@@ -138,17 +186,28 @@ function MyListContent({
             ))}
           </div>
         ) : (
-          <div className="rounded-xl border bg-card/60 p-6">
-            <h2 className="text-sm font-semibold">No titles found</h2>
-            <p className="mt-2 text-sm text-muted-foreground">
-              Add a title from a series page or import a linked provider list.
-            </p>
-          </div>
+          <Empty className="border border-dashed">
+            <EmptyHeader>
+              <EmptyMedia variant="icon">
+                {search.q ? <SearchX /> : <Bookmark />}
+              </EmptyMedia>
+              <EmptyTitle>
+                {search.q
+                  ? `No titles match “${search.q}”`
+                  : "Nothing here yet"}
+              </EmptyTitle>
+              <EmptyDescription>
+                {search.q
+                  ? "Try a different spelling, or clear the search to see your whole list."
+                  : "Add a title from a series page, or import a linked provider list."}
+              </EmptyDescription>
+            </EmptyHeader>
+          </Empty>
         )}
         <LibraryPagination
           page={currentPage}
           perPage={page.perPage}
-          sort={search.sort}
+          search={search}
           status={status}
           totalItems={totalItems}
           totalPages={totalPages}
@@ -185,20 +244,26 @@ function SyncActivityPanel() {
 }
 
 function LibraryStatusTabs({
-  sort,
+  search,
   value,
 }: {
-  sort: LibrarySort
+  search: MyListSearch
   value: LibraryStatus | null
 }) {
   return (
     <Tabs value={value ?? "all"} className="max-w-full min-w-0">
-      <TabsList className="h-auto max-w-full justify-start overflow-x-auto border bg-card p-1">
+      <TabsList className="no-scrollbar h-auto max-w-full justify-start overflow-x-auto border bg-card p-1">
         {libraryStatuses.map((status) => (
           <TabsTrigger key={status.value} value={status.value} asChild>
             <Link
               to="/my-list"
-              search={{ sort, status: status.value, page: 1 }}
+              search={{
+                sort: search.sort,
+                q: search.q,
+                status: status.value,
+                page: 1,
+              }}
+              className="whitespace-nowrap"
             >
               {status.label}
             </Link>
@@ -210,23 +275,24 @@ function LibraryStatusTabs({
 }
 
 function LibrarySortSelect({
-  sort,
+  search,
   status,
 }: {
-  sort: LibrarySort
+  search: MyListSearch
   status: LibraryStatus | null
 }) {
   const navigate = useNavigate()
   return (
-    <div className="flex items-center gap-2">
-      <ArrowDownWideNarrow className="size-4 text-muted-foreground" />
+    <div className="flex shrink-0 items-center gap-2">
+      <ArrowDownWideNarrow className="size-4 shrink-0 text-muted-foreground" />
       <Select
-        value={sort}
+        value={search.sort}
         onValueChange={(value) =>
           void navigate({
             to: "/my-list",
             search: {
               status: status ?? "all",
+              q: search.q,
               sort: decodeLibrarySort(value),
               page: 1,
             },
@@ -253,14 +319,14 @@ function LibrarySortSelect({
 function LibraryPagination({
   page,
   perPage,
-  sort,
+  search: currentSearch,
   status,
   totalItems,
   totalPages,
 }: {
   page: number
   perPage: number
-  sort: LibrarySort
+  search: MyListSearch
   status: LibraryStatus | null
   totalItems: number
   totalPages: number
@@ -272,12 +338,13 @@ function LibraryPagination({
   const statusValue: MyListSearch["status"] = status ?? "all"
   const search = (nextPage: number) => ({
     status: statusValue,
-    sort,
+    sort: currentSearch.sort,
+    q: currentSearch.q,
     page: nextPage,
   })
 
   return (
-    <nav className="flex flex-col gap-3 rounded-xl border bg-card/60 p-3 text-sm sm:flex-row sm:items-center sm:justify-between">
+    <nav className="flex flex-col gap-3 rounded-2xl border bg-card/60 p-3 text-sm sm:flex-row sm:items-center sm:justify-between">
       <p className="text-muted-foreground">
         Showing {from}-{to} of {totalItems}
       </p>

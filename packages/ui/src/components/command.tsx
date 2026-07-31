@@ -25,7 +25,7 @@ function Command({
     <CommandPrimitive
       data-slot="command"
       className={cn(
-        "flex size-full flex-col overflow-hidden rounded-4xl bg-popover p-1 text-popover-foreground",
+        "flex min-h-0 w-full flex-1 flex-col overflow-hidden rounded-4xl bg-popover p-1 text-popover-foreground",
         className
       )}
       {...props}
@@ -48,14 +48,17 @@ function CommandDialog({
 }) {
   return (
     <Dialog {...props}>
-      <DialogHeader className="sr-only">
-        <DialogTitle>{title}</DialogTitle>
-        <DialogDescription>{description}</DialogDescription>
-      </DialogHeader>
       <DialogContent
-        className={cn("overflow-hidden rounded-4xl! p-0", className)}
+        className={cn(
+          "top-4 flex max-h-[calc(100dvh-2rem)] translate-y-0 flex-col gap-0 overflow-hidden rounded-4xl! p-0 sm:top-[10vh] sm:max-h-[80dvh]",
+          className
+        )}
         showCloseButton={showCloseButton}
       >
+        <DialogHeader className="sr-only">
+          <DialogTitle>{title}</DialogTitle>
+          <DialogDescription>{description}</DialogDescription>
+        </DialogHeader>
         {children}
       </DialogContent>
     </Dialog>
@@ -67,12 +70,12 @@ function CommandInput({
   ...props
 }: React.ComponentProps<typeof CommandPrimitive.Input>) {
   return (
-    <div data-slot="command-input-wrapper" className="p-1 pb-0">
-      <InputGroup className="h-9 bg-input/50">
+    <div data-slot="command-input-wrapper" className="shrink-0 p-1 pb-0">
+      <InputGroup className="h-11 bg-input/50 sm:h-9">
         <CommandPrimitive.Input
           data-slot="command-input"
           className={cn(
-            "w-full text-sm outline-hidden disabled:cursor-not-allowed disabled:opacity-50",
+            "w-full text-base outline-hidden disabled:cursor-not-allowed disabled:opacity-50 sm:text-sm",
             className
           )}
           {...props}
@@ -93,7 +96,7 @@ function CommandList({
     <CommandPrimitive.List
       data-slot="command-list"
       className={cn(
-        "no-scrollbar max-h-72 scroll-py-1 overflow-x-hidden overflow-y-auto outline-none",
+        "no-scrollbar min-h-0 flex-1 scroll-py-1 overflow-x-hidden overflow-y-auto overscroll-contain outline-none",
         className
       )}
       {...props}

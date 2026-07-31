@@ -40,12 +40,19 @@ export function PrivacyPanel({ user }: { user: AppUser | null }) {
 
   if (profileError) return profileError
 
-  const update = async (checked: boolean) => {
+  const isPrivate = profile?.private ?? false
+
+  const update = async (patch: {
+    private?: boolean
+    shareStats?: boolean
+    shareActivity?: boolean
+  }) => {
     try {
       await savePrivacy({
-        payload: { private: checked },
+        payload: patch,
         reactivityKeys: profileReactivityKeys,
       })
+      refreshProfile()
       await router.invalidate()
     } catch (reason) {
       toast.error(errorMessage(reason, "Unable to update privacy"))
@@ -53,21 +60,67 @@ export function PrivacyPanel({ user }: { user: AppUser | null }) {
   }
 
   return (
-    <PanelCard>
-      <Field orientation="horizontal">
-        <div className="flex-1">
-          <p className="font-semibold">Private profile</p>
-          <FieldDescription>
-            Hide your profile details from everyone except you.
-          </FieldDescription>
+    <div className="flex flex-col gap-4">
+      <PanelCard>
+        <Field orientation="horizontal">
+          <div className="flex-1">
+            <p className="font-semibold">Private profile</p>
+            <FieldDescription>
+              Hide your profile from everyone except you. This overrides the
+              sharing options below.
+            </FieldDescription>
+          </div>
+          <Switch
+            aria-label="Private profile"
+            checked={isPrivate}
+            disabled={saveResult.waiting}
+            onCheckedChange={(value) => void update({ private: value })}
+          />
+        </Field>
+      </PanelCard>
+
+      <PanelCard className={isPrivate ? "opacity-60" : undefined}>
+        <div className="flex flex-col gap-1">
+          <h3 className="font-semibold">What visitors can see</h3>
+          <p className="text-sm text-muted-foreground">
+            {isPrivate
+              ? "Your profile is private, so none of this is shared right now."
+              : "Choose which sections appear on your public profile."}
+          </p>
         </div>
-        <Switch
-          aria-label="Private profile"
-          checked={profile?.private ?? false}
-          disabled={saveResult.waiting}
-          onCheckedChange={(value) => void update(value)}
-        />
-      </Field>
-    </PanelCard>
+
+        <div className="mt-4 flex flex-col gap-4">
+          <Field orientation="horizontal">
+            <div className="flex-1">
+              <p className="font-medium">Statistics</p>
+              <FieldDescription>
+                Totals, score distribution, and time watched.
+              </FieldDescription>
+            </div>
+            <Switch
+              aria-label="Share statistics"
+              checked={profile?.shareStats ?? true}
+              disabled={saveResult.waiting || isPrivate}
+              onCheckedChange={(value) => void update({ shareStats: value })}
+            />
+          </Field>
+
+          <Field orientation="horizontal">
+            <div className="flex-1">
+              <p className="font-medium">Recent activity</p>
+              <FieldDescription>
+                Your watch streak and day-by-day activity.
+              </FieldDescription>
+            </div>
+            <Switch
+              aria-label="Share recent activity"
+              checked={profile?.shareActivity ?? true}
+              disabled={saveResult.waiting || isPrivate}
+              onCheckedChange={(value) => void update({ shareActivity: value })}
+            />
+          </Field>
+        </div>
+      </PanelCard>
+    </div>
   )
 }

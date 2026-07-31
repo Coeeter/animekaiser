@@ -1,24 +1,41 @@
 import type { AnimeItem } from "@animekaiser/domain"
+import {
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from "@animekaiser/ui/components/empty"
+import { SearchX } from "lucide-react"
 import { AnimeCard } from "./anime-card"
 
 export function AnimeGrid({
   items,
-  compact = false,
+  emptyTitle = "Nothing matched",
+  emptyDescription = "Try removing a filter or widening your search.",
 }: {
   items: ReadonlyArray<AnimeItem>
-  compact?: boolean
+  emptyTitle?: string
+  emptyDescription?: string
 }) {
   if (items.length === 0) {
     return (
-      <div className="rounded-xl border border-dashed p-10 text-center text-sm text-muted-foreground">
-        No anime matched the current filters.
-      </div>
+      <Empty className="border border-dashed">
+        <EmptyHeader>
+          <EmptyMedia variant="icon">
+            <SearchX />
+          </EmptyMedia>
+          <EmptyTitle>{emptyTitle}</EmptyTitle>
+          <EmptyDescription>{emptyDescription}</EmptyDescription>
+        </EmptyHeader>
+      </Empty>
     )
   }
+
   return (
-    <div className="grid grid-cols-2 gap-x-4 gap-y-6 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-6">
+    <div className="grid grid-cols-3 gap-x-3 gap-y-5 sm:grid-cols-4 md:gap-x-4 md:gap-y-6 lg:grid-cols-6">
       {items.map((anime) => (
-        <AnimeCard key={anime.malId} anime={anime} compact={compact} />
+        <AnimeCard key={anime.malId} anime={anime} />
       ))}
     </div>
   )

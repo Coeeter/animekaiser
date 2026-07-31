@@ -14,6 +14,8 @@ export type ProfileRecord = {
     bannerKey: string | null
     description: string | null
     private: boolean
+    shareStats: boolean
+    shareActivity: boolean
   }
 }
 
@@ -26,6 +28,8 @@ const emptyProfile = {
   bannerKey: null,
   description: null,
   private: false,
+  shareStats: true,
+  shareActivity: true,
 } as const
 
 export class ProfileService extends Effect.Service<ProfileService>()(
@@ -97,6 +101,8 @@ export class ProfileService extends Effect.Service<ProfileService>()(
                 bannerKey: row.profile.bannerKey,
                 description: row.profile.description,
                 private: row.profile.private,
+                shareStats: row.profile.shareStats,
+                shareActivity: row.profile.shareActivity,
               }
             : emptyProfile,
         }) satisfies ProfileRecord
@@ -147,15 +153,32 @@ export class ProfileService extends Effect.Service<ProfileService>()(
       )
 
       const updatePrivacy = Effect.fn("ProfileService.updatePrivacy")(
-        function* (userId: string, isPrivate: boolean) {
+        function* (
+          userId: string,
+          patch: {
+            private?: boolean
+            shareStats?: boolean
+            shareActivity?: boolean
+          }
+        ) {
+          const changes = {
+            ...(patch.private === undefined ? {} : { private: patch.private }),
+            ...(patch.shareStats === undefined
+              ? {}
+              : { shareStats: patch.shareStats }),
+            ...(patch.shareActivity === undefined
+              ? {}
+              : { shareActivity: patch.shareActivity }),
+          }
+
           yield* database
             .execute((db) =>
               db
                 .insert(profile)
-                .values({ userId, private: isPrivate })
+                .values({ userId, ...changes })
                 .onConflictDoUpdate({
                   target: profile.userId,
-                  set: { private: isPrivate, updatedAt: new Date() },
+                  set: { ...changes, updatedAt: new Date() },
                 })
             )
             .pipe(

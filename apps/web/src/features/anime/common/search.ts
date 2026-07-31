@@ -2,12 +2,10 @@ import {
   AnimeDiscoveryCategory,
   AnimeFormat,
   AnimeRating,
-  AnimeScheduleDay,
   AnimeSeason,
   AnimeSort,
 } from "@animekaiser/domain"
 import * as Schema from "effect/Schema"
-import { getTodayScheduleDay } from "../schedule/schedule"
 
 export const DEFAULT_CATALOG_PER_PAGE = 24
 
@@ -48,16 +46,8 @@ export const DiscoverSearch = Schema.Struct({
 })
 export type DiscoverSearch = typeof DiscoverSearch.Type
 
-export const ScheduleSearch = Schema.Struct({
-  day: Schema.optionalWith(AnimeScheduleDay, {
-    default: getTodayScheduleDay,
-  }),
-})
-export type ScheduleSearch = typeof ScheduleSearch.Type
-
 export const decodeCatalogSearch = Schema.decodeUnknownSync(CatalogSearch)
 export const decodeDiscoverSearch = Schema.decodeUnknownSync(DiscoverSearch)
-export const decodeScheduleSearch = Schema.decodeUnknownSync(ScheduleSearch)
 
 export const catalogInput = (
   search: CatalogSearch,

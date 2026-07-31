@@ -27,6 +27,7 @@ import {
   Bell,
   Captions,
   Globe,
+  History,
   KeyRound,
   Link2,
   Monitor,
@@ -46,6 +47,7 @@ import { AccountPanel } from "./account-panel"
 import { AppearancePanel } from "./appearance-panel"
 import type { SettingsSection } from "./atoms"
 import { oauthResultAtom, settingsOpenAtom, settingsSectionAtom } from "./atoms"
+import { HistoryPanel } from "./history-panel"
 import { IntegrationsPanel } from "./integrations-panel"
 import { PasskeysPanel } from "./passkeys-panel"
 import { PlayerPanel } from "./player-panel"
@@ -78,6 +80,11 @@ const sections = [
   { title: "Site", icon: Globe, description: "Site-wide preferences." },
   { title: "Player", icon: Play, description: "Player defaults." },
   { title: "Subtitles", icon: Captions, description: "Subtitle settings." },
+  {
+    title: "History",
+    icon: History,
+    description: "Watch history and resume positions.",
+  },
   {
     title: "Notifications",
     icon: Bell,
@@ -137,6 +144,7 @@ function SectionContent({
   if (section === "Appearance") return <AppearancePanel />
   if (section === "Site") return <SitePanel />
   if (section === "Player") return <PlayerPanel />
+  if (section === "History") return <HistoryPanel />
   if (section === "Integrations") return <IntegrationsPanel user={user} />
   if (section === "Sessions") return <SessionsPanel user={user} />
   if (section === "Passkeys") return <PasskeysPanel user={user} />
@@ -215,7 +223,7 @@ export function SettingsDialog() {
             )}
           </div>
         </DialogHeader>
-        <div className="min-h-0 md:grid md:grid-cols-[17rem_minmax(0,1fr)]">
+        <div className="flex min-h-0 min-w-0 flex-col md:grid md:grid-cols-[17rem_minmax(0,1fr)]">
           <aside className="hidden overflow-y-auto border-r bg-muted/20 p-3 md:block">
             <nav className="flex flex-col gap-1">
               {sections.map((section) => (
@@ -234,19 +242,29 @@ export function SettingsDialog() {
               ))}
             </nav>
           </aside>
-          <main className="min-h-0 overflow-y-auto p-4 md:p-6">
-            <div className="mb-4 flex gap-2 overflow-x-auto pb-2 md:hidden">
-              {sections.map((section) => (
-                <Button
-                  key={section.title}
-                  size="icon"
-                  variant={active === section.title ? "secondary" : "outline"}
-                  aria-label={section.title}
-                  onClick={() => setActive(section.title)}
-                >
-                  <section.icon />
-                </Button>
-              ))}
+          <main className="min-h-0 w-full min-w-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain p-4 md:p-6">
+            <div className="no-scrollbar -mx-4 mb-4 flex max-w-full gap-2 overflow-x-auto px-4 pb-2 md:hidden">
+              {sections.map((section) => {
+                const isActive = active === section.title
+
+                return (
+                  <button
+                    key={section.title}
+                    type="button"
+                    aria-current={isActive ? "page" : undefined}
+                    className={cn(
+                      "inline-flex h-9 shrink-0 items-center gap-2 rounded-full border px-3 text-sm font-medium whitespace-nowrap transition",
+                      isActive
+                        ? "border-primary/60 bg-primary/15 text-primary"
+                        : "bg-card/60 text-muted-foreground"
+                    )}
+                    onClick={() => setActive(section.title)}
+                  >
+                    <section.icon className="size-4" />
+                    {section.title}
+                  </button>
+                )
+              })}
             </div>
             <div className="flex items-start gap-4">
               <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-muted">

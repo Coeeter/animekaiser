@@ -27,6 +27,10 @@ export const AnimeLibraryMetadata = Schema.Struct({
   title: AnimeTitle,
   coverImage: Schema.NullOr(Schema.String),
   episodes: Schema.NullOr(Schema.Int.pipe(Schema.positive())),
+  genres: Schema.optional(Schema.Array(Schema.String)),
+  seasonYear: Schema.optional(
+    Schema.NullOr(Schema.Int.pipe(Schema.between(1900, 2200)))
+  ),
 })
 export type AnimeLibraryMetadata = typeof AnimeLibraryMetadata.Type
 

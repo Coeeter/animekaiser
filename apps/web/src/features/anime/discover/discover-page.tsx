@@ -1,4 +1,4 @@
-import type { AnimeDiscoveryCategory } from "@animekaiser/domain"
+import type { AnimeDiscoveryCategory, AnimeSort } from "@animekaiser/domain"
 import { Button } from "@animekaiser/ui/components/button"
 import { Skeleton } from "@animekaiser/ui/components/skeleton"
 import {
@@ -41,10 +41,10 @@ const tabDescriptions: Record<AnimeDiscoveryCategory, string> = {
   upcoming: "Announced titles coming up next.",
 }
 
-const moreHref: Partial<Record<AnimeDiscoveryCategory, string>> = {
-  trending: "/series?sort=trending",
-  popular: "/series?sort=popularity",
-  topRated: "/series?sort=score",
+const catalogSort: Partial<Record<AnimeDiscoveryCategory, AnimeSort>> = {
+  trending: "trending",
+  popular: "popularity",
+  topRated: "score",
 }
 
 const tabs: ReadonlyArray<{
@@ -73,7 +73,7 @@ function DiscoverLayout({
   children: ReactNode
   search: DiscoverSearch
 }) {
-  const viewAllHref = moreHref[search.tab]
+  const viewAllSort = catalogSort[search.tab]
 
   return (
     <div className="mx-auto flex w-full max-w-7xl flex-col gap-8 p-4 pb-8 md:p-6">
@@ -87,19 +87,31 @@ function DiscoverLayout({
 
       <PageHero
         icon={Sparkles}
-        kicker={tabLabels[search.tab]}
-        title="Discover anime"
-        description="Browse trending shows, seasonal picks, top rated titles, and upcoming releases."
-      />
+        kicker="Discover"
+        title={tabTitles[search.tab]}
+        description={tabDescriptions[search.tab]}
+      >
+        {viewAllSort ? (
+          <Link
+            to="/series"
+            search={{ sort: viewAllSort, page: 1 }}
+            className="inline-flex shrink-0 items-center gap-1 text-sm font-medium text-muted-foreground transition hover:text-foreground"
+          >
+            Browse with filters
+            <ArrowRight className="size-3.5" />
+          </Link>
+        ) : null}
+      </PageHero>
 
       <Tabs value={search.tab} className="max-w-full min-w-0">
-        <TabsList className="mb-4 h-auto max-w-full justify-start overflow-x-auto border bg-card p-1">
+        <TabsList className="no-scrollbar mb-5 h-auto max-w-full justify-start overflow-x-auto border bg-card p-1">
           {tabs.map(({ value, label }) => (
             <TabsTrigger key={value} value={value} asChild>
               <Link
                 to="/discover"
                 search={{ tab: value, page: 1 }}
                 preload="intent"
+                className="whitespace-nowrap"
               >
                 {label}
               </Link>
@@ -108,37 +120,17 @@ function DiscoverLayout({
         </TabsList>
 
         <TabsContent key={search.tab} value={search.tab}>
-          <section className="flex flex-col gap-4">
-            <div className="flex items-end justify-between gap-4">
-              <div className="min-w-0">
-                <h2 className="font-heading text-xl font-bold tracking-tight md:text-2xl">
-                  {tabTitles[search.tab]}
-                </h2>
-                <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
-                  {tabDescriptions[search.tab]}
-                </p>
-              </div>
-              {viewAllHref ? (
-                <Link
-                  to={viewAllHref}
-                  className="inline-flex shrink-0 items-center gap-1 text-sm font-medium text-muted-foreground transition hover:text-foreground"
-                >
-                  View all
-                  <ArrowRight className="size-3.5" />
-                </Link>
-              ) : null}
-            </div>
-
-            {children}
-          </section>
+          {children}
         </TabsContent>
       </Tabs>
     </div>
   )
 }
 
+const discoverPerPage = 24
+
 function DiscoverResults({ search }: { search: DiscoverSearch }) {
-  const atom = discoveryAtom(search.tab, search.page, 12)
+  const atom = discoveryAtom(search.tab, search.page, discoverPerPage)
   const result = useAtomValue(atom)
   const refresh = useAtomRefresh(atom)
 
@@ -146,10 +138,16 @@ function DiscoverResults({ search }: { search: DiscoverSearch }) {
     .onInitialOrWaiting(() => <DiscoverResultsPending />)
     .onFailure(() => <DataError onRetry={refresh} />)
     .onSuccess((data) => (
-      <>
-        <AnimeGrid items={data.items} compact />
-        <DiscoverPagination hasNextPage={data.hasNextPage} search={search} />
-      </>
+      <div className="flex flex-col gap-6">
+        <AnimeGrid
+          items={data.items}
+          emptyTitle="Nothing here yet"
+          emptyDescription="This category has no titles right now. Try another tab."
+        />
+        {data.items.length > 0 ? (
+          <DiscoverPagination hasNextPage={data.hasNextPage} search={search} />
+        ) : null}
+      </div>
     ))
     .render()
 }
@@ -202,17 +200,17 @@ function DiscoverPagination({
 
 function DiscoverResultsPending() {
   return (
-    <>
-      <div className="grid grid-cols-2 gap-x-4 gap-y-6 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-6">
-        {Array.from({ length: 12 }, (_item, index) => (
+    <div className="flex flex-col gap-6">
+      <div className="grid grid-cols-3 gap-x-3 gap-y-5 sm:grid-cols-4 md:gap-x-4 md:gap-y-6 lg:grid-cols-6">
+        {Array.from({ length: discoverPerPage }, (_item, index) => (
           <div key={index} className="space-y-2.5">
-            <Skeleton className="aspect-2/3 w-full rounded-xl" />
+            <Skeleton className="aspect-2/3 w-full rounded-2xl" />
             <Skeleton className="h-4 w-full" />
             <Skeleton className="h-3 w-2/3" />
           </div>
         ))}
       </div>
-      <Skeleton className="h-9 w-full rounded-lg" />
-    </>
+      <Skeleton className="h-9 w-full rounded-2xl" />
+    </div>
   )
 }
