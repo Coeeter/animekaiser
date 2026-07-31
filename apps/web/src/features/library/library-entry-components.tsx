@@ -135,7 +135,6 @@ export function LibraryCard({
           </Link>
           <p className="mt-1 truncate text-xs text-muted-foreground">
             {formatProgress(entry)}
-            {percent !== null ? ` · ${percent}%` : ""}
           </p>
         </div>
 

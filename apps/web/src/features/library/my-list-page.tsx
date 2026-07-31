@@ -96,11 +96,9 @@ const sortLabels: Record<LibrarySort, string> = {
   progress_desc: "Most progress",
 }
 
-const formatMeanScore = (score: number | null) => {
-  if (score === null) return null
-  const value = score / 10
-  return Number.isInteger(value) ? String(value) : value.toFixed(1)
-}
+// Matches the profile page, which renders the same tile.
+const formatMeanScore = (score: number | null) =>
+  score === null ? null : (score / 10).toFixed(1)
 
 const statusCount = (stats: LibraryStats, value: "all" | LibraryStatus) =>
   value === "all" ? stats.total : stats.byStatus[value]
