@@ -31,6 +31,7 @@ import { toast } from "sonner"
 import { DataError } from "../../components/data-error"
 import { DebouncedSearchInput } from "../../components/debounced-search-input"
 import { PageHero } from "../../components/page-hero"
+import { isStaleResult, useLastSuccess } from "../../hooks/use-last-success"
 import { AnimeTitle } from "../anime/common/anime-title"
 import { formatTime, providerLabel } from "../streaming/player-format"
 import {
@@ -70,6 +71,12 @@ export function WatchHistoryPage({ search }: { search: WatchHistorySearch }) {
   )
   const result = useAtomValue(atom)
   const refresh = useAtomRefresh(atom)
+  const page = useLastSuccess(result)
+  const stale = isStaleResult(result, page)
+
+  const failure = Result.builder(result)
+    .onFailure(() => <DataError onRetry={refresh} />)
+    .orNull()
 
   return (
     <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 p-4 pb-8 md:p-6">
@@ -95,45 +102,51 @@ export function WatchHistoryPage({ search }: { search: WatchHistorySearch }) {
         }
       />
 
-      {Result.builder(result)
-        .onInitialOrWaiting(() => <WatchHistoryPending />)
-        .onFailure(() => <DataError onRetry={refresh} />)
-        .onSuccess((page) =>
-          page.items.length === 0 ? (
-            <Empty className="border border-dashed">
-              <EmptyHeader>
-                <EmptyMedia variant="icon">
-                  {search.q ? <SearchX /> : <History />}
-                </EmptyMedia>
-                <EmptyTitle>
-                  {search.q
-                    ? `Nothing matches \u201c${search.q}\u201d`
-                    : "Nothing watched yet"}
-                </EmptyTitle>
-                <EmptyDescription>
-                  {search.q
-                    ? "Try a different spelling, or clear the search to see everything you have watched."
-                    : "Play an episode and it will show up here so you can pick up where you left off."}
-                </EmptyDescription>
-              </EmptyHeader>
-            </Empty>
-          ) : (
-            <div className="flex flex-col gap-3">
-              {page.items.map((item) => (
-                <WatchHistoryRow
-                  key={`${item.malId}-${item.episode}`}
-                  item={item}
-                  onCleared={refresh}
+      {failure ??
+        (page ? (
+          <div
+            className={cn(
+              "flex flex-col gap-3 transition-opacity",
+              stale && "opacity-60"
+            )}
+          >
+            {page.items.length === 0 ? (
+              <Empty className="border border-dashed">
+                <EmptyHeader>
+                  <EmptyMedia variant="icon">
+                    {search.q ? <SearchX /> : <History />}
+                  </EmptyMedia>
+                  <EmptyTitle>
+                    {search.q
+                      ? `Nothing matches \u201c${search.q}\u201d`
+                      : "Nothing watched yet"}
+                  </EmptyTitle>
+                  <EmptyDescription>
+                    {search.q
+                      ? "Try a different spelling, or clear the search to see everything you have watched."
+                      : "Play an episode and it will show up here so you can pick up where you left off."}
+                  </EmptyDescription>
+                </EmptyHeader>
+              </Empty>
+            ) : (
+              <>
+                {page.items.map((item) => (
+                  <WatchHistoryRow
+                    key={`${item.malId}-${item.episode}`}
+                    item={item}
+                    onCleared={refresh}
+                  />
+                ))}
+                <WatchHistoryPagination
+                  search={search}
+                  hasNextPage={page.hasNextPage}
                 />
-              ))}
-              <WatchHistoryPagination
-                search={search}
-                hasNextPage={page.hasNextPage}
-              />
-            </div>
-          )
-        )
-        .render()}
+              </>
+            )}
+          </div>
+        ) : (
+          <WatchHistoryPending />
+        ))}
     </div>
   )
 }

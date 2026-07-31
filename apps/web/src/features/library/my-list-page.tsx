@@ -30,6 +30,7 @@ import {
 } from "@animekaiser/ui/components/select"
 import { Skeleton } from "@animekaiser/ui/components/skeleton"
 import { Tabs, TabsList, TabsTrigger } from "@animekaiser/ui/components/tabs"
+import { cn } from "@animekaiser/ui/lib/utils"
 import {
   Result,
   useAtom,
@@ -55,6 +56,7 @@ import { toast } from "sonner"
 import { DataError } from "../../components/data-error"
 import { DebouncedSearchInput } from "../../components/debounced-search-input"
 import { PageHero } from "../../components/page-hero"
+import { isStaleResult, useLastSuccess } from "../../hooks/use-last-success"
 import {
   clearLibraryAtom,
   libraryPageAtom,
@@ -92,8 +94,11 @@ export function MyListPage({ search }: { search: MyListSearch }) {
   )
   const result = useAtomValue(queryAtom)
   const refresh = useAtomRefresh(queryAtom)
-  const page = Result.builder(result)
-    .onSuccess((value) => value)
+  const page = useLastSuccess(result)
+  const stale = isStaleResult(result, page)
+
+  const failure = Result.builder(result)
+    .onFailure(() => <DataError onRetry={refresh} />)
     .orNull()
 
   return (
@@ -104,13 +109,17 @@ export function MyListPage({ search }: { search: MyListSearch }) {
         title="My list"
         description="Track your anime library, scores, and watch progress."
       />
-      {Result.builder(result)
-        .onInitialOrWaiting(() => <MyListPending />)
-        .onFailure(() => <DataError onRetry={refresh} />)
-        .onSuccess((value) => (
-          <MyListContent page={value} search={search} refresh={refresh} />
-        ))
-        .render()}
+      {failure ??
+        (page ? (
+          <MyListContent
+            page={page}
+            search={search}
+            refresh={refresh}
+            stale={stale}
+          />
+        ) : (
+          <MyListPending />
+        ))}
     </div>
   )
 }
@@ -140,10 +149,12 @@ function MyListContent({
   page,
   search,
   refresh,
+  stale,
 }: {
   page: LibraryPage
   search: MyListSearch
   refresh: () => void
+  stale: boolean
 }) {
   const navigate = useNavigate()
   const status = search.status === "all" ? null : search.status
@@ -175,43 +186,50 @@ function MyListContent({
           <LibraryStatusTabs search={search} value={status} />
           <LibrarySortSelect search={search} status={status} />
         </div>
-        {page.items.length > 0 ? (
-          <div className="grid gap-3 md:grid-cols-2">
-            {page.items.map((entry) => (
-              <LibraryCard
-                key={entry.malId}
-                entry={entry}
-                onChanged={refresh}
-              />
-            ))}
-          </div>
-        ) : (
-          <Empty className="border border-dashed">
-            <EmptyHeader>
-              <EmptyMedia variant="icon">
-                {search.q ? <SearchX /> : <Bookmark />}
-              </EmptyMedia>
-              <EmptyTitle>
-                {search.q
-                  ? `No titles match “${search.q}”`
-                  : "Nothing here yet"}
-              </EmptyTitle>
-              <EmptyDescription>
-                {search.q
-                  ? "Try a different spelling, or clear the search to see your whole list."
-                  : "Add a title from a series page, or import a linked provider list."}
-              </EmptyDescription>
-            </EmptyHeader>
-          </Empty>
-        )}
-        <LibraryPagination
-          page={currentPage}
-          perPage={page.perPage}
-          search={search}
-          status={status}
-          totalItems={totalItems}
-          totalPages={totalPages}
-        />
+        <div
+          className={cn(
+            "flex flex-col gap-4 transition-opacity",
+            stale && "opacity-60"
+          )}
+        >
+          {page.items.length > 0 ? (
+            <div className="grid gap-3 md:grid-cols-2">
+              {page.items.map((entry) => (
+                <LibraryCard
+                  key={entry.malId}
+                  entry={entry}
+                  onChanged={refresh}
+                />
+              ))}
+            </div>
+          ) : (
+            <Empty className="border border-dashed">
+              <EmptyHeader>
+                <EmptyMedia variant="icon">
+                  {search.q ? <SearchX /> : <Bookmark />}
+                </EmptyMedia>
+                <EmptyTitle>
+                  {search.q
+                    ? `No titles match “${search.q}”`
+                    : "Nothing here yet"}
+                </EmptyTitle>
+                <EmptyDescription>
+                  {search.q
+                    ? "Try a different spelling, or clear the search to see your whole list."
+                    : "Add a title from a series page, or import a linked provider list."}
+                </EmptyDescription>
+              </EmptyHeader>
+            </Empty>
+          )}
+          <LibraryPagination
+            page={currentPage}
+            perPage={page.perPage}
+            search={search}
+            status={status}
+            totalItems={totalItems}
+            totalPages={totalPages}
+          />
+        </div>
       </main>
       <aside className="flex flex-col gap-4">
         <StatsPanel page={page} />
