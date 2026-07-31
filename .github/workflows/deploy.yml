@@ -31,7 +31,7 @@ jobs:
               - 'packages/db/**'
               - 'packages/domain/**'
               - 'packages/rpc/**'
-              - 'dockerfile'
+              - 'Dockerfile'
               - '.dockerignore'
               - 'bun.lock'
               - 'package.json'
@@ -93,7 +93,7 @@ jobs:
         uses: docker/build-push-action@v7.3.0
         with:
           context: .
-          file: ./dockerfile
+          file: ./Dockerfile
           push: true
           cache-from: type=gha
           cache-to: type=gha,mode=max
@@ -102,4 +102,54 @@ jobs:
             ghcr.io/coeeter/kaiser-api:${{ github.sha }}
 
       - name: Deploy to prod
-        run: curl -X POST ${{ secrets.DOKPLOY_WEBHOOK_URL }}
+        env:
+          DOKPLOY_WEBHOOK_URL: ${{ secrets.DOKPLOY_WEBHOOK_URL }}
+        run: |
+          set -uo pipefail
+
+          if [ -z "${DOKPLOY_WEBHOOK_URL}" ]; then
+            echo "::error::DOKPLOY_WEBHOOK_URL is unset. Nothing was deployed."
+            exit 1
+          fi
+
+          # Retry connection-level failures and the standard transient 5xx only.
+          # Gateway timeouts are deliberately excluded: the origin has already
+          # accepted the request and is most likely mid-deploy, so retrying
+          # would queue a second one.
+          body="$(mktemp)"
+          exit_code=0
+          status="$(
+            curl --silent --show-error --request POST \
+              --connect-timeout 15 \
+              --max-time 180 \
+              --retry 3 \
+              --retry-delay 5 \
+              --retry-connrefused \
+              --write-out '%{http_code}' \
+              --output "${body}" \
+              "${DOKPLOY_WEBHOOK_URL}"
+          )" || exit_code=$?
+
+          echo "curl exit code: ${exit_code}"
+          echo "http status: ${status:-none}"
+          echo "response body:"
+          cat "${body}"
+          echo
+
+          if [ "${exit_code}" -ne 0 ]; then
+            echo "::error::Webhook never completed (curl exit ${exit_code}). Prod was not redeployed."
+            exit 1
+          fi
+
+          case "${status}" in
+            2*)
+              echo "Webhook accepted by Dokploy."
+              ;;
+            408 | 502 | 504 | 522 | 524)
+              echo "::warning::Webhook returned ${status} (gateway timeout). Dokploy most likely received it and is still deploying, so this was not retried. Confirm the running image before treating it as a failed deploy."
+              ;;
+            *)
+              echo "::error::Webhook failed with HTTP ${status}. Prod was not redeployed."
+              exit 1
+              ;;
+          esac
