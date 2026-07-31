@@ -111,7 +111,10 @@ function HeroSlide({
   rank: number
   title: string
 }) {
-  const image = anime.bannerImage ?? anime.coverImage
+  // Mobile slides are portrait, so the cover art fills the frame far better
+  // than a wide banner crop; `picture` means only one of the two downloads.
+  const bannerImage = anime.bannerImage ?? anime.coverImage
+  const portraitImage = anime.coverImage ?? anime.bannerImage
   const status = formatAnimeStatus(anime.status)
 
   const meta = [
@@ -123,16 +126,23 @@ function HeroSlide({
 
   return (
     <div className="relative min-w-0 shrink-0 grow-0 basis-full">
-      <div className="relative aspect-4/5 sm:aspect-2/1 md:aspect-[2.6/1]">
-        {image ? (
-          <img
-            src={image}
-            alt=""
-            className="size-full object-cover"
-            loading={rank === 1 ? "eager" : "lazy"}
-            fetchPriority={rank === 1 ? "high" : "auto"}
-            decoding="async"
-          />
+      {/* From md up the aspect ratio alone yields a frame shorter than the text
+          block, which clipped the title between roughly 768px and 1300px. */}
+      <div className="relative aspect-4/5 sm:aspect-2/1 md:aspect-[2.6/1] md:min-h-88">
+        {portraitImage ? (
+          <picture className="block size-full">
+            {bannerImage && bannerImage !== portraitImage ? (
+              <source media="(min-width: 640px)" srcSet={bannerImage} />
+            ) : null}
+            <img
+              src={portraitImage}
+              alt=""
+              className="size-full object-cover"
+              loading={rank === 1 ? "eager" : "lazy"}
+              fetchPriority={rank === 1 ? "high" : "auto"}
+              decoding="async"
+            />
+          </picture>
         ) : (
           <div className="size-full bg-muted" />
         )}
@@ -160,11 +170,7 @@ function HeroSlide({
         ) : null}
 
         <div className="flex min-w-0 flex-1 flex-col gap-2.5">
-          <p className="text-[11px] font-semibold tracking-[0.18em] text-primary uppercase">
-            #{rank} Trending
-          </p>
-
-          <h2 className="max-w-2xl font-heading text-2xl leading-[1.1] font-black tracking-tight text-white sm:text-3xl md:text-5xl">
+          <h2 className="line-clamp-2 max-w-2xl font-heading text-2xl leading-[1.1] font-black tracking-tight text-white sm:text-3xl md:text-5xl">
             {title}
           </h2>
 
