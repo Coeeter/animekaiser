@@ -29,6 +29,7 @@ import {
   SelectValue,
 } from "@animekaiser/ui/components/select"
 import { Textarea } from "@animekaiser/ui/components/textarea"
+import { cn } from "@animekaiser/ui/lib/utils"
 import { useAtomSet, useAtomValue } from "@effect-atom/atom-react"
 import { useForm } from "@tanstack/react-form"
 import { Link } from "@tanstack/react-router"
@@ -67,6 +68,14 @@ const formatProgress = (entry: LibraryEntry) =>
     ? `Watched ${entry.progress}/${entry.anime.episodes} ep`
     : `Watched ${entry.progress} ep`
 
+const progressPercent = (entry: LibraryEntry) => {
+  if (!entry.anime.episodes || entry.anime.episodes <= 0) return null
+  return Math.min(
+    100,
+    Math.round((entry.progress / entry.anime.episodes) * 100)
+  )
+}
+
 export function LibraryCard({
   entry,
   onChanged,
@@ -77,45 +86,70 @@ export function LibraryCard({
   const preference = useAtomValue(animeTitlePreferenceAtom)
   const titleText = getAnimeTitle(entry.anime.title, preference)
   const score = formatScore(entry.score)
+  const percent = progressPercent(entry)
+  const complete = entry.status === "completed"
+
   return (
-    <article className="grid grid-cols-[5.5rem_minmax(0,1fr)] gap-3 rounded-xl border bg-card/70 p-3">
-      <Link to="/series/$id" params={{ id: entry.malId }} preload="intent">
+    <article className="group flex gap-3 rounded-2xl border bg-card/70 p-2.5 transition hover:border-primary/40">
+      <Link
+        to="/series/$id"
+        params={{ id: entry.malId }}
+        preload="intent"
+        className="relative aspect-2/3 w-20 shrink-0 overflow-hidden rounded-xl bg-muted"
+      >
         {entry.anime.coverImage ? (
           <img
             src={entry.anime.coverImage}
             alt={titleText}
-            className="aspect-2/3 w-full rounded-lg object-cover"
+            className="size-full object-cover transition duration-500 group-hover:scale-105"
+            loading="lazy"
+            decoding="async"
           />
         ) : (
-          <div className="flex aspect-2/3 w-full items-center justify-center rounded-lg bg-muted text-xs text-muted-foreground">
+          <span className="flex size-full items-center justify-center px-1 text-center text-[10px] text-muted-foreground">
             MAL #{entry.malId}
-          </div>
+          </span>
         )}
+        {percent !== null ? (
+          <span className="absolute inset-x-0 bottom-0 h-1 bg-black/40">
+            <span
+              className={cn(
+                "block h-full",
+                complete ? "bg-emerald-400" : "bg-primary"
+              )}
+              style={{ width: `${percent}%` }}
+            />
+          </span>
+        ) : null}
       </Link>
-      <div className="flex min-w-0 flex-col gap-2">
+
+      <div className="flex min-w-0 flex-1 flex-col gap-2">
         <div className="min-w-0">
           <Link
             to="/series/$id"
             params={{ id: entry.malId }}
             preload="intent"
-            className="line-clamp-2 text-sm font-semibold hover:underline"
+            className="line-clamp-2 text-sm font-medium transition-colors hover:text-primary"
           >
             <AnimeTitle title={entry.anime.title} />
           </Link>
-          <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
-            <span>{formatProgress(entry)}</span>
-            {score ? (
-              <span className="inline-flex items-center gap-1 text-foreground">
-                {score}
-                <Star className="size-3 fill-amber-400 text-amber-500" />
-              </span>
-            ) : null}
-          </div>
+          <p className="mt-1 truncate text-xs text-muted-foreground">
+            {formatProgress(entry)}
+            {percent !== null ? ` · ${percent}%` : ""}
+          </p>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
+
+        <div className="flex flex-wrap items-center gap-1.5">
           <Badge variant="secondary">{libraryStatusLabel(entry.status)}</Badge>
+          {score ? (
+            <Badge variant="outline" className="gap-1">
+              <Star className="size-3 fill-amber-400 text-amber-500" />
+              {score}
+            </Badge>
+          ) : null}
         </div>
-        <div className="mt-auto flex gap-2">
+
+        <div className="mt-auto flex items-center gap-1">
           <LibraryDialog entry={entry} onSaved={onChanged} />
           <DeleteLibraryDialog entry={entry} onDeleted={onChanged} />
         </div>
@@ -171,9 +205,13 @@ export function DeleteLibraryDialog({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="destructive" size="sm">
-          <Trash2 data-icon="inline-start" />
-          Remove
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          aria-label="Remove from your list"
+          className="text-muted-foreground hover:text-destructive"
+        >
+          <Trash2 />
         </Button>
       </DialogTrigger>
       <DialogContent>

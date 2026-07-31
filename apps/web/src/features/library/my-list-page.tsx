@@ -1,18 +1,31 @@
 import type {
   ExternalListProvider,
   LibraryPage,
+  LibraryStats,
   LibraryStatus,
 } from "@animekaiser/domain"
 import { LibrarySort } from "@animekaiser/domain"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogMedia,
+  AlertDialogTitle,
+} from "@animekaiser/ui/components/alert-dialog"
 import { Button } from "@animekaiser/ui/components/button"
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@animekaiser/ui/components/dialog"
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@animekaiser/ui/components/dropdown-menu"
 import {
   Empty,
   EmptyDescription,
@@ -43,10 +56,14 @@ import * as Schema from "effect/Schema"
 import {
   ArrowDownWideNarrow,
   Bookmark,
+  CheckCircle2,
   ChevronLeft,
   ChevronRight,
   Download,
   ListRestart,
+  ListVideo,
+  MoreHorizontal,
+  Play,
   SearchX,
   Star,
   Trash2,
@@ -56,6 +73,7 @@ import { toast } from "sonner"
 import { DataError } from "../../components/data-error"
 import { DebouncedSearchInput } from "../../components/debounced-search-input"
 import { PageHero } from "../../components/page-hero"
+import { StatTile } from "../../components/stat-tile"
 import { isStaleResult, useLastSuccess } from "../../hooks/use-last-success"
 import {
   clearLibraryAtom,
@@ -84,6 +102,9 @@ const formatMeanScore = (score: number | null) => {
   return Number.isInteger(value) ? String(value) : value.toFixed(1)
 }
 
+const statusCount = (stats: LibraryStats, value: "all" | LibraryStatus) =>
+  value === "all" ? stats.total : stats.byStatus[value]
+
 export function MyListPage({ search }: { search: MyListSearch }) {
   const queryAtom = libraryPageAtom(
     search.status === "all" ? undefined : search.status,
@@ -102,13 +123,19 @@ export function MyListPage({ search }: { search: MyListSearch }) {
     .orNull()
 
   return (
-    <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 p-4 pb-8 md:p-6">
+    <div className="mx-auto flex w-full max-w-7xl flex-col gap-8 p-4 pb-8 md:p-6">
       <PageHero
         icon={Bookmark}
-        kicker={`${page?.stats.total ?? 0} titles`}
+        kicker="Your library"
         title="My list"
         description="Track your anime library, scores, and watch progress."
-      />
+      >
+        <MyListActions
+          refresh={refresh}
+          hasEntries={(page?.stats.total ?? 0) > 0}
+        />
+      </PageHero>
+
       {failure ??
         (page ? (
           <MyListContent
@@ -124,27 +151,6 @@ export function MyListPage({ search }: { search: MyListSearch }) {
   )
 }
 
-function MyListPending() {
-  return (
-    <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
-      <div className="flex min-w-0 flex-col gap-4">
-        <Skeleton className="h-10 w-full rounded-2xl" />
-        <Skeleton className="h-11 w-full rounded-2xl" />
-        <div className="grid gap-3 md:grid-cols-2">
-          {Array.from({ length: 6 }).map((_, index) => (
-            <Skeleton key={index} className="h-28 rounded-2xl" />
-          ))}
-        </div>
-      </div>
-      <div className="hidden flex-col gap-4 lg:flex">
-        {Array.from({ length: 3 }).map((_, index) => (
-          <Skeleton key={index} className="h-32 rounded-2xl" />
-        ))}
-      </div>
-    </div>
-  )
-}
-
 function MyListContent({
   page,
   search,
@@ -156,15 +162,120 @@ function MyListContent({
   refresh: () => void
   stale: boolean
 }) {
-  const navigate = useNavigate()
   const status = search.status === "all" ? null : search.status
-  const totalItems = page.total
-  const totalPages = page.totalPages
-  const currentPage = Math.min(search.page, totalPages)
+  const currentPage = Math.min(search.page, page.totalPages)
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
-      <main className="flex min-w-0 flex-col gap-4">
+    <>
+      <LibraryStatTiles stats={page.stats} />
+
+      <MyListToolbar search={search} status={status} stats={page.stats} />
+
+      <section
+        className={cn(
+          "flex flex-col gap-4 transition-opacity",
+          stale && "opacity-60"
+        )}
+      >
+        <div className="flex items-center justify-between gap-3">
+          <h2 className="font-heading text-xl font-bold tracking-tight">
+            Results
+          </h2>
+          <span className="text-sm text-muted-foreground">
+            Sorted by {sortLabels[search.sort].toLowerCase()}
+          </span>
+        </div>
+
+        {page.items.length > 0 ? (
+          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+            {page.items.map((entry) => (
+              <LibraryCard
+                key={entry.malId}
+                entry={entry}
+                onChanged={refresh}
+              />
+            ))}
+          </div>
+        ) : (
+          <Empty className="border border-dashed">
+            <EmptyHeader>
+              <EmptyMedia variant="icon">
+                {search.q ? <SearchX /> : <Bookmark />}
+              </EmptyMedia>
+              <EmptyTitle>
+                {search.q
+                  ? `No titles match “${search.q}”`
+                  : "Nothing here yet"}
+              </EmptyTitle>
+              <EmptyDescription>
+                {search.q
+                  ? "Try a different spelling, or clear the search to see your whole list."
+                  : "Add a title from a series page, or import a linked provider list."}
+              </EmptyDescription>
+            </EmptyHeader>
+          </Empty>
+        )}
+
+        <LibraryPagination
+          page={currentPage}
+          perPage={page.perPage}
+          search={search}
+          status={status}
+          totalItems={page.total}
+          totalPages={page.totalPages}
+        />
+      </section>
+    </>
+  )
+}
+
+function LibraryStatTiles({ stats }: { stats: LibraryStats }) {
+  const meanScore = formatMeanScore(stats.meanScore)
+
+  return (
+    <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+      <StatTile
+        icon={ListVideo}
+        label="Titles"
+        value={stats.total.toLocaleString()}
+        hint={`${stats.byStatus.planning.toLocaleString()} planned`}
+      />
+      <StatTile
+        icon={Play}
+        label="Watching"
+        value={stats.byStatus.watching.toLocaleString()}
+        hint={`${stats.byStatus.rewatching.toLocaleString()} rewatching`}
+      />
+      <StatTile
+        icon={CheckCircle2}
+        label="Completed"
+        value={stats.byStatus.completed.toLocaleString()}
+        hint={`${stats.byStatus.dropped.toLocaleString()} dropped`}
+      />
+      <StatTile
+        icon={Star}
+        label="Mean score"
+        value={meanScore ?? "—"}
+        hint={meanScore ? "Across rated titles" : "Nothing rated yet"}
+      />
+    </div>
+  )
+}
+
+function MyListToolbar({
+  search,
+  status,
+  stats,
+}: {
+  search: MyListSearch
+  status: LibraryStatus | null
+  stats: LibraryStats
+}) {
+  const navigate = useNavigate()
+
+  return (
+    <section className="rounded-xl border bg-card/80">
+      <div className="flex flex-col gap-4 p-4 md:p-5">
         <DebouncedSearchInput
           committed={search.q?.trim() ?? ""}
           placeholder="Search your list…"
@@ -182,91 +293,117 @@ function MyListContent({
             })
           }
         />
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <LibraryStatusTabs search={search} value={status} />
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+          <LibraryStatusTabs search={search} value={status} stats={stats} />
           <LibrarySortSelect search={search} status={status} />
         </div>
-        <div
-          className={cn(
-            "flex flex-col gap-4 transition-opacity",
-            stale && "opacity-60"
-          )}
-        >
-          {page.items.length > 0 ? (
-            <div className="grid gap-3 md:grid-cols-2">
-              {page.items.map((entry) => (
-                <LibraryCard
-                  key={entry.malId}
-                  entry={entry}
-                  onChanged={refresh}
-                />
-              ))}
-            </div>
-          ) : (
-            <Empty className="border border-dashed">
-              <EmptyHeader>
-                <EmptyMedia variant="icon">
-                  {search.q ? <SearchX /> : <Bookmark />}
-                </EmptyMedia>
-                <EmptyTitle>
-                  {search.q
-                    ? `No titles match “${search.q}”`
-                    : "Nothing here yet"}
-                </EmptyTitle>
-                <EmptyDescription>
-                  {search.q
-                    ? "Try a different spelling, or clear the search to see your whole list."
-                    : "Add a title from a series page, or import a linked provider list."}
-                </EmptyDescription>
-              </EmptyHeader>
-            </Empty>
-          )}
-          <LibraryPagination
-            page={currentPage}
-            perPage={page.perPage}
-            search={search}
-            status={status}
-            totalItems={totalItems}
-            totalPages={totalPages}
-          />
-        </div>
-      </main>
-      <aside className="flex flex-col gap-4">
-        <StatsPanel page={page} />
-        <SyncActivityPanel />
-        <ImportLibraryPanel refresh={refresh} />
-        <ClearLibraryPanel
-          disabled={page.stats.total === 0}
-          refresh={refresh}
-        />
-      </aside>
-    </div>
+      </div>
+    </section>
   )
 }
 
-function SyncActivityPanel() {
+function MyListActions({
+  refresh,
+  hasEntries,
+}: {
+  refresh: () => void
+  hasEntries: boolean
+}) {
+  const startLibraryImport = useAtomSet(startLibraryImportAtom, {
+    mode: "promise",
+  })
+  const [pendingProvider, setPendingProvider] =
+    useState<ExternalListProvider | null>(null)
+  const [watchingJobId, setWatchingJobId] = useState<string | null>(null)
+  const [clearOpen, setClearOpen] = useState(false)
+
+  const start = async (provider: ExternalListProvider) => {
+    setPendingProvider(provider)
+    try {
+      const job = await startLibraryImport({ payload: { provider } })
+      toast.success(`Import queued: ${job.id}`)
+      setWatchingJobId(job.id)
+    } catch {
+      toast.error("Connect this provider in Settings first")
+    } finally {
+      setPendingProvider(null)
+    }
+  }
+
   return (
-    <section className="rounded-xl border bg-card/60 p-4">
-      <h2 className="text-sm font-semibold">External sync</h2>
-      <p className="mt-1 text-sm leading-6 text-muted-foreground">
-        Review failed provider updates and retry them manually.
-      </p>
-      <Button asChild variant="outline" className="mt-4">
+    <div className="flex flex-wrap items-center gap-2">
+      {watchingJobId ? (
+        <ImportWatcher
+          id={watchingJobId}
+          refresh={refresh}
+          stop={() => setWatchingJobId(null)}
+        />
+      ) : null}
+
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="outline" disabled={pendingProvider !== null}>
+            <Download data-icon="inline-start" />
+            {pendingProvider === null ? "Import" : "Importing…"}
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-56">
+          <DropdownMenuLabel>Import from a linked account</DropdownMenuLabel>
+          <DropdownMenuGroup>
+            <DropdownMenuItem onSelect={() => void start("mal")}>
+              MyAnimeList
+            </DropdownMenuItem>
+            <DropdownMenuItem onSelect={() => void start("anilist")}>
+              AniList
+            </DropdownMenuItem>
+          </DropdownMenuGroup>
+        </DropdownMenuContent>
+      </DropdownMenu>
+
+      <Button asChild variant="outline">
         <Link to="/sync-activity" search={{ page: 1 }}>
           <ListRestart data-icon="inline-start" />
           Sync activity
         </Link>
       </Button>
-    </section>
+
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="outline" size="icon" aria-label="More list actions">
+            <MoreHorizontal />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-56">
+          <DropdownMenuLabel>Danger zone</DropdownMenuLabel>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem
+            variant="destructive"
+            disabled={!hasEntries}
+            onSelect={() => setClearOpen(true)}
+          >
+            <Trash2 data-icon="inline-start" />
+            Clear my list
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+
+      <ClearLibraryDialog
+        open={clearOpen}
+        onOpenChange={setClearOpen}
+        refresh={refresh}
+      />
+    </div>
   )
 }
 
 function LibraryStatusTabs({
   search,
   value,
+  stats,
 }: {
   search: MyListSearch
   value: LibraryStatus | null
+  stats: LibraryStats
 }) {
   return (
     <Tabs value={value ?? "all"} className="max-w-full min-w-0">
@@ -281,9 +418,12 @@ function LibraryStatusTabs({
                 status: status.value,
                 page: 1,
               }}
-              className="whitespace-nowrap"
+              className="gap-1.5 whitespace-nowrap"
             >
               {status.label}
+              <span className="text-xs text-muted-foreground tabular-nums">
+                {statusCount(stats, status.value).toLocaleString()}
+              </span>
             </Link>
           </TabsTrigger>
         ))}
@@ -317,7 +457,7 @@ function LibrarySortSelect({
           })
         }
       >
-        <SelectTrigger className="w-44">
+        <SelectTrigger className="w-full lg:w-44">
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
@@ -362,122 +502,42 @@ function LibraryPagination({
   })
 
   return (
-    <nav className="flex flex-col gap-3 rounded-2xl border bg-card/60 p-3 text-sm sm:flex-row sm:items-center sm:justify-between">
-      <p className="text-muted-foreground">
-        Showing {from}-{to} of {totalItems}
-      </p>
-      <div className="flex items-center gap-2">
-        {page > 1 ? (
-          <Button variant="outline" size="sm" asChild>
-            <Link to="/my-list" search={search(page - 1)}>
-              <ChevronLeft data-icon="inline-start" />
-              Prev
-            </Link>
-          </Button>
-        ) : (
-          <Button variant="outline" size="sm" disabled>
+    <nav className="flex flex-col gap-3 rounded-xl border bg-card/80 p-3 sm:flex-row sm:items-center sm:justify-between">
+      {page > 1 ? (
+        <Button variant="outline" size="sm" asChild>
+          <Link to="/my-list" search={search(page - 1)}>
             <ChevronLeft data-icon="inline-start" />
-            Prev
-          </Button>
-        )}
-        <span className="min-w-20 text-center text-muted-foreground">
-          Page {page} / {totalPages}
-        </span>
-        {page < totalPages ? (
-          <Button variant="outline" size="sm" asChild>
-            <Link to="/my-list" search={search(page + 1)}>
-              Next
-              <ChevronRight data-icon="inline-end" />
-            </Link>
-          </Button>
-        ) : (
-          <Button variant="outline" size="sm" disabled>
+            Previous
+          </Link>
+        </Button>
+      ) : (
+        <Button variant="outline" size="sm" disabled>
+          <ChevronLeft data-icon="inline-start" />
+          Previous
+        </Button>
+      )}
+      <span className="text-center text-sm text-muted-foreground">
+        Showing{" "}
+        <span className="font-medium text-foreground tabular-nums">
+          {from}-{to}
+        </span>{" "}
+        of <span className="tabular-nums">{totalItems}</span> · Page {page} /{" "}
+        {totalPages}
+      </span>
+      {page < totalPages ? (
+        <Button variant="outline" size="sm" asChild>
+          <Link to="/my-list" search={search(page + 1)}>
             Next
             <ChevronRight data-icon="inline-end" />
-          </Button>
-        )}
-      </div>
+          </Link>
+        </Button>
+      ) : (
+        <Button variant="outline" size="sm" disabled>
+          Next
+          <ChevronRight data-icon="inline-end" />
+        </Button>
+      )}
     </nav>
-  )
-}
-
-function StatsPanel({ page }: { page: LibraryPage }) {
-  return (
-    <section className="rounded-xl border bg-card/60 p-4">
-      <h2 className="text-sm font-semibold">Stats</h2>
-      <div className="mt-3 grid grid-cols-2 gap-3 text-sm">
-        <div>
-          <p className="text-muted-foreground">Total</p>
-          <p className="text-lg font-semibold">{page.stats.total}</p>
-        </div>
-        <div>
-          <p className="text-muted-foreground">Mean score</p>
-          <p className="inline-flex items-center gap-1 text-lg font-semibold">
-            {formatMeanScore(page.stats.meanScore) ?? "-"}
-            {page.stats.meanScore !== null ? (
-              <Star className="size-4 fill-amber-400 text-amber-500" />
-            ) : null}
-          </p>
-        </div>
-      </div>
-    </section>
-  )
-}
-
-function ImportLibraryPanel({ refresh }: { refresh: () => void }) {
-  const startLibraryImport = useAtomSet(startLibraryImportAtom, {
-    mode: "promise",
-  })
-  const [pendingProvider, setPendingProvider] =
-    useState<ExternalListProvider | null>(null)
-  const [watchingJobId, setWatchingJobId] = useState<string | null>(null)
-
-  const start = async (provider: ExternalListProvider) => {
-    setPendingProvider(provider)
-    try {
-      const job = await startLibraryImport({ payload: { provider } })
-      toast.success(`Import queued: ${job.id}`)
-      setWatchingJobId(job.id)
-    } catch {
-      toast.error("Connect this provider in Settings first")
-    } finally {
-      setPendingProvider(null)
-    }
-  }
-
-  return (
-    <section className="rounded-xl border bg-card/60 p-4">
-      {watchingJobId ? (
-        <ImportWatcher
-          id={watchingJobId}
-          refresh={refresh}
-          stop={() => setWatchingJobId(null)}
-        />
-      ) : null}
-      <h2 className="text-sm font-semibold">Import</h2>
-      <p className="mt-1 text-sm leading-6 text-muted-foreground">
-        Start a provider import after linking your MAL or AniList account in
-        Settings.
-      </p>
-      <div className="mt-4 flex flex-wrap gap-2">
-        <Button
-          variant="outline"
-          disabled={pendingProvider !== null}
-          onClick={() => void start("mal")}
-        >
-          <Download data-icon="inline-start" />
-          {pendingProvider === "mal" ? "Importing..." : "MAL"}
-        </Button>
-        <Button
-          variant="outline"
-          disabled={pendingProvider !== null}
-          onClick={() => void start("anilist")}
-        >
-          <Download data-icon="inline-start" />
-          {pendingProvider === "anilist" ? "Importing..." : "AniList"}
-        </Button>
-      </div>
-    </section>
   )
 }
 
@@ -520,15 +580,17 @@ function ImportWatcher({
   return null
 }
 
-function ClearLibraryPanel({
-  disabled,
+function ClearLibraryDialog({
+  open,
+  onOpenChange,
   refresh,
 }: {
-  disabled: boolean
+  open: boolean
+  onOpenChange: (open: boolean) => void
   refresh: () => void
 }) {
   const [clearResult, clear] = useAtom(clearLibraryAtom, { mode: "promise" })
-  const [open, setOpen] = useState(false)
+  const pending = clearResult.waiting
 
   const clearList = async () => {
     try {
@@ -539,64 +601,60 @@ function ClearLibraryPanel({
 
       refresh()
       toast.success(`Removed ${result.removedCount} library entries.`)
-      setOpen(false)
+      onOpenChange(false)
     } catch {
       toast.error("Unable to clear library")
     }
   }
 
   return (
-    <section className="rounded-xl border border-destructive/30 bg-card/60 p-4">
-      <h2 className="text-sm font-semibold text-destructive">Danger zone</h2>
-      <p className="mt-2 text-sm text-muted-foreground">
-        Remove every title from your local list. Linked provider lists are not
-        changed.
-      </p>
-      <Button
-        type="button"
-        variant="destructive"
-        className="mt-4 w-full"
-        disabled={disabled}
-        onClick={() => setOpen(true)}
-      >
-        <Trash2 data-icon="inline-start" />
-        Clear my list
-      </Button>
-      <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Clear your list?</DialogTitle>
-            <DialogDescription>
-              This removes every local library entry. Linked provider lists are
-              not changed.
-            </DialogDescription>
-          </DialogHeader>
-          <form
-            onSubmit={(event) => {
+    <AlertDialog open={open} onOpenChange={onOpenChange}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogMedia>
+            <Trash2 />
+          </AlertDialogMedia>
+          <AlertDialogTitle>Clear your list?</AlertDialogTitle>
+          <AlertDialogDescription>
+            This removes every local library entry. Linked provider lists are
+            not changed.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel disabled={pending}>Cancel</AlertDialogCancel>
+          <AlertDialogAction
+            variant="destructive"
+            disabled={pending}
+            onClick={(event) => {
               event.preventDefault()
               void clearList()
             }}
           >
-            <DialogFooter>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setOpen(false)}
-              >
-                Cancel
-              </Button>
-              <Button
-                type="submit"
-                variant="destructive"
-                disabled={clearResult.waiting}
-              >
-                <Trash2 data-icon="inline-start" />
-                {clearResult.waiting ? "Clearing..." : "Clear list"}
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
-    </section>
+            {pending ? "Clearing…" : "Clear list"}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  )
+}
+
+function MyListPending() {
+  return (
+    <>
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+        {Array.from({ length: 4 }).map((_, index) => (
+          <Skeleton key={index} className="h-28 rounded-2xl" />
+        ))}
+      </div>
+      <Skeleton className="h-36 rounded-xl" />
+      <div className="flex flex-col gap-4">
+        <Skeleton className="h-7 w-32 rounded-lg" />
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+          {Array.from({ length: 6 }).map((_, index) => (
+            <Skeleton key={index} className="h-32 rounded-2xl" />
+          ))}
+        </div>
+      </div>
+    </>
   )
 }
