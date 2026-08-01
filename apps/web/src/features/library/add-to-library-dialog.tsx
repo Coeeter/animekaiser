@@ -22,7 +22,6 @@ import {
   FieldLegend,
   FieldSet,
 } from "@animekaiser/ui/components/field"
-import { Input } from "@animekaiser/ui/components/input"
 import {
   Select,
   SelectContent,
@@ -35,9 +34,10 @@ import { Textarea } from "@animekaiser/ui/components/textarea"
 import { useAtomSet, useAtomValue } from "@effect-atom/atom-react"
 import { useForm } from "@tanstack/react-form"
 import * as Schema from "effect/Schema"
-import { BookmarkPlus, Trash2 } from "lucide-react"
+import { BookmarkPlus, ListChecks, Star, Trash2 } from "lucide-react"
 import { useEffect, useId, useState } from "react"
 import { toast } from "sonner"
+import { IconInput } from "../../components/icon-input"
 import { playerPreferencesAtom } from "../streaming/preferences"
 import {
   libraryMutationKeys,
@@ -198,8 +198,9 @@ export function AddToLibraryDialog({
               {(field) => (
                 <Field>
                   <FieldLabel htmlFor={field.name}>Progress</FieldLabel>
-                  <Input
+                  <IconInput
                     id={field.name}
+                    icon={ListChecks}
                     name={field.name}
                     type="number"
                     min={0}
@@ -215,8 +216,9 @@ export function AddToLibraryDialog({
               {(field) => (
                 <Field>
                   <FieldLabel htmlFor={field.name}>Score (0–100)</FieldLabel>
-                  <Input
+                  <IconInput
                     id={field.name}
+                    icon={Star}
                     name={field.name}
                     type="number"
                     min={0}

@@ -5,13 +5,13 @@ import {
   FieldGroup,
   FieldLabel,
 } from "@animekaiser/ui/components/field"
-import { Input } from "@animekaiser/ui/components/input"
 import { Spinner } from "@animekaiser/ui/components/spinner"
 import { useAtomSet } from "@effect-atom/atom-react"
 import { useForm } from "@tanstack/react-form"
 import { Trash2 } from "lucide-react"
 import { useState } from "react"
 import { toast } from "sonner"
+import { PasswordInput } from "../../components/password-input"
 import { authClient, navigateAfterAuthChange } from "../../services/api-clients"
 import { errorMessage } from "../../utils/error"
 import type { AppUser } from "../auth/user"
@@ -148,15 +148,14 @@ export function AccountPanel({
               Use at least eight characters.
             </p>
           </div>
-          <FieldGroup className="grid gap-4 lg:grid-cols-3">
+          <FieldGroup>
             <passwordForm.Field name="currentPassword">
               {(field) => (
                 <Field>
                   <FieldLabel htmlFor={field.name}>Current password</FieldLabel>
-                  <Input
+                  <PasswordInput
                     id={field.name}
                     name={field.name}
-                    type="password"
                     autoComplete="current-password"
                     required
                     value={field.state.value}
@@ -170,10 +169,9 @@ export function AccountPanel({
               {(field) => (
                 <Field>
                   <FieldLabel htmlFor={field.name}>New password</FieldLabel>
-                  <Input
+                  <PasswordInput
                     id={field.name}
                     name={field.name}
-                    type="password"
                     autoComplete="new-password"
                     minLength={8}
                     required
@@ -188,11 +186,10 @@ export function AccountPanel({
               {(field) => (
                 <Field data-invalid={Boolean(confirmationError)}>
                   <FieldLabel htmlFor={field.name}>Confirm password</FieldLabel>
-                  <Input
+                  <PasswordInput
                     aria-invalid={Boolean(confirmationError)}
                     id={field.name}
                     name={field.name}
-                    type="password"
                     autoComplete="new-password"
                     minLength={8}
                     required
@@ -240,11 +237,10 @@ export function AccountPanel({
                 <FieldLabel htmlFor={field.name}>
                   Confirm with your password
                 </FieldLabel>
-                <Input
+                <PasswordInput
                   id={field.name}
                   name={field.name}
                   className="max-w-sm"
-                  type="password"
                   autoComplete="current-password"
                   required
                   value={field.state.value}

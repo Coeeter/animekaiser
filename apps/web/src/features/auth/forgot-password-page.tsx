@@ -13,7 +13,6 @@ import {
   FieldGroup,
   FieldLabel,
 } from "@animekaiser/ui/components/field"
-import { Input } from "@animekaiser/ui/components/input"
 import {
   InputOTP,
   InputOTPGroup,
@@ -21,8 +20,11 @@ import {
 } from "@animekaiser/ui/components/input-otp"
 import { useForm } from "@tanstack/react-form"
 import { useNavigate } from "@tanstack/react-router"
+import { Mail } from "lucide-react"
 import { useState } from "react"
 import { toast } from "sonner"
+import { IconInput } from "../../components/icon-input"
+import { PasswordInput } from "../../components/password-input"
 import { authClient } from "../../services/api-clients"
 import { errorMessage } from "../../utils/error"
 import { AuthFooter, SubmitButton } from "./auth-shared"
@@ -101,9 +103,10 @@ export function ForgotPasswordPage() {
               {(field) => (
                 <Field>
                   <FieldLabel htmlFor={field.name}>Email</FieldLabel>
-                  <Input
+                  <IconInput
                     autoComplete="email"
                     id={field.name}
+                    icon={Mail}
                     name={field.name}
                     required
                     type="email"
@@ -162,13 +165,12 @@ export function ForgotPasswordPage() {
                 {(field) => (
                   <Field>
                     <FieldLabel htmlFor={field.name}>New password</FieldLabel>
-                    <Input
+                    <PasswordInput
                       autoComplete="new-password"
                       id={field.name}
                       minLength={8}
                       name={field.name}
                       required
-                      type="password"
                       value={field.state.value}
                       onBlur={field.handleBlur}
                       onChange={(event) =>
@@ -184,14 +186,13 @@ export function ForgotPasswordPage() {
                     <FieldLabel htmlFor={field.name}>
                       Confirm password
                     </FieldLabel>
-                    <Input
+                    <PasswordInput
                       autoComplete="new-password"
                       aria-invalid={Boolean(confirmationError)}
                       id={field.name}
                       minLength={8}
                       name={field.name}
                       required
-                      type="password"
                       value={field.state.value}
                       onBlur={field.handleBlur}
                       onChange={(event) => {

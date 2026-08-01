@@ -14,7 +14,6 @@ import {
   FieldGroup,
   FieldLabel,
 } from "@animekaiser/ui/components/field"
-import { Input } from "@animekaiser/ui/components/input"
 import {
   InputOTP,
   InputOTPGroup,
@@ -27,13 +26,16 @@ import {
 } from "@animekaiser/ui/components/toggle-group"
 import { useForm } from "@tanstack/react-form"
 import { Link } from "@tanstack/react-router"
-import { Fingerprint, KeyRound, Mail } from "lucide-react"
+import { Fingerprint, KeyRound, Mail, UserRound } from "lucide-react"
 import { useState } from "react"
 import { toast } from "sonner"
+import { IconInput } from "../../components/icon-input"
+import { PasswordInput } from "../../components/password-input"
 import { authClient, navigateAfterAuthChange } from "../../services/api-clients"
 import { errorMessage } from "../../utils/error"
 import { AuthFooter, SubmitButton } from "./auth-shared"
 import { safeRedirect } from "./user"
+import { signInErrorMessage } from "./validation"
 
 type LoginMethod = "password" | "otp" | "passkey"
 
@@ -57,7 +59,7 @@ function PasswordLogin({ onSuccess }: { onSuccess: () => void }) {
         if (result.error) throw result.error
         onSuccess()
       } catch (cause) {
-        setError(errorMessage(cause, "Unable to sign in"))
+        setError(signInErrorMessage(cause))
       }
     },
   })
@@ -75,9 +77,10 @@ function PasswordLogin({ onSuccess }: { onSuccess: () => void }) {
           {(field) => (
             <Field>
               <FieldLabel htmlFor={field.name}>Email or username</FieldLabel>
-              <Input
+              <IconInput
                 autoComplete="username"
                 id={field.name}
+                icon={UserRound}
                 name={field.name}
                 required
                 value={field.state.value}
@@ -99,13 +102,12 @@ function PasswordLogin({ onSuccess }: { onSuccess: () => void }) {
                   Forgot password?
                 </Link>
               </div>
-              <Input
+              <PasswordInput
                 autoComplete="current-password"
                 id={field.name}
                 minLength={8}
                 name={field.name}
                 required
-                type="password"
                 value={field.state.value}
                 onBlur={field.handleBlur}
                 onChange={(event) => field.handleChange(event.target.value)}
@@ -143,7 +145,7 @@ function EmailCodeLogin({ onSuccess }: { onSuccess: () => void }) {
         if (result.error) throw result.error
         setEmail(targetEmail)
       } catch (cause) {
-        setRequestError(errorMessage(cause, "Unable to send sign-in code"))
+        setRequestError(signInErrorMessage(cause))
       }
     },
   })
@@ -160,7 +162,7 @@ function EmailCodeLogin({ onSuccess }: { onSuccess: () => void }) {
         if (result.error) throw result.error
         onSuccess()
       } catch (cause) {
-        setVerifyError(errorMessage(cause, "Unable to verify sign-in code"))
+        setVerifyError(signInErrorMessage(cause))
       }
     },
   })
@@ -178,9 +180,10 @@ function EmailCodeLogin({ onSuccess }: { onSuccess: () => void }) {
           {(field) => (
             <Field>
               <FieldLabel htmlFor={field.name}>Email</FieldLabel>
-              <Input
+              <IconInput
                 autoComplete="email"
                 id={field.name}
+                icon={Mail}
                 name={field.name}
                 required
                 type="email"

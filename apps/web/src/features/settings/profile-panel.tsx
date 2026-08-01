@@ -10,7 +10,6 @@ import {
   FieldDescription,
   FieldLabel,
 } from "@animekaiser/ui/components/field"
-import { Input } from "@animekaiser/ui/components/input"
 import { Textarea } from "@animekaiser/ui/components/textarea"
 import {
   Result,
@@ -22,9 +21,11 @@ import { useForm } from "@tanstack/react-form"
 import { useRouter } from "@tanstack/react-router"
 import * as Option from "effect/Option"
 import * as Schema from "effect/Schema"
+import { UserRound } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
 import { toast } from "sonner"
 import { DataError } from "../../components/data-error"
+import { IconInput } from "../../components/icon-input"
 import { authClient } from "../../services/api-clients"
 import { errorMessage } from "../../utils/error"
 import { sessionAtom } from "../auth/atoms"
@@ -319,8 +320,9 @@ export function ProfilePanel({ user }: { user: AppUser | null }) {
             {(field) => (
               <Field>
                 <FieldLabel htmlFor={field.name}>Username</FieldLabel>
-                <Input
+                <IconInput
                   id={field.name}
+                  icon={UserRound}
                   name={field.name}
                   className="max-w-sm"
                   minLength={3}

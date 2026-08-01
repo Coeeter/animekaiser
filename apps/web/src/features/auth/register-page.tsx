@@ -12,9 +12,11 @@ import {
   FieldGroup,
   FieldLabel,
 } from "@animekaiser/ui/components/field"
-import { Input } from "@animekaiser/ui/components/input"
 import { useForm } from "@tanstack/react-form"
+import { Mail } from "lucide-react"
 import { useState } from "react"
+import { IconInput } from "../../components/icon-input"
+import { PasswordInput } from "../../components/password-input"
 import { authClient, navigateAfterAuthChange } from "../../services/api-clients"
 import { errorMessage } from "../../utils/error"
 import { AuthFooter, SubmitButton } from "./auth-shared"
@@ -68,9 +70,10 @@ export function RegisterPage() {
               {(field) => (
                 <Field>
                   <FieldLabel htmlFor={field.name}>Email</FieldLabel>
-                  <Input
+                  <IconInput
                     autoComplete="email"
                     id={field.name}
+                    icon={Mail}
                     name={field.name}
                     required
                     type="email"
@@ -85,13 +88,12 @@ export function RegisterPage() {
               {(field) => (
                 <Field>
                   <FieldLabel htmlFor={field.name}>Password</FieldLabel>
-                  <Input
+                  <PasswordInput
                     autoComplete="new-password"
                     id={field.name}
                     minLength={8}
                     name={field.name}
                     required
-                    type="password"
                     value={field.state.value}
                     onBlur={field.handleBlur}
                     onChange={(event) => field.handleChange(event.target.value)}

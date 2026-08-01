@@ -1,10 +1,10 @@
 import { Button } from "@animekaiser/ui/components/button"
 import { Field, FieldLabel } from "@animekaiser/ui/components/field"
-import { Input } from "@animekaiser/ui/components/input"
 import { useForm } from "@tanstack/react-form"
-import { Fingerprint } from "lucide-react"
+import { Fingerprint, KeyRound } from "lucide-react"
 import { useId, useState } from "react"
 import { toast } from "sonner"
+import { IconInput } from "../../components/icon-input"
 import { authClient } from "../../services/api-clients"
 import { errorMessage } from "../../utils/error"
 import type { AppUser } from "../auth/user"
@@ -98,8 +98,9 @@ export function PasskeysPanel({ user }: { user: AppUser | null }) {
             {(field) => (
               <Field className="flex-1">
                 <FieldLabel htmlFor={nameId}>New passkey name</FieldLabel>
-                <Input
+                <IconInput
                   id={nameId}
+                  icon={KeyRound}
                   name={field.name}
                   placeholder="MacBook Touch ID"
                   value={field.state.value}
@@ -168,8 +169,9 @@ function PasskeyRow({
         {(field) => (
           <Field className="max-w-sm">
             <FieldLabel htmlFor={nameId}>Passkey name</FieldLabel>
-            <Input
+            <IconInput
               id={nameId}
+              icon={KeyRound}
               name={field.name}
               required
               value={field.state.value}
