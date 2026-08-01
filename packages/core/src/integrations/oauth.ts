@@ -42,14 +42,22 @@ const AniListTokenResponse = Schema.Struct({
 })
 export type AniListTokenResponse = typeof AniListTokenResponse.Type
 
-const ExternalListUserResponse = Schema.Struct({
+const MalUserResponse = Schema.Struct({
   id: Schema.Number,
   name: Schema.optional(Schema.String),
+  picture: Schema.optional(Schema.String),
 })
-export type ExternalListUserResponse = typeof ExternalListUserResponse.Type
 
 const AniListViewerResponse = Schema.Struct({
-  data: Schema.Struct({ Viewer: ExternalListUserResponse }),
+  data: Schema.Struct({
+    Viewer: Schema.Struct({
+      id: Schema.Number,
+      name: Schema.optional(Schema.String),
+      avatar: Schema.optional(
+        Schema.Struct({ large: Schema.optional(Schema.String) })
+      ),
+    }),
+  }),
 })
 
 export const ExternalListOAuthState = Schema.Struct({
@@ -280,7 +288,7 @@ export const exchangeMalAuthorizationCode = (
 
 export const fetchMalUser = (accessToken: string) =>
   HttpClient.execute(
-    HttpClientRequest.get(`${malUserInfoUrl}?fields=id,name`, {
+    HttpClientRequest.get(`${malUserInfoUrl}?fields=id,name,picture`, {
       headers: {
         Accept: "application/json",
         Authorization: `Bearer ${accessToken}`,
@@ -288,7 +296,7 @@ export const fetchMalUser = (accessToken: string) =>
     })
   ).pipe(
     Effect.flatMap(HttpClientResponse.filterStatusOk),
-    Effect.flatMap(HttpClientResponse.schemaBodyJson(ExternalListUserResponse)),
+    Effect.flatMap(HttpClientResponse.schemaBodyJson(MalUserResponse)),
     Effect.mapError(
       (cause) =>
         new ExternalListOAuthError({
@@ -343,7 +351,7 @@ export const fetchAniListUser = (accessToken: string) =>
           "Content-Type": "application/json",
         },
         body: HttpBody.unsafeJson({
-          query: "query Viewer { Viewer { id name } }",
+          query: "query Viewer { Viewer { id name avatar { large } } }",
         }),
       })
     ).pipe(

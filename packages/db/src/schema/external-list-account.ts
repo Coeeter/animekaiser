@@ -17,6 +17,8 @@ export const externalListAccount = pgTable(
       .references(() => user.id, { onDelete: "cascade" }),
     provider: text("provider", { enum: ["mal", "anilist"] }).notNull(),
     providerAccountId: text("provider_account_id").notNull(),
+    providerUsername: text("provider_username"),
+    profileImageUrl: text("profile_image_url"),
     accessToken: text("access_token").notNull(),
     refreshToken: text("refresh_token"),
     accessTokenExpiresAt: timestamp("access_token_expires_at"),

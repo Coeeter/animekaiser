@@ -6,6 +6,9 @@ export type ExternalListProvider = typeof ExternalListProvider.Type
 export const ExternalListAccountStatus = Schema.Struct({
   provider: ExternalListProvider,
   connected: Schema.Boolean,
+  providerUsername: Schema.NullOr(Schema.String),
+  profileImageUrl: Schema.NullOr(Schema.String),
+  profileUrl: Schema.NullOr(Schema.String),
   expiresAt: Schema.NullOr(Schema.DateFromString),
   state: Schema.Literal(
     "disconnected",

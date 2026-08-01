@@ -18,6 +18,8 @@ type LinkedExternalListAccount = {
   userId: string
   provider: ExternalListProvider
   providerAccountId: string
+  providerUsername?: string
+  profileImageUrl?: string
   accessToken: string
   refreshToken?: string
   accessTokenExpiresAt?: Date
@@ -99,6 +101,8 @@ const linkExternalListAccount = (
           .update(externalListAccount)
           .set({
             providerAccountId: linkedAccount.providerAccountId,
+            providerUsername: linkedAccount.providerUsername,
+            profileImageUrl: linkedAccount.profileImageUrl,
             accessToken: linkedAccount.accessToken,
             refreshToken: linkedAccount.refreshToken,
             accessTokenExpiresAt: linkedAccount.accessTokenExpiresAt,
@@ -119,6 +123,8 @@ const linkExternalListAccount = (
         id: crypto.randomUUID(),
         provider: linkedAccount.provider,
         providerAccountId: linkedAccount.providerAccountId,
+        providerUsername: linkedAccount.providerUsername,
+        profileImageUrl: linkedAccount.profileImageUrl,
         userId: linkedAccount.userId,
         accessToken: linkedAccount.accessToken,
         refreshToken: linkedAccount.refreshToken,
@@ -180,6 +186,8 @@ export const handleMalCallback = (
       userId: params.userId,
       provider: "mal",
       providerAccountId: String(malUser.id),
+      providerUsername: malUser.name,
+      profileImageUrl: malUser.picture,
       accessToken: tokens.access_token,
       refreshToken: tokens.refresh_token,
       accessTokenExpiresAt: tokens.expires_in
@@ -221,6 +229,8 @@ export const handleAniListCallback = (
       userId: params.userId,
       provider: "anilist",
       providerAccountId: String(aniListUser.id),
+      providerUsername: aniListUser.name,
+      profileImageUrl: aniListUser.avatar?.large,
       accessToken: tokens.access_token,
       refreshToken: tokens.refresh_token,
       accessTokenExpiresAt: tokens.expires_in

@@ -1,5 +1,11 @@
+import {
+  Avatar,
+  AvatarFallback,
+  AvatarImage,
+} from "@animekaiser/ui/components/avatar"
 import { Badge } from "@animekaiser/ui/components/badge"
 import { Button } from "@animekaiser/ui/components/button"
+import { Separator } from "@animekaiser/ui/components/separator"
 import {
   Result,
   useAtomRefresh,
@@ -7,7 +13,7 @@ import {
   useAtomValue,
 } from "@effect-atom/atom-react"
 import { Link } from "@tanstack/react-router"
-import { Download, Link2, Unlink } from "lucide-react"
+import { Activity, Download, ExternalLink, Link2, Unlink } from "lucide-react"
 import { useState } from "react"
 import { toast } from "sonner"
 import { DataError } from "../../components/data-error"
@@ -92,43 +98,84 @@ export function IntegrationsPanel({ user }: { user: AppUser | null }) {
   }
 
   return (
-    <div className="flex flex-col gap-3">
+    <div className="flex flex-col gap-4">
       <Button asChild variant="outline" className="self-start">
         <Link
           to="/sync-activity"
           search={{ page: 1 }}
           onClick={() => setSettingsOpen(false)}
         >
+          <Activity data-icon="inline-start" />
           View sync activity
         </Link>
       </Button>
       {accounts.map((account) => (
-        <PanelCard key={account.provider}>
-          <div className="flex flex-wrap items-center justify-between gap-4">
-            <div>
-              <div className="flex items-center gap-2">
-                <h3 className="font-semibold">
-                  {account.provider === "mal" ? "MyAnimeList" : "AniList"}
-                </h3>
-                <Badge variant={account.connected ? "default" : "secondary"}>
-                  {account.state === "expiring"
-                    ? "Expiring soon"
-                    : account.state === "relink_required" ||
-                        account.state === "expired"
-                      ? "Reconnect required"
-                      : account.connected
-                        ? "Connected"
-                        : "Disconnected"}
-                </Badge>
+        <PanelCard className="overflow-hidden p-0" key={account.provider}>
+          <div className="flex flex-col gap-4 p-4 md:p-5">
+            <div className="flex items-start gap-3">
+              <Avatar size="lg">
+                {account.profileImageUrl ? (
+                  <AvatarImage
+                    alt={account.providerUsername ?? "Provider profile"}
+                    src={account.profileImageUrl}
+                  />
+                ) : null}
+                <AvatarFallback>
+                  {account.provider === "mal" ? "MAL" : "AL"}
+                </AvatarFallback>
+              </Avatar>
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  <h3 className="font-semibold">
+                    {account.provider === "mal" ? "MyAnimeList" : "AniList"}
+                  </h3>
+                  <Badge variant={account.connected ? "default" : "secondary"}>
+                    {account.state === "expiring"
+                      ? "Expiring soon"
+                      : account.state === "relink_required" ||
+                          account.state === "expired"
+                        ? "Reconnect required"
+                        : account.connected
+                          ? "Connected"
+                          : "Disconnected"}
+                  </Badge>
+                </div>
+                <p className="mt-1 truncate text-sm font-medium">
+                  {account.providerUsername
+                    ? `@${account.providerUsername}`
+                    : account.connected
+                      ? "Reconnect to load profile details"
+                      : "No account linked"}
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  {account.connected
+                    ? "Your library can import and sync with this account."
+                    : "Connect an account to bring your anime library into Kaiser."}
+                </p>
               </div>
-              {account.expiresAt ? (
-                <p className="mt-2 text-sm text-muted-foreground">
+            </div>
+            {account.expiresAt ? (
+              <>
+                <Separator />
+                <p className="text-sm text-muted-foreground">
                   Token expires {new Date(account.expiresAt).toLocaleString()}
                 </p>
-              ) : null}
-            </div>
+              </>
+            ) : null}
             {account.connected ? (
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
+                {account.profileUrl ? (
+                  <Button asChild variant="outline">
+                    <a
+                      href={account.profileUrl}
+                      rel="noreferrer"
+                      target="_blank"
+                    >
+                      <ExternalLink data-icon="inline-start" />
+                      View profile
+                    </a>
+                  </Button>
+                ) : null}
                 <Button
                   variant="outline"
                   disabled={pending === `${account.provider}:import`}
@@ -147,7 +194,7 @@ export function IntegrationsPanel({ user }: { user: AppUser | null }) {
                 </Button>
               </div>
             ) : (
-              <Button asChild>
+              <Button asChild className="self-start">
                 <a href={connectHref(account.provider)}>
                   <Link2 data-icon="inline-start" />
                   Connect

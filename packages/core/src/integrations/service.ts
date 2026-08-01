@@ -115,6 +115,9 @@ export class ExternalListAccountsService extends Effect.Service<ExternalListAcco
             db
               .select({
                 provider: externalListAccount.provider,
+                providerAccountId: externalListAccount.providerAccountId,
+                providerUsername: externalListAccount.providerUsername,
+                profileImageUrl: externalListAccount.profileImageUrl,
                 expiresAt: externalListAccount.accessTokenExpiresAt,
                 relinkRequiredAt: externalListAccount.relinkRequiredAt,
               })
@@ -156,6 +159,15 @@ export class ExternalListAccountsService extends Effect.Service<ExternalListAcco
           return {
             provider,
             connected: Boolean(account),
+            providerUsername: account?.providerUsername ?? null,
+            profileImageUrl: account?.profileImageUrl ?? null,
+            profileUrl: account
+              ? provider === "mal" && account.providerUsername
+                ? `https://myanimelist.net/profile/${encodeURIComponent(account.providerUsername)}`
+                : provider === "anilist"
+                  ? `https://anilist.co/user/${encodeURIComponent(account.providerUsername ?? account.providerAccountId)}`
+                  : null
+              : null,
             expiresAt: account?.expiresAt ?? null,
             state,
           }
