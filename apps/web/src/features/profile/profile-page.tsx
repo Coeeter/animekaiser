@@ -31,10 +31,15 @@ import {
   EyeOff,
   History,
   LockKeyhole,
+  LogOut,
   Settings2,
   UserRoundX,
 } from "lucide-react"
+import { useState } from "react"
+import { toast } from "sonner"
 import { DataError } from "../../components/data-error"
+import { authClient, navigateAfterAuthChange } from "../../services/api-clients"
+import { errorMessage } from "../../utils/error"
 import { sessionAtom } from "../auth/atoms"
 import { displayUsername } from "../auth/user"
 import { settingsOpenAtom, settingsSectionAtom } from "../settings/atoms"
@@ -138,6 +143,7 @@ function ProfileHeader({
               <EyeOff data-icon="inline-start" />
               Sharing
             </Button>
+            <SignOutButton />
           </div>
         ) : null}
       </div>
@@ -325,6 +331,31 @@ export function PublicProfilePage({
       )
     })
     .render()
+}
+
+function SignOutButton() {
+  const [pending, setPending] = useState(false)
+
+  const signOut = async () => {
+    setPending(true)
+
+    try {
+      const result = await authClient.signOut()
+      if (result.error) throw result.error
+
+      navigateAfterAuthChange("/")
+    } catch (reason) {
+      setPending(false)
+      toast.error(errorMessage(reason, "Unable to sign out"))
+    }
+  }
+
+  return (
+    <Button variant="outline" disabled={pending} onClick={() => void signOut()}>
+      <LogOut data-icon="inline-start" />
+      {pending ? "Signing out…" : "Sign out"}
+    </Button>
+  )
 }
 
 function PublicPreviewBanner({ username }: { username: string }) {
