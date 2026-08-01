@@ -692,6 +692,26 @@ function StreamPlayer({
     void player.requestFullscreen().then(lockLandscape, () => undefined)
   }
 
+  const toggleMiniPlayer = () => {
+    if (isMobile) return
+
+    if (mode === "mini") {
+      void navigate({
+        to: "/watch/$malId/$provider/$episodeId",
+        params: {
+          malId: playback.anime.malId,
+          provider: playback.provider,
+          episodeId: playback.episode.id,
+        },
+        search: { audio: playback.audio, serverId: input.serverId },
+      })
+      return
+    }
+
+    if (document.fullscreenElement) void document.exitFullscreen()
+    void navigate({ to: "/series/$id", params: { id: playback.anime.malId } })
+  }
+
   const beginMiniPlayerInteraction = (event: PointerEvent<HTMLDivElement>) => {
     if (mode !== "mini" || !playerRef.current || event.button !== 0) return
     if ((event.target as HTMLElement).closest("button, a, input")) return
@@ -886,6 +906,11 @@ function StreamPlayer({
         event.preventDefault()
         cycleCaptions()
         revealControls()
+        return
+      }
+      if (event.key.toLowerCase() === "i") {
+        event.preventDefault()
+        toggleMiniPlayer()
         return
       }
       if (event.key.toLowerCase() === "n") {
