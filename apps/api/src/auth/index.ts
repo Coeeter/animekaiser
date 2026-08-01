@@ -86,6 +86,7 @@ export const BetterAuthLive = Layer.effect(
       },
       mailer,
       useSecureCookies: env.server.env === "prod",
+      checkPwnedPasswords: env.server.env === "prod",
     })
   })
 )

@@ -38,6 +38,7 @@ export type AuthConfig = {
   logger: AuthLogger
   mailer: AuthMailer
   useSecureCookies?: boolean
+  checkPwnedPasswords?: boolean
 }
 
 export const initAuth = (config: AuthConfig) =>
@@ -85,7 +86,7 @@ export const initAuth = (config: AuthConfig) =>
           config.logger.info("[Auth] Email OTP sent.", { email, type })
         },
       }),
-      haveIBeenPwned(),
+      haveIBeenPwned({ enabled: config.checkPwnedPasswords !== false }),
       username(),
       lastLoginMethod({
         storeInDatabase: true,
