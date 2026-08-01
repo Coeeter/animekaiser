@@ -114,6 +114,22 @@ const episodeTitle = (episode: ProviderEpisode) =>
 const clampProgress = (value: number | undefined) =>
   Math.min(Math.max(value ?? 0, 0), 100)
 
+// Every column count in `compactGridClassName` divides this, so a full page
+// always fills whole rows instead of leaving a stray partial row.
+const COMPACT_PAGE_SIZE = 96
+
+const compactGridClassName =
+  "grid-cols-6 sm:grid-cols-8 lg:grid-cols-12 xl:grid-cols-16"
+
+const episodeRangeLabel = (episodes: ReadonlyArray<ProviderEpisode>) => {
+  const first = episodes[0]
+  const last = episodes[episodes.length - 1]
+  if (!first || !last) return null
+  const low = Math.min(first.number, last.number)
+  const high = Math.max(first.number, last.number)
+  return low === high ? `Episode ${low}` : `Episodes ${low}–${high}`
+}
+
 export function EpisodesPanel({
   anime,
   page,
@@ -281,13 +297,14 @@ function ProviderEpisodes({
   }
 
   const compact = provider.episodes.length >= 48
-  const pageSize = compact ? 72 : 24
+  const pageSize = compact ? COMPACT_PAGE_SIZE : 24
   const totalPages = Math.max(1, Math.ceil(filteredEpisodes.length / pageSize))
   const currentPage = Math.min(page, totalPages)
   const visibleEpisodes = filteredEpisodes.slice(
     (currentPage - 1) * pageSize,
     currentPage * pageSize
   )
+  const rangeLabel = episodeRangeLabel(visibleEpisodes)
 
   return (
     <div className="flex flex-col gap-3">
@@ -328,9 +345,7 @@ function ProviderEpisodes({
           <div
             className={cn(
               "grid gap-2",
-              compact
-                ? "grid-cols-[repeat(auto-fill,minmax(3rem,1fr))]"
-                : "grid-cols-1"
+              compact ? compactGridClassName : "grid-cols-1"
             )}
           >
             {visibleEpisodes.map((episode) =>
@@ -368,9 +383,16 @@ function ProviderEpisodes({
             <ChevronLeft data-icon="inline-start" />
             Previous
           </Button>
-          <span className="text-sm text-muted-foreground">
-            Page {currentPage} of {totalPages}
-          </span>
+          <div className="flex min-w-0 flex-col items-center">
+            {rangeLabel ? (
+              <span className="truncate text-sm font-medium tabular-nums">
+                {rangeLabel}
+              </span>
+            ) : null}
+            <span className="text-xs text-muted-foreground tabular-nums">
+              Page {currentPage} of {totalPages}
+            </span>
+          </div>
           <Button
             type="button"
             variant="outline"
