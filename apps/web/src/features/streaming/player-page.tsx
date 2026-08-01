@@ -45,6 +45,14 @@ import {
   upsertLibraryAtom,
 } from "../library/atoms"
 import { streamEpisodesAtom, streamPlaybackAtom } from "./atoms"
+import {
+  clampMiniPlayerFrame,
+  type MiniPlayerFrame,
+  miniPlayerFrameAtom,
+  miniPlayerMinHeight,
+  miniPlayerMinWidth,
+  setMiniPlayerFrameAtom,
+} from "./mini-player-frame"
 import { EpisodeSheet } from "./player-episode-sheet"
 import {
   episodeLabel,
@@ -259,6 +267,27 @@ const miniResizeHandles: ReadonlyArray<{
   { direction: "nw", className: "top-0 left-0 size-3 cursor-nw-resize" },
 ]
 
+const miniPlayerFrameProperties = [
+  "left",
+  "top",
+  "right",
+  "bottom",
+  "width",
+  "height",
+] as const
+
+const applyMiniPlayerFrame = (
+  player: HTMLElement,
+  frame: MiniPlayerFrame
+): void => {
+  player.style.left = `${frame.left}px`
+  player.style.top = `${frame.top}px`
+  player.style.width = `${frame.width}px`
+  player.style.height = `${frame.height}px`
+  player.style.right = "auto"
+  player.style.bottom = "auto"
+}
+
 export function StreamPlayerPendingPage({
   mode = "full",
 }: {
@@ -317,6 +346,9 @@ function StreamPlayer({
   const preferences = useAtomValue(playerPreferencesAtom)
   const playerUi = useAtomValue(playerUiAtom)
   const updatePlayerUi = useAtomSet(updatePlayerUiAtom)
+
+  const miniPlayerFrame = useAtomValue(miniPlayerFrameAtom)
+  const setMiniPlayerFrame = useAtomSet(setMiniPlayerFrameAtom)
 
   const caption = useAtomValue(playerCaptionAtom)
   const setCaption = useAtomSet(playerCaptionAtom)
@@ -711,30 +743,31 @@ function StreamPlayer({
       const direction = interaction.direction ?? "se"
       if (direction.includes("e"))
         width = Math.min(
-          Math.max(256, bounds.width + dx),
+          Math.max(miniPlayerMinWidth, bounds.width + dx),
           window.innerWidth - bounds.left
         )
       if (direction.includes("s"))
         height = Math.min(
-          Math.max(144, bounds.height + dy),
+          Math.max(miniPlayerMinHeight, bounds.height + dy),
           window.innerHeight - bounds.top
         )
       if (direction.includes("w")) {
-        width = Math.min(Math.max(256, bounds.width - dx), bounds.right)
+        width = Math.min(
+          Math.max(miniPlayerMinWidth, bounds.width - dx),
+          bounds.right
+        )
         left = bounds.right - width
       }
       if (direction.includes("n")) {
-        height = Math.min(Math.max(144, bounds.height - dy), bounds.bottom)
+        height = Math.min(
+          Math.max(miniPlayerMinHeight, bounds.height - dy),
+          bounds.bottom
+        )
         top = bounds.bottom - height
       }
-      player.style.width = `${width}px`
-      player.style.height = `${height}px`
     }
 
-    player.style.left = `${left}px`
-    player.style.top = `${top}px`
-    player.style.right = "auto"
-    player.style.bottom = "auto"
+    applyMiniPlayerFrame(player, { left, top, width, height })
   }
 
   const endMiniPlayerInteraction = (event: PointerEvent<HTMLDivElement>) => {
@@ -744,21 +777,39 @@ function StreamPlayer({
       interaction.kind === "drag" && interaction.moved
     miniInteractionRef.current = null
     event.currentTarget.releasePointerCapture(event.pointerId)
+
+    if (!interaction.moved || !playerRef.current) return
+
+    const { left, top, width, height } =
+      playerRef.current.getBoundingClientRect()
+    setMiniPlayerFrame({ left, top, width, height })
   }
 
   useLayoutEffect(() => {
-    if (mode !== "full" || !playerRef.current) return
+    const player = playerRef.current
+    if (!player) return
 
-    for (const property of [
-      "left",
-      "top",
-      "right",
-      "bottom",
-      "width",
-      "height",
-    ])
-      playerRef.current.style.removeProperty(property)
-  }, [mode])
+    if (mode === "full") {
+      for (const property of miniPlayerFrameProperties)
+        player.style.removeProperty(property)
+      return
+    }
+
+    if (!miniPlayerFrame) return
+
+    const restore = () =>
+      applyMiniPlayerFrame(
+        player,
+        clampMiniPlayerFrame(miniPlayerFrame, {
+          width: window.innerWidth,
+          height: window.innerHeight,
+        })
+      )
+
+    restore()
+    window.addEventListener("resize", restore)
+    return () => window.removeEventListener("resize", restore)
+  }, [mode, miniPlayerFrame])
 
   useEffect(() => {
     setPlayerElement(playerRef.current)
