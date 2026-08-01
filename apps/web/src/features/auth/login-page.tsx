@@ -26,18 +26,18 @@ import {
   ToggleGroupItem,
 } from "@animekaiser/ui/components/toggle-group"
 import { useForm } from "@tanstack/react-form"
-import { Link, useNavigate, useRouter } from "@tanstack/react-router"
+import { Link } from "@tanstack/react-router"
 import { Fingerprint, KeyRound, Mail } from "lucide-react"
 import { useState } from "react"
 import { toast } from "sonner"
-import { authClient, reconnectKaiserRpc } from "../../services/api-clients"
+import { authClient, navigateAfterAuthChange } from "../../services/api-clients"
 import { errorMessage } from "../../utils/error"
 import { AuthFooter, SubmitButton } from "./auth-shared"
 import { safeRedirect } from "./user"
 
 type LoginMethod = "password" | "otp" | "passkey"
 
-function PasswordLogin({ onSuccess }: { onSuccess: () => Promise<void> }) {
+function PasswordLogin({ onSuccess }: { onSuccess: () => void }) {
   const [error, setError] = useState<string | null>(null)
   const form = useForm({
     defaultValues: { identifier: "", password: "" },
@@ -55,7 +55,7 @@ function PasswordLogin({ onSuccess }: { onSuccess: () => Promise<void> }) {
               password: value.password,
             })
         if (result.error) throw result.error
-        await onSuccess()
+        onSuccess()
       } catch (cause) {
         setError(errorMessage(cause, "Unable to sign in"))
       }
@@ -126,7 +126,7 @@ function PasswordLogin({ onSuccess }: { onSuccess: () => Promise<void> }) {
   )
 }
 
-function EmailCodeLogin({ onSuccess }: { onSuccess: () => Promise<void> }) {
+function EmailCodeLogin({ onSuccess }: { onSuccess: () => void }) {
   const [email, setEmail] = useState<string | null>(null)
   const [requestError, setRequestError] = useState<string | null>(null)
   const [verifyError, setVerifyError] = useState<string | null>(null)
@@ -158,7 +158,7 @@ function EmailCodeLogin({ onSuccess }: { onSuccess: () => Promise<void> }) {
           otp: value.otp,
         })
         if (result.error) throw result.error
-        await onSuccess()
+        onSuccess()
       } catch (cause) {
         setVerifyError(errorMessage(cause, "Unable to verify sign-in code"))
       }
@@ -264,14 +264,14 @@ function EmailCodeLogin({ onSuccess }: { onSuccess: () => Promise<void> }) {
   )
 }
 
-function PasskeyLogin({ onSuccess }: { onSuccess: () => Promise<void> }) {
+function PasskeyLogin({ onSuccess }: { onSuccess: () => void }) {
   const [pending, setPending] = useState(false)
   const signIn = async () => {
     setPending(true)
     try {
       const result = await authClient.signIn.passkey()
       if (result.error) throw result.error
-      await onSuccess()
+      onSuccess()
     } catch (cause) {
       toast.error(errorMessage(cause, "Unable to sign in with passkey"))
     } finally {
@@ -304,14 +304,10 @@ const methods = [
 ]
 
 export function LoginPage({ redirect }: { redirect?: string }) {
-  const router = useRouter()
-  const navigate = useNavigate()
   const [method, setMethod] = useState<LoginMethod>("password")
 
-  const complete = async () => {
-    await reconnectKaiserRpc()
-    await router.invalidate()
-    await navigate({ href: safeRedirect(redirect) })
+  const complete = () => {
+    navigateAfterAuthChange(safeRedirect(redirect))
   }
 
   return (

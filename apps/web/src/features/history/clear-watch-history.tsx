@@ -15,7 +15,7 @@ import { useAtom } from "@effect-atom/atom-react"
 import { Trash2 } from "lucide-react"
 import { useState } from "react"
 import { toast } from "sonner"
-import { clearWatchHistoryAtom, watchHistoryReactivityKeys } from "./atoms"
+import { clearWatchHistoryAtom, watchHistoryClearKeys } from "./atoms"
 
 export function ClearWatchHistoryButton({
   onCleared,
@@ -36,7 +36,7 @@ export function ClearWatchHistoryButton({
     try {
       await clearHistory({
         payload: void 0,
-        reactivityKeys: [watchHistoryReactivityKeys.all],
+        reactivityKeys: watchHistoryClearKeys,
       })
       setOpen(false)
       onCleared?.()

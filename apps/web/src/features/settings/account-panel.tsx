@@ -9,11 +9,10 @@ import { Input } from "@animekaiser/ui/components/input"
 import { Spinner } from "@animekaiser/ui/components/spinner"
 import { useAtomSet } from "@effect-atom/atom-react"
 import { useForm } from "@tanstack/react-form"
-import { useNavigate, useRouter } from "@tanstack/react-router"
 import { Trash2 } from "lucide-react"
 import { useState } from "react"
 import { toast } from "sonner"
-import { authClient, reconnectKaiserRpc } from "../../services/api-clients"
+import { authClient, navigateAfterAuthChange } from "../../services/api-clients"
 import { errorMessage } from "../../utils/error"
 import type { AppUser } from "../auth/user"
 import { displayUsername } from "../auth/user"
@@ -37,9 +36,6 @@ export function AccountPanel({
   user: AppUser | null
   sessionExpiresAt: Date | null
 }) {
-  const router = useRouter()
-  const navigate = useNavigate()
-
   const deleteKaiserAccount = useAtomSet(deleteAccountAtom, {
     mode: "promise",
   })
@@ -96,9 +92,7 @@ export function AccountPanel({
       })
 
       await authClient.signOut()
-      await reconnectKaiserRpc()
-      await router.invalidate()
-      await navigate({ to: "/" })
+      navigateAfterAuthChange("/")
     } catch (reason) {
       toast.error(errorMessage(reason, "Unable to delete account"))
     }

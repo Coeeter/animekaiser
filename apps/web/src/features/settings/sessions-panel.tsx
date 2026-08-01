@@ -1,7 +1,7 @@
 import { Button } from "@animekaiser/ui/components/button"
 import { useEffect, useState } from "react"
 import { toast } from "sonner"
-import { authClient, reconnectKaiserRpc } from "../../services/api-clients"
+import { authClient } from "../../services/api-clients"
 import { errorMessage } from "../../utils/error"
 import type { AppUser } from "../auth/user"
 import { AuthRequired } from "./settings-shared"
@@ -40,7 +40,6 @@ export function SessionsPanel({ user }: { user: AppUser | null }) {
       const result = await authClient.revokeSession({ token })
       if (result.error) throw result.error
 
-      await reconnectKaiserRpc()
       await refresh()
       toast.success("Session revoked.")
     } catch (reason) {

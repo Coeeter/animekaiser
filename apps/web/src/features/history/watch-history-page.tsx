@@ -36,8 +36,8 @@ import { AnimeTitle } from "../anime/common/anime-title"
 import { formatTime, providerLabel } from "../streaming/player-format"
 import {
   clearWatchHistoryEntryAtom,
+  watchHistoryClearKeys,
   watchHistoryPageAtom,
-  watchHistoryReactivityKeys,
 } from "./atoms"
 import { ClearWatchHistoryButton } from "./clear-watch-history"
 import type { WatchHistorySearch } from "./search"
@@ -168,7 +168,7 @@ function WatchHistoryRow({
     try {
       await clearEntry({
         payload: { malId: item.malId },
-        reactivityKeys: [watchHistoryReactivityKeys.all],
+        reactivityKeys: watchHistoryClearKeys,
       })
       onCleared()
       toast.success("Removed from your history")

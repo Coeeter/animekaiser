@@ -11,7 +11,7 @@ import { ListRestart, RefreshCw } from "lucide-react"
 import { toast } from "sonner"
 import { DataError } from "../../components/data-error"
 import { PageHero } from "../../components/page-hero"
-import { retrySyncAtom, syncEventsAtom } from "./atoms"
+import { libraryReactivityKeys, retrySyncAtom, syncEventsAtom } from "./atoms"
 import type { SyncActivitySearch } from "./search"
 
 export function SyncActivityPage({ page }: SyncActivitySearch) {
@@ -22,9 +22,11 @@ export function SyncActivityPage({ page }: SyncActivitySearch) {
 
   const retryEvent = async (id: string) => {
     try {
-      await retry({ payload: { eventIds: [id], target: { type: "original" } } })
+      await retry({
+        payload: { eventIds: [id], target: { type: "original" } },
+        reactivityKeys: [libraryReactivityKeys.sync],
+      })
 
-      refresh()
       toast.success("Retry queued")
     } catch {
       toast.error("Unable to retry sync")

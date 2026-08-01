@@ -22,7 +22,7 @@ import {
   useAtomMount,
   useAtomValue,
 } from "@effect-atom/atom-react"
-import { Link, useRouter } from "@tanstack/react-router"
+import { Link } from "@tanstack/react-router"
 import {
   Bell,
   Captions,
@@ -39,7 +39,7 @@ import {
 } from "lucide-react"
 import { useState } from "react"
 import { toast } from "sonner"
-import { authClient, reconnectKaiserRpc } from "../../services/api-clients"
+import { authClient, navigateAfterAuthChange } from "../../services/api-clients"
 import { errorMessage } from "../../utils/error"
 import { sessionAtom } from "../auth/atoms"
 import type { AppUser } from "../auth/user"
@@ -153,7 +153,6 @@ function SectionContent({
 }
 
 export function SettingsDialog() {
-  const router = useRouter()
   const [open, setOpen] = useAtom(settingsOpenAtom)
   const [active, setActive] = useAtom(settingsSectionAtom)
   const sessionResult = useAtomValue(sessionAtom)
@@ -178,10 +177,7 @@ export function SettingsDialog() {
         return
       }
 
-      await reconnectKaiserRpc()
-      setOpen(false)
-      await router.invalidate()
-      await router.navigate({ to: "/" })
+      navigateAfterAuthChange("/")
     } catch (cause) {
       toast.error(errorMessage(cause, "Unable to sign out"))
     } finally {

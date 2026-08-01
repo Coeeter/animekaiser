@@ -3,8 +3,8 @@ import { Result, useAtomValue } from "@effect-atom/atom-react"
 import type { RefObject } from "react"
 import { useEffect, useRef } from "react"
 import { episodeWatchProgressAtom } from "./atoms"
+import { minimumResumeSeconds } from "./episode-progress"
 
-const minimumResumeSeconds = 10
 const endOfEpisodeGuardSeconds = 30
 
 export function useResumePlayback({
@@ -42,6 +42,12 @@ export function useResumePlayback({
 
     const apply = () => {
       if (resumedKeyRef.current === episodeKey) return
+
+      // This entry refreshes mid-playback, so seeking to it would rewind the viewer.
+      if (video.currentTime >= minimumResumeSeconds) {
+        resumedKeyRef.current = episodeKey
+        return
+      }
 
       const duration = video.duration
       if (!Number.isFinite(duration) || duration <= 0) return

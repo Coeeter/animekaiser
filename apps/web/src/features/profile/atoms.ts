@@ -1,28 +1,37 @@
-import {
-  KaiserRpcClient,
-  refreshOnAuthChange,
-} from "../../services/api-clients"
+import { KaiserRpcClient } from "../../services/api-clients"
+import { sessionReactivityKeys } from "../auth/atoms"
 
 export const profileReactivityKeys = ["profile"]
 
-export const ownProfileAtom = refreshOnAuthChange(
-  KaiserRpcClient.query("GetOwnProfile", void 0, {
-    reactivityKeys: profileReactivityKeys,
-  })
-)
+export const profileMutationKeys = [
+  ...profileReactivityKeys,
+  ...sessionReactivityKeys,
+]
+
+export const ownProfileAtom = KaiserRpcClient.query("GetOwnProfile", void 0, {
+  reactivityKeys: profileReactivityKeys,
+})
 
 export const publicProfileAtom = (username: string) =>
-  refreshOnAuthChange(KaiserRpcClient.query("GetPublicProfile", { username }))
+  KaiserRpcClient.query(
+    "GetPublicProfile",
+    { username },
+    { reactivityKeys: profileReactivityKeys }
+  )
 
-export const ownProfileStatsAtom = refreshOnAuthChange(
-  KaiserRpcClient.query("GetOwnProfileStats", void 0, {
+export const ownProfileStatsAtom = KaiserRpcClient.query(
+  "GetOwnProfileStats",
+  void 0,
+  {
     reactivityKeys: profileReactivityKeys,
-  })
+  }
 )
 
 export const publicProfileStatsAtom = (username: string) =>
-  refreshOnAuthChange(
-    KaiserRpcClient.query("GetPublicProfileStats", { username })
+  KaiserRpcClient.query(
+    "GetPublicProfileStats",
+    { username },
+    { reactivityKeys: profileReactivityKeys }
   )
 
 export const updateProfileAtom = KaiserRpcClient.mutation("UpdateProfile")

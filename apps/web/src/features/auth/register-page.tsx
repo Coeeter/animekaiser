@@ -14,16 +14,13 @@ import {
 } from "@animekaiser/ui/components/field"
 import { Input } from "@animekaiser/ui/components/input"
 import { useForm } from "@tanstack/react-form"
-import { useNavigate, useRouter } from "@tanstack/react-router"
 import { useState } from "react"
-import { authClient, reconnectKaiserRpc } from "../../services/api-clients"
+import { authClient, navigateAfterAuthChange } from "../../services/api-clients"
 import { errorMessage } from "../../utils/error"
 import { AuthFooter, SubmitButton } from "./auth-shared"
 import { passwordConfirmationError } from "./validation"
 
 export function RegisterPage() {
-  const router = useRouter()
-  const navigate = useNavigate()
   const [error, setError] = useState<string | null>(null)
   const [confirmationError, setConfirmationError] = useState<string | null>(
     null
@@ -56,9 +53,7 @@ export function RegisterPage() {
         })
         if (result.error) throw result.error
 
-        await reconnectKaiserRpc()
-        await router.invalidate()
-        await navigate({ to: "/" })
+        navigateAfterAuthChange("/")
       } catch (cause) {
         setError(errorMessage(cause, "Unable to create account"))
       }

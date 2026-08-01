@@ -1,12 +1,13 @@
-import {
-  KaiserRpcClient,
-  refreshOnAuthChange,
-} from "../../services/api-clients"
+import { KaiserRpcClient } from "../../services/api-clients"
 
-export const accountHealthAtom = refreshOnAuthChange(
-  KaiserRpcClient.query("ListExternalListAccounts", void 0, {
-    reactivityKeys: ["integrations"],
-  })
+export const integrationsReactivityKeys = ["integrations"]
+
+export const accountHealthAtom = KaiserRpcClient.query(
+  "ListExternalListAccounts",
+  void 0,
+  {
+    reactivityKeys: integrationsReactivityKeys,
+  }
 )
 
 export const disconnectExternalAccountAtom = KaiserRpcClient.mutation(

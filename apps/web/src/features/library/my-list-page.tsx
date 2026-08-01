@@ -77,6 +77,8 @@ import { StatTile } from "../../components/stat-tile"
 import { isStaleResult, useLastSuccess } from "../../hooks/use-last-success"
 import {
   clearLibraryAtom,
+  invalidateLibraryAtom,
+  libraryGlobalMutationKeys,
   libraryPageAtom,
   libraryReactivityKeys,
   startLibraryImportAtom,
@@ -318,7 +320,10 @@ function MyListActions({
   const start = async (provider: ExternalListProvider) => {
     setPendingProvider(provider)
     try {
-      const job = await startLibraryImport({ payload: { provider } })
+      const job = await startLibraryImport({
+        payload: { provider },
+        reactivityKeys: [libraryReactivityKeys.sync],
+      })
       toast.success(`Import queued: ${job.id}`)
       setWatchingJobId(job.id)
     } catch {
@@ -331,11 +336,7 @@ function MyListActions({
   return (
     <div className="flex flex-wrap items-center gap-2">
       {watchingJobId ? (
-        <ImportWatcher
-          id={watchingJobId}
-          refresh={refresh}
-          stop={() => setWatchingJobId(null)}
-        />
+        <ImportWatcher id={watchingJobId} stop={() => setWatchingJobId(null)} />
       ) : null}
 
       <DropdownMenu>
@@ -539,18 +540,11 @@ function LibraryPagination({
   )
 }
 
-function ImportWatcher({
-  id,
-  refresh,
-  stop,
-}: {
-  id: string
-  refresh: () => void
-  stop: () => void
-}) {
+function ImportWatcher({ id, stop }: { id: string; stop: () => void }) {
   const atom = watchLibraryImportAtom(id)
   const result = useAtomValue(atom)
   const pull = useAtomSet(atom)
+  const invalidateLibrary = useAtomSet(invalidateLibraryAtom)
 
   useEffect(() => {
     Result.builder(result)
@@ -562,7 +556,7 @@ function ImportWatcher({
         if (!job) return
 
         if (job.status === "completed") {
-          refresh()
+          invalidateLibrary()
           toast.success("Import complete")
           stop()
         } else if (job.status === "failed") {
@@ -573,7 +567,7 @@ function ImportWatcher({
         }
       })
       .orNull()
-  }, [pull, refresh, result, stop])
+  }, [invalidateLibrary, pull, result, stop])
 
   return null
 }
@@ -594,7 +588,7 @@ function ClearLibraryDialog({
     try {
       const result = await clear({
         payload: void 0,
-        reactivityKeys: [libraryReactivityKeys.all],
+        reactivityKeys: libraryGlobalMutationKeys,
       })
 
       refresh()

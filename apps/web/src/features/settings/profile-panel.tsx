@@ -25,15 +25,16 @@ import * as Schema from "effect/Schema"
 import { useEffect, useRef, useState } from "react"
 import { toast } from "sonner"
 import { DataError } from "../../components/data-error"
-import { authClient, reconnectKaiserRpc } from "../../services/api-clients"
+import { authClient } from "../../services/api-clients"
 import { errorMessage } from "../../utils/error"
+import { sessionAtom } from "../auth/atoms"
 import type { AppUser } from "../auth/user"
 import { displayUsername, userInitials } from "../auth/user"
 import {
   completeProfileImageUploadAtom,
   createProfileImageUploadAtom,
   ownProfileAtom,
-  profileReactivityKeys,
+  profileMutationKeys,
   removeProfileImageAtom,
   updateProfileAtom,
 } from "../profile/atoms"
@@ -55,6 +56,7 @@ export function ProfilePanel({ user }: { user: AppUser | null }) {
 
   const profileResult = useAtomValue(ownProfileAtom)
   const refreshProfile = useAtomRefresh(ownProfileAtom)
+  const refreshSession = useAtomRefresh(sessionAtom)
 
   const profile = Result.builder(profileResult)
     .onSuccess((value) => value)
@@ -131,7 +133,7 @@ export function ProfilePanel({ user }: { user: AppUser | null }) {
 
       await completeUpload({
         payload: { kind, key: uploadTarget.key },
-        reactivityKeys: profileReactivityKeys,
+        reactivityKeys: profileMutationKeys,
       })
 
       refreshProfile()
@@ -153,7 +155,7 @@ export function ProfilePanel({ user }: { user: AppUser | null }) {
     try {
       await removeProfileImage({
         payload: { kind },
-        reactivityKeys: profileReactivityKeys,
+        reactivityKeys: profileMutationKeys,
       })
 
       refreshProfile()
@@ -177,7 +179,7 @@ export function ProfilePanel({ user }: { user: AppUser | null }) {
 
       if (result.error) throw result.error
 
-      await reconnectKaiserRpc()
+      refreshSession()
       refreshProfile()
       await router.invalidate()
       toast.success("Username updated.")
@@ -192,7 +194,7 @@ export function ProfilePanel({ user }: { user: AppUser | null }) {
     try {
       await saveProfile({
         payload: { description: description || null },
-        reactivityKeys: profileReactivityKeys,
+        reactivityKeys: profileMutationKeys,
       })
 
       refreshProfile()

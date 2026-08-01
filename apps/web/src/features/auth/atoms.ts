@@ -1,14 +1,13 @@
 import { Atom } from "@effect-atom/atom-react"
-import {
-  KaiserRpcClient,
-  refreshOnAuthChange,
-} from "../../services/api-clients"
+import { KaiserRpcClient } from "../../services/api-clients"
 
-const sessionQueryAtom = KaiserRpcClient.query("GetCurrentSession", void 0)
+export const sessionReactivityKeys = ["session"]
 
-export const sessionAtom = refreshOnAuthChange(sessionQueryAtom).pipe(
-  Atom.keepAlive
-)
+const sessionQueryAtom = KaiserRpcClient.query("GetCurrentSession", void 0, {
+  reactivityKeys: sessionReactivityKeys,
+})
+
+export const sessionAtom = sessionQueryAtom.pipe(Atom.keepAlive)
 
 const protectedRoutes = new Set([
   "/my-list",

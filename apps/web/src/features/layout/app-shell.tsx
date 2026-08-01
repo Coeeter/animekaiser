@@ -1,7 +1,19 @@
-import { Result, useAtomRefresh, useAtomValue } from "@effect-atom/atom-react"
+import {
+  RegistryContext,
+  Result,
+  useAtomMount,
+  useAtomRefresh,
+  useAtomValue,
+} from "@effect-atom/atom-react"
 import { Navigate, useLocation } from "@tanstack/react-router"
+import { Loader2 } from "lucide-react"
 import type { ReactNode } from "react"
+import { useContext } from "react"
 import { DataError } from "../../components/data-error"
+import {
+  rpcConnectionRecoveryAtom,
+  rpcConnectionStatusAtom,
+} from "../../services/api-clients"
 import { SearchDialog } from "../anime/common/search-dialog"
 import { isProtectedRoute, sessionAtom } from "../auth/atoms"
 import { SettingsDialog } from "../settings/settings-dialog"
@@ -60,7 +72,28 @@ export function AppShell({ children }: { children: ReactNode }) {
         <SearchDialog />
         <SettingsDialog />
         <PlaybackSessionHost />
+        <RpcConnectionMonitor />
       </AppSidebarProvider>
     </>
+  )
+}
+
+function RpcConnectionMonitor() {
+  const registry = useContext(RegistryContext)
+  const status = useAtomValue(rpcConnectionStatusAtom)
+
+  useAtomMount(rpcConnectionRecoveryAtom(registry))
+
+  if (status === "connected") return null
+
+  return (
+    <div
+      aria-live="polite"
+      role="status"
+      className="fixed bottom-4 left-1/2 z-50 flex -translate-x-1/2 items-center gap-2 rounded-full border bg-background px-4 py-2 text-sm shadow-lg"
+    >
+      <Loader2 className="size-4 animate-spin" />
+      Reconnecting…
+    </div>
   )
 }

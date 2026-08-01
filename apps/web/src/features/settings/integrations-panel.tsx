@@ -17,8 +17,9 @@ import type { AppUser } from "../auth/user"
 import {
   accountHealthAtom,
   disconnectExternalAccountAtom,
+  integrationsReactivityKeys,
 } from "../integrations/atoms"
-import { startLibraryImportAtom } from "../library/atoms"
+import { libraryReactivityKeys, startLibraryImportAtom } from "../library/atoms"
 import { settingsOpenAtom } from "./atoms"
 import { AuthRequired, PanelCard } from "./settings-shared"
 
@@ -64,7 +65,7 @@ export function IntegrationsPanel({ user }: { user: AppUser | null }) {
     try {
       await disconnectExternalAccount({
         payload: { provider },
-        reactivityKeys: ["integrations"],
+        reactivityKeys: integrationsReactivityKeys,
       })
       toast.success("Integration disconnected.")
     } catch (reason) {
@@ -78,7 +79,10 @@ export function IntegrationsPanel({ user }: { user: AppUser | null }) {
     setPending(`${provider}:import`)
 
     try {
-      const job = await startLibraryImport({ payload: { provider } })
+      const job = await startLibraryImport({
+        payload: { provider },
+        reactivityKeys: [libraryReactivityKeys.sync],
+      })
       toast.success(`Import queued: ${job.id}`)
     } catch (reason) {
       toast.error(errorMessage(reason, "Unable to start import"))
