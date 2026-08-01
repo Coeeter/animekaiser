@@ -41,6 +41,7 @@ import {
   Repeat2,
   Star,
   XCircle,
+  ZoomIn,
 } from "lucide-react"
 import { useState } from "react"
 import { DataError } from "../../../components/data-error"
@@ -268,11 +269,7 @@ function SeriesDetail({
             <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 pt-6 pb-6 md:flex-row md:gap-8 md:px-6 md:pt-10 md:pb-8">
               <div className="flex w-44 shrink-0 flex-col gap-3 self-center md:w-44 md:self-auto lg:w-52">
                 {anime.coverImage ? (
-                  <img
-                    src={anime.coverImage}
-                    alt=""
-                    className="aspect-2/3 w-full rounded-xl object-cover shadow-2xl ring-1 ring-white/10"
-                  />
+                  <PosterDialog anime={anime} src={anime.coverImage} />
                 ) : null}
                 {hasYoutubeTrailer ? <TrailerDialog anime={anime} /> : null}
               </div>
@@ -514,6 +511,42 @@ function SeriesDetail({
         </div>
       </div>
     </div>
+  )
+}
+
+function PosterDialog({ anime, src }: { anime: AnimeDetail; src: string }) {
+  return (
+    <Dialog>
+      <DialogTrigger className="group relative block aspect-2/3 w-full cursor-zoom-in overflow-hidden rounded-xl shadow-2xl ring-1 ring-white/10 outline-none focus-visible:ring-2 focus-visible:ring-white">
+        <img src={src} alt="" className="size-full object-cover" />
+        <div className="absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 transition group-hover:opacity-100 group-focus-visible:opacity-100">
+          <ZoomIn className="size-8 text-white" />
+        </div>
+        <span className="sr-only">
+          View full size poster for <AnimeTitleText title={anime.title} />
+        </span>
+      </DialogTrigger>
+      <DialogContent
+        showCloseButton={false}
+        className="w-auto max-w-[calc(100%-2rem)] gap-0 overflow-visible rounded-none bg-transparent p-0 shadow-none ring-0 sm:max-w-[calc(100%-2rem)] dark:ring-0"
+      >
+        <DialogHeader className="sr-only">
+          <DialogTitle>
+            <AnimeTitleText title={anime.title} /> – Poster
+          </DialogTitle>
+          <DialogDescription>
+            Full size poster for <AnimeTitleText title={anime.title} />.
+          </DialogDescription>
+        </DialogHeader>
+        <DialogClose className="cursor-zoom-out outline-none">
+          <img
+            src={src}
+            alt=""
+            className="max-h-[calc(100dvh-4rem)] w-auto rounded-xl object-contain shadow-2xl"
+          />
+        </DialogClose>
+      </DialogContent>
+    </Dialog>
   )
 }
 
