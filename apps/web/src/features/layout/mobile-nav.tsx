@@ -90,8 +90,6 @@ export function MobileNav() {
   const setSearchOpen = useAtomSet(searchOpenAtom)
   const [moreOpen, setMoreOpen] = useState(false)
 
-  if (pathname.startsWith("/watch/")) return null
-
   return (
     <>
       <nav

@@ -42,7 +42,7 @@ export function PlayerMobilePanel({
   const displayTitle = episodeTitle(playback.episode)
 
   return (
-    <div className="flex flex-col gap-5 bg-background px-4 pt-4 pb-8 text-foreground md:hidden">
+    <div className="flex flex-col gap-5 bg-background px-4 pt-4 pb-[calc(4.5rem+env(safe-area-inset-bottom))] text-foreground md:hidden">
       <div className="flex flex-col gap-2">
         <h1 className="font-heading text-xl leading-tight font-bold tracking-tight">
           <AnimeTitle title={playback.anime.title} />
