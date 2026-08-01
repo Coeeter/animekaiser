@@ -44,13 +44,9 @@ export function PlayerMobilePanel({
   return (
     <div className="flex flex-col gap-5 bg-background px-4 pt-4 pb-8 text-foreground md:hidden">
       <div className="flex flex-col gap-2">
-        <Link
-          to="/series/$id"
-          params={{ id: playback.anime.malId }}
-          className="font-heading text-xl leading-tight font-bold tracking-tight"
-        >
+        <h1 className="font-heading text-xl leading-tight font-bold tracking-tight">
           <AnimeTitle title={playback.anime.title} />
-        </Link>
+        </h1>
         <p className="text-sm text-muted-foreground">
           {episodeLabel(playback.episode)}
           {displayTitle ? ` · ${displayTitle}` : ""}
