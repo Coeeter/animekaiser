@@ -41,11 +41,13 @@ export function PrivacyPanel({ user }: { user: AppUser | null }) {
   if (profileError) return profileError
 
   const isPrivate = profile?.private ?? false
+  const username = user.username ?? user.name
 
   const update = async (patch: {
     private?: boolean
     shareStats?: boolean
     shareActivity?: boolean
+    shareList?: boolean
   }) => {
     try {
       await savePrivacy({
@@ -117,6 +119,21 @@ export function PrivacyPanel({ user }: { user: AppUser | null }) {
               checked={profile?.shareActivity ?? true}
               disabled={saveResult.waiting || isPrivate}
               onCheckedChange={(value) => void update({ shareActivity: value })}
+            />
+          </Field>
+
+          <Field orientation="horizontal">
+            <div className="flex-1">
+              <p className="font-medium">Anime list</p>
+              <FieldDescription>
+                Let anyone open your list at /list/{username}.
+              </FieldDescription>
+            </div>
+            <Switch
+              aria-label="Share anime list"
+              checked={profile?.shareList ?? true}
+              disabled={saveResult.waiting || isPrivate}
+              onCheckedChange={(value) => void update({ shareList: value })}
             />
           </Field>
         </div>

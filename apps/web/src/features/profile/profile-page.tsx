@@ -24,9 +24,10 @@ import {
   useAtomSet,
   useAtomValue,
 } from "@effect-atom/atom-react"
-import { Link } from "@tanstack/react-router"
+import { Link, Navigate } from "@tanstack/react-router"
 import {
   Bookmark,
+  Eye,
   EyeOff,
   History,
   LockKeyhole,
@@ -34,6 +35,8 @@ import {
   UserRoundX,
 } from "lucide-react"
 import { DataError } from "../../components/data-error"
+import { sessionAtom } from "../auth/atoms"
+import { displayUsername } from "../auth/user"
 import { settingsOpenAtom, settingsSectionAtom } from "../settings/atoms"
 import {
   ownProfileAtom,
@@ -49,10 +52,12 @@ const initials = (username: string | null) =>
 function ProfileHeader({
   data,
   own,
+  viewingAsPublic,
   stats,
 }: {
   data: OwnProfile
   own: boolean
+  viewingAsPublic: boolean
   stats: ProfileLibraryStats | null
 }) {
   const setSettingsSection = useAtomSet(settingsSectionAtom)
@@ -99,6 +104,16 @@ function ProfileHeader({
                   Private
                 </Badge>
               ) : null}
+              {own && !viewingAsPublic && username !== "Unknown user" ? (
+                <Link
+                  to="/u/$username"
+                  params={{ username }}
+                  search={{ as: "public" }}
+                  className="text-xs font-medium text-primary underline-offset-4 hover:underline"
+                >
+                  View as public
+                </Link>
+              ) : null}
               {stats ? (
                 <>
                   <Badge variant="secondary">
@@ -141,12 +156,14 @@ function ProfileHeader({
 function ProfileLayout({
   data,
   own,
+  viewingAsPublic = false,
   stats,
   activity,
   statsHidden,
 }: {
   data: OwnProfile
   own: boolean
+  viewingAsPublic?: boolean
   stats: ProfileLibraryStats | null
   activity: ProfileActivityStats | null
   statsHidden: boolean
@@ -157,27 +174,47 @@ function ProfileLayout({
     <>
       <title>{`${username} | AnimeKaiser`}</title>
       <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 p-4 pb-10 md:p-6">
-        <ProfileHeader data={data} own={own} stats={stats} />
+        {viewingAsPublic ? <PublicPreviewBanner username={username} /> : null}
+        <ProfileHeader
+          data={data}
+          own={own}
+          viewingAsPublic={viewingAsPublic}
+          stats={stats}
+        />
 
-        {own ? (
-          <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-2">
+          {own && !viewingAsPublic ? (
+            <>
+              <Button asChild variant="outline" size="sm">
+                <Link
+                  to="/my-list"
+                  search={{ status: "all", sort: "updated_desc", page: 1 }}
+                >
+                  <Bookmark data-icon="inline-start" />
+                  My list
+                </Link>
+              </Button>
+              <Button asChild variant="outline" size="sm">
+                <Link to="/watch-history" search={{ page: 1 }}>
+                  <History data-icon="inline-start" />
+                  Watch history
+                </Link>
+              </Button>
+            </>
+          ) : null}
+          {username !== "Unknown user" && data.profile.shareList ? (
             <Button asChild variant="outline" size="sm">
               <Link
-                to="/my-list"
+                to="/list/$username"
+                params={{ username }}
                 search={{ status: "all", sort: "updated_desc", page: 1 }}
               >
                 <Bookmark data-icon="inline-start" />
-                My list
+                {own && !viewingAsPublic ? "Shared list" : "View list"}
               </Link>
             </Button>
-            <Button asChild variant="outline" size="sm">
-              <Link to="/watch-history" search={{ page: 1 }}>
-                <History data-icon="inline-start" />
-                Watch history
-              </Link>
-            </Button>
-          </div>
-        ) : null}
+          ) : null}
+        </div>
 
         {stats || activity ? (
           <ProfileStatsSections stats={stats} activity={activity} />
@@ -229,11 +266,32 @@ export function OwnProfilePage() {
     .render()
 }
 
-export function PublicProfilePage({ username }: { username: string }) {
-  const atom = publicProfileAtom(username)
+export function PublicProfilePage({
+  username,
+  asPublic = false,
+}: {
+  username: string
+  asPublic?: boolean
+}) {
+  const atom = publicProfileAtom({ username, asPublic })
   const result = useAtomValue(atom)
   const refresh = useAtomRefresh(atom)
-  const statsResult = useAtomValue(publicProfileStatsAtom(username))
+  const statsResult = useAtomValue(
+    publicProfileStatsAtom({ username, asPublic })
+  )
+  const sessionResult = useAtomValue(sessionAtom)
+
+  const viewerUsername = Result.builder(sessionResult)
+    .onSuccess((session) =>
+      session?.user ? displayUsername(session.user) : null
+    )
+    .orNull()
+
+  const isSelf =
+    viewerUsername !== null &&
+    viewerUsername.toLowerCase() === username.toLowerCase()
+
+  if (isSelf && !asPublic) return <Navigate to="/profile" replace />
 
   const stats = Result.builder(statsResult)
     .onSuccess((value) => value)
@@ -259,6 +317,7 @@ export function PublicProfilePage({ username }: { username: string }) {
         <ProfileLayout
           data={data}
           own={false}
+          viewingAsPublic={asPublic}
           stats={stats?.stats ?? null}
           activity={stats?.activity ?? null}
           statsHidden={statsResolved && stats === null}
@@ -266,6 +325,22 @@ export function PublicProfilePage({ username }: { username: string }) {
       )
     })
     .render()
+}
+
+function PublicPreviewBanner({ username }: { username: string }) {
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-dashed bg-card/60 px-4 py-3">
+      <p className="text-sm text-muted-foreground">
+        You are viewing your profile as another user sees it.
+      </p>
+      <Button asChild variant="outline" size="sm">
+        <Link to="/u/$username" params={{ username }} search={{}}>
+          <Eye data-icon="inline-start" />
+          Back to my view
+        </Link>
+      </Button>
+    </div>
+  )
 }
 
 function ProfileUnavailable({

@@ -22,6 +22,7 @@ import { Route as WatchHistoryRouteImport } from './routes/watch-history'
 import { Route as AuthForgotPasswordRouteImport } from './routes/_auth.forgot-password'
 import { Route as AuthLoginRouteImport } from './routes/_auth.login'
 import { Route as AuthRegisterRouteImport } from './routes/_auth.register'
+import { Route as ListUsernameRouteImport } from './routes/list.$username'
 import { Route as SeriesIndexRouteImport } from './routes/series.index'
 import { Route as SeriesIdRouteImport } from './routes/series.$id'
 import { Route as UUsernameRouteImport } from './routes/u.$username'
@@ -91,6 +92,11 @@ const AuthRegisterRoute = AuthRegisterRouteImport.update({
   path: '/register',
   getParentRoute: () => AuthRoute,
 } as any)
+const ListUsernameRoute = ListUsernameRouteImport.update({
+  id: '/list/$username',
+  path: '/list/$username',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SeriesIndexRoute = SeriesIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -126,6 +132,7 @@ export interface FileRoutesByFullPath {
   '/forgot-password': typeof AuthForgotPasswordRoute
   '/login': typeof AuthLoginRoute
   '/register': typeof AuthRegisterRoute
+  '/list/$username': typeof ListUsernameRoute
   '/series/$id': typeof SeriesIdRoute
   '/u/$username': typeof UUsernameRoute
   '/series/': typeof SeriesIndexRoute
@@ -143,6 +150,7 @@ export interface FileRoutesByTo {
   '/forgot-password': typeof AuthForgotPasswordRoute
   '/login': typeof AuthLoginRoute
   '/register': typeof AuthRegisterRoute
+  '/list/$username': typeof ListUsernameRoute
   '/series/$id': typeof SeriesIdRoute
   '/u/$username': typeof UUsernameRoute
   '/series': typeof SeriesIndexRoute
@@ -163,6 +171,7 @@ export interface FileRoutesById {
   '/_auth/forgot-password': typeof AuthForgotPasswordRoute
   '/_auth/login': typeof AuthLoginRoute
   '/_auth/register': typeof AuthRegisterRoute
+  '/list/$username': typeof ListUsernameRoute
   '/series/$id': typeof SeriesIdRoute
   '/u/$username': typeof UUsernameRoute
   '/series/': typeof SeriesIndexRoute
@@ -183,6 +192,7 @@ export interface FileRouteTypes {
     | '/forgot-password'
     | '/login'
     | '/register'
+    | '/list/$username'
     | '/series/$id'
     | '/u/$username'
     | '/series/'
@@ -200,6 +210,7 @@ export interface FileRouteTypes {
     | '/forgot-password'
     | '/login'
     | '/register'
+    | '/list/$username'
     | '/series/$id'
     | '/u/$username'
     | '/series'
@@ -219,6 +230,7 @@ export interface FileRouteTypes {
     | '/_auth/forgot-password'
     | '/_auth/login'
     | '/_auth/register'
+    | '/list/$username'
     | '/series/$id'
     | '/u/$username'
     | '/series/'
@@ -236,6 +248,7 @@ export interface RootRouteChildren {
   SeriesRoute: typeof SeriesRouteWithChildren
   SyncActivityRoute: typeof SyncActivityRoute
   WatchHistoryRoute: typeof WatchHistoryRoute
+  ListUsernameRoute: typeof ListUsernameRoute
   UUsernameRoute: typeof UUsernameRoute
   WatchMalIdProviderEpisodeIdRoute: typeof WatchMalIdProviderEpisodeIdRoute
 }
@@ -333,6 +346,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthRegisterRouteImport
       parentRoute: typeof AuthRoute
     }
+    '/list/$username': {
+      id: '/list/$username'
+      path: '/list/$username'
+      fullPath: '/list/$username'
+      preLoaderRoute: typeof ListUsernameRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/series/': {
       id: '/series/'
       path: '/'
@@ -402,6 +422,7 @@ const rootRouteChildren: RootRouteChildren = {
   SeriesRoute: SeriesRouteWithChildren,
   SyncActivityRoute: SyncActivityRoute,
   WatchHistoryRoute: WatchHistoryRoute,
+  ListUsernameRoute: ListUsernameRoute,
   UUsernameRoute: UUsernameRoute,
   WatchMalIdProviderEpisodeIdRoute: WatchMalIdProviderEpisodeIdRoute,
 }

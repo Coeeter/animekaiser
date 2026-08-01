@@ -1,5 +1,12 @@
+import { Atom } from "@effect-atom/atom-react"
+import * as Data from "effect/Data"
 import { KaiserRpcClient } from "../../services/api-clients"
 import { sessionReactivityKeys } from "../auth/atoms"
+
+export type PublicProfileKey = {
+  readonly username: string
+  readonly asPublic: boolean
+}
 
 export const profileReactivityKeys = ["profile"]
 
@@ -12,12 +19,17 @@ export const ownProfileAtom = KaiserRpcClient.query("GetOwnProfile", void 0, {
   reactivityKeys: profileReactivityKeys,
 })
 
-export const publicProfileAtom = (username: string) =>
-  KaiserRpcClient.query(
-    "GetPublicProfile",
-    { username },
-    { reactivityKeys: profileReactivityKeys }
-  )
+const publicProfileFamily = Atom.family(
+  ({ username, asPublic }: PublicProfileKey) =>
+    KaiserRpcClient.query(
+      "GetPublicProfile",
+      { username, asPublic },
+      { reactivityKeys: profileReactivityKeys }
+    )
+)
+
+export const publicProfileAtom = (key: PublicProfileKey) =>
+  publicProfileFamily(Data.struct(key))
 
 export const ownProfileStatsAtom = KaiserRpcClient.query(
   "GetOwnProfileStats",
@@ -27,12 +39,17 @@ export const ownProfileStatsAtom = KaiserRpcClient.query(
   }
 )
 
-export const publicProfileStatsAtom = (username: string) =>
-  KaiserRpcClient.query(
-    "GetPublicProfileStats",
-    { username },
-    { reactivityKeys: profileReactivityKeys }
-  )
+const publicProfileStatsFamily = Atom.family(
+  ({ username, asPublic }: PublicProfileKey) =>
+    KaiserRpcClient.query(
+      "GetPublicProfileStats",
+      { username, asPublic },
+      { reactivityKeys: profileReactivityKeys }
+    )
+)
+
+export const publicProfileStatsAtom = (key: PublicProfileKey) =>
+  publicProfileStatsFamily(Data.struct(key))
 
 export const updateProfileAtom = KaiserRpcClient.mutation("UpdateProfile")
 export const updatePrivacyAtom = KaiserRpcClient.mutation("UpdatePrivacy")

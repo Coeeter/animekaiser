@@ -7,7 +7,8 @@ import type {
   LibrarySyncStatus,
 } from "@animekaiser/domain"
 import * as Reactivity from "@effect/experimental/Reactivity"
-import type { Atom } from "@effect-atom/atom-react"
+import { Atom } from "@effect-atom/atom-react"
+import * as Data from "effect/Data"
 import * as Effect from "effect/Effect"
 import { KaiserRpcClient } from "../../services/api-clients"
 import { profileReactivityKeys } from "../profile/atoms"
@@ -41,6 +42,27 @@ export const libraryPageAtom = (
     { status, sort, page, perPage, query },
     { reactivityKeys: [libraryReactivityKeys.all] }
   )
+
+type PublicLibraryKey = {
+  readonly username: string
+  readonly asPublic: boolean
+  readonly status: LibraryStatus | undefined
+  readonly sort: LibrarySort
+  readonly page: number
+  readonly perPage: number
+  readonly query: string | undefined
+}
+
+const publicLibraryFamily = Atom.family((key: PublicLibraryKey) =>
+  KaiserRpcClient.query(
+    "GetPublicLibrary",
+    { ...key },
+    { reactivityKeys: [libraryReactivityKeys.all] }
+  )
+)
+
+export const publicLibraryAtom = (key: PublicLibraryKey) =>
+  publicLibraryFamily(Data.struct(key))
 
 export const libraryEntryAtom = (malId: number) =>
   KaiserRpcClient.query(
