@@ -47,6 +47,13 @@ export const WatchHistoryHandlersLive = WatchHistoryRpcs.toLayer(
             episode
           ).pipe(Effect.catchTag("WatchHistoryServiceError", toOperationError))
         }),
+      ListAnimeWatchProgress: ({ malId }) =>
+        Effect.gen(function* () {
+          const user = yield* CurrentUser
+          return yield* WatchHistoryService.listForAnime(user.id, malId).pipe(
+            Effect.catchTag("WatchHistoryServiceError", toOperationError)
+          )
+        }),
       ClearWatchHistory: () =>
         Effect.gen(function* () {
           const user = yield* CurrentUser

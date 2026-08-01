@@ -175,6 +175,35 @@ export class WatchHistoryService extends Effect.Service<WatchHistoryService>()(
         return row ? toEntry(row) : null
       })
 
+      const listForAnime = Effect.fn("WatchHistoryService.listForAnime")(
+        function* (userId: string, malId: number) {
+          const rows = yield* database
+            .execute((db) =>
+              db
+                .select()
+                .from(watchHistory)
+                .where(
+                  and(
+                    eq(watchHistory.userId, userId),
+                    eq(watchHistory.malId, malId)
+                  )
+                )
+                .orderBy(watchHistory.episode)
+            )
+            .pipe(
+              Effect.mapError(
+                (cause) =>
+                  new WatchHistoryServiceError({
+                    message: "Unable to load watch progress.",
+                    cause,
+                  })
+              )
+            )
+
+          return rows.map(toEntry)
+        }
+      )
+
       const listContinueWatching = Effect.fn(
         "WatchHistoryService.listContinueWatching"
       )(function* (userId: string, limit: number) {
@@ -337,6 +366,7 @@ export class WatchHistoryService extends Effect.Service<WatchHistoryService>()(
       return {
         record,
         getEpisode,
+        listForAnime,
         listContinueWatching,
         listHistory,
         clearForAnime,

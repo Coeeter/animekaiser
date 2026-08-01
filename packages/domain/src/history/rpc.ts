@@ -57,6 +57,12 @@ export class GetEpisodeWatchProgress extends Rpc.make(
   }
 ) {}
 
+export class ListAnimeWatchProgress extends Rpc.make("ListAnimeWatchProgress", {
+  payload: { malId: MalId },
+  success: Schema.Array(WatchHistoryEntry),
+  error: WatchHistoryOperationError,
+}) {}
+
 export class ClearWatchHistoryEntry extends Rpc.make("ClearWatchHistoryEntry", {
   payload: { malId: MalId },
   success: Schema.Void,
@@ -73,6 +79,7 @@ export class WatchHistoryRpcs extends RpcGroup.make(
   ListContinueWatching,
   ListWatchHistory,
   GetEpisodeWatchProgress,
+  ListAnimeWatchProgress,
   ClearWatchHistoryEntry,
   ClearWatchHistory
 ).middleware(Authentication) {}
