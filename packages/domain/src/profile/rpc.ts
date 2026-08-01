@@ -8,6 +8,7 @@ import {
   ProfileImageUpload,
   ProfileOperationError,
   PublicProfile,
+  UsernameSuggestions,
 } from "./models"
 import { ProfileStats, PublicProfileStats } from "./stats"
 
@@ -84,6 +85,27 @@ export class GetPublicProfileStats extends Rpc.make("GetPublicProfileStats", {
   error: ProfileOperationError,
 }) {}
 
+export class SuggestUsernames extends Rpc.make("SuggestUsernames", {
+  success: UsernameSuggestions,
+  error: ProfileOperationError,
+}) {}
+
+export class CheckUsername extends Rpc.make("CheckUsername", {
+  payload: { username: Schema.String },
+  success: Schema.Struct({ available: Schema.Boolean }),
+  error: ProfileOperationError,
+}) {}
+
+export class BeginOnboarding extends Rpc.make("BeginOnboarding", {
+  success: OwnProfile,
+  error: ProfileOperationError,
+}) {}
+
+export class CompleteOnboarding extends Rpc.make("CompleteOnboarding", {
+  success: OwnProfile,
+  error: ProfileOperationError,
+}) {}
+
 export class DeleteAccount extends Rpc.make("DeleteAccount", {
   payload: { password: Schema.String },
   success: Schema.Void,
@@ -103,6 +125,10 @@ class AuthenticatedProfileRpcs extends RpcGroup.make(
   CreateProfileImageUpload,
   CompleteProfileImageUpload,
   RemoveProfileImage,
+  SuggestUsernames,
+  CheckUsername,
+  BeginOnboarding,
+  CompleteOnboarding,
   DeleteAccount
 ).middleware(Authentication) {}
 

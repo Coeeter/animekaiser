@@ -27,6 +27,7 @@ const profileView = (record: ProfileRecord, publicUrl: string) => ({
     shareStats: record.profile.shareStats,
     shareActivity: record.profile.shareActivity,
     shareList: record.profile.shareList,
+    onboarded: record.profile.onboarded,
   },
 })
 
@@ -205,6 +206,38 @@ export const ProfileHandlersLive = ProfileRpcs.toLayer(
           } else {
             yield* ProfileMediaService.removeBanner(current.id)
           }
+          return profileView(
+            yield* ProfileService.getOwnProfile(current.id),
+            config.mediaPublicUrl
+          )
+        }),
+      SuggestUsernames: () =>
+        Effect.gen(function* () {
+          const current = yield* CurrentUser
+          return yield* ProfileService.suggestUsernames(current.id)
+        }),
+      CheckUsername: ({ username }) =>
+        Effect.gen(function* () {
+          const current = yield* CurrentUser
+          const available = yield* ProfileService.isUsernameAvailable(
+            current.id,
+            username
+          )
+          return { available }
+        }),
+      BeginOnboarding: () =>
+        Effect.gen(function* () {
+          const current = yield* CurrentUser
+          yield* ProfileService.setOnboarded(current.id, false)
+          return profileView(
+            yield* ProfileService.getOwnProfile(current.id),
+            config.mediaPublicUrl
+          )
+        }),
+      CompleteOnboarding: () =>
+        Effect.gen(function* () {
+          const current = yield* CurrentUser
+          yield* ProfileService.setOnboarded(current.id, true)
           return profileView(
             yield* ProfileService.getOwnProfile(current.id),
             config.mediaPublicUrl

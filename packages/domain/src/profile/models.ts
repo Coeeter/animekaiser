@@ -13,6 +13,7 @@ export const ProfileDetails = Schema.Struct({
   shareStats: Schema.Boolean,
   shareActivity: Schema.Boolean,
   shareList: Schema.Boolean,
+  onboarded: Schema.Boolean,
 })
 export type ProfileDetails = typeof ProfileDetails.Type
 
@@ -51,6 +52,12 @@ export const PublicProfile = Schema.Union(
   })
 )
 export type PublicProfile = typeof PublicProfile.Type
+
+export const UsernameSuggestions = Schema.Struct({
+  primary: Schema.String,
+  suggestions: Schema.Array(Schema.String),
+})
+export type UsernameSuggestions = typeof UsernameSuggestions.Type
 
 export class ProfileOperationError extends Schema.TaggedError<ProfileOperationError>()(
   "ProfileOperationError",
