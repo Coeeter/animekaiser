@@ -5,7 +5,7 @@ import {
   updatePlayerPreferencesAtom,
 } from "../streaming/preferences"
 import { SubtitleSettings } from "../streaming/subtitle-settings"
-import { PanelCard } from "./settings-shared"
+import { SettingCard, SettingHeading } from "./settings-shared"
 
 type PlayerPreferenceKey =
   | "autoplay"
@@ -15,38 +15,44 @@ type PlayerPreferenceKey =
   | "syncLibraryOnFinish"
 
 const preferenceRows: ReadonlyArray<{
+  id: string
   key: PlayerPreferenceKey
   title: string
   description: string
 }> = [
   {
+    id: "playback.autoplay",
     key: "autoplay",
     title: "Autoplay episodes",
     description: "Start playback automatically when a stream is ready.",
   },
   {
+    id: "playback.autoNext",
     key: "autoNext",
     title: "Auto next episode",
     description: "Move to the next available episode when playback ends.",
   },
   {
+    id: "playback.autoSkipIntro",
     key: "autoSkipIntro",
     title: "Auto skip intro",
     description: "Skip opening segments automatically when timing data exists.",
   },
   {
+    id: "playback.autoSkipOutro",
     key: "autoSkipOutro",
     title: "Auto skip outro",
     description: "Skip ending segments automatically when timing data exists.",
   },
   {
+    id: "playback.syncOnFinish",
     key: "syncLibraryOnFinish",
     title: "External list sync",
     description: "Update linked list providers after you finish an episode.",
   },
 ]
 
-export function PlayerPanel() {
+export function PlaybackPanel() {
   const preferences = useAtomValue(playerPreferencesAtom)
   const updatePreferences = useAtomSet(updatePlayerPreferencesAtom)
 
@@ -57,31 +63,28 @@ export function PlayerPanel() {
   return (
     <div className="flex flex-col gap-4">
       {preferenceRows.map((row) => (
-        <PanelCard key={row.key}>
-          <div className="flex items-center justify-between gap-4">
-            <div>
-              <h3 className="font-semibold">{row.title}</h3>
-              <p className="mt-1 text-sm text-muted-foreground">
-                {row.description}
-              </p>
-            </div>
-            <Switch
-              checked={preferences[row.key]}
-              onCheckedChange={(checked) => update(row.key, checked)}
-            />
-          </div>
-        </PanelCard>
+        <SettingCard id={row.id} className="p-4" key={row.key}>
+          <SettingHeading
+            title={row.title}
+            description={row.description}
+            action={
+              <Switch
+                checked={preferences[row.key]}
+                onCheckedChange={(checked) => update(row.key, checked)}
+              />
+            }
+          />
+        </SettingCard>
       ))}
-      <PanelCard>
+      <SettingCard id="playback.subtitles">
         <div className="mb-4">
-          <h3 className="font-semibold">Subtitle appearance</h3>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Tune captions once; the player popover and watch page use the same
-            settings.
-          </p>
+          <SettingHeading
+            title="Subtitle appearance"
+            description="Tune captions once; the player popover and watch page use the same settings."
+          />
         </div>
         <SubtitleSettings />
-      </PanelCard>
+      </SettingCard>
     </div>
   )
 }

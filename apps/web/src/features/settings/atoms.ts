@@ -5,22 +5,39 @@ import { toast } from "sonner"
 export const SettingsSection = Schema.Literal(
   "Account",
   "Profile",
-  "Privacy",
   "Appearance",
-  "Site",
-  "Player",
-  "Subtitles",
-  "History",
-  "Notifications",
+  "Playback",
   "Integrations",
-  "Sessions",
-  "Passkeys"
+  "History"
 )
 export type SettingsSection = typeof SettingsSection.Type
 
 export const settingsOpenAtom = Atom.make(false)
 
-export const settingsSectionAtom = Atom.make<SettingsSection>("Account")
+const sectionAliases: Record<string, SettingsSection> = {
+  Privacy: "Profile",
+  Site: "Appearance",
+  Player: "Playback",
+  Subtitles: "Playback",
+  Sessions: "Account",
+  Passkeys: "Account",
+  Notifications: "Account",
+}
+
+export const resolveSettingsSection = (value: string): SettingsSection =>
+  Schema.is(SettingsSection)(value)
+    ? value
+    : (sectionAliases[value] ?? "Account")
+
+const selectedSettingsSectionAtom = Atom.make<SettingsSection>("Account")
+
+export const settingsSectionAtom = Atom.writable<SettingsSection, string>(
+  (get) => get(selectedSettingsSectionAtom),
+  (ctx, value) =>
+    ctx.set(selectedSettingsSectionAtom, resolveSettingsSection(value))
+)
+
+export const settingsQueryAtom = Atom.make("")
 
 export const oauthResultAtom = Atom.make((get) => {
   const params = new URLSearchParams(window.location.search)

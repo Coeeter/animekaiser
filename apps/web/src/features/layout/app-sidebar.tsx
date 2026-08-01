@@ -38,7 +38,7 @@ import {
   Home,
   LogIn,
   Search,
-  Settings2,
+  Settings,
   Shuffle,
   Sparkles,
   User,
@@ -287,7 +287,7 @@ export function AppSidebar({ children }: { children: ReactNode }) {
                 aria-label="Open settings"
                 onClick={openSettings}
               >
-                <Settings2 />
+                <Settings />
               </Button>
             </FooterTooltip>
           </div>

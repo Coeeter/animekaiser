@@ -5,7 +5,6 @@ import {
 } from "@animekaiser/ui/components/avatar"
 import { Badge } from "@animekaiser/ui/components/badge"
 import { Button } from "@animekaiser/ui/components/button"
-import { Separator } from "@animekaiser/ui/components/separator"
 import {
   Result,
   useAtomRefresh,
@@ -27,7 +26,7 @@ import {
 } from "../integrations/atoms"
 import { libraryReactivityKeys, startLibraryImportAtom } from "../library/atoms"
 import { settingsOpenAtom } from "./atoms"
-import { AuthRequired, PanelCard } from "./settings-shared"
+import { AuthRequired, SettingCard } from "./settings-shared"
 
 export function IntegrationsPanel({ user }: { user: AppUser | null }) {
   const setSettingsOpen = useAtomSet(settingsOpenAtom)
@@ -85,11 +84,11 @@ export function IntegrationsPanel({ user }: { user: AppUser | null }) {
     setPending(`${provider}:import`)
 
     try {
-      const job = await startLibraryImport({
+      await startLibraryImport({
         payload: { provider },
         reactivityKeys: [libraryReactivityKeys.sync],
       })
-      toast.success(`Import queued: ${job.id}`)
+      toast.success("Import queued.")
     } catch (reason) {
       toast.error(errorMessage(reason, "Unable to start import"))
     } finally {
@@ -99,18 +98,12 @@ export function IntegrationsPanel({ user }: { user: AppUser | null }) {
 
   return (
     <div className="flex flex-col gap-4">
-      <Button asChild variant="outline" className="self-start">
-        <Link
-          to="/sync-activity"
-          search={{ page: 1 }}
-          onClick={() => setSettingsOpen(false)}
-        >
-          <Activity data-icon="inline-start" />
-          View sync activity
-        </Link>
-      </Button>
       {accounts.map((account) => (
-        <PanelCard className="overflow-hidden p-0" key={account.provider}>
+        <SettingCard
+          id={`integrations.${account.provider}`}
+          className="overflow-hidden p-0"
+          key={account.provider}
+        >
           <div className="flex flex-col gap-4 p-4 md:p-5">
             <div className="flex items-start gap-3">
               <Avatar size="lg">
@@ -151,17 +144,12 @@ export function IntegrationsPanel({ user }: { user: AppUser | null }) {
                   {account.connected
                     ? "Your library can import and sync with this account."
                     : "Connect an account to bring your anime library into Kaiser."}
+                  {account.expiresAt
+                    ? ` · expires ${new Date(account.expiresAt).toLocaleDateString()}`
+                    : ""}
                 </p>
               </div>
             </div>
-            {account.expiresAt ? (
-              <>
-                <Separator />
-                <p className="text-sm text-muted-foreground">
-                  Token expires {new Date(account.expiresAt).toLocaleString()}
-                </p>
-              </>
-            ) : null}
             {account.connected ? (
               <div className="flex flex-wrap gap-2">
                 {account.profileUrl ? (
@@ -202,8 +190,18 @@ export function IntegrationsPanel({ user }: { user: AppUser | null }) {
               </Button>
             )}
           </div>
-        </PanelCard>
+        </SettingCard>
       ))}
+      <Button asChild variant="link" className="self-start px-0">
+        <Link
+          to="/sync-activity"
+          search={{ page: 1 }}
+          onClick={() => setSettingsOpen(false)}
+        >
+          <Activity data-icon="inline-start" />
+          View sync activity
+        </Link>
+      </Button>
     </div>
   )
 }

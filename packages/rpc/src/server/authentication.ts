@@ -43,6 +43,7 @@ export const AuthHandlersLive = AuthRpcs.toLayer(
               ? {
                   session: {
                     expiresAt: session.session.expiresAt,
+                    token: session.session.token,
                   },
                   user: {
                     id: session.user.id,

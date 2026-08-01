@@ -17,7 +17,9 @@ import { errorMessage } from "../../utils/error"
 import type { AppUser } from "../auth/user"
 import { displayUsername } from "../auth/user"
 import { deleteAccountAtom } from "../profile/atoms"
-import { AuthRequired, PanelCard } from "./settings-shared"
+import { PasskeysSection } from "./passkeys-panel"
+import { SessionsSection } from "./sessions-panel"
+import { AuthRequired, SettingCard, SettingHeading } from "./settings-shared"
 
 type ChangePasswordValues = {
   currentPassword: string
@@ -32,9 +34,11 @@ type DeleteAccountValues = {
 export function AccountPanel({
   user,
   sessionExpiresAt,
+  currentSessionToken,
 }: {
   user: AppUser | null
   sessionExpiresAt: Date | null
+  currentSessionToken: string | null
 }) {
   const deleteKaiserAccount = useAtomSet(deleteAccountAtom, {
     mode: "promise",
@@ -101,8 +105,8 @@ export function AccountPanel({
   return (
     <div className="flex flex-col gap-4">
       <div className="grid gap-4 xl:grid-cols-2">
-        <PanelCard>
-          <h3 className="font-semibold">Identity</h3>
+        <SettingCard id="account.identity">
+          <SettingHeading title="Identity" />
           <dl className="mt-4 flex flex-col gap-3 text-sm">
             <div>
               <dt className="text-muted-foreground">Username</dt>
@@ -113,9 +117,9 @@ export function AccountPanel({
               <dd className="mt-1 font-medium">{user.email}</dd>
             </div>
           </dl>
-        </PanelCard>
-        <PanelCard>
-          <h3 className="font-semibold">Access</h3>
+        </SettingCard>
+        <SettingCard id="account.access">
+          <SettingHeading title="Access" />
           <dl className="mt-4 flex flex-col gap-3 text-sm">
             <div>
               <dt className="text-muted-foreground">Last login method</dt>
@@ -132,9 +136,9 @@ export function AccountPanel({
               </dd>
             </div>
           </dl>
-        </PanelCard>
+        </SettingCard>
       </div>
-      <PanelCard>
+      <SettingCard id="account.password">
         <form
           className="flex flex-col gap-4"
           onSubmit={(event) => {
@@ -142,12 +146,10 @@ export function AccountPanel({
             void passwordForm.handleSubmit()
           }}
         >
-          <div>
-            <h3 className="font-semibold">Change password</h3>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Use at least eight characters.
-            </p>
-          </div>
+          <SettingHeading
+            title="Change password"
+            description="Use at least eight characters."
+          />
           <FieldGroup>
             <passwordForm.Field name="currentPassword">
               {(field) => (
@@ -216,8 +218,14 @@ export function AccountPanel({
             )}
           </passwordForm.Subscribe>
         </form>
-      </PanelCard>
-      <PanelCard className="border-destructive/30">
+      </SettingCard>
+      <SettingCard id="account.sessions">
+        <SessionsSection currentSessionToken={currentSessionToken} />
+      </SettingCard>
+      <SettingCard id="account.passkeys">
+        <PasskeysSection />
+      </SettingCard>
+      <SettingCard id="account.delete" className="border-destructive/30">
         <form
           className="flex flex-col gap-4"
           onSubmit={(event) => {
@@ -225,12 +233,10 @@ export function AccountPanel({
             void deleteForm.handleSubmit()
           }}
         >
-          <div>
-            <h3 className="font-semibold text-destructive">Delete account</h3>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Permanently remove your account and profile.
-            </p>
-          </div>
+          <SettingHeading
+            title="Delete account"
+            description="Permanently remove your account and profile."
+          />
           <deleteForm.Field name="deletePassword">
             {(field) => (
               <Field>
@@ -268,7 +274,7 @@ export function AccountPanel({
             )}
           </deleteForm.Subscribe>
         </form>
-      </PanelCard>
+      </SettingCard>
     </div>
   )
 }

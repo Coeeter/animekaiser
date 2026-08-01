@@ -27,7 +27,7 @@ import {
   MoreHorizontal,
   RefreshCcw,
   Search,
-  Settings2,
+  Settings,
   Shuffle,
   Sparkles,
   User,
@@ -303,7 +303,7 @@ function MobileMoreSheet({
 
           <div className="flex items-center gap-2">
             <Button variant="outline" className="flex-1" onClick={openSettings}>
-              <Settings2 data-icon="inline-start" />
+              <Settings data-icon="inline-start" />
               Settings
             </Button>
             <ModeToggle />

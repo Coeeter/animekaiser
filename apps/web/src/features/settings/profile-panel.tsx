@@ -10,9 +10,11 @@ import {
   FieldDescription,
   FieldLabel,
 } from "@animekaiser/ui/components/field"
+import { Switch } from "@animekaiser/ui/components/switch"
 import { Textarea } from "@animekaiser/ui/components/textarea"
 import {
   Result,
+  useAtom,
   useAtomRefresh,
   useAtomSet,
   useAtomValue,
@@ -36,10 +38,12 @@ import {
   createProfileImageUploadAtom,
   ownProfileAtom,
   profileMutationKeys,
+  profileReactivityKeys,
   removeProfileImageAtom,
+  updatePrivacyAtom,
   updateProfileAtom,
 } from "../profile/atoms"
-import { AuthRequired, PanelCard } from "./settings-shared"
+import { AuthRequired, SettingCard, SettingHeading } from "./settings-shared"
 
 type UsernameFormValues = {
   username: string
@@ -64,6 +68,9 @@ export function ProfilePanel({ user }: { user: AppUser | null }) {
     .orNull()
 
   const saveProfile = useAtomSet(updateProfileAtom, { mode: "promise" })
+  const [privacyResult, savePrivacy] = useAtom(updatePrivacyAtom, {
+    mode: "promise",
+  })
 
   const createUpload = useAtomSet(createProfileImageUploadAtom, {
     mode: "promise",
@@ -101,8 +108,6 @@ export function ProfilePanel({ user }: { user: AppUser | null }) {
   const profileError = Result.builder(profileResult)
     .onFailure(() => <DataError onRetry={refreshProfile} />)
     .orNull()
-
-  if (profileError) return profileError
 
   const upload = async (kind: "avatar" | "banner", file: File) => {
     if (
@@ -210,9 +215,30 @@ export function ProfilePanel({ user }: { user: AppUser | null }) {
     }
   }
 
+  const updatePrivacy = async (patch: {
+    private?: boolean
+    shareStats?: boolean
+    shareActivity?: boolean
+    shareList?: boolean
+  }) => {
+    try {
+      await savePrivacy({
+        payload: patch,
+        reactivityKeys: profileReactivityKeys,
+      })
+      refreshProfile()
+      await router.invalidate()
+    } catch (reason) {
+      toast.error(errorMessage(reason, "Unable to update privacy"))
+    }
+  }
+
+  const isPrivate = profile?.profile.private ?? false
+  const username = user.username ?? user.name
+
   return (
     <div className="flex flex-col gap-4">
-      <PanelCard>
+      <SettingCard id="profile.banner">
         <div
           className="h-32 rounded-2xl border bg-linear-to-br from-primary/25 via-muted to-background bg-cover bg-center md:h-40"
           style={
@@ -223,10 +249,10 @@ export function ProfilePanel({ user }: { user: AppUser | null }) {
         />
         <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h3 className="font-semibold">Profile banner</h3>
-            <p className="text-sm text-muted-foreground">
-              Wide JPEG, PNG, or WebP; maximum 5 MB.
-            </p>
+            <SettingHeading
+              title="Profile banner"
+              description="Wide JPEG, PNG, or WebP; maximum 5 MB."
+            />
           </div>
           <div className="flex gap-2">
             <input
@@ -257,8 +283,8 @@ export function ProfilePanel({ user }: { user: AppUser | null }) {
             </Button>
           </div>
         </div>
-      </PanelCard>
-      <PanelCard>
+      </SettingCard>
+      <SettingCard id="profile.avatar">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-4">
             <Avatar className="size-20">
@@ -266,10 +292,10 @@ export function ProfilePanel({ user }: { user: AppUser | null }) {
               <AvatarFallback>{userInitials(user)}</AvatarFallback>
             </Avatar>
             <div>
-              <h3 className="font-semibold">Profile picture</h3>
-              <p className="text-sm text-muted-foreground">
-                Square images work best.
-              </p>
+              <SettingHeading
+                title="Profile picture"
+                description="Square images work best."
+              />
             </div>
           </div>
           <div className="flex gap-2">
@@ -301,8 +327,8 @@ export function ProfilePanel({ user }: { user: AppUser | null }) {
             </Button>
           </div>
         </div>
-      </PanelCard>
-      <PanelCard>
+      </SettingCard>
+      <SettingCard id="profile.username">
         <form
           className="flex flex-col gap-4"
           onSubmit={(event) => {
@@ -310,12 +336,10 @@ export function ProfilePanel({ user }: { user: AppUser | null }) {
             void usernameForm.handleSubmit()
           }}
         >
-          <div>
-            <h3 className="font-semibold">Username</h3>
-            <p className="text-sm text-muted-foreground">
-              Used across the app and in your profile URL.
-            </p>
-          </div>
+          <SettingHeading
+            title="Username"
+            description="Used across the app and in your profile URL."
+          />
           <usernameForm.Field name="username">
             {(field) => (
               <Field>
@@ -347,8 +371,8 @@ export function ProfilePanel({ user }: { user: AppUser | null }) {
             )}
           </usernameForm.Subscribe>
         </form>
-      </PanelCard>
-      <PanelCard>
+      </SettingCard>
+      <SettingCard id="profile.bio">
         <form
           className="flex flex-col gap-4"
           onSubmit={(event) => {
@@ -356,12 +380,10 @@ export function ProfilePanel({ user }: { user: AppUser | null }) {
             void bioForm.handleSubmit()
           }}
         >
-          <div>
-            <h3 className="font-semibold">Bio</h3>
-            <p className="text-sm text-muted-foreground">
-              A short description shown on your profile.
-            </p>
-          </div>
+          <SettingHeading
+            title="Bio"
+            description="A short description shown on your profile."
+          />
           <bioForm.Field name="description">
             {(field) => (
               <Field>
@@ -386,7 +408,91 @@ export function ProfilePanel({ user }: { user: AppUser | null }) {
             )}
           </bioForm.Subscribe>
         </form>
-      </PanelCard>
+      </SettingCard>
+      <SettingCard id="profile.visibility">
+        {profileError ?? (
+          <Field orientation="horizontal">
+            <div className="flex-1">
+              <p className="font-semibold">Private profile</p>
+              <FieldDescription>
+                Hide your profile from everyone except you. This overrides the
+                sharing options below.
+              </FieldDescription>
+            </div>
+            <Switch
+              aria-label="Private profile"
+              checked={isPrivate}
+              disabled={privacyResult.waiting}
+              onCheckedChange={(value) =>
+                void updatePrivacy({ private: value })
+              }
+            />
+          </Field>
+        )}
+      </SettingCard>
+      <SettingCard
+        id="profile.sharing"
+        className={isPrivate ? "opacity-60" : undefined}
+      >
+        <SettingHeading
+          title="What visitors can see"
+          description={
+            isPrivate
+              ? "Your profile is private, so none of this is shared right now."
+              : "Choose which sections appear on your public profile."
+          }
+        />
+        <div className="mt-4 flex flex-col gap-4">
+          <Field orientation="horizontal">
+            <div className="flex-1">
+              <p className="font-medium">Statistics</p>
+              <FieldDescription>
+                Totals, score distribution, and time watched.
+              </FieldDescription>
+            </div>
+            <Switch
+              aria-label="Share statistics"
+              checked={profile?.profile.shareStats ?? true}
+              disabled={privacyResult.waiting || isPrivate}
+              onCheckedChange={(value) =>
+                void updatePrivacy({ shareStats: value })
+              }
+            />
+          </Field>
+          <Field orientation="horizontal">
+            <div className="flex-1">
+              <p className="font-medium">Recent activity</p>
+              <FieldDescription>
+                Your watch streak and day-by-day activity.
+              </FieldDescription>
+            </div>
+            <Switch
+              aria-label="Share recent activity"
+              checked={profile?.profile.shareActivity ?? true}
+              disabled={privacyResult.waiting || isPrivate}
+              onCheckedChange={(value) =>
+                void updatePrivacy({ shareActivity: value })
+              }
+            />
+          </Field>
+          <Field orientation="horizontal">
+            <div className="flex-1">
+              <p className="font-medium">Anime list</p>
+              <FieldDescription>
+                Let anyone open your list at /list/{username}.
+              </FieldDescription>
+            </div>
+            <Switch
+              aria-label="Share anime list"
+              checked={profile?.profile.shareList ?? true}
+              disabled={privacyResult.waiting || isPrivate}
+              onCheckedChange={(value) =>
+                void updatePrivacy({ shareList: value })
+              }
+            />
+          </Field>
+        </div>
+      </SettingCard>
     </div>
   )
 }
