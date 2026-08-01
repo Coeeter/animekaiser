@@ -16,19 +16,35 @@ import {
 } from "../../services/api-clients"
 import { SearchDialog } from "../anime/common/search-dialog"
 import { isProtectedRoute, sessionAtom } from "../auth/atoms"
+import { ownProfileAtom } from "../profile/atoms"
 import { SettingsDialog } from "../settings/settings-dialog"
 import { PlaybackSessionHost } from "../streaming/playback-session"
 import { AppSidebar, AppSidebarProvider } from "./app-sidebar"
 
-const authRoutes = new Set(["/login", "/register", "/forgot-password"])
+const onboardingRoute = "/welcome"
+
+const bareRoutes = new Set([
+  "/login",
+  "/register",
+  "/forgot-password",
+  onboardingRoute,
+])
 
 export function AppShell({ children }: { children: ReactNode }) {
   const location = useLocation()
 
   const sessionResult = useAtomValue(sessionAtom)
   const refreshSession = useAtomRefresh(sessionAtom)
+  const profileResult = useAtomValue(ownProfileAtom)
 
-  if (authRoutes.has(location.pathname)) return children
+  const needsOnboarding = Result.builder(profileResult)
+    .onSuccess((profile) => !profile.profile.onboarded)
+    .orElse(() => false)
+
+  if (bareRoutes.has(location.pathname)) return children
+
+  if (location.pathname !== onboardingRoute && needsOnboarding)
+    return <Navigate to="/welcome" search={{ step: "username" }} replace />
 
   if (isProtectedRoute(location.pathname)) {
     const element = Result.builder(sessionResult)

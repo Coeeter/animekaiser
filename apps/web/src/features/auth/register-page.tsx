@@ -18,42 +18,27 @@ import { useState } from "react"
 import { authClient, navigateAfterAuthChange } from "../../services/api-clients"
 import { errorMessage } from "../../utils/error"
 import { AuthFooter, SubmitButton } from "./auth-shared"
-import { passwordConfirmationError } from "./validation"
+import { provisionalUsername } from "./username"
 
 export function RegisterPage() {
   const [error, setError] = useState<string | null>(null)
-  const [confirmationError, setConfirmationError] = useState<string | null>(
-    null
-  )
   const form = useForm({
-    defaultValues: {
-      username: "",
-      email: "",
-      password: "",
-      confirmation: "",
-    },
+    defaultValues: { email: "", password: "" },
     onSubmit: async ({ value }) => {
       setError(null)
-      setConfirmationError(null)
-      const passwordError = passwordConfirmationError(
-        value.password,
-        value.confirmation
-      )
-      if (passwordError) {
-        setConfirmationError(passwordError)
-        return
-      }
-      const username = value.username.trim()
+      const email = value.email.trim()
+      const username = provisionalUsername(email)
+
       try {
         const result = await authClient.signUp.email({
           name: username,
           username,
-          email: value.email.trim(),
+          email,
           password: value.password,
         })
         if (result.error) throw result.error
 
-        navigateAfterAuthChange("/")
+        navigateAfterAuthChange("/welcome")
       } catch (cause) {
         setError(errorMessage(cause, "Unable to create account"))
       }
@@ -73,29 +58,12 @@ export function RegisterPage() {
           <CardTitle>
             <h1 className="text-2xl font-bold">Create your account</h1>
           </CardTitle>
-          <CardDescription>Start building your anime library.</CardDescription>
+          <CardDescription>
+            Email and password to start. We will set up the rest next.
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <FieldGroup>
-            <form.Field name="username">
-              {(field) => (
-                <Field>
-                  <FieldLabel htmlFor={field.name}>Username</FieldLabel>
-                  <Input
-                    autoComplete="username"
-                    id={field.name}
-                    maxLength={30}
-                    minLength={3}
-                    name={field.name}
-                    pattern="[A-Za-z0-9_]+"
-                    required
-                    value={field.state.value}
-                    onBlur={field.handleBlur}
-                    onChange={(event) => field.handleChange(event.target.value)}
-                  />
-                </Field>
-              )}
-            </form.Field>
             <form.Field name="email">
               {(field) => (
                 <Field>
@@ -131,31 +99,6 @@ export function RegisterPage() {
                 </Field>
               )}
             </form.Field>
-            <form.Field name="confirmation">
-              {(field) => (
-                <Field data-invalid={Boolean(confirmationError)}>
-                  <FieldLabel htmlFor={field.name}>Confirm password</FieldLabel>
-                  <Input
-                    autoComplete="new-password"
-                    aria-invalid={Boolean(confirmationError)}
-                    id={field.name}
-                    minLength={8}
-                    name={field.name}
-                    required
-                    type="password"
-                    value={field.state.value}
-                    onBlur={field.handleBlur}
-                    onChange={(event) => {
-                      setConfirmationError(null)
-                      field.handleChange(event.target.value)
-                    }}
-                  />
-                  {confirmationError ? (
-                    <FieldError>{confirmationError}</FieldError>
-                  ) : null}
-                </Field>
-              )}
-            </form.Field>
           </FieldGroup>
         </CardContent>
         <CardFooter className="flex-col gap-6">
@@ -163,7 +106,7 @@ export function RegisterPage() {
           <form.Subscribe selector={(state) => state.isSubmitting}>
             {(pending) => (
               <SubmitButton pending={pending}>
-                {pending ? "Creating account…" : "Create account"}
+                {pending ? "Creating account…" : "Continue"}
               </SubmitButton>
             )}
           </form.Subscribe>

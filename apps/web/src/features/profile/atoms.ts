@@ -51,6 +51,19 @@ const publicProfileStatsFamily = Atom.family(
 export const publicProfileStatsAtom = (key: PublicProfileKey) =>
   publicProfileStatsFamily(Data.struct(key))
 
+export const suggestUsernamesAtom = KaiserRpcClient.query(
+  "SuggestUsernames",
+  void 0,
+  { reactivityKeys: profileReactivityKeys }
+)
+
+export const checkUsernameAtom = KaiserRpcClient.mutation("CheckUsername")
+
+export const beginOnboardingAtom = KaiserRpcClient.mutation("BeginOnboarding")
+
+export const completeOnboardingAtom =
+  KaiserRpcClient.mutation("CompleteOnboarding")
+
 export const updateProfileAtom = KaiserRpcClient.mutation("UpdateProfile")
 export const updatePrivacyAtom = KaiserRpcClient.mutation("UpdatePrivacy")
 

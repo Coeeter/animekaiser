@@ -19,6 +19,7 @@ import { Route as RandomRouteImport } from './routes/random'
 import { Route as SeriesRouteImport } from './routes/series'
 import { Route as SyncActivityRouteImport } from './routes/sync-activity'
 import { Route as WatchHistoryRouteImport } from './routes/watch-history'
+import { Route as WelcomeRouteImport } from './routes/welcome'
 import { Route as AuthForgotPasswordRouteImport } from './routes/_auth.forgot-password'
 import { Route as AuthLoginRouteImport } from './routes/_auth.login'
 import { Route as AuthRegisterRouteImport } from './routes/_auth.register'
@@ -77,6 +78,11 @@ const WatchHistoryRoute = WatchHistoryRouteImport.update({
   path: '/watch-history',
   getParentRoute: () => rootRouteImport,
 } as any)
+const WelcomeRoute = WelcomeRouteImport.update({
+  id: '/welcome',
+  path: '/welcome',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthForgotPasswordRoute = AuthForgotPasswordRouteImport.update({
   id: '/forgot-password',
   path: '/forgot-password',
@@ -129,6 +135,7 @@ export interface FileRoutesByFullPath {
   '/series': typeof SeriesRouteWithChildren
   '/sync-activity': typeof SyncActivityRoute
   '/watch-history': typeof WatchHistoryRoute
+  '/welcome': typeof WelcomeRoute
   '/forgot-password': typeof AuthForgotPasswordRoute
   '/login': typeof AuthLoginRoute
   '/register': typeof AuthRegisterRoute
@@ -147,6 +154,7 @@ export interface FileRoutesByTo {
   '/random': typeof RandomRoute
   '/sync-activity': typeof SyncActivityRoute
   '/watch-history': typeof WatchHistoryRoute
+  '/welcome': typeof WelcomeRoute
   '/forgot-password': typeof AuthForgotPasswordRoute
   '/login': typeof AuthLoginRoute
   '/register': typeof AuthRegisterRoute
@@ -168,6 +176,7 @@ export interface FileRoutesById {
   '/series': typeof SeriesRouteWithChildren
   '/sync-activity': typeof SyncActivityRoute
   '/watch-history': typeof WatchHistoryRoute
+  '/welcome': typeof WelcomeRoute
   '/_auth/forgot-password': typeof AuthForgotPasswordRoute
   '/_auth/login': typeof AuthLoginRoute
   '/_auth/register': typeof AuthRegisterRoute
@@ -189,6 +198,7 @@ export interface FileRouteTypes {
     | '/series'
     | '/sync-activity'
     | '/watch-history'
+    | '/welcome'
     | '/forgot-password'
     | '/login'
     | '/register'
@@ -207,6 +217,7 @@ export interface FileRouteTypes {
     | '/random'
     | '/sync-activity'
     | '/watch-history'
+    | '/welcome'
     | '/forgot-password'
     | '/login'
     | '/register'
@@ -227,6 +238,7 @@ export interface FileRouteTypes {
     | '/series'
     | '/sync-activity'
     | '/watch-history'
+    | '/welcome'
     | '/_auth/forgot-password'
     | '/_auth/login'
     | '/_auth/register'
@@ -248,6 +260,7 @@ export interface RootRouteChildren {
   SeriesRoute: typeof SeriesRouteWithChildren
   SyncActivityRoute: typeof SyncActivityRoute
   WatchHistoryRoute: typeof WatchHistoryRoute
+  WelcomeRoute: typeof WelcomeRoute
   ListUsernameRoute: typeof ListUsernameRoute
   UUsernameRoute: typeof UUsernameRoute
   WatchMalIdProviderEpisodeIdRoute: typeof WatchMalIdProviderEpisodeIdRoute
@@ -323,6 +336,13 @@ declare module '@tanstack/react-router' {
       path: '/watch-history'
       fullPath: '/watch-history'
       preLoaderRoute: typeof WatchHistoryRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/welcome': {
+      id: '/welcome'
+      path: '/welcome'
+      fullPath: '/welcome'
+      preLoaderRoute: typeof WelcomeRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_auth/forgot-password': {
@@ -422,6 +442,7 @@ const rootRouteChildren: RootRouteChildren = {
   SeriesRoute: SeriesRouteWithChildren,
   SyncActivityRoute: SyncActivityRoute,
   WatchHistoryRoute: WatchHistoryRoute,
+  WelcomeRoute: WelcomeRoute,
   ListUsernameRoute: ListUsernameRoute,
   UUsernameRoute: UUsernameRoute,
   WatchMalIdProviderEpisodeIdRoute: WatchMalIdProviderEpisodeIdRoute,
