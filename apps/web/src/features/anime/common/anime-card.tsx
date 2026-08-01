@@ -1,5 +1,6 @@
 import type { AnimeItem } from "@animekaiser/domain"
 import { Badge } from "@animekaiser/ui/components/badge"
+import { Button } from "@animekaiser/ui/components/button"
 import {
   HoverCard,
   HoverCardContent,
@@ -10,9 +11,10 @@ import { useIsMobile } from "@animekaiser/ui/hooks/use-mobile"
 import { cn } from "@animekaiser/ui/lib/utils"
 import { Result, useAtomValue } from "@effect-atom/atom-react"
 import { Link } from "@tanstack/react-router"
-import { CalendarDays, Clock3, Play, Star, Tv } from "lucide-react"
-import type { ComponentPropsWithoutRef } from "react"
+import { CalendarDays, Clock3, Info, Play, Star, Tv } from "lucide-react"
+import type { ComponentPropsWithoutRef, ReactNode } from "react"
 import { forwardRef } from "react"
+import { WatchNowButton } from "../../streaming/watch-now-button"
 import { detailAtom } from "../detail/atoms"
 import { AnimeSubtitle, AnimeTitle } from "./anime-title"
 import { formatAnimeFormat, formatAnimeStatus } from "./format"
@@ -222,6 +224,35 @@ function AnimeCardDetails({ anime }: { anime: AnimeItem }) {
           ))}
         </div>
       ) : null}
+
+      <CardActions malId={anime.malId} />
+    </div>
+  )
+}
+
+export function CardActions({
+  malId,
+  watch,
+}: {
+  malId: number
+  watch?: ReactNode
+}) {
+  return (
+    <div className="flex items-center gap-2 pt-1">
+      <Button asChild variant="outline" size="sm" className="flex-1">
+        <Link to="/series/$id" params={{ id: malId }} preload="intent">
+          <Info data-icon="inline-start" />
+          View details
+        </Link>
+      </Button>
+      {watch ?? (
+        <WatchNowButton
+          malId={malId}
+          label="Watch"
+          size="sm"
+          className="flex-1"
+        />
+      )}
     </div>
   )
 }

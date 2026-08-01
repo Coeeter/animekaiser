@@ -48,9 +48,8 @@ import { sessionAtom } from "../../auth/atoms"
 import { AddToLibraryDialog } from "../../library/add-to-library-dialog"
 import { libraryEntryAtom } from "../../library/atoms"
 import { libraryStatuses } from "../../library/constants"
-import { streamEpisodesAtom } from "../../streaming/atoms"
 import { EpisodesPanel } from "../../streaming/episodes-panel"
-import { preferredAudio, watchAction } from "../../streaming/player-format"
+import { WatchNowButton } from "../../streaming/watch-now-button"
 import { AnimeGrid } from "../common/anime-grid"
 import { AnimeSubtitle, AnimeTitle } from "../common/anime-title"
 import { formatAnimeFormat, formatAnimeStatus } from "../common/format"
@@ -169,7 +168,6 @@ export function AnimeDetailPage({
           key={id}
           anime={anime}
           libraryEntry={libraryEntry}
-          libraryEntryLoading={isAuthenticated && libraryEntryResult.waiting}
           isAuthenticated={isAuthenticated}
           activeTab={activeTab}
           episodePage={episodePage}
@@ -186,7 +184,6 @@ export function AnimeDetailPage({
 function SeriesDetail({
   anime,
   libraryEntry,
-  libraryEntryLoading,
   isAuthenticated,
   activeTab,
   episodePage,
@@ -197,7 +194,6 @@ function SeriesDetail({
 }: {
   anime: AnimeDetail
   libraryEntry: LibraryEntry | null
-  libraryEntryLoading: boolean
   isAuthenticated: boolean
   activeTab: AnimeDetailTab
   episodePage: number
@@ -314,11 +310,10 @@ function SeriesDetail({
                 ) : null}
 
                 <div className="flex flex-col gap-3 pt-2 sm:flex-row sm:items-center">
-                  <WatchButton
+                  <WatchNowButton
                     malId={anime.malId}
                     provider={episodeProvider}
-                    progress={libraryEntry?.progress ?? null}
-                    progressLoading={libraryEntryLoading}
+                    className="w-fit"
                   />
                   {isAuthenticated ? (
                     <AddToLibraryDialog anime={anime} entry={libraryEntry} />
@@ -631,61 +626,6 @@ export function AnimeDetailPendingPage() {
 
 function AnimeTitleText({ title }: { title: AnimeTitleValue }) {
   return <AnimeTitle title={title} />
-}
-
-function WatchButton({
-  malId,
-  provider: selectedProvider,
-  progress,
-  progressLoading,
-}: {
-  malId: number
-  provider: StreamProviderId
-  progress: number | null
-  progressLoading: boolean
-}) {
-  const result = useAtomValue(streamEpisodesAtom(malId, selectedProvider))
-  const catalog = Result.builder(result)
-    .onSuccess((value) => value)
-    .orNull()
-  if (progressLoading || result.waiting)
-    return (
-      <Skeleton
-        className="h-9 w-40 rounded-4xl bg-white/10"
-        role="status"
-        aria-label="Loading watch status"
-      />
-    )
-
-  const provider = catalog?.providers.find(
-    (item) => item.status === "available" && item.episodes.length > 0
-  )
-  const episodes = Array.from(provider?.episodes ?? []).sort(
-    (left, right) => left.number - right.number
-  )
-  const action = watchAction(
-    progress,
-    episodes.map((item) => item.number)
-  )
-  const episode = action
-    ? episodes.find((item) => item.number === action.episodeNumber)
-    : null
-  const audio = episode ? preferredAudio(episode) : null
-
-  if (!provider || !action || !episode || !audio) return null
-
-  return (
-    <Button className="w-fit" asChild>
-      <Link
-        to="/watch/$malId/$provider/$episodeId"
-        params={{ malId, provider: provider.provider, episodeId: episode.id }}
-        search={{ audio }}
-      >
-        <PlayCircle data-icon="inline-start" />
-        {action.label}
-      </Link>
-    </Button>
-  )
 }
 
 function LibraryEntrySummary({ entry }: { entry: LibraryEntry }) {

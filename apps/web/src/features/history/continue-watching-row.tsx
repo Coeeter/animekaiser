@@ -1,5 +1,6 @@
 import type { ContinueWatchingItem } from "@animekaiser/domain"
 import { Badge } from "@animekaiser/ui/components/badge"
+import { Button } from "@animekaiser/ui/components/button"
 import {
   HoverCard,
   HoverCardContent,
@@ -10,6 +11,7 @@ import { useIsMobile } from "@animekaiser/ui/hooks/use-mobile"
 import { Result, useAtomValue } from "@effect-atom/atom-react"
 import { Link } from "@tanstack/react-router"
 import { Play, Server } from "lucide-react"
+import { CardActions } from "../anime/common/anime-card"
 import { MediaRow } from "../anime/common/anime-scroll-row"
 import { AnimeSubtitle, AnimeTitle } from "../anime/common/anime-title"
 import {
@@ -168,6 +170,29 @@ function ContinueWatchingDetails({ item }: { item: ContinueWatchingItem }) {
             : `Stopped at ${formatTime(item.positionSeconds)}`}
         </p>
       </div>
+
+      <CardActions
+        malId={item.malId}
+        watch={
+          <Button asChild size="sm" className="flex-1">
+            <Link
+              to="/watch/$malId/$provider/$episodeId"
+              params={{
+                malId: item.malId,
+                provider: item.provider,
+                episodeId: item.episodeId,
+              }}
+              search={{
+                audio: item.audio,
+                serverId: item.serverId ?? undefined,
+              }}
+            >
+              <Play data-icon="inline-start" />
+              Resume
+            </Link>
+          </Button>
+        }
+      />
     </div>
   )
 }

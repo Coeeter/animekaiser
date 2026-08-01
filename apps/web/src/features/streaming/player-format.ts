@@ -15,6 +15,8 @@ export const speedOptions = ["0.5", "0.75", "1", "1.25", "1.5", "2"] as const
 
 export const megaPlayServerId = "default-server"
 
+export const defaultStreamProvider: StreamProviderId = "provider-a"
+
 export const seriesEpisodesHref = (malId: number) => `/series/${malId}`
 
 export const watchEpisodeNumber = (progress: number | null) =>

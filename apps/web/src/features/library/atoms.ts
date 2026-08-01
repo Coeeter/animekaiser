@@ -6,18 +6,26 @@ import type {
   LibrarySyncEventPage,
   LibrarySyncStatus,
 } from "@animekaiser/domain"
-import {
-  KaiserRpcClient,
-  refreshOnAuthChange,
-} from "../../services/api-clients"
+import * as Reactivity from "@effect/experimental/Reactivity"
+import type { Atom } from "@effect-atom/atom-react"
+import * as Effect from "effect/Effect"
+import { KaiserRpcClient } from "../../services/api-clients"
+import { profileReactivityKeys } from "../profile/atoms"
 
 export const libraryReactivityKeys = {
   all: "library",
   entry: (malId: number) => `library-entry:${malId}`,
+  sync: "library-sync",
 }
 
-export const libraryMutationKeys = (malId: number) => [
+export const libraryGlobalMutationKeys = [
   libraryReactivityKeys.all,
+  libraryReactivityKeys.sync,
+  ...profileReactivityKeys,
+]
+
+export const libraryMutationKeys = (malId: number) => [
+  ...libraryGlobalMutationKeys,
   libraryReactivityKeys.entry(malId),
 ]
 
@@ -28,21 +36,23 @@ export const libraryPageAtom = (
   perPage: number,
   query?: string
 ) =>
-  refreshOnAuthChange(
-    KaiserRpcClient.query(
-      "GetLibraryPage",
-      { status, sort, page, perPage, query },
-      { reactivityKeys: [libraryReactivityKeys.all] }
-    )
+  KaiserRpcClient.query(
+    "GetLibraryPage",
+    { status, sort, page, perPage, query },
+    { reactivityKeys: [libraryReactivityKeys.all] }
   )
 
 export const libraryEntryAtom = (malId: number) =>
-  refreshOnAuthChange(
-    KaiserRpcClient.query(
-      "GetLibraryEntry",
-      { malId },
-      { reactivityKeys: [libraryReactivityKeys.entry(malId)] }
-    )
+  KaiserRpcClient.query(
+    "GetLibraryEntry",
+    { malId },
+    { reactivityKeys: [libraryReactivityKeys.entry(malId)] }
+  )
+
+export const libraryProgressOf = (get: Atom.Context, malId: number) =>
+  get.result(libraryEntryAtom(malId)).pipe(
+    Effect.map((entry) => entry?.progress ?? null),
+    Effect.orElseSucceed(() => null)
   )
 
 export const syncEventsAtom = (
@@ -51,14 +61,16 @@ export const syncEventsAtom = (
   status?: typeof LibrarySyncStatus.Type,
   provider?: ExternalListProvider
 ) =>
-  refreshOnAuthChange(
-    KaiserRpcClient.query("ListLibrarySyncEvents", {
-      page,
-      perPage,
-      status,
-      provider,
-    })
+  KaiserRpcClient.query(
+    "ListLibrarySyncEvents",
+    { page, perPage, status, provider },
+    { reactivityKeys: [libraryReactivityKeys.sync] }
   )
+
+// Entries land long after `StartLibraryImport` resolves, so mutation keys miss them.
+export const invalidateLibraryAtom = KaiserRpcClient.runtime.fn<void>()(() =>
+  Reactivity.invalidate(libraryGlobalMutationKeys)
+)
 
 export const upsertLibraryAtom = KaiserRpcClient.mutation("UpsertLibraryEntry")
 

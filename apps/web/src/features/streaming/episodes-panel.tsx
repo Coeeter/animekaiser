@@ -50,6 +50,8 @@ import {
 } from "lucide-react"
 import { useMemo, useState } from "react"
 import { DataError } from "../../components/data-error"
+import { episodeProgressAtom } from "../history/atoms"
+import type { EpisodeProgress } from "../history/episode-progress"
 import { streamEpisodesAtom } from "./atoms"
 
 const decodeProviderId = Schema.decodeUnknownSync(StreamProviderId)
@@ -73,12 +75,7 @@ const audioLabel = (audio: StreamAudio) => audioLabels[audio]
 
 type ProviderEpisode = StreamProviderEpisodes["episodes"][number]
 
-type EpisodeActionState = {
-  watched?: boolean
-  continueWatching?: boolean
-  progressPercent?: number
-  current?: boolean
-}
+type EpisodeActionState = Partial<EpisodeProgress> & { current?: boolean }
 
 const preferredAudio = (episode: ProviderEpisode): StreamAudio | null => {
   if (episode.availableAudio.includes("sub")) return "sub"
@@ -236,6 +233,12 @@ function ProviderEpisodes({
 }) {
   const [query, setQuery] = useState("")
   const [descending, setDescending] = useState(false)
+  const progressResult = useAtomValue(
+    episodeProgressAtom({ malId: anime.malId, provider: provider.provider })
+  )
+  const progressByEpisode = Result.builder(progressResult)
+    .onSuccess((value) => value)
+    .orElse(() => new Map<number, EpisodeProgress>())
 
   const filteredEpisodes = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase()
@@ -337,6 +340,7 @@ function ProviderEpisodes({
                   anime={anime}
                   provider={provider}
                   episode={episode}
+                  {...progressByEpisode.get(episode.number)}
                 />
               ) : (
                 <EpisodeRow
@@ -344,6 +348,7 @@ function ProviderEpisodes({
                   anime={anime}
                   provider={provider}
                   episode={episode}
+                  {...progressByEpisode.get(episode.number)}
                 />
               )
             )}
@@ -389,6 +394,7 @@ function EpisodeRow({
   watched = false,
   continueWatching = false,
   progressPercent,
+  upNext = false,
   current = false,
 }: {
   anime: AnimeDetail
@@ -399,14 +405,15 @@ function EpisodeRow({
   const title = episodeTitle(episode)
   const progress = watched ? 100 : clampProgress(progressPercent)
   const showProgress = watched || continueWatching || progress > 0
+  const highlighted = current || upNext
   const content = (
     <>
       <div className="flex min-w-0 flex-1 items-center gap-4">
         <div
           className={cn(
             "grid size-12 shrink-0 place-items-center rounded-2xl border bg-muted text-sm font-semibold tabular-nums",
-            current && "border-primary bg-primary text-primary-foreground",
-            watched && !current && "text-muted-foreground"
+            highlighted && "border-primary bg-primary text-primary-foreground",
+            watched && !highlighted && "text-muted-foreground"
           )}
         >
           {episode.number}
@@ -417,6 +424,7 @@ function EpisodeRow({
               {title ?? episodeLabel(episode)}
             </p>
             {current ? <Badge>Now playing</Badge> : null}
+            {upNext && !current ? <Badge>Up next</Badge> : null}
             {continueWatching ? (
               <Badge variant="secondary">
                 <RotateCcw data-icon="inline-start" />
@@ -464,8 +472,9 @@ function EpisodeRow({
     </>
   )
   const className = cn(
-    "group/episode flex min-h-20 items-center justify-between gap-4 rounded-xl border bg-card/70 p-3 text-left transition hover:border-primary/40 hover:bg-accent/60",
-    current && "border-primary/60 bg-accent",
+    "group/episode flex min-h-20 items-center justify-between gap-4 rounded-xl border bg-card/70 p-3 text-left transition hover:border-primary/40 hover:bg-accent/60 hover:opacity-100",
+    highlighted && "border-primary/60 bg-accent",
+    watched && !highlighted && "opacity-60",
     !audio && "opacity-60"
   )
 
@@ -494,6 +503,7 @@ function EpisodeNumberButton({
   watched = false,
   continueWatching = false,
   progressPercent,
+  upNext = false,
   current = false,
 }: {
   anime: AnimeDetail
@@ -504,20 +514,30 @@ function EpisodeNumberButton({
   const title = episodeTitle(episode)
   const progress = watched ? 100 : clampProgress(progressPercent)
   const label = title ?? episodeLabel(episode)
+  const highlighted = current || upNext
   const buttonClassName = cn(
-    "relative h-11 rounded-xl px-0 text-sm tabular-nums",
+    "relative h-11 overflow-hidden rounded-xl px-0 text-sm tabular-nums",
     current && "ring-2 ring-primary/40",
-    watched && "text-muted-foreground"
+    watched && !highlighted && "text-muted-foreground opacity-60"
   )
+
+  const progressBar =
+    !watched && progress > 0 ? (
+      <span
+        className="absolute inset-x-0 bottom-0 h-0.5 bg-primary"
+        style={{ width: `${progress}%` }}
+      />
+    ) : null
 
   const numberButton = audio ? (
     <Button
       asChild
-      variant={current ? "default" : "outline"}
+      variant={highlighted ? "default" : "outline"}
       className={buttonClassName}
     >
       <Link {...episodeHrefProps({ anime, provider, episode, audio })}>
         {episode.number}
+        {progressBar}
       </Link>
     </Button>
   ) : (
@@ -540,6 +560,9 @@ function EpisodeNumberButton({
               ? episode.availableAudio.map(audioLabel).join(" / ")
               : "No streams"}
           </span>
+          {upNext && !current ? (
+            <span className="text-background/70">Up next</span>
+          ) : null}
           {continueWatching ? (
             <span className="text-background/70">
               Continue {Math.round(progress)}%
