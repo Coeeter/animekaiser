@@ -4,20 +4,27 @@ import * as HttpClient from "@effect/platform/HttpClient"
 import { and, eq, sql } from "drizzle-orm"
 import * as Context from "effect/Context"
 import * as Data from "effect/Data"
+import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import { LIBRARY_IMPORT_JOB_CHANNEL } from "../library/import"
 import {
   findExternalListAccountsDueForTokenRefresh,
   handleAniListCallback,
   handleMalCallback,
+  markExternalListAccountProfileSynced,
   refreshExternalListAccountToken,
+  syncExternalListAccountProfile,
 } from "./accounts"
 import type { ExternalListProvider, ProviderOAuthConfig } from "./oauth"
 import {
   createAniListLinkUrl,
   createMalLinkUrl,
+  ExternalListOAuthError,
   ExternalListOAuthStateStore,
 } from "./oauth"
+
+const PROFILE_SYNC_INTERVAL_MS = 15 * 60 * 1000
+const PROFILE_SYNC_TIMEOUT = Duration.seconds(15)
 
 export class ExternalListOAuthConfig extends Context.Tag(
   "@animekaiser/core/ExternalListOAuthConfig"
@@ -107,17 +114,90 @@ export class ExternalListAccountsService extends Effect.Service<ExternalListAcco
         )
       })
 
+      type StoredAccount = {
+        id: string
+        provider: ExternalListProvider
+        providerAccountId: string
+        providerUsername: string | null
+        profileImageUrl: string | null
+        accessToken: string
+        profileSyncedAt: Date | null
+        expiresAt: Date | null
+        relinkRequiredAt: Date | null
+      }
+
+      const isProfileStale = (account: StoredAccount, now: number) =>
+        !account.relinkRequiredAt &&
+        (account.expiresAt === null || account.expiresAt.getTime() > now) &&
+        (account.profileSyncedAt === null ||
+          account.profileSyncedAt.getTime() <= now - PROFILE_SYNC_INTERVAL_MS)
+
+      const syncingProfiles = new Set<string>()
+
+      const syncProfile = (account: StoredAccount) =>
+        syncExternalListAccountProfile(database, account).pipe(
+          Effect.provideService(HttpClient.HttpClient, http),
+          Effect.timeoutFail({
+            duration: PROFILE_SYNC_TIMEOUT,
+            onTimeout: () =>
+              new ExternalListOAuthError({
+                provider: account.provider,
+                message: "[External List] Profile sync timed out.",
+              }),
+          }),
+          Effect.catchAll((error) =>
+            Effect.logWarning(
+              "[External List] Failed to sync provider profile.",
+              { accountId: account.id, provider: account.provider, error }
+            ).pipe(
+              // Stamp the attempt so a failing provider backs off for the full
+              // interval instead of being retried on every load.
+              Effect.zipRight(
+                markExternalListAccountProfileSynced(database, account.id).pipe(
+                  Effect.ignore
+                )
+              )
+            )
+          ),
+          Effect.ensuring(Effect.sync(() => syncingProfiles.delete(account.id)))
+        )
+
+      const syncStaleProfilesInBackground = (
+        accounts: ReadonlyArray<StoredAccount>
+      ) =>
+        // Claiming ids and forking must happen in one synchronous step,
+        // otherwise concurrent requests both pass the check before either
+        // claims and the provider gets fetched twice.
+        Effect.suspend(() => {
+          const now = Date.now()
+          const stale = accounts.filter(
+            (account) =>
+              !syncingProfiles.has(account.id) && isProfileStale(account, now)
+          )
+
+          if (stale.length === 0) return Effect.void
+
+          for (const account of stale) syncingProfiles.add(account.id)
+
+          return Effect.forkDaemon(
+            Effect.forEach(stale, syncProfile, { concurrency: "unbounded" })
+          ).pipe(Effect.asVoid)
+        })
+
       const listAccounts = Effect.fn(
         "ExternalListAccountsService.listAccounts"
       )(function* (userId: string) {
-        const accounts = yield* database
+        const rows = yield* database
           .execute((db) =>
             db
               .select({
+                id: externalListAccount.id,
                 provider: externalListAccount.provider,
                 providerAccountId: externalListAccount.providerAccountId,
                 providerUsername: externalListAccount.providerUsername,
                 profileImageUrl: externalListAccount.profileImageUrl,
+                accessToken: externalListAccount.accessToken,
+                profileSyncedAt: externalListAccount.profileSyncedAt,
                 expiresAt: externalListAccount.accessTokenExpiresAt,
                 relinkRequiredAt: externalListAccount.relinkRequiredAt,
               })
@@ -136,8 +216,10 @@ export class ExternalListAccountsService extends Effect.Service<ExternalListAcco
             )
           )
 
+        yield* syncStaleProfilesInBackground(rows)
+
         return (["mal", "anilist"] as const).map((provider) => {
-          const account = accounts.find((item) => item.provider === provider)
+          const account = rows.find((item) => item.provider === provider)
           const now = Date.now()
           const expiresAt = account?.expiresAt?.getTime() ?? null
           const state:

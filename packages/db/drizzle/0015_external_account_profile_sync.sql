@@ -1,0 +1,1 @@
+ALTER TABLE "external_list_account" ADD COLUMN "profile_synced_at" timestamp;

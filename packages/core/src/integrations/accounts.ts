@@ -1,5 +1,6 @@
 import type { DatabaseService } from "@animekaiser/db"
 import { externalListAccount } from "@animekaiser/db"
+import type * as HttpClient from "@effect/platform/HttpClient"
 import { and, eq, lte } from "drizzle-orm"
 import * as Effect from "effect/Effect"
 import type { ExternalListProvider, ProviderOAuthConfig } from "./oauth"
@@ -241,6 +242,112 @@ export const handleAniListCallback = (
 
     return state.callbackURL
   })
+
+type ExternalListProfile = {
+  providerAccountId: string
+  providerUsername: string | null
+  profileImageUrl: string | null
+}
+
+const fetchExternalListProfile = (
+  provider: ExternalListProvider,
+  accessToken: string
+): Effect.Effect<
+  ExternalListProfile,
+  ExternalListOAuthError,
+  HttpClient.HttpClient
+> =>
+  provider === "mal"
+    ? fetchMalUser(accessToken).pipe(
+        Effect.map((user) => ({
+          providerAccountId: String(user.id),
+          providerUsername: user.name ?? null,
+          profileImageUrl: user.picture ?? null,
+        }))
+      )
+    : fetchAniListUser(accessToken).pipe(
+        Effect.map((user) => ({
+          providerAccountId: String(user.id),
+          providerUsername: user.name ?? null,
+          profileImageUrl: user.avatar?.large ?? null,
+        }))
+      )
+
+export const syncExternalListAccountProfile = (
+  database: DatabaseService,
+  account: {
+    id: string
+    provider: ExternalListProvider
+    providerAccountId: string
+    providerUsername: string | null
+    profileImageUrl: string | null
+    accessToken: string
+  }
+) =>
+  Effect.gen(function* () {
+    const profile = yield* fetchExternalListProfile(
+      account.provider,
+      account.accessToken
+    )
+
+    // A different provider account id means the token now belongs to someone
+    // else, so the stored identity must not be overwritten.
+    if (profile.providerAccountId !== account.providerAccountId) {
+      return yield* new ExternalListOAuthError({
+        provider: account.provider,
+        message:
+          "[External List] Provider account id changed for a linked account.",
+        cause: {
+          accountId: account.id,
+          expected: account.providerAccountId,
+          received: profile.providerAccountId,
+        },
+      })
+    }
+
+    const changed =
+      profile.providerUsername !== account.providerUsername ||
+      profile.profileImageUrl !== account.profileImageUrl
+
+    yield* database
+      .execute((db) =>
+        db
+          .update(externalListAccount)
+          .set(
+            changed
+              ? {
+                  providerUsername: profile.providerUsername,
+                  profileImageUrl: profile.profileImageUrl,
+                  profileSyncedAt: new Date(),
+                }
+              : { profileSyncedAt: new Date() }
+          )
+          .where(eq(externalListAccount.id, account.id))
+      )
+      .pipe(
+        Effect.mapError(
+          (cause) =>
+            new ExternalListOAuthError({
+              provider: account.provider,
+              message: "[External List] Failed to persist synced profile.",
+              cause,
+            })
+        )
+      )
+
+    return profile
+  })
+
+export const markExternalListAccountProfileSynced = (
+  database: DatabaseService,
+  accountId: string
+) =>
+  database.execute((db) =>
+    db
+      .update(externalListAccount)
+      .set({ profileSyncedAt: new Date() })
+      .where(eq(externalListAccount.id, accountId))
+  )
 
 export const refreshExternalListAccountToken = (
   database: DatabaseService,
