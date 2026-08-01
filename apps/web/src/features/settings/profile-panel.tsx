@@ -175,7 +175,11 @@ export function ProfilePanel({ user }: { user: AppUser | null }) {
     const username = values.username.trim()
 
     try {
-      const result = await authClient.updateUser({ username, name: username })
+      const result = await authClient.updateUser({
+        username,
+        displayUsername: username,
+        name: username,
+      })
 
       if (result.error) throw result.error
 
