@@ -1,7 +1,7 @@
 import { Rpc, RpcGroup } from "@effect/rpc"
 import * as Schema from "effect/Schema"
 import { MalId } from "../anime/models"
-import { Authentication } from "../auth/rpc"
+import { Authentication, OptionalAuthentication } from "../auth/rpc"
 import {
   ExternalListOperationError,
   ExternalListProvider,
@@ -18,6 +18,7 @@ import {
   LibrarySyncEventPage,
   LibrarySyncRetryResult,
   LibrarySyncRetryTarget,
+  PublicLibrary,
 } from "./models"
 
 export class GetLibraryPage extends Rpc.make("GetLibraryPage", {
@@ -29,6 +30,20 @@ export class GetLibraryPage extends Rpc.make("GetLibraryPage", {
     perPage: Schema.Int.pipe(Schema.between(1, 100)),
   },
   success: LibraryPage,
+  error: LibraryOperationError,
+}) {}
+
+export class GetPublicLibrary extends Rpc.make("GetPublicLibrary", {
+  payload: {
+    username: Schema.String,
+    status: Schema.optional(LibraryStatus),
+    query: Schema.optional(Schema.String.pipe(Schema.maxLength(200))),
+    sort: LibrarySort,
+    page: Schema.Int.pipe(Schema.positive()),
+    perPage: Schema.Int.pipe(Schema.between(1, 100)),
+    asPublic: Schema.optional(Schema.Boolean),
+  },
+  success: PublicLibrary,
   error: LibraryOperationError,
 }) {}
 
@@ -97,7 +112,11 @@ export class RetryLibrarySyncEvents extends Rpc.make("RetryLibrarySyncEvents", {
   error: LibraryOperationError,
 }) {}
 
-export class LibraryRpcs extends RpcGroup.make(
+class PublicLibraryRpcs extends RpcGroup.make(GetPublicLibrary).middleware(
+  OptionalAuthentication
+) {}
+
+class AuthenticatedLibraryRpcs extends RpcGroup.make(
   GetLibraryPage,
   GetLibraryEntry,
   UpsertLibraryEntry,
@@ -108,3 +127,8 @@ export class LibraryRpcs extends RpcGroup.make(
   ListLibrarySyncEvents,
   RetryLibrarySyncEvents
 ).middleware(Authentication) {}
+
+export class LibraryRpcs extends RpcGroup.make().merge(
+  PublicLibraryRpcs,
+  AuthenticatedLibraryRpcs
+) {}

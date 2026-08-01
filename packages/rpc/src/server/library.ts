@@ -2,15 +2,18 @@ import {
   ExternalListAccountsService,
   LibraryImportService,
   LibraryService,
+  ProfileService,
 } from "@animekaiser/core"
 import {
   CurrentUser,
   ExternalListOperationError,
   LibraryOperationError,
   LibraryRpcs,
+  OptionalCurrentUser,
 } from "@animekaiser/domain"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
+import * as Option from "effect/Option"
 import * as Stream from "effect/Stream"
 
 export const LibraryHandlersLive = LibraryRpcs.toLayer(
@@ -25,6 +28,40 @@ export const LibraryHandlersLive = LibraryRpcs.toLayer(
               Effect.fail(new LibraryOperationError({ message: error.message }))
             )
           )
+        }),
+      GetPublicLibrary: ({ username, asPublic, ...input }) =>
+        Effect.gen(function* () {
+          const current = yield* OptionalCurrentUser
+          const record = yield* ProfileService.getPublicProfile(username).pipe(
+            Effect.catchTag("ProfileOperationError", (error) =>
+              Effect.fail(new LibraryOperationError({ message: error.message }))
+            )
+          )
+
+          return yield* Option.match(record, {
+            onNone: () => Effect.succeed({ type: "not_found" as const }),
+            onSome: (value) => {
+              const isOwner = !asPublic && current?.id === value.user.id
+              const visible =
+                isOwner || (!value.profile.private && value.profile.shareList)
+
+              if (!visible) return Effect.succeed({ type: "private" as const })
+
+              return LibraryService.getPage(value.user.id, input).pipe(
+                Effect.map((page) => ({
+                  type: "public" as const,
+                  username: value.user.username ?? username,
+                  image: value.user.image,
+                  page,
+                })),
+                Effect.catchTag("LibraryServiceError", (error) =>
+                  Effect.fail(
+                    new LibraryOperationError({ message: error.message })
+                  )
+                )
+              )
+            },
+          })
         }),
       GetLibraryEntry: ({ malId }) =>
         Effect.gen(function* () {
@@ -161,7 +198,8 @@ export const LibraryHandlersLive = LibraryRpcs.toLayer(
     Layer.mergeAll(
       ExternalListAccountsService.Default,
       LibraryImportService.Default,
-      LibraryService.Default
+      LibraryService.Default,
+      ProfileService.Default
     )
   )
 )

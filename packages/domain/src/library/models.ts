@@ -64,6 +64,18 @@ export const LibraryPage = Schema.Struct({
 })
 export type LibraryPage = typeof LibraryPage.Type
 
+export const PublicLibrary = Schema.Union(
+  Schema.Struct({ type: Schema.Literal("not_found") }),
+  Schema.Struct({ type: Schema.Literal("private") }),
+  Schema.Struct({
+    type: Schema.Literal("public"),
+    username: Schema.String,
+    image: Schema.NullOr(Schema.String),
+    page: LibraryPage,
+  })
+)
+export type PublicLibrary = typeof PublicLibrary.Type
+
 export const LibraryRemovalResult = Schema.Struct({
   removed: Schema.Boolean,
   queuedProviders: Schema.Array(ExternalListProvider),

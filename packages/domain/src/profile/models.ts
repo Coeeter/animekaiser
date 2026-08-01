@@ -12,6 +12,7 @@ export const ProfileDetails = Schema.Struct({
   private: Schema.Boolean,
   shareStats: Schema.Boolean,
   shareActivity: Schema.Boolean,
+  shareList: Schema.Boolean,
 })
 export type ProfileDetails = typeof ProfileDetails.Type
 

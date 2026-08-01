@@ -26,6 +26,7 @@ const profileView = (record: ProfileRecord, publicUrl: string) => ({
     private: record.profile.private,
     shareStats: record.profile.shareStats,
     shareActivity: record.profile.shareActivity,
+    shareList: record.profile.shareList,
   },
 })
 
@@ -45,7 +46,7 @@ export const ProfileHandlersLive = ProfileRpcs.toLayer(
             config.mediaPublicUrl
           )
         }),
-      GetPublicProfile: ({ username }) =>
+      GetPublicProfile: ({ username, asPublic }) =>
         Effect.gen(function* () {
           const current = yield* OptionalCurrentUser
           const result = yield* ProfileService.getPublicProfile(username)
@@ -53,7 +54,8 @@ export const ProfileHandlersLive = ProfileRpcs.toLayer(
             onNone: () => ({ type: "not_found" as const }),
             onSome: (record) => {
               const view = profileView(record, config.mediaPublicUrl)
-              return record.profile.private && current?.id !== record.user.id
+              const isOwner = !asPublic && current?.id === record.user.id
+              return record.profile.private && !isOwner
                 ? { type: "private" as const, user: view.user }
                 : { type: "public" as const, ...view }
             },
@@ -68,7 +70,7 @@ export const ProfileHandlersLive = ProfileRpcs.toLayer(
             )
           )
         }),
-      GetPublicProfileStats: ({ username }) =>
+      GetPublicProfileStats: ({ username, asPublic }) =>
         Effect.gen(function* () {
           const current = yield* OptionalCurrentUser
           const result = yield* ProfileService.getPublicProfile(username)
@@ -76,7 +78,7 @@ export const ProfileHandlersLive = ProfileRpcs.toLayer(
           return yield* Option.match(result, {
             onNone: () => Effect.succeed(null),
             onSome: (record) => {
-              const isOwner = current?.id === record.user.id
+              const isOwner = !asPublic && current?.id === record.user.id
               if (record.profile.private && !isOwner) {
                 return Effect.succeed(null)
               }

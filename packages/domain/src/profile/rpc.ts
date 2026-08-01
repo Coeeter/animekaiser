@@ -17,7 +17,10 @@ export class GetOwnProfile extends Rpc.make("GetOwnProfile", {
 }) {}
 
 export class GetPublicProfile extends Rpc.make("GetPublicProfile", {
-  payload: { username: Schema.String },
+  payload: {
+    username: Schema.String,
+    asPublic: Schema.optional(Schema.Boolean),
+  },
   success: PublicProfile,
   error: ProfileOperationError,
 }) {}
@@ -33,6 +36,7 @@ export class UpdatePrivacy extends Rpc.make("UpdatePrivacy", {
     private: Schema.optional(Schema.Boolean),
     shareStats: Schema.optional(Schema.Boolean),
     shareActivity: Schema.optional(Schema.Boolean),
+    shareList: Schema.optional(Schema.Boolean),
   },
   success: OwnProfile,
   error: ProfileOperationError,
@@ -72,7 +76,10 @@ export class GetOwnProfileStats extends Rpc.make("GetOwnProfileStats", {
 }) {}
 
 export class GetPublicProfileStats extends Rpc.make("GetPublicProfileStats", {
-  payload: { username: Schema.String },
+  payload: {
+    username: Schema.String,
+    asPublic: Schema.optional(Schema.Boolean),
+  },
   success: Schema.NullOr(PublicProfileStats),
   error: ProfileOperationError,
 }) {}

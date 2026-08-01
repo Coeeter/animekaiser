@@ -16,6 +16,7 @@ export type ProfileRecord = {
     private: boolean
     shareStats: boolean
     shareActivity: boolean
+    shareList: boolean
   }
 }
 
@@ -30,6 +31,7 @@ const emptyProfile = {
   private: false,
   shareStats: true,
   shareActivity: true,
+  shareList: true,
 } as const
 
 export class ProfileService extends Effect.Service<ProfileService>()(
@@ -103,6 +105,7 @@ export class ProfileService extends Effect.Service<ProfileService>()(
                 private: row.profile.private,
                 shareStats: row.profile.shareStats,
                 shareActivity: row.profile.shareActivity,
+                shareList: row.profile.shareList,
               }
             : emptyProfile,
         }) satisfies ProfileRecord
@@ -159,6 +162,7 @@ export class ProfileService extends Effect.Service<ProfileService>()(
             private?: boolean
             shareStats?: boolean
             shareActivity?: boolean
+            shareList?: boolean
           }
         ) {
           const changes = {
@@ -169,6 +173,9 @@ export class ProfileService extends Effect.Service<ProfileService>()(
             ...(patch.shareActivity === undefined
               ? {}
               : { shareActivity: patch.shareActivity }),
+            ...(patch.shareList === undefined
+              ? {}
+              : { shareList: patch.shareList }),
           }
 
           yield* database

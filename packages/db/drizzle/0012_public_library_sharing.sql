@@ -1,0 +1,1 @@
+ALTER TABLE "profile" ADD COLUMN "share_list" boolean DEFAULT true NOT NULL;

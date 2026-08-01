@@ -10,6 +10,7 @@ export const profile = pgTable("profile", {
   private: boolean("private").default(false).notNull(),
   shareStats: boolean("share_stats").default(true).notNull(),
   shareActivity: boolean("share_activity").default(true).notNull(),
+  shareList: boolean("share_list").default(true).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at")
     .defaultNow()
