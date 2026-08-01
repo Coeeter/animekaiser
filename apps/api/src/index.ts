@@ -4,6 +4,7 @@ import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 import * as Schedule from "effect/Schedule"
 import { ApiLive } from "./app"
+import { reportFatalCause } from "./infra/alerts"
 
 Layer.launch(ApiLive).pipe(
   Effect.tapErrorCause(Effect.logError),
@@ -23,5 +24,6 @@ Layer.launch(ApiLive).pipe(
       )
     ),
   }),
+  Effect.tapErrorCause(reportFatalCause),
   BunRuntime.runMain()
 )
