@@ -10,7 +10,6 @@ import {
   CardTitle,
 } from "@animekaiser/ui/components/card"
 import { Field, FieldError, FieldLabel } from "@animekaiser/ui/components/field"
-import { Input } from "@animekaiser/ui/components/input"
 import { Skeleton } from "@animekaiser/ui/components/skeleton"
 import { cn } from "@animekaiser/ui/lib/utils"
 import {
@@ -19,7 +18,7 @@ import {
   useAtomSet,
   useAtomValue,
 } from "@effect-atom/atom-react"
-import { Link } from "@tanstack/react-router"
+import { Link, useNavigate } from "@tanstack/react-router"
 import {
   ArrowRight,
   Check,
@@ -28,8 +27,10 @@ import {
   Loader2,
   PartyPopper,
   Sparkles,
+  UserRound,
 } from "lucide-react"
 import { useEffect, useState } from "react"
+import { IconInput } from "../../components/icon-input"
 import { apiUrl, authClient } from "../../services/api-clients"
 import { errorMessage } from "../../utils/error"
 import { sessionAtom } from "../auth/atoms"
@@ -39,6 +40,7 @@ import {
   checkUsernameAtom,
   completeOnboardingAtom,
   ownProfileAtom,
+  profileMutationKeys,
   suggestUsernamesAtom,
 } from "../profile/atoms"
 import { Confetti } from "./confetti"
@@ -61,7 +63,10 @@ export function WelcomePage({
   const beginOnboarding = useAtomSet(beginOnboardingAtom, { mode: "promise" })
 
   useEffect(() => {
-    void beginOnboarding({ payload: void 0 }).catch(() => undefined)
+    void beginOnboarding({
+      payload: void 0,
+      reactivityKeys: profileMutationKeys,
+    }).catch(() => undefined)
   }, [beginOnboarding])
 
   return (
@@ -203,8 +208,9 @@ function UsernameStep({ onDone }: { onDone: () => void }) {
         ) : (
           <Field data-invalid={Boolean(error)}>
             <FieldLabel htmlFor="onboarding-username">Username</FieldLabel>
-            <Input
+            <IconInput
               id="onboarding-username"
+              icon={UserRound}
               autoComplete="username"
               maxLength={20}
               minLength={3}
@@ -386,13 +392,28 @@ function ImportStep({ onDone }: { onDone: () => void }) {
 }
 
 function DoneStep() {
+  const navigate = useNavigate()
   const completeOnboarding = useAtomSet(completeOnboardingAtom, {
     mode: "promise",
   })
+  const [pending, setPending] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
-  useEffect(() => {
-    void completeOnboarding({ payload: void 0 }).catch(() => undefined)
-  }, [completeOnboarding])
+  const finish = async () => {
+    setPending(true)
+    setError(null)
+    try {
+      await completeOnboarding({
+        payload: void 0,
+        reactivityKeys: profileMutationKeys,
+      })
+      await navigate({ to: "/" })
+    } catch (reason) {
+      setError(errorMessage(reason, "Unable to finish setup"))
+    } finally {
+      setPending(false)
+    }
+  }
 
   return (
     <>
@@ -410,13 +431,18 @@ function DoneStep() {
           </CardDescription>
         </CardHeader>
         <CardFooter>
-          <Button asChild className="w-full" size="lg">
-            <Link to="/">
-              Ready to watch anime
-              <ArrowRight data-icon="inline-end" />
-            </Link>
+          <Button
+            className="w-full"
+            disabled={pending}
+            size="lg"
+            onClick={() => void finish()}
+          >
+            {pending ? <Loader2 className="animate-spin" /> : null}
+            {pending ? "Finishing setup…" : "Ready to watch anime"}
+            {pending ? null : <ArrowRight data-icon="inline-end" />}
           </Button>
         </CardFooter>
+        {error ? <FieldError className="px-6 pb-6">{error}</FieldError> : null}
       </Card>
     </>
   )

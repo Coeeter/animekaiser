@@ -5,17 +5,20 @@ const password = process.env.KAISER_E2E_PASSWORD ?? "kaiser-e2e-pass-1234"
 const uniqueEmail = () =>
   `kaiser-e2e-${Date.now()}-${Math.random().toString(36).slice(2, 8)}@example.test`
 
+const uniqueUsername = () =>
+  `e2e_${crypto.randomUUID().replaceAll("-", "").slice(0, 16)}`
+
 test("a new account is walked through the welcome flow", async ({ page }) => {
   await page.goto("/register")
 
   await expect(page).toHaveTitle(/Create account.*AnimeKaiser/)
   await expect(page.getByLabel("Email")).toBeVisible()
-  await expect(page.getByLabel("Password")).toBeVisible()
+  await expect(page.getByLabel("Password", { exact: true })).toBeVisible()
   await expect(page.getByLabel("Username")).toHaveCount(0)
   await expect(page.getByLabel("Confirm password")).toHaveCount(0)
 
   await page.getByLabel("Email").fill(uniqueEmail())
-  await page.getByLabel("Password").fill(password)
+  await page.getByLabel("Password", { exact: true }).fill(password)
   await page.getByRole("button", { name: "Continue" }).click()
 
   await page.waitForURL("**/welcome**")
@@ -27,6 +30,7 @@ test("a new account is walked through the welcome flow", async ({ page }) => {
   const suggestion = page.getByText(/^Suggestions$/)
   await expect(suggestion).toBeVisible()
 
+  await username.fill(uniqueUsername())
   await page.getByRole("button", { name: "Continue" }).click()
   await page.waitForURL("**/welcome?step=connect")
 
@@ -44,7 +48,7 @@ test("a new account is walked through the welcome flow", async ({ page }) => {
     page.getByRole("heading", { name: "You are all set" })
   ).toBeVisible()
 
-  await page.getByRole("link", { name: "Ready to watch anime" }).click()
+  await page.getByRole("button", { name: "Ready to watch anime" }).click()
   await page.waitForURL("http://localhost:3000/")
 
   await page.goto("/my-list?status=all&sort=updated_desc&page=1")
@@ -57,15 +61,16 @@ test("a finished account is not sent back into onboarding", async ({
   await page.goto("/register")
 
   await page.getByLabel("Email").fill(uniqueEmail())
-  await page.getByLabel("Password").fill(password)
+  await page.getByLabel("Password", { exact: true }).fill(password)
   await page.getByRole("button", { name: "Continue" }).click()
 
   await page.waitForURL("**/welcome**")
+  await page.getByLabel("Username").fill(uniqueUsername())
   await page.getByRole("button", { name: "Continue" }).click()
   await page.waitForURL("**/welcome?step=connect")
   await page.getByRole("button", { name: "Skip for now" }).click()
   await page.waitForURL("**/welcome?step=done")
-  await page.getByRole("link", { name: "Ready to watch anime" }).click()
+  await page.getByRole("button", { name: "Ready to watch anime" }).click()
 
   await page.goto("/profile")
   await expect(page).not.toHaveURL(/welcome/)
