@@ -17,7 +17,6 @@
     "test": "bun test apps packages",
     "test:e2e": "playwright test",
     "test:e2e:install": "playwright install chromium",
-    "test:providers": "bun scripts/check-providers.ts",
     "typecheck": "turbo typecheck"
   },
   "devDependencies": {

@@ -3,9 +3,8 @@
 AnimeKaiser is an anime tracking application: a personal library with per-title
 status and episode progress, a discovery catalogue built on public anime
 metadata, and two-way synchronisation of that library with external tracking
-services (AniList and MyAnimeList). A streaming component resolves playback
-sources for titles in the catalogue and records watch progress against the
-library.
+services (AniList and MyAnimeList). Playback sources are resolved by a separate
+streaming service, and watch progress is recorded against the library.
 
 **Status:** active development. Self-hosted only — there is no hosted instance
 and no public deployment. Interfaces, database schema, and RPC contracts change
@@ -29,11 +28,18 @@ tokens are rotated by a separate worker.
 endpoint, backed by AniList's GraphQL API and Jikan (the MyAnimeList REST
 mirror), with a Redis-backed cache in front of both.
 
-**Streaming.** Several third-party source providers are implemented behind a
-common `ProviderBProvider` interface, with a server-side proxy route for
-playlist and segment fetches. The web app has a player, subtitle rendering, and
-server/audio-track selection. Watch progress from the player is what populates
-watch history and the "continue watching" row.
+**Streaming.** Source resolution and media proxying live in a separate service
+that this repository does not contain. AnimeKaiser talks to it over a typed RPC
+contract (`StreamingClient`, wired in `apps/api/src/infra/streaming.ts`) and
+stores only the stable anime-to-provider mappings it returns. The service
+reports which providers it supports at runtime, so no provider is named here.
+Set `STREAMING_SERVICE_URL` and `STREAMING_SECRET` to point at your own
+implementation; without them, streaming features report as unavailable and the
+rest of the application is unaffected.
+
+The web app has a player, subtitle rendering, and server/audio-track selection.
+Watch progress from the player populates watch history and the "continue
+watching" row.
 
 ## Architecture
 
@@ -62,8 +68,8 @@ Bun workspaces orchestrated by Turborepo. Two applications and six packages.
 The web app calls a typed RPC method defined in `packages/domain`. The request
 arrives at `packages/rpc`'s handler layer, which resolves a service from
 `packages/core`, which reads or writes through `packages/db`. HTTP concerns
-(CORS, auth callbacks, the stream proxy) are the only things that live directly
-in `apps/api/src/routes`.
+(CORS, auth callbacks) are the only things that live directly in
+`apps/api/src/routes`.
 
 Background work is dispatched through Postgres `LISTEN`/`NOTIFY` rather than a
 separate queue: `DatabaseListenerLive` in `apps/api/src/infra/database.ts` wakes
@@ -137,7 +143,6 @@ bun lint             # Biome check
 bun format           # Biome format --write
 bun test             # Unit tests
 bun test:e2e         # Playwright end-to-end tests
-bun test:providers   # Live probe of the stream source providers
 ```
 
 Database:
@@ -166,8 +171,7 @@ bun test:e2e
 ```
 
 `KAISER_E2E_PASSWORD` overrides the throwaway account password used by the
-onboarding spec. `bun test:providers` hits live third-party endpoints and is
-expected to be flaky; it is not part of CI.
+onboarding spec.
 
 ## Screenshots
 
