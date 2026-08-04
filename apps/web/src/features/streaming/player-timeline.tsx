@@ -2,26 +2,6 @@ import type { StreamPlayback } from "@animekaiser/domain"
 import type { PointerEvent } from "react"
 import { useEffect, useState } from "react"
 import { formatTime } from "./player-format"
-import { streamProxyUrl } from "./proxy"
-import { parseTimestamp } from "./subtitles"
-
-type ThumbnailRegion = {
-  x: number
-  y: number
-  width: number
-  height: number
-}
-
-type ThumbnailImage = {
-  url: string
-  region: ThumbnailRegion | null
-}
-
-type ThumbnailCue = {
-  start: number
-  end: number
-  image: ThumbnailImage
-}
 
 type TimelineSegment = {
   key: string
@@ -32,76 +12,6 @@ type TimelineSegment = {
 
 type TimelineChapter = Omit<TimelineSegment, "key" | "kind"> & {
   kind: "opening" | "ending"
-}
-
-const parseThumbnailRegion = (value: string): ThumbnailRegion | null => {
-  if (!value.startsWith("xywh=")) return null
-  const parts = value.slice(5).split(",").map(Number)
-  if (parts.length !== 4 || parts.some((part) => !Number.isFinite(part))) {
-    return null
-  }
-  const x = parts[0] ?? 0
-  const y = parts[1] ?? 0
-  const width = parts[2] ?? 0
-  const height = parts[3] ?? 0
-  if (width <= 0 || height <= 0) return null
-  return { x, y, width, height }
-}
-
-const parseThumbnailImage = (
-  value: string,
-  referer: string
-): ThumbnailImage => {
-  const url = new URL(value)
-  const region = parseThumbnailRegion(url.hash.slice(1))
-  url.hash = ""
-  return {
-    url: streamProxyUrl(url.toString(), referer),
-    region,
-  }
-}
-
-const parseThumbnailVtt = (
-  text: string,
-  file: string,
-  referer: string
-): Array<ThumbnailCue> => {
-  const lines = text.replaceAll("\r\n", "\n").replaceAll("\r", "\n").split("\n")
-  const cues: Array<ThumbnailCue> = []
-
-  for (let index = 0; index < lines.length; index += 1) {
-    const line = lines[index]?.trim() ?? ""
-    if (!line.includes("-->")) continue
-
-    const [start = "0", end = "0"] = line
-      .split("-->")
-      .map((value) => value.trim())
-    let imageLine = ""
-    for (let cueIndex = index + 1; cueIndex < lines.length; cueIndex += 1) {
-      const candidate = lines[cueIndex]?.trim() ?? ""
-      if (candidate.length === 0) break
-      imageLine = candidate
-      break
-    }
-    if (imageLine.length === 0) continue
-
-    const imageUrl = new URL(imageLine, file).toString()
-    cues.push({
-      start: parseTimestamp(start),
-      end: parseTimestamp(end),
-      image: parseThumbnailImage(imageUrl, referer),
-    })
-  }
-
-  return cues
-}
-
-const thumbnailForTime = (
-  cues: ReadonlyArray<ThumbnailCue>,
-  time: number | null
-) => {
-  if (time === null) return null
-  return cues.find((cue) => time >= cue.start && time <= cue.end) ?? null
 }
 
 const clampTime = (value: number, duration: number) =>
@@ -217,9 +127,6 @@ export function PlayerTimeline({
 }) {
   const [hoverPercent, setHoverPercent] = useState(0)
   const [hoverTime, setHoverTime] = useState<number | null>(null)
-  const [thumbnailCues, setThumbnailCues] = useState<Array<ThumbnailCue>>([])
-  const thumbnailTrack = playback.thumbnails.at(0) ?? null
-  const thumbnailCue = thumbnailForTime(thumbnailCues, hoverTime)
   const timelineSegments = chapterTimelineSegments({
     intro: playback.intro,
     outro: playback.outro,
@@ -227,47 +134,11 @@ export function PlayerTimeline({
   })
   const hoverSegment = segmentAtTime(timelineSegments, hoverTime)
   const hoverSegmentLabel = timelineSegmentLabel(hoverSegment)
-  const hoverPreviewPercent = Math.min(
-    Math.max(hoverPercent, thumbnailCue ? 8 : 4),
-    thumbnailCue ? 92 : 96
-  )
+  const hoverPreviewPercent = Math.min(Math.max(hoverPercent, 4), 96)
 
   useEffect(() => {
     setHoverTime(null)
-    setThumbnailCues([])
   }, [playback.episode.id, playback.provider, playback.audio])
-
-  useEffect(() => {
-    if (!thumbnailTrack) {
-      setThumbnailCues([])
-      return
-    }
-
-    let disposed = false
-    const thumbnailUrl = streamProxyUrl(
-      thumbnailTrack.file,
-      playback.sourceRefererUrl
-    )
-    void fetch(thumbnailUrl)
-      .then((response) => (response.ok ? response.text() : ""))
-      .then((text) => {
-        if (disposed) return
-        setThumbnailCues(
-          parseThumbnailVtt(
-            text,
-            thumbnailTrack.file,
-            playback.sourceRefererUrl
-          )
-        )
-      })
-      .catch(() => {
-        if (!disposed) setThumbnailCues([])
-      })
-
-    return () => {
-      disposed = true
-    }
-  }, [playback.sourceRefererUrl, thumbnailTrack])
 
   const updateHoverPreview = (event: PointerEvent<HTMLDivElement>) => {
     const rect = event.currentTarget.getBoundingClientRect()
@@ -294,11 +165,6 @@ export function PlayerTimeline({
             className="pointer-events-none absolute bottom-8 z-20 flex -translate-x-1/2 flex-col items-center gap-1"
             style={{ left: `${hoverPreviewPercent}%` }}
           >
-            {thumbnailCue ? (
-              <div className="rounded-xl border border-white/10 bg-black/90 p-1 shadow-2xl">
-                <ThumbnailPreview image={thumbnailCue.image} />
-              </div>
-            ) : null}
             {hoverSegmentLabel ? (
               <div className="rounded-md border border-white/10 bg-black/75 px-2 py-0.5 text-[10px] font-semibold tracking-[0.14em] text-white/75 uppercase shadow-xl backdrop-blur">
                 {hoverSegmentLabel}
@@ -356,40 +222,6 @@ export function PlayerTimeline({
       <span className="w-10 text-right tabular-nums md:w-12">
         {formatTime(duration)}
       </span>
-    </div>
-  )
-}
-
-function ThumbnailPreview({ image }: { image: ThumbnailImage }) {
-  if (!image.region) {
-    return (
-      <img
-        className="aspect-video w-40 rounded-lg object-cover"
-        src={image.url}
-        alt="Seek preview"
-      />
-    )
-  }
-
-  const width = 160
-  const scale = width / image.region.width
-  const height = image.region.height * scale
-
-  return (
-    <div
-      className="overflow-hidden rounded-lg bg-black"
-      style={{ width, height }}
-    >
-      <img
-        src={image.url}
-        alt="Seek preview"
-        className="max-w-none origin-top-left"
-        style={{
-          transform: `translate(-${image.region.x * scale}px, -${
-            image.region.y * scale
-          }px) scale(${scale})`,
-        }}
-      />
     </div>
   )
 }

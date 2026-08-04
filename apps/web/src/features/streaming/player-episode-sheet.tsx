@@ -4,7 +4,6 @@ import type {
   StreamProviderEpisodes,
   StreamProviderId,
 } from "@animekaiser/domain"
-import { streamProviderIds } from "@animekaiser/domain"
 import { Badge } from "@animekaiser/ui/components/badge"
 import { Button } from "@animekaiser/ui/components/button"
 import {
@@ -47,13 +46,12 @@ import {
 } from "lucide-react"
 import { useState } from "react"
 import { AnimeTitle } from "../anime/common/anime-title"
-import { streamEpisodesAtom } from "./atoms"
+import { streamEpisodesAtom, streamProvidersAtom } from "./atoms"
 import {
   audioLabel,
   episodeLabel,
   episodeTitle,
   preferredAudio,
-  providerLabel,
 } from "./player-format"
 
 export function EpisodeSheet({
@@ -77,13 +75,15 @@ export function EpisodeSheet({
     streamEpisodesAtom(selection.malId, selectedProvider)
   )
 
+  const providerOptions = Result.getOrElse(
+    useAtomValue(streamProvidersAtom),
+    () => []
+  )
   const catalog = Result.builder(result)
     .onSuccess((value) => value)
     .orNull()
 
-  const provider =
-    catalog?.providers.find((item) => item.provider === selectedProvider) ??
-    null
+  const provider = catalog?.providers.at(0) ?? null
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -116,9 +116,9 @@ export function EpisodeSheet({
             </SelectTrigger>
             <SelectContent portalContainer={portalContainer}>
               <SelectGroup>
-                {streamProviderIds.map((providerId) => (
-                  <SelectItem key={providerId} value={providerId}>
-                    {providerLabel(providerId)}
+                {providerOptions.map((entry) => (
+                  <SelectItem key={entry.id} value={entry.id}>
+                    {entry.label}
                   </SelectItem>
                 ))}
               </SelectGroup>

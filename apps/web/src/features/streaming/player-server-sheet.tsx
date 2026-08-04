@@ -11,7 +11,7 @@ import {
 import { cn } from "@animekaiser/ui/lib/utils"
 import { Link } from "@tanstack/react-router"
 import { Check, Server } from "lucide-react"
-import { audioLabel, megaPlayServerId } from "./player-format"
+import { audioLabel } from "./player-format"
 
 export function ServerSheet({
   open,
@@ -51,8 +51,7 @@ export function ServerSheet({
                 }}
                 search={{
                   audio: playback.audio,
-                  serverId:
-                    server.id === megaPlayServerId ? undefined : server.id,
+                  serverId: server.isDefault ? undefined : server.id,
                 }}
                 replace
                 className={cn(

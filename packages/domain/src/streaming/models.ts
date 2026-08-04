@@ -1,16 +1,17 @@
 import * as Schema from "effect/Schema"
 import { AnimeDetail, MalId } from "../anime/models"
 
-export const streamProviderIds = [
-  "provider-a",
-  "provider-b",
-  "provider-c",
-  "provider-d",
-  "provider-e",
-] as const
-
-export const StreamProviderId = Schema.Literal(...streamProviderIds)
+export const StreamProviderId = Schema.String.pipe(
+  Schema.minLength(1),
+  Schema.brand("StreamProviderId")
+)
 export type StreamProviderId = typeof StreamProviderId.Type
+
+export const StreamProvider = Schema.Struct({
+  id: StreamProviderId,
+  label: Schema.String.pipe(Schema.minLength(1)),
+})
+export type StreamProvider = typeof StreamProvider.Type
 
 export const StreamAudio = Schema.Literal("sub", "dub")
 export type StreamAudio = typeof StreamAudio.Type
@@ -19,6 +20,7 @@ export const StreamServer = Schema.Struct({
   id: Schema.String.pipe(Schema.minLength(1)),
   name: Schema.String.pipe(Schema.minLength(1)),
   audio: StreamAudio,
+  isDefault: Schema.optional(Schema.Boolean),
 })
 export type StreamServer = typeof StreamServer.Type
 
@@ -34,7 +36,9 @@ export type StreamEpisode = typeof StreamEpisode.Type
 
 export const StreamProviderEpisodes = Schema.Struct({
   provider: StreamProviderId,
+  label: Schema.String.pipe(Schema.minLength(1)),
   providerAnimeId: Schema.NullOr(Schema.String),
+  matchedTitle: Schema.NullOr(Schema.String),
   status: Schema.Literal("available", "unmatched", "unavailable"),
   message: Schema.NullOr(Schema.String),
   episodes: Schema.Array(StreamEpisode),
@@ -55,12 +59,6 @@ export const StreamTrack = Schema.Struct({
 })
 export type StreamTrack = typeof StreamTrack.Type
 
-export const StreamThumbnailTrack = Schema.Struct({
-  file: Schema.String.pipe(Schema.minLength(1)),
-  label: Schema.String.pipe(Schema.minLength(1)),
-})
-export type StreamThumbnailTrack = typeof StreamThumbnailTrack.Type
-
 export const StreamSkipSegment = Schema.Struct({
   start: Schema.Number.pipe(Schema.nonNegative()),
   end: Schema.Number.pipe(Schema.nonNegative()),
@@ -76,10 +74,8 @@ export const StreamPlayback = Schema.Struct({
   server: StreamServer,
   servers: Schema.Array(StreamServer),
   sourceUrl: Schema.String.pipe(Schema.minLength(1)),
-  sourceRefererUrl: Schema.String.pipe(Schema.minLength(1)),
-  iframeUrl: Schema.String.pipe(Schema.minLength(1)),
   tracks: Schema.Array(StreamTrack),
-  thumbnails: Schema.Array(StreamThumbnailTrack),
+  expiresAt: Schema.Int.pipe(Schema.positive()),
   intro: Schema.NullOr(StreamSkipSegment),
   outro: Schema.NullOr(StreamSkipSegment),
 })

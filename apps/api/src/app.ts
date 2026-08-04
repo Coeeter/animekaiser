@@ -10,9 +10,9 @@ import { CorsLive, HttpServerLive } from "./infra/http"
 import { ProfileMediaStorageLive } from "./infra/profile-media"
 import { RedisKeyValueStoreLive } from "./infra/redis"
 import { RpcServerConfigLive } from "./infra/rpc"
+import { StreamingClientLive } from "./infra/streaming"
 import { AuthRoutesLive } from "./routes/auth"
 import { ExternalListAccountsRoutesLive } from "./routes/external-lists"
-import { StreamingRoutesLive } from "./routes/streaming"
 import { LibraryImportWorkerLive } from "./workers/library-import"
 import { LibrarySyncWorkerLive } from "./workers/library-sync"
 import { ExternalListTokenRefreshWorkerLive } from "./workers/token-refresh"
@@ -20,7 +20,6 @@ import { ExternalListTokenRefreshWorkerLive } from "./workers/token-refresh"
 const RoutesLive = Layer.mergeAll(
   AuthRoutesLive,
   ExternalListAccountsRoutesLive,
-  StreamingRoutesLive,
   RpcLive,
   CorsLive
 )
@@ -40,6 +39,7 @@ export const ApiLive = HttpLayerRouter.serve(RoutesLive, {
   Layer.provideMerge(RpcServerConfigLive),
   Layer.provideMerge(ExternalListOAuthConfigLive),
   Layer.provideMerge(BetterAuthLive),
+  Layer.provide(StreamingClientLive),
   Layer.provide(RedisKeyValueStoreLive),
   Layer.provide(makeDatabaseLive(migrationsFolder)),
   Layer.provide(HttpServerLive),

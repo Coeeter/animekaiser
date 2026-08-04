@@ -77,7 +77,7 @@ function AnimeDetailRoute() {
       search: {
         tab: search.tab,
         episodePage: undefined,
-        provider: provider === "provider-a" ? undefined : provider,
+        provider,
       },
       replace: true,
     })
@@ -88,7 +88,7 @@ function AnimeDetailRoute() {
       id={id}
       activeTab={activeTab}
       episodePage={search.episodePage ?? 1}
-      episodeProvider={search.provider ?? "provider-a"}
+      episodeProvider={search.provider}
       onEpisodePageChange={setEpisodePage}
       onEpisodeProviderChange={setProvider}
       onTabChange={setActiveTab}

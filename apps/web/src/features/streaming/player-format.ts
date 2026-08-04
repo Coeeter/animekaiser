@@ -13,10 +13,6 @@ export type QualityLevel = {
 
 export const speedOptions = ["0.5", "0.75", "1", "1.25", "1.5", "2"] as const
 
-export const megaPlayServerId = "default-server"
-
-export const defaultStreamProvider: StreamProviderId = "provider-a"
-
 export const seriesEpisodesHref = (malId: number) => `/series/${malId}`
 
 export const watchEpisodeNumber = (progress: number | null) =>
@@ -56,17 +52,6 @@ export const formatTime = (seconds: number) => {
   const time = `${minutes.toString().padStart(hours > 0 ? 2 : 1, "0")}:${remainingSeconds.toString().padStart(2, "0")}`
   return hours > 0 ? `${hours}:${time}` : time
 }
-
-const providerLabels: Record<StreamProviderId, string> = {
-  "provider-e": "ProviderE",
-  provider-a: "ProviderA",
-  provider-b: "ProviderB",
-  provider-c: "ProviderC",
-  provider-d: "ProviderD",
-}
-
-export const providerLabel = (provider: StreamProviderId) =>
-  providerLabels[provider]
 
 const audioLabels: Record<StreamAudio, string> = {
   sub: "Sub",
@@ -136,3 +121,7 @@ export const qualityLabel = (
     level.bitrate > 0 ? ` (${Math.round(level.bitrate / 1000)} kbps)` : ""
   return `${resolution}${bitrate}`
 }
+
+// History rows carry only the provider id; the human-readable label is supplied
+// by the streaming service and is available on the episode catalog.
+export const providerLabel = (provider: StreamProviderId) => provider

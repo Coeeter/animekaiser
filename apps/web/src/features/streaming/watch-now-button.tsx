@@ -7,11 +7,10 @@ import { Link } from "@tanstack/react-router"
 import { PlayCircle } from "lucide-react"
 import type { ComponentProps } from "react"
 import { watchTargetAtom } from "./atoms"
-import { defaultStreamProvider } from "./player-format"
 
 export function WatchNowButton({
   malId,
-  provider = defaultStreamProvider,
+  provider,
   label,
   size,
   className,
@@ -26,8 +25,13 @@ export function WatchNowButton({
 
   return Result.builder(result)
     .onInitialOrWaiting(() => (
+      // Caller classNames size to content (w-fit, flex-1), which collapses an
+      // empty skeleton, so the placeholder keeps its own dimensions.
       <Skeleton
-        className={cn("h-9 rounded-4xl bg-white/10", className ?? "w-40")}
+        className={cn(
+          "h-9 w-40 rounded-4xl bg-white/10",
+          size === "sm" && "h-8 w-28"
+        )}
         role="status"
         aria-label="Loading watch status"
       />

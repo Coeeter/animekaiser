@@ -10,7 +10,6 @@ import {
 } from "drizzle-orm/pg-core"
 import { user } from "./auth"
 import { animeMetadata } from "./library"
-import { streamProviders } from "./streaming"
 
 export const watchHistoryStatus = ["watching", "completed"] as const
 export const watchHistoryAudio = ["sub", "dub"] as const
@@ -25,7 +24,7 @@ export const watchHistory = pgTable(
     malId: integer("mal_id")
       .notNull()
       .references(() => animeMetadata.malId),
-    provider: text("provider", { enum: streamProviders }).notNull(),
+    provider: text("provider").notNull(),
     episodeId: text("episode_id").notNull(),
     serverId: text("server_id"),
     serverName: text("server_name"),

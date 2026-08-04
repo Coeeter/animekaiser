@@ -1,62 +1,26 @@
+import { animeStreamProviderMapping, Database } from "@animekaiser/db"
 import type {
+  AnimeDetail,
   StreamAudio,
-  StreamPlayback,
+  StreamEpisodeCatalog,
   StreamProviderEpisodes,
   StreamProviderId,
 } from "@animekaiser/domain"
-import {
-  StreamEpisodeNotFoundError,
-  StreamingUnavailableError,
-  StreamProviderNotFoundError,
-  StreamProviderUnavailableError,
-} from "@animekaiser/domain"
+import { StreamingUnavailableError } from "@animekaiser/domain"
+import { and, eq } from "drizzle-orm"
 import * as Effect from "effect/Effect"
 import { AnimeService } from "../anime"
-import { ProviderAProvider } from "./provider-a"
-import { ProviderDProvider } from "./provider-d"
-import { ProviderBProvider } from "./provider-b"
-import { ProviderCProvider } from "./provider-c"
-import { FourAnimoProvider } from "./provider-e"
-
-const unmatchedMessages = new Set([
-  "ProviderA could not match this anime.",
-  "ProviderB could not match this anime.",
-  "ProviderC could not match this anime.",
-  "ProviderD could not match this anime.",
-  "ProviderE could not match this anime.",
-])
-
-export const streamProviderFailureStatus = (message: string) =>
-  unmatchedMessages.has(message) ? "unmatched" : "unavailable"
-
-export const streamPlaybackFailureKind = (message: string) =>
-  unmatchedMessages.has(message)
-    ? "provider"
-    : /(episode was not found|episode audio is unavailable|server was not found)/i.test(
-          message
-        )
-      ? "episode"
-      : "unavailable"
+import { StreamingClient } from "../streaming-client"
 
 export class StreamingService extends Effect.Service<StreamingService>()(
   "@animekaiser/core/StreamingService",
   {
     accessors: true,
-    dependencies: [
-      AnimeService.Default,
-      ProviderAProvider.Default,
-      ProviderBProvider.Default,
-      ProviderCProvider.Default,
-      ProviderDProvider.Default,
-      FourAnimoProvider.Default,
-    ],
+    dependencies: [AnimeService.Default],
     effect: Effect.gen(function* () {
       const animeService = yield* AnimeService
-      const aniKoto = yield* ProviderAProvider
-      const animeStream = yield* ProviderBProvider
-      const aniNeko = yield* ProviderCProvider
-      const animeHub = yield* ProviderDProvider
-      const fourAnimo = yield* FourAnimoProvider
+      const streaming = yield* StreamingClient
+      const database = yield* Database
 
       const getAnime = (malId: number) =>
         animeService.getDetail(malId).pipe(
@@ -72,121 +36,116 @@ export class StreamingService extends Effect.Service<StreamingService>()(
           })
         )
 
-      const notReleasedMessage = "This anime has not been released yet."
+      const readMapping = (malId: number, provider: StreamProviderId) =>
+        database
+          .execute((db) =>
+            db
+              .select()
+              .from(animeStreamProviderMapping)
+              .where(
+                and(
+                  eq(animeStreamProviderMapping.malId, malId),
+                  eq(animeStreamProviderMapping.provider, provider)
+                )
+              )
+              .limit(1)
+          )
+          .pipe(
+            Effect.map((rows) => rows.at(0)?.providerAnimeId ?? undefined),
+            Effect.orElseSucceed(() => undefined)
+          )
+
+      // The service resolves the provider's own id for an anime; persisting it
+      // lets later calls skip the title match entirely.
+      const saveMapping = (
+        malId: number,
+        provider: StreamProviderId,
+        providerAnimeId: string | null,
+        matchedTitle: string | null
+      ) =>
+        providerAnimeId === null
+          ? Effect.void
+          : database
+              .execute((db) =>
+                db
+                  .insert(animeStreamProviderMapping)
+                  .values({ malId, provider, providerAnimeId, matchedTitle })
+                  .onConflictDoUpdate({
+                    target: [
+                      animeStreamProviderMapping.malId,
+                      animeStreamProviderMapping.provider,
+                    ],
+                    set: { providerAnimeId, matchedTitle },
+                  })
+              )
+              .pipe(Effect.ignore)
+
+      const episodesFor = (
+        anime: AnimeDetail,
+        provider: StreamProviderId,
+        entryLabel: string
+      ) =>
+        Effect.gen(function* () {
+          const known = yield* readMapping(anime.malId, provider)
+          const episodes = yield* streaming.listEpisodes(anime, provider, known)
+          yield* saveMapping(
+            anime.malId,
+            provider,
+            episodes.providerAnimeId,
+            episodes.matchedTitle
+          )
+          return episodes
+        }).pipe(
+          Effect.catchAll((error) =>
+            Effect.succeed({
+              provider,
+              label: entryLabel,
+              providerAnimeId: null,
+              matchedTitle: null,
+              status: "unavailable" as const,
+              message: error.message,
+              episodes: [],
+            } satisfies StreamProviderEpisodes)
+          )
+        )
+
+      // Requested provider wins when it exists; otherwise the first configured
+      // provider is used. Shared so episodes and playback never disagree.
+      const resolveProvider = (provider: StreamProviderId | undefined) =>
+        Effect.map(
+          streaming.listProviders,
+          (providers) =>
+            providers.find((entry) => entry.id === provider) ?? providers.at(0)
+        )
+
       const listEpisodes = Effect.fn("StreamingService.listEpisodes")(
-        function* (malId: number, provider: StreamProviderId) {
+        function* (malId: number, provider?: StreamProviderId) {
           const anime = yield* getAnime(malId)
           if (anime.status === "NOT_YET_RELEASED") {
             return {
               anime,
-              providers: [
-                {
-                  provider,
-                  providerAnimeId: null,
-                  status: "unavailable",
-                  message: notReleasedMessage,
-                  episodes: [],
-                } satisfies StreamProviderEpisodes,
-              ],
-            } as const
+              providers: [],
+            } satisfies StreamEpisodeCatalog
           }
 
-          const provider-a = aniKoto.getEpisodes(anime).pipe(
-            Effect.tapError((error) =>
-              Effect.logWarning("ProviderA episode lookup failed", {
-                malId,
-                message: error.message,
-              })
-            ),
-            Effect.catchTag("ProviderAProviderError", (error) =>
-              Effect.succeed({
-                provider: "provider-a",
-                providerAnimeId: null,
-                status: streamProviderFailureStatus(error.message),
-                message: error.message,
-                episodes: [],
-              } as const)
-            )
+          const selected = yield* resolveProvider(provider)
+          if (selected === undefined) {
+            return {
+              anime,
+              providers: [],
+            } satisfies StreamEpisodeCatalog
+          }
+
+          const episodes = yield* episodesFor(
+            anime,
+            selected.id,
+            selected.label
           )
-          const provider-b = animeStream.getEpisodes(anime).pipe(
-            Effect.tapError((error) =>
-              Effect.logWarning("ProviderB episode lookup failed", {
-                malId,
-                message: error.message,
-              })
-            ),
-            Effect.catchTag("ProviderBProviderError", (error) =>
-              Effect.succeed({
-                provider: "provider-b",
-                providerAnimeId: null,
-                status: streamProviderFailureStatus(error.message),
-                message: error.message,
-                episodes: [],
-              } as const)
-            )
-          )
-          const provider-c = aniNeko.getEpisodes(anime).pipe(
-            Effect.tapError((error) =>
-              Effect.logWarning("ProviderC episode lookup failed", {
-                malId,
-                message: error.message,
-              })
-            ),
-            Effect.catchTag("ProviderCProviderError", (error) =>
-              Effect.succeed({
-                provider: "provider-c",
-                providerAnimeId: null,
-                status: streamProviderFailureStatus(error.message),
-                message: error.message,
-                episodes: [],
-              } as const)
-            )
-          )
-          const provider-d = animeHub.getEpisodes(anime).pipe(
-            Effect.tapError((error) =>
-              Effect.logWarning("ProviderD episode lookup failed", {
-                malId,
-                message: error.message,
-              })
-            ),
-            Effect.catchTag("ProviderDProviderError", (error) =>
-              Effect.succeed({
-                provider: "provider-d",
-                providerAnimeId: null,
-                status: streamProviderFailureStatus(error.message),
-                message: error.message,
-                episodes: [],
-              } as const)
-            )
-          )
-          const fouranimo = fourAnimo.getEpisodes(anime).pipe(
-            Effect.tapError((error) =>
-              Effect.logWarning("ProviderE episode lookup failed", {
-                malId,
-                message: error.message,
-              })
-            ),
-            Effect.catchTag("FourAnimoProviderError", (error) =>
-              Effect.succeed({
-                provider: "provider-e",
-                providerAnimeId: null,
-                status: streamProviderFailureStatus(error.message),
-                message: error.message,
-                episodes: [],
-              } as const)
-            )
-          )
-          const providers = {
-            provider-a,
-            provider-b,
-            provider-c,
-            provider-d,
-            "provider-e": fouranimo,
-          } satisfies Record<
-            StreamProviderId,
-            Effect.Effect<StreamProviderEpisodes>
-          >
-          return { anime, providers: [yield* providers[provider]] }
+
+          return {
+            anime,
+            providers: [episodes],
+          } satisfies StreamEpisodeCatalog
         }
       )
 
@@ -195,136 +154,28 @@ export class StreamingService extends Effect.Service<StreamingService>()(
         provider: StreamProviderId,
         episodeId: string,
         audio: StreamAudio,
-        serverId?: string | undefined
+        serverId?: string
       ) {
         const anime = yield* getAnime(malId)
-        if (anime.status === "NOT_YET_RELEASED") {
-          return yield* new StreamProviderNotFoundError({
-            provider,
-            malId,
-            message: notReleasedMessage,
-          })
-        }
-
-        const providerFailure = (
-          message: string
-        ): Effect.Effect<
-          never,
-          | StreamProviderNotFoundError
-          | StreamProviderUnavailableError
-          | StreamEpisodeNotFoundError
-        > =>
-          streamPlaybackFailureKind(message) === "provider"
-            ? Effect.fail(
-                new StreamProviderNotFoundError({ provider, malId, message })
-              )
-            : streamPlaybackFailureKind(message) === "episode"
-              ? Effect.fail(
-                  new StreamEpisodeNotFoundError({
-                    provider,
-                    malId,
-                    episodeId,
-                    message,
-                  })
-                )
-              : Effect.fail(
-                  new StreamProviderUnavailableError({
-                    provider,
-                    malId,
-                    message,
-                  })
-                )
-
-        const providers = {
-          provider-a: () =>
-            aniKoto.getPlayback(anime, episodeId, audio, serverId).pipe(
-              Effect.tapError((error) =>
-                Effect.logWarning("ProviderA playback lookup failed", {
-                  malId,
-                  episodeId,
-                  audio,
-                  serverId,
-                  message: error.message,
-                })
-              ),
-              Effect.catchTag("ProviderAProviderError", (error) =>
-                providerFailure(error.message)
-              )
-            ),
-          provider-b: () =>
-            animeStream.getPlayback(anime, episodeId, audio, serverId).pipe(
-              Effect.tapError((error) =>
-                Effect.logWarning("ProviderB playback lookup failed", {
-                  malId,
-                  episodeId,
-                  audio,
-                  serverId,
-                  message: error.message,
-                })
-              ),
-              Effect.catchTag("ProviderBProviderError", (error) =>
-                providerFailure(error.message)
-              )
-            ),
-          provider-c: () =>
-            aniNeko.getPlayback(anime, episodeId, audio, serverId).pipe(
-              Effect.tapError((error) =>
-                Effect.logWarning("ProviderC playback lookup failed", {
-                  malId,
-                  episodeId,
-                  audio,
-                  serverId,
-                  message: error.message,
-                })
-              ),
-              Effect.catchTag("ProviderCProviderError", (error) =>
-                providerFailure(error.message)
-              )
-            ),
-          provider-d: () =>
-            animeHub.getPlayback(anime, episodeId, audio, serverId).pipe(
-              Effect.tapError((error) =>
-                Effect.logWarning("ProviderD playback lookup failed", {
-                  malId,
-                  episodeId,
-                  audio,
-                  serverId,
-                  message: error.message,
-                })
-              ),
-              Effect.catchTag("ProviderDProviderError", (error) =>
-                providerFailure(error.message)
-              )
-            ),
-          "provider-e": () =>
-            fourAnimo.getPlayback(anime, episodeId, audio, serverId).pipe(
-              Effect.tapError((error) =>
-                Effect.logWarning("ProviderE playback lookup failed", {
-                  malId,
-                  episodeId,
-                  audio,
-                  serverId,
-                  message: error.message,
-                })
-              ),
-              Effect.catchTag("FourAnimoProviderError", (error) =>
-                providerFailure(error.message)
-              )
-            ),
-        } satisfies Record<
-          StreamProviderId,
-          () => Effect.Effect<
-            StreamPlayback,
-            | StreamProviderNotFoundError
-            | StreamProviderUnavailableError
-            | StreamEpisodeNotFoundError
-          >
-        >
-
-        return yield* providers[provider]()
+        const resolved = (yield* resolveProvider(provider))?.id ?? provider
+        const known = yield* readMapping(malId, resolved)
+        const playback = yield* streaming.getPlayback(
+          anime,
+          resolved,
+          episodeId,
+          audio,
+          serverId,
+          known
+        )
+        yield* saveMapping(malId, resolved, playback.providerAnimeId, null)
+        return playback
       })
 
-      return { listEpisodes, getPlayback }
+      return {
+        listEpisodes,
+        getPlayback,
+        listProviders: streaming.listProviders,
+      }
     }),
   }
 ) {}

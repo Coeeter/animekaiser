@@ -3,7 +3,7 @@ import type {
   StreamAudio,
   StreamProviderEpisodes,
 } from "@animekaiser/domain"
-import { StreamProviderId, streamProviderIds } from "@animekaiser/domain"
+import { StreamProviderId } from "@animekaiser/domain"
 import { Badge } from "@animekaiser/ui/components/badge"
 import { Button } from "@animekaiser/ui/components/button"
 import {
@@ -52,19 +52,9 @@ import { useMemo, useState } from "react"
 import { DataError } from "../../components/data-error"
 import { episodeProgressAtom } from "../history/atoms"
 import type { EpisodeProgress } from "../history/episode-progress"
-import { streamEpisodesAtom } from "./atoms"
+import { streamEpisodesAtom, streamProvidersAtom } from "./atoms"
 
 const decodeProviderId = Schema.decodeUnknownSync(StreamProviderId)
-
-const providerLabels: Record<StreamProviderId, string> = {
-  "provider-e": "ProviderE",
-  provider-a: "ProviderA",
-  provider-b: "ProviderB",
-  provider-c: "ProviderC",
-  provider-d: "ProviderD",
-}
-
-const providerLabel = (provider: StreamProviderId) => providerLabels[provider]
 
 const audioLabels: Record<StreamAudio, string> = {
   sub: "Sub",
@@ -139,10 +129,14 @@ export function EpisodesPanel({
 }: {
   anime: AnimeDetail
   page: number
-  provider: StreamProviderId
+  provider?: StreamProviderId
   onPageChange: (page: number) => void
   onProviderChange: (provider: StreamProviderId) => void
 }) {
+  const providerOptions = Result.getOrElse(
+    useAtomValue(streamProvidersAtom),
+    () => []
+  )
   const result = useAtomValue(streamEpisodesAtom(anime.malId, selectedProvider))
   const refresh = useAtomRefresh(
     streamEpisodesAtom(anime.malId, selectedProvider)
@@ -155,10 +149,9 @@ export function EpisodesPanel({
     .render()
 
   const { catalog } = state
-  const currentProvider =
-    catalog?.providers.find(
-      (provider) => provider.provider === selectedProvider
-    ) ?? null
+  // The catalog carries exactly the provider the server resolved, which may
+  // differ from the requested one when the default sentinel is used.
+  const currentProvider = catalog?.providers.at(0) ?? null
 
   const providerSelector = (
     <div className="flex flex-col gap-3 rounded-xl border bg-card/80 p-4 sm:flex-row sm:items-center sm:justify-between">
@@ -169,7 +162,11 @@ export function EpisodesPanel({
         </p>
       </div>
       <Select
-        value={selectedProvider}
+        value={
+          currentProvider?.provider ??
+          selectedProvider ??
+          providerOptions.at(0)?.id
+        }
         onValueChange={(value) => onProviderChange(decodeProviderId(value))}
       >
         <SelectTrigger className="w-full sm:w-44">
@@ -177,9 +174,9 @@ export function EpisodesPanel({
         </SelectTrigger>
         <SelectContent>
           <SelectGroup>
-            {streamProviderIds.map((provider) => (
-              <SelectItem key={provider} value={provider}>
-                {providerLabel(provider)}
+            {providerOptions.map((entry) => (
+              <SelectItem key={entry.id} value={entry.id}>
+                {entry.label}
               </SelectItem>
             ))}
           </SelectGroup>

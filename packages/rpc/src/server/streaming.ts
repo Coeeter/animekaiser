@@ -4,6 +4,7 @@ import * as Layer from "effect/Layer"
 
 export const StreamingHandlersLive = StreamingRpcs.toLayer(
   StreamingRpcs.of({
+    ListStreamProviders: () => StreamingService.listProviders,
     ListStreamEpisodes: ({ malId, provider }) =>
       StreamingService.listEpisodes(malId, provider),
     GetStreamPlayback: ({ malId, provider, episodeId, audio, serverId }) =>

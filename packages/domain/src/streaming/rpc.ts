@@ -7,6 +7,7 @@ import {
   StreamEpisodeNotFoundError,
   StreamingUnavailableError,
   StreamPlayback,
+  StreamProvider,
   StreamProviderId,
   StreamProviderNotFoundError,
   StreamProviderUnavailableError,
@@ -19,8 +20,16 @@ const streamingFailure = Schema.Union(
   StreamEpisodeNotFoundError
 )
 
+export class ListStreamProviders extends Rpc.make("ListStreamProviders", {
+  success: Schema.Array(StreamProvider),
+  error: StreamingUnavailableError,
+}) {}
+
 export class ListStreamEpisodes extends Rpc.make("ListStreamEpisodes", {
-  payload: { malId: MalId, provider: StreamProviderId },
+  payload: {
+    malId: MalId,
+    provider: Schema.optional(StreamProviderId),
+  },
   success: StreamEpisodeCatalog,
   error: StreamingUnavailableError,
 }) {}
@@ -38,6 +47,7 @@ export class GetStreamPlayback extends Rpc.make("GetStreamPlayback", {
 }) {}
 
 export class StreamingRpcs extends RpcGroup.make(
+  ListStreamProviders,
   ListStreamEpisodes,
   GetStreamPlayback
 ) {}

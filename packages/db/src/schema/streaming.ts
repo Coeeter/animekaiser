@@ -8,21 +8,13 @@ import {
 } from "drizzle-orm/pg-core"
 import { animeMetadata } from "./library"
 
-export const streamProviders = [
-  "provider-a",
-  "provider-b",
-  "provider-c",
-  "provider-d",
-  "provider-e",
-] as const
-
 export const animeStreamProviderMapping = pgTable(
   "anime_stream_provider_mapping",
   {
     malId: integer("mal_id")
       .notNull()
       .references(() => animeMetadata.malId),
-    provider: text("provider", { enum: streamProviders }).notNull(),
+    provider: text("provider").notNull(),
     providerAnimeId: text("provider_anime_id").notNull(),
     matchedTitle: text("matched_title"),
     createdAt: timestamp("created_at").defaultNow().notNull(),

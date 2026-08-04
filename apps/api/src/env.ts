@@ -47,6 +47,15 @@ export class Env extends Effect.Service<Env>()("@animekaiser/api/env", {
         ).pipe(Config.map(Redacted.make)),
         publicUrl: yield* Config.nonEmptyString("R2_PUBLIC_URL"),
       },
+      streaming: {
+        url: yield* Config.nonEmptyString("STREAMING_SERVICE_URL"),
+        secret: yield* Config.nonEmptyString("STREAMING_SECRET").pipe(
+          Config.map(Redacted.make)
+        ),
+        secretHeader: yield* Config.nonEmptyString(
+          "STREAMING_SECRET_HEADER"
+        ).pipe(Config.withDefault("x-streaming-secret")),
+      },
       externalList: {
         mal: {
           clientId: yield* Config.nonEmptyString("MAL_CLIENT_ID"),

@@ -6,7 +6,16 @@ import { KaiserRpcClient } from "../../services/api-clients"
 import { libraryProgressOf } from "../library/atoms"
 import { preferredAudio, watchAction } from "./player-format"
 
-export const streamEpisodesAtom = (malId: number, provider: StreamProviderId) =>
+export const streamProvidersAtom = KaiserRpcClient.query(
+  "ListStreamProviders",
+  undefined,
+  { timeToLive: "1 hour" }
+)
+
+export const streamEpisodesAtom = (
+  malId: number,
+  provider?: StreamProviderId
+) =>
   KaiserRpcClient.query(
     "ListStreamEpisodes",
     { malId, provider },
@@ -38,7 +47,7 @@ export type WatchTarget = {
 
 type WatchTargetKey = {
   readonly malId: number
-  readonly provider: StreamProviderId
+  readonly provider?: StreamProviderId
 }
 
 const watchTargetFamily = Atom.family(

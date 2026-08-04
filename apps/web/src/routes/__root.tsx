@@ -1,10 +1,12 @@
 import { Toaster } from "@animekaiser/ui/components/sonner"
 import { TooltipProvider } from "@animekaiser/ui/components/tooltip"
+import { useAtomMount } from "@effect-atom/atom-react"
 import { createRootRoute, Outlet } from "@tanstack/react-router"
 import { DocumentTitle } from "../components/document-title"
 import { RouteErrorPage } from "../components/route-error-page"
 import { ThemeProvider } from "../components/theme"
 import { AppShell } from "../features/layout/app-shell"
+import { streamProvidersAtom } from "../features/streaming/atoms"
 import "../styles/globals.css"
 
 export const Route = createRootRoute({
@@ -20,6 +22,10 @@ export const Route = createRootRoute({
 })
 
 function RootRouteComponent() {
+  // The configured provider list is fixed for the lifetime of the app; fetching
+  // it here keeps it warm before any page needs it.
+  useAtomMount(streamProvidersAtom)
+
   return (
     <>
       <DocumentTitle />

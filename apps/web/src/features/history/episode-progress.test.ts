@@ -1,5 +1,6 @@
 import { expect, test } from "bun:test"
 import type { WatchHistoryEntry } from "@animekaiser/domain"
+import { StreamProviderId } from "@animekaiser/domain"
 import { episodeProgressByNumber } from "./episode-progress"
 
 const entry = (
@@ -9,7 +10,7 @@ const entry = (
   status: WatchHistoryEntry["status"] = "watching"
 ): WatchHistoryEntry => ({
   malId: 1,
-  provider: "provider-a",
+  provider: StreamProviderId.make("test-provider"),
   episodeId: `ep-${episode}`,
   serverId: null,
   serverName: null,

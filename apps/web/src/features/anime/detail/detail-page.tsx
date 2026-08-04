@@ -135,7 +135,7 @@ export function AnimeDetailPage({
   id: number
   activeTab: AnimeDetailTab
   episodePage: number
-  episodeProvider: StreamProviderId
+  episodeProvider?: StreamProviderId
   onEpisodePageChange: (page: number) => void
   onEpisodeProviderChange: (provider: StreamProviderId) => void
   onTabChange: (tab: AnimeDetailTab) => void
@@ -198,7 +198,7 @@ function SeriesDetail({
   isAuthenticated: boolean
   activeTab: AnimeDetailTab
   episodePage: number
-  episodeProvider: StreamProviderId
+  episodeProvider?: StreamProviderId
   onEpisodePageChange: (page: number) => void
   onEpisodeProviderChange: (provider: StreamProviderId) => void
   onTabChange: (tab: AnimeDetailTab) => void

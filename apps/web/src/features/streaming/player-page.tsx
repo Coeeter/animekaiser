@@ -72,7 +72,6 @@ import {
   updatePlayerUiAtom,
 } from "./player-ui-state"
 import { playerPreferencesAtom } from "./preferences"
-import { streamProxyUrl } from "./proxy"
 import { subtitleStyle } from "./subtitle-settings"
 import type { SubtitleCue } from "./subtitles"
 import { parseSubtitleVtt, subtitleHtmlAtTime } from "./subtitles"
@@ -391,10 +390,7 @@ function StreamPlayer({
   } | null>(null)
   const suppressVideoClickRef = useRef(false)
 
-  const sourceUrl = streamProxyUrl(
-    playback.sourceUrl,
-    playback.sourceRefererUrl
-  )
+  const sourceUrl = playback.sourceUrl
 
   const handleFatalPlaybackError = () => {
     const nextServer = nextStreamServer(
@@ -590,9 +586,7 @@ function StreamPlayer({
 
     let disposed = false
     setSubtitleCues([])
-    void fetch(
-      streamProxyUrl(selectedCaptionTrack.file, playback.sourceRefererUrl)
-    )
+    void fetch(selectedCaptionTrack.file)
       .then((response) => (response.ok ? response.text() : ""))
       .then((text) => {
         if (!disposed) setSubtitleCues(parseSubtitleVtt(text))
@@ -604,7 +598,7 @@ function StreamPlayer({
     return () => {
       disposed = true
     }
-  }, [playback.sourceRefererUrl, selectedCaptionTrack])
+  }, [selectedCaptionTrack])
 
   useEffect(() => {
     if (!preferences.autoplay) return
