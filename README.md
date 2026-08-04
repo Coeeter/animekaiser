@@ -176,3 +176,10 @@ onboarding spec.
 ## Screenshots
 
 <!-- TODO: add screenshots — library view, discovery, sync activity, profile. -->
+
+## License
+
+[GNU Affero General Public License v3.0](./LICENSE).
+
+If you run a modified version of this software as a network service, the AGPL
+requires you to make its source available to that service's users.
