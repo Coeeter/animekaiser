@@ -176,8 +176,3 @@ onboarding spec.
 ## Screenshots
 
 <!-- TODO: add screenshots — library view, discovery, sync activity, profile. -->
-
-## License
-
-No license is currently declared. All rights reserved by the author until one is
-added.
