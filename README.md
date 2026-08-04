@@ -175,7 +175,24 @@ onboarding spec.
 
 ## Screenshots
 
-<!-- TODO: add screenshots — library view, discovery, sync activity, profile. -->
+**Home** — continue watching, seasonal airing, and discovery rows.
+
+![Home](./docs/screenshots/home.png)
+
+**Profile** — library breakdown, score distribution, and an activity heatmap
+derived from watch history.
+
+![Profile](./docs/screenshots/profile.png)
+
+**My list** — the tracked library with status filters, search, and per-title
+progress. Import and sync activity are driven from here.
+
+![My list](./docs/screenshots/my-list.png)
+
+**Series detail** — metadata, library state, and tabs for episodes, relations,
+and recommendations.
+
+![Series detail](./docs/screenshots/series-detail.png)
 
 ## License
 
