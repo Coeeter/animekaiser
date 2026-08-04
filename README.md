@@ -1,58 +1,179 @@
 # AnimeKaiser
 
-AnimeKaiser is an anime discovery, library, synchronization, and streaming application. It is a Bun and Turborepo monorepo built with TanStack Start, React, Effect, Drizzle, and Better Auth.
+AnimeKaiser is an anime tracking application: a personal library with per-title
+status and episode progress, a discovery catalogue built on public anime
+metadata, and two-way synchronisation of that library with external tracking
+services (AniList and MyAnimeList). A streaming component resolves playback
+sources for titles in the catalogue and records watch progress against the
+library.
 
-## Workspace
+**Status:** active development. Self-hosted only — there is no hosted instance
+and no public deployment. Interfaces, database schema, and RPC contracts change
+without notice, and migrations are not guaranteed to be stable across commits.
 
-- `apps/web` - Browser application for discovery, profiles, libraries, and watching.
-- `apps/api` - API server, authentication composition, HTTP routes, and workers.
-- `packages/domain` - Shared domain models and RPC contracts.
-- `packages/db` - PostgreSQL schema, database access, and migrations.
-- `packages/auth` - Better Auth server and web client configuration.
-- `packages/core` - Backend application services and integrations.
-- `packages/rpc` - Effect RPC server definitions and handlers.
-- `packages/ui` - Shared React UI components and styles.
+## What it does
 
-See each workspace README for package-specific details.
+**Library management.** Each user owns a library of entries keyed by MyAnimeList
+ID, carrying watch status, episode count, score, and privacy. Libraries can be
+public or private per user, with public profile pages and aggregate stats.
 
-## Requirements
+**External list synchronisation.** Users link AniList and/or MyAnimeList
+accounts over OAuth. Linking triggers a one-time import that reconciles the
+remote list into the local library; afterwards, local mutations are pushed back
+to every linked provider. Sync is event-sourced: each outbound change becomes a
+`library_sync_event` row processed by a background worker, so failures are
+visible, individually retryable, and do not block the write path. OAuth refresh
+tokens are rotated by a separate worker.
+
+**Discovery.** Catalogue browse, search, seasonal schedule, and a random-title
+endpoint, backed by AniList's GraphQL API and Jikan (the MyAnimeList REST
+mirror), with a Redis-backed cache in front of both.
+
+**Streaming.** Several third-party source providers are implemented behind a
+common `ProviderBProvider` interface, with a server-side proxy route for
+playlist and segment fetches. The web app has a player, subtitle rendering, and
+server/audio-track selection. Watch progress from the player is what populates
+watch history and the "continue watching" row.
+
+## Architecture
+
+Bun workspaces orchestrated by Turborepo. Two applications and six packages.
+
+### Applications
+
+| Path       | Role                                                                                                                                                                        |
+| ---------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `apps/api` | Backend. Composes the Effect layer graph: Postgres, Redis, Better Auth, R2 media storage, HTTP routes, the RPC server, and three background workers (library import, library sync, token refresh). Entry point is `src/app.ts`. |
+| `apps/web` | TanStack Start browser application. File-based routes in `src/routes`, feature modules in `src/features`, state via `effect-atom`. Talks to the API over the RPC WebSocket.   |
+
+### Packages
+
+| Path               | Role                                                                                                                                    |
+| ------------------ | --------------------------------------------------------------------------------------------------------------------------------------- |
+| `packages/domain`  | Infrastructure-free `effect/Schema` models and `@effect/rpc` contracts. The single shared contract between server and client. `KaiserRpcs` in `src/rpc.ts` merges every RPC group. |
+| `packages/db`      | Drizzle schema, migrations, and the `Database` service. Schema is split by concern: `auth`, `profile`, `library`, `external-list-account`, `history`, `streaming`. |
+| `packages/core`    | Backend business services — anime metadata, profiles, library import/sync, external-list OAuth, watch history, stream resolution. Depends on `db` and `domain`, never on HTTP composition. |
+| `packages/rpc`     | Effect RPC server: handler layers per domain group, plus authentication middleware and request logging. `RpcLive` mounts the group at `/rpc` over WebSocket with NDJSON serialisation. |
+| `packages/auth`    | Better Auth server and web client configuration. Auth tables live in `packages/db`.                                                      |
+| `packages/ui`      | Shared React components, hooks, and global styles, exported through `components/*` entry points.                                          |
+
+### Request path
+
+The web app calls a typed RPC method defined in `packages/domain`. The request
+arrives at `packages/rpc`'s handler layer, which resolves a service from
+`packages/core`, which reads or writes through `packages/db`. HTTP concerns
+(CORS, auth callbacks, the stream proxy) are the only things that live directly
+in `apps/api/src/routes`.
+
+Background work is dispatched through Postgres `LISTEN`/`NOTIFY` rather than a
+separate queue: `DatabaseListenerLive` in `apps/api/src/infra/database.ts` wakes
+the workers.
+
+## Tech stack
+
+- **Runtime / tooling:** Bun 1.3.3, Turborepo, TypeScript 7, Biome
+- **Backend:** Effect 3, `@effect/platform` HTTP, `@effect/rpc`, Drizzle ORM, Postgres 17, Redis 8
+- **Auth:** Better Auth (email/password, passkeys, OAuth account linking)
+- **Frontend:** TanStack Start, React 19, TanStack Router, `effect-atom`, Tailwind
+- **External services:** AniList GraphQL, Jikan, Resend (transactional email), Cloudflare R2 (profile media)
+- **Testing:** `bun test` for unit tests, Playwright for end-to-end
+
+## Local setup
+
+### Prerequisites
 
 - Bun 1.3.3 or newer
 - Node.js 20 or newer
-- PostgreSQL
-- Redis for the API's key-value and cache integrations
+- Docker, or a local Postgres 17 and Redis 8
 
-## Getting started
+### Steps
 
 ```bash
 bun install
 cp .env.example .env
+```
+
+Start Postgres and Redis. The repository ships a compose file for both:
+
+```bash
+bun run --cwd packages/db dev     # docker compose up: postgres:17 + redis:8
+```
+
+Apply migrations, then start everything:
+
+```bash
+bun run --cwd packages/db db:migrate
 bun dev
 ```
 
-The web app runs on port 3000. The API runs from `apps/api` and uses the environment variables documented in `.env.example`.
+The web app serves on `http://localhost:3000`, the API on `http://localhost:8080`.
+
+### Environment variables
+
+All of these are read in `apps/api/src/env.ts`; everything without a default is
+required and the API refuses to start without it. See `.env.example` for the
+full template.
+
+| Variable                                    | Notes                                                              |
+| ------------------------------------------- | ------------------------------------------------------------------ |
+| `DATABASE_URL`, `REDIS_URL`                  | Match the compose file defaults out of the box.                     |
+| `PORT`, `ENV`                                | Default to `8080` and `dev`.                                        |
+| `APP_URL`, `VITE_API_URL`, `BETTER_AUTH_URL` | Origins for CORS, the client, and auth callbacks.                   |
+| `BETTER_AUTH_SECRET`                         | Any high-entropy string. Change it outside development.             |
+| `AUTH_COOKIE_DOMAIN`                         | Leave empty on localhost.                                           |
+| `MAL_CLIENT_ID` / `MAL_CLIENT_SECRET`        | MyAnimeList OAuth app. Required for MAL sync.                       |
+| `ANILIST_CLIENT_ID` / `ANILIST_CLIENT_SECRET`| AniList OAuth app. Required for AniList sync.                       |
+| `RESEND_API_KEY`, `AUTH_EMAIL_FROM`          | Verification and password-reset email.                              |
+| `R2_*`                                       | S3-compatible bucket for profile media. Any S3-compatible endpoint works. |
+| `DISCORD_ALERT_WEBHOOK_URL`                  | Optional. Fatal startup/runtime crashes post here.                  |
 
 ## Commands
 
 ```bash
-bun dev              # Start all development tasks
+bun dev              # All development tasks
 bun build            # Build all workspaces
 bun typecheck        # Type-check all workspaces
-bun lint             # Check formatting and lint rules
-bun test             # Run unit and integration tests
-bun test:e2e         # Run Playwright end-to-end tests
-bun format           # Format the repository
+bun lint             # Biome check
+bun format           # Biome format --write
+bun test             # Unit tests
+bun test:e2e         # Playwright end-to-end tests
+bun test:providers   # Live probe of the stream source providers
 ```
 
-Database commands are available in `packages/db`:
+Database:
 
 ```bash
-bun run --cwd packages/db dev
-bun run --cwd packages/db db:generate
-bun run --cwd packages/db db:migrate
-bun run --cwd packages/db db:studio
+bun run --cwd packages/db dev          # Start Postgres + Redis via Docker
+bun run --cwd packages/db db:generate  # Generate a migration from schema changes
+bun run --cwd packages/db db:migrate   # Apply migrations
+bun run --cwd packages/db db:studio    # Drizzle Studio
 ```
 
-## Architecture
+## Tests
 
-The API composes infrastructure adapters in `apps/api`, while business behavior lives in `packages/core`. `packages/domain` contains the shared contracts consumed by both server and client. Persistent data is owned by `packages/db`; external library providers and streaming sources are integrated through core services.
+Unit tests run under Bun's test runner and need no external services:
+
+```bash
+bun test
+```
+
+End-to-end tests use Playwright and require a running API, web app, Postgres,
+and Redis. Install the browser once, then run:
+
+```bash
+bun test:e2e:install
+bun test:e2e
+```
+
+`KAISER_E2E_PASSWORD` overrides the throwaway account password used by the
+onboarding spec. `bun test:providers` hits live third-party endpoints and is
+expected to be flaky; it is not part of CI.
+
+## Screenshots
+
+<!-- TODO: add screenshots — library view, discovery, sync activity, profile. -->
+
+## License
+
+No license is currently declared. All rights reserved by the author until one is
+added.
