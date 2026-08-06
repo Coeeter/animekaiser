@@ -1,49 +1,46 @@
 # AnimeKaiser
 
-AnimeKaiser is an anime tracking application: a personal library with per-title
-status and episode progress, a discovery catalogue built on public anime
-metadata, and two-way synchronisation of that library with external tracking
-services (AniList and MyAnimeList). Playback sources are resolved by a separate
-streaming service, and watch progress is recorded against the library.
+AnimeKaiser is a self-hosted anime tracker. You get a personal library with
+watch status and episode progress, a discovery catalogue pulled from public
+anime metadata, and two-way sync with AniList and MyAnimeList. A separate
+streaming service resolves playback sources, and whatever you watch gets
+recorded back to your library.
 
-**Status:** active development. Self-hosted only — there is no hosted instance
-and no public deployment. Interfaces, database schema, and RPC contracts change
-without notice, and migrations are not guaranteed to be stable across commits.
+**Status:** actively being built, self-hosted only. No hosted instance, no
+public deployment. Things move fast here — schema, RPC contracts, whatever —
+so don't expect stability between commits yet.
 
 ## What it does
 
-**Library management.** Each user owns a library of entries keyed by MyAnimeList
-ID, carrying watch status, episode count, score, and privacy. Libraries can be
-public or private per user, with public profile pages and aggregate stats.
+**Library management.** Every entry is keyed by MyAnimeList ID and tracks
+status, episode count, score, and privacy. Libraries can be public or private,
+with profile pages and stats for the public ones.
 
-**External list synchronisation.** Users link AniList and/or MyAnimeList
-accounts over OAuth. Linking triggers a one-time import that reconciles the
-remote list into the local library; afterwards, local mutations are pushed back
-to every linked provider. Sync is event-sourced: each outbound change becomes a
-`library_sync_event` row processed by a background worker, so failures are
-visible, individually retryable, and do not block the write path. OAuth refresh
-tokens are rotated by a separate worker.
+**Syncing with AniList/MAL.** Link an account over OAuth and AnimeKaiser
+imports your existing list once, then pushes local changes back out from then
+on. Sync happens through an event log (`library_sync_event` rows worked by a
+background job), so a failed sync is visible and retryable instead of quietly
+blocking a write. Refresh tokens get rotated by their own worker.
 
-**Discovery.** Catalogue browse, search, seasonal schedule, and a random-title
-endpoint, backed by AniList's GraphQL API and Jikan (the MyAnimeList REST
-mirror), with a Redis-backed cache in front of both.
+**Discovery.** Browse, search, seasonal schedule, and a "surprise me" endpoint,
+backed by AniList's GraphQL API and Jikan (the MAL REST mirror), with Redis
+caching in front of both.
 
-**Streaming.** Source resolution and media proxying live in a separate service
-that this repository does not contain. AnimeKaiser talks to it over a typed RPC
-contract (`StreamingClient`, wired in `apps/api/src/infra/streaming.ts`) and
-stores only the stable anime-to-provider mappings it returns. The service
-reports which providers it supports at runtime, so no provider is named here.
-Set `STREAMING_SERVICE_URL` and `STREAMING_SECRET` to point at your own
-implementation; without them, streaming features report as unavailable and the
-rest of the application is unaffected.
+**Streaming.** Finding and proxying actual streams is handled by a separate
+service that isn't part of this repo. AnimeKaiser only talks to it over a
+typed RPC contract (`StreamingClient` in `apps/api/src/infra/streaming.ts`)
+and only ever stores the anime-to-provider mappings it hands back — never the
+stream data itself, and no provider is hardcoded. Bring your own
+implementation and point `STREAMING_SERVICE_URL` / `STREAMING_SECRET` at it.
+Without those set, streaming just shows as unavailable — nothing else
+breaks.
 
-The web app has a player, subtitle rendering, and server/audio-track selection.
-Watch progress from the player populates watch history and the "continue
-watching" row.
+The web app itself has a player with subtitles and server/audio-track
+selection, and watch progress feeds the history and "continue watching" row.
 
 ## Architecture
 
-Bun workspaces orchestrated by Turborepo. Two applications and six packages.
+Bun workspaces, orchestrated by Turborepo: two apps, six packages.
 
 ### Applications
 
@@ -65,15 +62,14 @@ Bun workspaces orchestrated by Turborepo. Two applications and six packages.
 
 ### Request path
 
-The web app calls a typed RPC method defined in `packages/domain`. The request
-arrives at `packages/rpc`'s handler layer, which resolves a service from
-`packages/core`, which reads or writes through `packages/db`. HTTP concerns
-(CORS, auth callbacks) are the only things that live directly in
-`apps/api/src/routes`.
+The web app calls a typed RPC method from `packages/domain`. That request hits
+`packages/rpc`'s handler layer, which resolves a service from `packages/core`,
+which reads or writes through `packages/db`. The only things living directly
+in `apps/api/src/routes` are HTTP concerns like CORS and auth callbacks.
 
-Background work is dispatched through Postgres `LISTEN`/`NOTIFY` rather than a
-separate queue: `DatabaseListenerLive` in `apps/api/src/infra/database.ts` wakes
-the workers.
+No separate queue for background work — it's dispatched through Postgres
+`LISTEN`/`NOTIFY`, with `DatabaseListenerLive` in
+`apps/api/src/infra/database.ts` waking the workers up.
 
 ## Tech stack
 
@@ -116,9 +112,8 @@ The web app serves on `http://localhost:3000`, the API on `http://localhost:8080
 
 ### Environment variables
 
-All of these are read in `apps/api/src/env.ts`; everything without a default is
-required and the API refuses to start without it. See `.env.example` for the
-full template.
+All read in `apps/api/src/env.ts`. Anything without a default is required —
+the API won't start without it. See `.env.example` for the full list.
 
 | Variable                                    | Notes                                                              |
 | ------------------------------------------- | ------------------------------------------------------------------ |
