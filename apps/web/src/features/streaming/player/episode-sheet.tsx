@@ -45,14 +45,14 @@ import {
   Search,
 } from "lucide-react"
 import { useState } from "react"
-import { AnimeTitle } from "../anime/common/anime-title"
-import { streamEpisodesAtom, streamProvidersAtom } from "./atoms"
+import { AnimeTitle } from "../../anime/common/anime-title"
+import { streamEpisodesAtom, streamProvidersAtom } from "../atoms"
 import {
   audioLabel,
   episodeLabel,
   episodeTitle,
   preferredAudio,
-} from "./player-format"
+} from "../player-format"
 
 export function EpisodeSheet({
   open,

@@ -35,7 +35,12 @@ import {
 } from "lucide-react"
 import type { ReactNode } from "react"
 import { useId, useState } from "react"
-import { audioLabel, speedOptions } from "./player-format"
+import { audioLabel, speedOptions } from "../player-format"
+import {
+  playerPreferencesAtom,
+  updatePlayerPreferencesAtom,
+} from "../preferences"
+import { SubtitleSettings } from "../subtitle-settings"
 import {
   playerCaptionAtom,
   playerQualityAtom,
@@ -43,12 +48,7 @@ import {
   playerSpeedAtom,
   playerUiAtom,
   updatePlayerUiAtom,
-} from "./player-ui-state"
-import {
-  playerPreferencesAtom,
-  updatePlayerPreferencesAtom,
-} from "./preferences"
-import { SubtitleSettings } from "./subtitle-settings"
+} from "./ui-state"
 
 export function PlayerSettingsPopover({
   portalContainer,

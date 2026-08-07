@@ -2,7 +2,7 @@ import { useIsMobile } from "@animekaiser/ui/hooks/use-mobile"
 import { Atom, useAtomSet, useAtomValue } from "@effect-atom/atom-react"
 import { useLocation, useNavigate } from "@tanstack/react-router"
 import { useEffect } from "react"
-import { type StreamPlaybackInput, StreamPlayerPage } from "./player-page"
+import { type StreamPlaybackInput, StreamPlayerPage } from "./player/page"
 
 export const playbackSessionAtom = Atom.make<StreamPlaybackInput | null>(
   null

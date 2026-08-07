@@ -1,14 +1,16 @@
 import { Atom } from "@effect-atom/atom-react"
-import type { QualityLevel } from "./player-format"
+import type { QualityLevel } from "../player-format"
 
 export type PlayerUiState = {
   settingsOpen: boolean
   episodesOpen: boolean
+  serversOpen: boolean
 }
 
 export const playerUiAtom = Atom.make<PlayerUiState>({
   settingsOpen: false,
   episodesOpen: false,
+  serversOpen: false,
 }).pipe(Atom.keepAlive)
 
 export const updatePlayerUiAtom = Atom.writable<

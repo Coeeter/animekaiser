@@ -13,14 +13,14 @@ import {
   SkipForward,
 } from "lucide-react"
 import type { ReactNode } from "react"
-import { AnimeTitle } from "../anime/common/anime-title"
+import { AnimeTitle } from "../../anime/common/anime-title"
 import {
   audioLabel,
   episodeLabel,
   episodeTitle,
   preferredAudio,
   providerLabel,
-} from "./player-format"
+} from "../player-format"
 
 export function PlayerMobilePanel({
   playback,

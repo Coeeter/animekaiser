@@ -3,12 +3,12 @@ import type Hls from "hls.js"
 import type { SyntheticEvent } from "react"
 import { useEffect, useRef, useState } from "react"
 import { toast } from "sonner"
-import { qualityLabel } from "./player-format"
+import { qualityLabel } from "../../player-format"
 import {
   playerQualityAtom,
   playerQualityLevelsAtom,
   playerSpeedAtom,
-} from "./player-ui-state"
+} from "../ui-state"
 
 export function usePlayerMedia({
   sourceUrl,

@@ -11,7 +11,7 @@ import {
 import { cn } from "@animekaiser/ui/lib/utils"
 import { Link } from "@tanstack/react-router"
 import { Check, Server } from "lucide-react"
-import { audioLabel } from "./player-format"
+import { audioLabel } from "../player-format"
 
 export function ServerSheet({
   open,
