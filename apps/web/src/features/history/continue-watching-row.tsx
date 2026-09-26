@@ -14,11 +14,8 @@ import { Play, Server } from "lucide-react"
 import { CardActions } from "../anime/common/anime-card"
 import { MediaRow } from "../anime/common/anime-scroll-row"
 import { AnimeSubtitle, AnimeTitle } from "../anime/common/anime-title"
-import {
-  audioLabel,
-  formatTime,
-  providerLabel,
-} from "../streaming/player-format"
+import { providerLabelAtom } from "../streaming/atoms"
+import { audioLabel, formatTime } from "../streaming/player-format"
 import { continueWatchingAtom } from "./atoms"
 
 const continueWatchingLimit = 12
@@ -133,6 +130,7 @@ function ContinueWatchingCard({ item }: { item: ContinueWatchingItem }) {
 }
 
 function ContinueWatchingDetails({ item }: { item: ContinueWatchingItem }) {
+  const providerName = useAtomValue(providerLabelAtom(item.provider))
   const percent = percentWatched(item)
 
   return (
@@ -148,7 +146,7 @@ function ContinueWatchingDetails({ item }: { item: ContinueWatchingItem }) {
 
       <div className="flex flex-wrap items-center gap-2 pt-0.5">
         <Badge variant="secondary">Episode {item.episode}</Badge>
-        <Badge variant="outline">{providerLabel(item.provider)}</Badge>
+        <Badge variant="outline">{providerName}</Badge>
         <Badge variant="outline">{audioLabel(item.audio)}</Badge>
         {item.serverName ? (
           <Badge variant="outline">

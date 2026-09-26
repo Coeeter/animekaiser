@@ -2,6 +2,7 @@ import type { StreamEpisode, StreamPlayback } from "@animekaiser/domain"
 import { Badge } from "@animekaiser/ui/components/badge"
 import { Button } from "@animekaiser/ui/components/button"
 import { cn } from "@animekaiser/ui/lib/utils"
+import { useAtomValue } from "@effect-atom/atom-react"
 import { Link } from "@tanstack/react-router"
 import {
   ChevronRight,
@@ -14,12 +15,12 @@ import {
 } from "lucide-react"
 import type { ReactNode } from "react"
 import { AnimeTitle } from "../../anime/common/anime-title"
+import { providerLabelAtom } from "../atoms"
 import {
   audioLabel,
   episodeLabel,
   episodeTitle,
   preferredAudio,
-  providerLabel,
 } from "../player-format"
 
 export function PlayerMobilePanel({
@@ -39,6 +40,7 @@ export function PlayerMobilePanel({
   onOpenServers: () => void
   onNavigateToEpisode: (episode: StreamEpisode | null) => void
 }) {
+  const providerName = useAtomValue(providerLabelAtom(playback.provider))
   const displayTitle = episodeTitle(playback.episode)
 
   return (
@@ -52,7 +54,7 @@ export function PlayerMobilePanel({
           {displayTitle ? ` · ${displayTitle}` : ""}
         </p>
         <div className="flex flex-wrap gap-1.5">
-          <Badge variant="secondary">{providerLabel(playback.provider)}</Badge>
+          <Badge variant="secondary">{providerName}</Badge>
           <Badge variant="outline">{audioLabel(playback.audio)}</Badge>
           <Badge variant="outline">{playback.server.name}</Badge>
         </div>
@@ -82,7 +84,7 @@ export function PlayerMobilePanel({
         <PanelRow
           icon={<ListVideo />}
           label="Episodes"
-          value={`${providerLabel(playback.provider)} · ${episodes.length || "—"}`}
+          value={`${providerName} · ${episodes.length || "—"}`}
           onClick={onOpenEpisodes}
         />
         <PanelRow

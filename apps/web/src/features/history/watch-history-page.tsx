@@ -33,7 +33,8 @@ import { DebouncedSearchInput } from "../../components/debounced-search-input"
 import { PageHero } from "../../components/page-hero"
 import { isStaleResult, useLastSuccess } from "../../hooks/use-last-success"
 import { AnimeTitle } from "../anime/common/anime-title"
-import { formatTime, providerLabel } from "../streaming/player-format"
+import { providerLabelAtom } from "../streaming/atoms"
+import { formatTime } from "../streaming/player-format"
 import {
   clearWatchHistoryEntryAtom,
   watchHistoryClearKeys,
@@ -158,6 +159,7 @@ function WatchHistoryRow({
   item: ContinueWatchingItem
   onCleared: () => void
 }) {
+  const providerName = useAtomValue(providerLabelAtom(item.provider))
   const clearEntry = useAtomSet(clearWatchHistoryEntryAtom, {
     mode: "promise",
   })
@@ -238,7 +240,7 @@ function WatchHistoryRow({
           ) : (
             <Badge variant="secondary">{percent}% watched</Badge>
           )}
-          <Badge variant="outline">{providerLabel(item.provider)}</Badge>
+          <Badge variant="outline">{providerName}</Badge>
           {item.serverName ? (
             <Badge variant="outline">
               <Server data-icon="inline-start" />

@@ -2,6 +2,7 @@ import type { StreamPlayback } from "@animekaiser/domain"
 import { Button } from "@animekaiser/ui/components/button"
 import { useIsMobile } from "@animekaiser/ui/hooks/use-mobile"
 import { cn } from "@animekaiser/ui/lib/utils"
+import { useAtomValue } from "@effect-atom/atom-react"
 import { Link } from "@tanstack/react-router"
 import {
   ArrowLeft,
@@ -16,7 +17,8 @@ import {
   VolumeX,
 } from "lucide-react"
 import { AnimeTitle } from "../../anime/common/anime-title"
-import { episodeLabel, episodeTitle, providerLabel } from "../player-format"
+import { providerLabelAtom } from "../atoms"
+import { episodeLabel, episodeTitle } from "../player-format"
 import { PlayerSettingsPopover } from "./settings-popover"
 import { PlayerTimeline } from "./timeline"
 
@@ -59,6 +61,7 @@ export function PlayerDesktopControls({
   controlsVisible: boolean
   playerPortalContainer: HTMLElement | null
 }) {
+  const providerName = useAtomValue(providerLabelAtom(playback.provider))
   const isMobile = useIsMobile()
   const mediaLoading = loading || !playing
   const displayTitle = episodeTitle(playback.episode)
@@ -105,11 +108,8 @@ export function PlayerDesktopControls({
           onClick={onOpenEpisodes}
         >
           <ListVideo />
-          <span
-            className="truncate"
-            title={`${providerLabel(playback.provider)} episodes`}
-          >
-            {providerLabel(playback.provider)} episodes
+          <span className="truncate" title={`${providerName} episodes`}>
+            {providerName} episodes
           </span>
         </Button>
         <Button

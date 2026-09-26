@@ -1,5 +1,5 @@
 import type { StreamAudio, StreamProviderId } from "@animekaiser/domain"
-import { Atom } from "@effect-atom/atom-react"
+import { Atom, Result } from "@effect-atom/atom-react"
 import * as Data from "effect/Data"
 import * as Effect from "effect/Effect"
 import { KaiserRpcClient } from "../../services/api-clients"
@@ -10,6 +10,16 @@ export const streamProvidersAtom = KaiserRpcClient.query(
   "ListStreamProviders",
   undefined,
   { timeToLive: "1 hour" }
+)
+
+export const providerLabelAtom = Atom.family((provider: StreamProviderId) =>
+  Atom.make((get) => {
+    const providers = get(streamProvidersAtom)
+    return Result.isSuccess(providers)
+      ? (providers.value.find((item) => item.id === provider)?.label ??
+          provider)
+      : provider
+  })
 )
 
 export const streamEpisodesAtom = (

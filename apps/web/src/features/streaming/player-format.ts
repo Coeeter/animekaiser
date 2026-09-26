@@ -121,7 +121,3 @@ export const qualityLabel = (
     level.bitrate > 0 ? ` (${Math.round(level.bitrate / 1000)} kbps)` : ""
   return `${resolution}${bitrate}`
 }
-
-// History rows carry only the provider id; the human-readable label is supplied
-// by the streaming service and is available on the episode catalog.
-export const providerLabel = (provider: StreamProviderId) => provider
