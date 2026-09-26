@@ -79,6 +79,7 @@ export const StreamPlayback = Schema.Struct({
   expiresAt: Schema.Int.pipe(Schema.positive()),
   intro: Schema.NullOr(StreamSkipSegment),
   outro: Schema.NullOr(StreamSkipSegment),
+  thumbnails: Schema.NullOr(Schema.String),
 })
 export type StreamPlayback = typeof StreamPlayback.Type
 

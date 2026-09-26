@@ -97,6 +97,10 @@ const RemotePlayback = Schema.Struct({
   outro: Schema.NullOr(StreamSkipSegment),
   proxiedSourceUrl: Schema.String,
   proxiedTracks: Schema.Array(StreamTrack),
+  proxiedThumbnails: Schema.optionalWith(
+    Schema.Array(Schema.Struct({ file: Schema.String })),
+    { default: () => [] }
+  ),
   proxyExpiresAt: Schema.Int,
 })
 
@@ -284,6 +288,7 @@ export const StreamingClientLive = Layer.scoped(
             servers: playback.servers,
             sourceUrl: playback.proxiedSourceUrl,
             tracks: playback.proxiedTracks,
+            thumbnails: playback.proxiedThumbnails.at(0)?.file ?? null,
             expiresAt: playback.proxyExpiresAt,
             intro: playback.intro,
             outro: playback.outro,

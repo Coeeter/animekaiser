@@ -1,7 +1,10 @@
 import type { StreamPlayback } from "@animekaiser/domain"
+import { Result, useAtomValue } from "@effect-atom/atom-react"
 import type { PointerEvent } from "react"
 import { useEffect, useState } from "react"
 import { formatTime } from "../player-format"
+import type { ThumbnailCue } from "./thumbnails"
+import { thumbnailAt, thumbnailCuesAtom } from "./thumbnails"
 
 type TimelineSegment = {
   key: string
@@ -106,6 +109,40 @@ const segmentAtTime = (
   )
 }
 
+const previewWidth = 176
+
+function ThumbnailPreview({ cue }: { cue: ThumbnailCue }) {
+  if (!cue.frame) {
+    return (
+      <img
+        src={cue.url}
+        alt=""
+        className="aspect-video rounded-lg border border-white/10 object-cover shadow-2xl"
+        style={{ width: previewWidth }}
+      />
+    )
+  }
+
+  const scale = previewWidth / cue.frame.width
+  return (
+    <div
+      className="overflow-hidden rounded-lg border border-white/10 bg-black shadow-2xl"
+      style={{ width: previewWidth, height: cue.frame.height * scale }}
+    >
+      <div
+        style={{
+          width: cue.frame.width,
+          height: cue.frame.height,
+          backgroundImage: `url("${cue.url}")`,
+          backgroundPosition: `-${cue.frame.x}px -${cue.frame.y}px`,
+          transform: `scale(${scale})`,
+          transformOrigin: "top left",
+        }}
+      />
+    </div>
+  )
+}
+
 const timelineSegmentLabel = (segment: TimelineSegment | null) => {
   if (segment?.kind === "opening") return "Opening"
   if (segment?.kind === "ending") return "Ending"
@@ -135,6 +172,12 @@ export function PlayerTimeline({
   const hoverSegment = segmentAtTime(timelineSegments, hoverTime)
   const hoverSegmentLabel = timelineSegmentLabel(hoverSegment)
   const hoverPreviewPercent = Math.min(Math.max(hoverPercent, 4), 96)
+  const thumbnailCues = Result.getOrElse(
+    useAtomValue(thumbnailCuesAtom(playback.thumbnails)),
+    (): ReadonlyArray<ThumbnailCue> => []
+  )
+  const hoverThumbnail =
+    hoverTime === null ? null : thumbnailAt(thumbnailCues, hoverTime)
 
   useEffect(() => {
     setHoverTime(null)
@@ -165,6 +208,7 @@ export function PlayerTimeline({
             className="pointer-events-none absolute bottom-8 z-20 flex -translate-x-1/2 flex-col items-center gap-1"
             style={{ left: `${hoverPreviewPercent}%` }}
           >
+            {hoverThumbnail ? <ThumbnailPreview cue={hoverThumbnail} /> : null}
             {hoverSegmentLabel ? (
               <div className="rounded-md border border-white/10 bg-black/75 px-2 py-0.5 text-[10px] font-semibold tracking-[0.14em] text-white/75 uppercase shadow-xl backdrop-blur">
                 {hoverSegmentLabel}
