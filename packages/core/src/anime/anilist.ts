@@ -50,6 +50,14 @@ const AniListNextEpisode = Schema.Struct({
   airingAt: PositiveInt,
 })
 
+const AniListMediaStatus = Schema.Literal(
+  "FINISHED",
+  "RELEASING",
+  "NOT_YET_RELEASED",
+  "CANCELLED",
+  "HIATUS"
+)
+
 const AniListMediaFormat = Schema.Literal(
   "TV",
   "TV_SHORT",
@@ -69,15 +77,7 @@ const AniListMedia = Schema.Struct({
   type: Schema.optional(Schema.NullOr(Schema.Literal("ANIME", "MANGA"))),
   title: Schema.NullOr(AniListTitle),
   format: Schema.NullOr(AniListMediaFormat),
-  status: Schema.NullOr(
-    Schema.Literal(
-      "FINISHED",
-      "RELEASING",
-      "NOT_YET_RELEASED",
-      "CANCELLED",
-      "HIATUS"
-    )
-  ),
+  status: Schema.NullOr(AniListMediaStatus),
   episodes: Schema.NullOr(PositiveInt),
   duration: Schema.NullOr(PositiveInt),
   coverImage: Schema.NullOr(AniListCover),
@@ -226,6 +226,47 @@ export const AniListScheduleResponse = Schema.Struct({
   ),
   errors: Schema.optional(Schema.Array(AniListGraphQlError)),
 })
+
+export const AniListAiringStatusResponse = Schema.Struct({
+  data: Schema.NullOr(
+    Schema.Struct({
+      Page: Schema.NullOr(
+        Schema.Struct({
+          media: Schema.NullOr(
+            Schema.Array(
+              Schema.NullOr(
+                Schema.Struct({
+                  idMal: Schema.NullOr(PositiveInt),
+                  status: Schema.NullOr(AniListMediaStatus),
+                  episodes: NullableInt,
+                  nextAiringEpisode: Schema.NullOr(AniListNextEpisode),
+                })
+              )
+            )
+          ),
+        })
+      ),
+    })
+  ),
+  errors: Schema.optional(Schema.Array(AniListGraphQlError)),
+})
+
+export type AniListAiringStatus = {
+  malId: number
+  status: typeof AniListMediaStatus.Type | null
+  episodes: number | null
+  nextAiringEpisode: { episode: number; airingAt: number } | null
+}
+
+const airingStatusQuery = `
+  query ($ids: [Int]) {
+    Page(page: 1, perPage: 50) {
+      media(idMal_in: $ids, type: ANIME) {
+        idMal status episodes nextAiringEpisode { episode airingAt }
+      }
+    }
+  }
+`
 
 const listFields = `
   id idMal type title { romaji english } format status episodes duration
@@ -615,12 +656,42 @@ export class AniListAnimeService extends Effect.Service<AniListAnimeService>()(
         }
       )
 
+      // AniList caps a page at 50 media, so callers batch MAL ids in 50s.
+      const getAiringStatus = Effect.fn("AniListAnimeService.getAiringStatus")(
+        function* (malIds: ReadonlyArray<number>) {
+          const response = yield* request(
+            AniListAiringStatusResponse,
+            airingStatusQuery,
+            { ids: malIds.slice(0, 50) }
+          )
+          if (response.errors?.length) {
+            return yield* new AniListRequestError({
+              message: response.errors[0].message,
+            })
+          }
+          return (response.data?.Page?.media ?? []).flatMap(
+            (media): Array<AniListAiringStatus> =>
+              media?.idMal
+                ? [
+                    {
+                      malId: media.idMal,
+                      status: media.status,
+                      episodes: media.episodes,
+                      nextAiringEpisode: media.nextAiringEpisode,
+                    },
+                  ]
+                : []
+          )
+        }
+      )
+
       return {
         getCatalog,
         getDiscovery,
         getDetail,
         getRecommendations,
         getSchedule,
+        getAiringStatus,
       }
     }),
   }

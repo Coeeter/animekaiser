@@ -13,6 +13,7 @@ import { RpcServerConfigLive } from "./infra/rpc"
 import { StreamingClientLive } from "./infra/streaming"
 import { AuthRoutesLive } from "./routes/auth"
 import { ExternalListAccountsRoutesLive } from "./routes/external-lists"
+import { AiringSyncWorkerLive } from "./workers/airing-sync"
 import { LibraryImportWorkerLive } from "./workers/library-import"
 import { LibrarySyncWorkerLive } from "./workers/library-sync"
 import { ExternalListTokenRefreshWorkerLive } from "./workers/token-refresh"
@@ -35,6 +36,7 @@ export const ApiLive = HttpLayerRouter.serve(RoutesLive, {
   Layer.merge(LibraryImportWorkerLive),
   Layer.merge(LibrarySyncWorkerLive),
   Layer.merge(ExternalListTokenRefreshWorkerLive),
+  Layer.merge(AiringSyncWorkerLive),
   Layer.provideMerge(ProfileMediaStorageLive),
   Layer.provideMerge(RpcServerConfigLive),
   Layer.provideMerge(ExternalListOAuthConfigLive),

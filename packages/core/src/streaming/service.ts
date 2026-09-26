@@ -10,7 +10,7 @@ import type {
 import { StreamingUnavailableError } from "@animekaiser/domain"
 import { and, eq } from "drizzle-orm"
 import * as Effect from "effect/Effect"
-import type { EpisodeArtwork } from "../anime"
+import type { EpisodeMetadata } from "../anime"
 import { AnimeService } from "../anime"
 import { StreamingClient } from "../streaming-client"
 
@@ -22,8 +22,13 @@ const withArtwork = (
   image: episode.image ?? artwork.get(episode.number) ?? null,
 })
 
-const artworkByNumber = (artwork: ReadonlyArray<EpisodeArtwork>) =>
-  new Map(artwork.map((item) => [item.number, item.image]))
+const artworkByNumber = (episodes: ReadonlyArray<EpisodeMetadata>) =>
+  new Map(
+    episodes.flatMap(
+      (item): Array<[number, string]> =>
+        item.image ? [[item.number, item.image]] : []
+    )
+  )
 
 export class StreamingService extends Effect.Service<StreamingService>()(
   "@animekaiser/core/StreamingService",
@@ -153,7 +158,7 @@ export class StreamingService extends Effect.Service<StreamingService>()(
             [
               episodesFor(anime, selected.id, selected.label),
               animeService
-                .getEpisodeArtwork(malId)
+                .getEpisodeMetadata(malId)
                 .pipe(Effect.map(artworkByNumber)),
             ],
             { concurrency: 2 }
@@ -193,7 +198,7 @@ export class StreamingService extends Effect.Service<StreamingService>()(
         )
         yield* saveMapping(malId, resolved, playback.providerAnimeId, null)
         const artwork = artworkByNumber(
-          yield* animeService.getEpisodeArtwork(malId)
+          yield* animeService.getEpisodeMetadata(malId)
         )
         return { ...playback, episode: withArtwork(playback.episode, artwork) }
       })

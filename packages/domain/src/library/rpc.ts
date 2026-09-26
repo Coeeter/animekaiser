@@ -10,6 +10,7 @@ import {
 import {
   AnimeLibraryMetadata,
   LibraryEntry,
+  LibraryNewEpisode,
   LibraryOperationError,
   LibraryPage,
   LibraryRemovalResult,
@@ -112,6 +113,11 @@ export class RetryLibrarySyncEvents extends Rpc.make("RetryLibrarySyncEvents", {
   error: LibraryOperationError,
 }) {}
 
+export class ListLibraryNewEpisodes extends Rpc.make("ListLibraryNewEpisodes", {
+  success: Schema.Array(LibraryNewEpisode),
+  error: LibraryOperationError,
+}) {}
+
 class PublicLibraryRpcs extends RpcGroup.make(GetPublicLibrary).middleware(
   OptionalAuthentication
 ) {}
@@ -125,7 +131,8 @@ class AuthenticatedLibraryRpcs extends RpcGroup.make(
   StartLibraryImport,
   WatchLibraryImport,
   ListLibrarySyncEvents,
-  RetryLibrarySyncEvents
+  RetryLibrarySyncEvents,
+  ListLibraryNewEpisodes
 ).middleware(Authentication) {}
 
 export class LibraryRpcs extends RpcGroup.make().merge(

@@ -61,7 +61,7 @@ export class WatchHistoryService extends Effect.Service<WatchHistoryService>()(
         Effect.forEach(
           items,
           (item) =>
-            animeService.getEpisodeArtwork(item.malId).pipe(
+            animeService.getEpisodeMetadata(item.malId).pipe(
               Effect.map(
                 (artwork): ContinueWatchingItem => ({
                   ...item,

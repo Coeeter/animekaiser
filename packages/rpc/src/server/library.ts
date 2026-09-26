@@ -1,4 +1,5 @@
 import {
+  AiringService,
   ExternalListAccountsService,
   LibraryImportService,
   LibraryService,
@@ -191,11 +192,21 @@ export const LibraryHandlersLive = LibraryRpcs.toLayer(
             })),
           }
         }),
+      ListLibraryNewEpisodes: () =>
+        Effect.gen(function* () {
+          const user = yield* CurrentUser
+          return yield* AiringService.listNewEpisodes(user.id).pipe(
+            Effect.catchTag("AiringServiceError", (error) =>
+              Effect.fail(new LibraryOperationError({ message: error.message }))
+            )
+          )
+        }),
     })
   })
 ).pipe(
   Layer.provide(
     Layer.mergeAll(
+      AiringService.Default,
       ExternalListAccountsService.Default,
       LibraryImportService.Default,
       LibraryService.Default,

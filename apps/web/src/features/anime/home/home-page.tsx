@@ -3,6 +3,7 @@ import { Result, useAtomRefresh, useAtomValue } from "@effect-atom/atom-react"
 import { DataError } from "../../../components/data-error"
 import { sessionAtom } from "../../auth/atoms"
 import { ContinueWatchingRow } from "../../history/continue-watching-row"
+import { NewEpisodesRows } from "../../library/new-episodes-rows"
 import { AnimeScrollRow } from "../common/anime-scroll-row"
 import { ScheduleSection } from "../schedule/schedule-section"
 import { homeAtom } from "./atoms"
@@ -32,6 +33,7 @@ export function HomePage() {
 
         <div className="mx-auto flex w-full min-w-0 max-w-7xl flex-col gap-9 px-4 md:px-6">
           {isAuthenticated ? <ContinueWatchingRow /> : null}
+          {isAuthenticated ? <NewEpisodesRows /> : null}
 
           <AnimeScrollRow
             eyebrow="Airing now"

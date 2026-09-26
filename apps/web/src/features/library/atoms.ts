@@ -7,7 +7,7 @@ import type {
   LibrarySyncStatus,
 } from "@animekaiser/domain"
 import * as Reactivity from "@effect/experimental/Reactivity"
-import { Atom } from "@effect-atom/atom-react"
+import { Atom, Result } from "@effect-atom/atom-react"
 import * as Data from "effect/Data"
 import * as Effect from "effect/Effect"
 import { KaiserRpcClient } from "../../services/api-clients"
@@ -109,3 +109,21 @@ export const watchLibraryImportAtom = (id: string) =>
   KaiserRpcClient.query("WatchLibraryImport", { id })
 
 export type { LibraryPage, LibrarySyncEventPage }
+
+export const libraryNewEpisodesAtom = KaiserRpcClient.query(
+  "ListLibraryNewEpisodes",
+  undefined,
+  { reactivityKeys: [libraryReactivityKeys.all], timeToLive: "5 minutes" }
+)
+
+export const watchingNewEpisodesAtom = Atom.make((get) =>
+  Result.map(get(libraryNewEpisodesAtom), (items) =>
+    items.filter((item) => item.status !== "planning")
+  )
+)
+
+export const planningNewEpisodesAtom = Atom.make((get) =>
+  Result.map(get(libraryNewEpisodesAtom), (items) =>
+    items.filter((item) => item.status === "planning")
+  )
+)

@@ -126,6 +126,19 @@ export const LibrarySyncRetryResult = Schema.Struct({
   queued: Schema.Array(LibrarySyncEvent),
 })
 
+export const LibraryNewEpisode = Schema.Struct({
+  anime: AnimeLibraryMetadata,
+  status: LibraryStatus,
+  progress: Schema.NonNegativeInt,
+  latestAiredEpisode: Schema.Int.pipe(Schema.positive()),
+  latestAiredAt: Schema.NullOr(Schema.DateFromString),
+  availableEpisode: Schema.NullOr(Schema.NonNegativeInt),
+  nextEpisode: Schema.NullOr(Schema.Int.pipe(Schema.positive())),
+  nextAiringAt: Schema.NullOr(Schema.DateFromString),
+  nextEpisodeImage: Schema.NullOr(Schema.String),
+})
+export type LibraryNewEpisode = typeof LibraryNewEpisode.Type
+
 export class LibraryOperationError extends Schema.TaggedError<LibraryOperationError>()(
   "LibraryOperationError",
   { message: Schema.String }

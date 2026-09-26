@@ -1,3 +1,4 @@
+export * from "./airing"
 export * from "./anime"
 export * from "./history"
 export * from "./integrations"

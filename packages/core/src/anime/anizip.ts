@@ -10,14 +10,16 @@ export class AniZipRequestError extends Schema.TaggedError<AniZipRequestError>()
   { message: Schema.String, cause: Schema.optional(Schema.Unknown) }
 ) {}
 
-export const EpisodeArtwork = Schema.Struct({
+export const EpisodeMetadata = Schema.Struct({
   number: Schema.Int.pipe(Schema.positive()),
-  image: Schema.String,
+  image: Schema.NullOr(Schema.String),
+  airedAt: Schema.NullOr(Schema.String),
 })
-export type EpisodeArtwork = typeof EpisodeArtwork.Type
+export type EpisodeMetadata = typeof EpisodeMetadata.Type
 
 const AniZipEpisode = Schema.Struct({
   image: Schema.optional(Schema.NullOr(Schema.String)),
+  airDateUtc: Schema.optional(Schema.NullOr(Schema.String)),
 })
 
 const AniZipMappings = Schema.Struct({
@@ -28,14 +30,21 @@ const AniZipMappings = Schema.Struct({
 
 // ani.zip keys regular episodes by their number within this MAL entry and
 // specials as "S<n>", which have no AnimeKaiser episode to attach to.
-export const episodeArtwork = (
+export const episodeMetadata = (
   mappings: typeof AniZipMappings.Type
-): Array<EpisodeArtwork> =>
+): Array<EpisodeMetadata> =>
   Object.entries(mappings.episodes ?? {})
     .flatMap(([key, episode]) => {
       const number = Number(key)
-      const image = episode.image?.trim()
-      return /^\d+$/.test(key) && number > 0 && image ? [{ number, image }] : []
+      return /^\d+$/.test(key) && number > 0
+        ? [
+            {
+              number,
+              image: episode.image?.trim() || null,
+              airedAt: episode.airDateUtc?.trim() || null,
+            },
+          ]
+        : []
     })
     .sort((left, right) => left.number - right.number)
 
@@ -49,7 +58,7 @@ export class AniZipService extends Effect.Service<AniZipService>()(
         HttpClient.withTracerPropagation(false)
       )
 
-      const getEpisodeArtwork = Effect.fn("AniZipService.getEpisodeArtwork")(
+      const getEpisodeMetadata = Effect.fn("AniZipService.getEpisodeMetadata")(
         function* (malId: number) {
           const mappings = yield* http
             .execute(
@@ -69,11 +78,11 @@ export class AniZipService extends Effect.Service<AniZipService>()(
                   })
               )
             )
-          return episodeArtwork(mappings)
+          return episodeMetadata(mappings)
         }
       )
 
-      return { getEpisodeArtwork }
+      return { getEpisodeMetadata }
     }),
   }
 ) {}

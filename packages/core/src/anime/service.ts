@@ -11,7 +11,7 @@ import * as Option from "effect/Option"
 import * as Schema from "effect/Schema"
 import type { AnimeCatalogRequest } from "./anilist"
 import { AniListAnimeService } from "./anilist"
-import { AniZipService, EpisodeArtwork } from "./anizip"
+import { AniZipService, EpisodeMetadata } from "./anizip"
 import { AnimeCache } from "./cache"
 import { JikanAnimeService } from "./jikan"
 
@@ -232,22 +232,23 @@ export class AnimeService extends Effect.Service<AnimeService>()(
         )
       })
 
-      // Artwork is decoration: callers get an empty list instead of an error.
-      const getEpisodeArtwork = Effect.fn("AnimeService.getEpisodeArtwork")(
+      // Episode metadata only decorates or cross-checks other sources, so
+      // callers get an empty list instead of an error.
+      const getEpisodeMetadata = Effect.fn("AnimeService.getEpisodeMetadata")(
         function* (malId: number) {
           return yield* cached(
-            `anime:episode-artwork:v1:${malId}`,
-            Schema.Array(EpisodeArtwork),
+            `anime:episode-metadata:v1:${malId}`,
+            Schema.Array(EpisodeMetadata),
             24 * 60 * 60,
-            aniZip.getEpisodeArtwork(malId)
+            aniZip.getEpisodeMetadata(malId)
           ).pipe(
             Effect.tapError((error) =>
-              Effect.logWarning("Episode artwork is unavailable", {
+              Effect.logWarning("Episode metadata is unavailable", {
                 malId,
                 message: error.message,
               })
             ),
-            Effect.orElseSucceed((): ReadonlyArray<EpisodeArtwork> => [])
+            Effect.orElseSucceed((): ReadonlyArray<EpisodeMetadata> => [])
           )
         }
       )
@@ -272,7 +273,7 @@ export class AnimeService extends Effect.Service<AnimeService>()(
         getDetail,
         getRecommendations,
         getSchedule,
-        getEpisodeArtwork,
+        getEpisodeMetadata,
         getRandom,
       }
     }),

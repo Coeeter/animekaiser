@@ -1,7 +1,7 @@
 import { expect, test } from "bun:test"
 import * as Schema from "effect/Schema"
 import { AniListPageResponse } from "./anilist"
-import { episodeArtwork } from "./anizip"
+import { episodeMetadata } from "./anizip"
 import { JikanListResponse } from "./jikan"
 
 test("decodes the AniList catalog fields consumed by normalization", () => {
@@ -80,18 +80,26 @@ test("decodes nullable Jikan fields without an opaque payload", () => {
   expect(response.data[0]?.mal_id).toBe(1)
 })
 
-test("keeps ani.zip stills for numbered episodes and drops specials", () => {
+test("keeps ani.zip numbered episodes and drops specials", () => {
   expect(
-    episodeArtwork({
+    episodeMetadata({
       episodes: {
         "2": { image: "https://artworks.thetvdb.com/2.jpg" },
-        "1": { image: "https://artworks.thetvdb.com/1.jpg" },
-        "3": { image: null },
+        "1": {
+          image: "https://artworks.thetvdb.com/1.jpg",
+          airDateUtc: "2023-09-29T14:00:00Z",
+        },
+        "3": { image: null, airDateUtc: null },
         S1: { image: "https://artworks.thetvdb.com/s1.jpg" },
       },
     })
   ).toEqual([
-    { number: 1, image: "https://artworks.thetvdb.com/1.jpg" },
-    { number: 2, image: "https://artworks.thetvdb.com/2.jpg" },
+    {
+      number: 1,
+      image: "https://artworks.thetvdb.com/1.jpg",
+      airedAt: "2023-09-29T14:00:00Z",
+    },
+    { number: 2, image: "https://artworks.thetvdb.com/2.jpg", airedAt: null },
+    { number: 3, image: null, airedAt: null },
   ])
 })
