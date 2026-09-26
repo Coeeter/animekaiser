@@ -24,6 +24,7 @@ export type WatchHistoryEntry = typeof WatchHistoryEntry.Type
 export const ContinueWatchingItem = Schema.Struct({
   ...WatchHistoryEntry.fields,
   anime: AnimeLibraryMetadata,
+  episodeImage: Schema.NullOr(Schema.String),
 })
 export type ContinueWatchingItem = typeof ContinueWatchingItem.Type
 

@@ -189,10 +189,11 @@ function WatchHistoryRow({
         search={{ audio: item.audio, serverId: item.serverId ?? undefined }}
         className="group relative aspect-video w-28 shrink-0 overflow-hidden rounded-xl bg-muted sm:w-36"
       >
-        {item.anime.coverImage ? (
+        {item.episodeImage || item.anime.coverImage ? (
           <img
-            src={item.anime.coverImage}
+            src={item.episodeImage ?? item.anime.coverImage ?? undefined}
             alt=""
+            referrerPolicy="no-referrer"
             className="size-full object-cover object-center"
             loading="lazy"
             decoding="async"

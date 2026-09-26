@@ -47,6 +47,7 @@ import {
 import { useState } from "react"
 import { AnimeTitle } from "../../anime/common/anime-title"
 import { streamEpisodesAtom, streamProvidersAtom } from "../atoms"
+import { EpisodeThumbnail } from "../episode-thumbnail"
 import {
   audioLabel,
   episodeLabel,
@@ -323,14 +324,23 @@ function EpisodeSheetRow({
   const title = episodeTitle(episode)
   const content = (
     <>
-      <div
-        className={cn(
-          "grid size-11 shrink-0 place-items-center rounded-2xl border bg-muted text-sm font-semibold tabular-nums",
-          isCurrent && "border-primary bg-primary text-primary-foreground"
-        )}
-      >
-        {episode.number}
-      </div>
+      {episode.image ? (
+        <EpisodeThumbnail
+          image={episode.image}
+          number={episode.number}
+          highlighted={isCurrent}
+          className="w-24"
+        />
+      ) : (
+        <div
+          className={cn(
+            "grid size-11 shrink-0 place-items-center rounded-2xl border bg-muted text-sm font-semibold tabular-nums",
+            isCurrent && "border-primary bg-primary text-primary-foreground"
+          )}
+        >
+          {episode.number}
+        </div>
+      )}
       <div className="min-w-0 flex-1">
         <div className="flex min-w-0 flex-wrap items-center gap-2">
           <span

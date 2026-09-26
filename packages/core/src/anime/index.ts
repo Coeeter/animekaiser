@@ -1,4 +1,5 @@
 export * from "./anilist"
+export * from "./anizip"
 export * from "./cache"
 export * from "./jikan"
 export * from "./service"

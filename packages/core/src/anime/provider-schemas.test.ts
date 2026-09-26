@@ -1,6 +1,7 @@
 import { expect, test } from "bun:test"
 import * as Schema from "effect/Schema"
 import { AniListPageResponse } from "./anilist"
+import { episodeArtwork } from "./anizip"
 import { JikanListResponse } from "./jikan"
 
 test("decodes the AniList catalog fields consumed by normalization", () => {
@@ -77,4 +78,20 @@ test("decodes nullable Jikan fields without an opaque payload", () => {
     pagination: { has_next_page: false },
   })
   expect(response.data[0]?.mal_id).toBe(1)
+})
+
+test("keeps ani.zip stills for numbered episodes and drops specials", () => {
+  expect(
+    episodeArtwork({
+      episodes: {
+        "2": { image: "https://artworks.thetvdb.com/2.jpg" },
+        "1": { image: "https://artworks.thetvdb.com/1.jpg" },
+        "3": { image: null },
+        S1: { image: "https://artworks.thetvdb.com/s1.jpg" },
+      },
+    })
+  ).toEqual([
+    { number: 1, image: "https://artworks.thetvdb.com/1.jpg" },
+    { number: 2, image: "https://artworks.thetvdb.com/2.jpg" },
+  ])
 })

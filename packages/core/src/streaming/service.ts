@@ -2,6 +2,7 @@ import { animeStreamProviderMapping, Database } from "@animekaiser/db"
 import type {
   AnimeDetail,
   StreamAudio,
+  StreamEpisode,
   StreamEpisodeCatalog,
   StreamProviderEpisodes,
   StreamProviderId,
@@ -9,8 +10,20 @@ import type {
 import { StreamingUnavailableError } from "@animekaiser/domain"
 import { and, eq } from "drizzle-orm"
 import * as Effect from "effect/Effect"
+import type { EpisodeArtwork } from "../anime"
 import { AnimeService } from "../anime"
 import { StreamingClient } from "../streaming-client"
+
+const withArtwork = (
+  episode: StreamEpisode,
+  artwork: ReadonlyMap<number, string>
+): StreamEpisode => ({
+  ...episode,
+  image: episode.image ?? artwork.get(episode.number) ?? null,
+})
+
+const artworkByNumber = (artwork: ReadonlyArray<EpisodeArtwork>) =>
+  new Map(artwork.map((item) => [item.number, item.image]))
 
 export class StreamingService extends Effect.Service<StreamingService>()(
   "@animekaiser/core/StreamingService",
@@ -136,15 +149,26 @@ export class StreamingService extends Effect.Service<StreamingService>()(
             } satisfies StreamEpisodeCatalog
           }
 
-          const episodes = yield* episodesFor(
-            anime,
-            selected.id,
-            selected.label
+          const [episodes, artwork] = yield* Effect.all(
+            [
+              episodesFor(anime, selected.id, selected.label),
+              animeService
+                .getEpisodeArtwork(malId)
+                .pipe(Effect.map(artworkByNumber)),
+            ],
+            { concurrency: 2 }
           )
 
           return {
             anime,
-            providers: [episodes],
+            providers: [
+              {
+                ...episodes,
+                episodes: episodes.episodes.map((episode) =>
+                  withArtwork(episode, artwork)
+                ),
+              },
+            ],
           } satisfies StreamEpisodeCatalog
         }
       )
@@ -168,7 +192,10 @@ export class StreamingService extends Effect.Service<StreamingService>()(
           known
         )
         yield* saveMapping(malId, resolved, playback.providerAnimeId, null)
-        return playback
+        const artwork = artworkByNumber(
+          yield* animeService.getEpisodeArtwork(malId)
+        )
+        return { ...playback, episode: withArtwork(playback.episode, artwork) }
       })
 
       return {

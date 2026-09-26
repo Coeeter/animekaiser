@@ -9,6 +9,7 @@ import type {
 import { and, desc, eq, sql } from "drizzle-orm"
 import * as Effect from "effect/Effect"
 import * as Schema from "effect/Schema"
+import { AnimeService } from "../anime"
 
 export class WatchHistoryServiceError extends Schema.TaggedError<WatchHistoryServiceError>()(
   "WatchHistoryServiceError",
@@ -49,8 +50,29 @@ export class WatchHistoryService extends Effect.Service<WatchHistoryService>()(
   "@animekaiser/core/WatchHistoryService",
   {
     accessors: true,
+    dependencies: [AnimeService.Default],
     effect: Effect.gen(function* () {
       const database = yield* Database
+      const animeService = yield* AnimeService
+
+      const withEpisodeImages = (
+        items: ReadonlyArray<Omit<ContinueWatchingItem, "episodeImage">>
+      ) =>
+        Effect.forEach(
+          items,
+          (item) =>
+            animeService.getEpisodeArtwork(item.malId).pipe(
+              Effect.map(
+                (artwork): ContinueWatchingItem => ({
+                  ...item,
+                  episodeImage:
+                    artwork.find((entry) => entry.number === item.episode)
+                      ?.image ?? null,
+                })
+              )
+            ),
+          { concurrency: 4 }
+        )
 
       const record = Effect.fn("WatchHistoryService.record")(function* (
         userId: string,
@@ -242,21 +264,20 @@ export class WatchHistoryService extends Effect.Service<WatchHistoryService>()(
             )
           )
 
-        return rows.map(
-          (row) =>
-            ({
-              ...toEntry(row.history),
-              anime: {
-                malId: row.anime.malId,
-                aniListId: row.anime.aniListId,
-                title: {
-                  romaji: row.anime.titleRomaji,
-                  english: row.anime.titleEnglish,
-                },
-                coverImage: row.anime.coverImage,
-                episodes: row.anime.episodes,
+        return yield* withEpisodeImages(
+          rows.map((row) => ({
+            ...toEntry(row.history),
+            anime: {
+              malId: row.anime.malId,
+              aniListId: row.anime.aniListId,
+              title: {
+                romaji: row.anime.titleRomaji,
+                english: row.anime.titleEnglish,
               },
-            }) satisfies ContinueWatchingItem
+              coverImage: row.anime.coverImage,
+              episodes: row.anime.episodes,
+            },
+          }))
         )
       })
 
@@ -299,21 +320,20 @@ export class WatchHistoryService extends Effect.Service<WatchHistoryService>()(
           const hasNextPage = rows.length > perPage
 
           return {
-            items: rows.slice(0, perPage).map(
-              (row) =>
-                ({
-                  ...toEntry(row.history),
-                  anime: {
-                    malId: row.anime.malId,
-                    aniListId: row.anime.aniListId,
-                    title: {
-                      romaji: row.anime.titleRomaji,
-                      english: row.anime.titleEnglish,
-                    },
-                    coverImage: row.anime.coverImage,
-                    episodes: row.anime.episodes,
+            items: yield* withEpisodeImages(
+              rows.slice(0, perPage).map((row) => ({
+                ...toEntry(row.history),
+                anime: {
+                  malId: row.anime.malId,
+                  aniListId: row.anime.aniListId,
+                  title: {
+                    romaji: row.anime.titleRomaji,
+                    english: row.anime.titleEnglish,
                   },
-                }) satisfies ContinueWatchingItem
+                  coverImage: row.anime.coverImage,
+                  episodes: row.anime.episodes,
+                },
+              }))
             ),
             hasNextPage,
           }

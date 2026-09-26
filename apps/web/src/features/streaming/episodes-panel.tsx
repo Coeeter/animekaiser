@@ -53,6 +53,7 @@ import { DataError } from "../../components/data-error"
 import { episodeProgressAtom } from "../history/atoms"
 import type { EpisodeProgress } from "../history/episode-progress"
 import { streamEpisodesAtom, streamProvidersAtom } from "./atoms"
+import { EpisodeThumbnail } from "./episode-thumbnail"
 
 const decodeProviderId = Schema.decodeUnknownSync(StreamProviderId)
 
@@ -428,15 +429,26 @@ function EpisodeRow({
   const content = (
     <>
       <div className="flex min-w-0 flex-1 items-center gap-4">
-        <div
-          className={cn(
-            "grid size-12 shrink-0 place-items-center rounded-2xl border bg-muted text-sm font-semibold tabular-nums",
-            highlighted && "border-primary bg-primary text-primary-foreground",
-            watched && !highlighted && "text-muted-foreground"
-          )}
-        >
-          {episode.number}
-        </div>
+        {episode.image ? (
+          <EpisodeThumbnail
+            image={episode.image}
+            number={episode.number}
+            progress={showProgress ? progress : undefined}
+            highlighted={highlighted}
+            className="w-28 sm:w-40"
+          />
+        ) : (
+          <div
+            className={cn(
+              "grid size-12 shrink-0 place-items-center rounded-2xl border bg-muted text-sm font-semibold tabular-nums",
+              highlighted &&
+                "border-primary bg-primary text-primary-foreground",
+              watched && !highlighted && "text-muted-foreground"
+            )}
+          >
+            {episode.number}
+          </div>
+        )}
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
             <p className="truncate text-sm font-medium">
@@ -468,7 +480,7 @@ function EpisodeRow({
               </Badge>
             ))}
           </div>
-          {showProgress ? (
+          {showProgress && !episode.image ? (
             <div className="mt-3 h-1 overflow-hidden rounded-full bg-muted">
               <div
                 className="h-full rounded-full bg-primary"

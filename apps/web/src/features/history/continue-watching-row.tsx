@@ -94,10 +94,11 @@ function ContinueWatchingCard({ item }: { item: ContinueWatchingItem }) {
       className="group flex min-w-0 flex-col gap-2 rounded-2xl outline-none focus-visible:ring-2 focus-visible:ring-ring/60"
     >
       <div className="relative aspect-video overflow-hidden rounded-2xl bg-muted ring-1 ring-white/10 transition group-hover:ring-primary/50">
-        {item.anime.coverImage ? (
+        {item.episodeImage || item.anime.coverImage ? (
           <img
-            src={item.anime.coverImage}
+            src={item.episodeImage ?? item.anime.coverImage ?? undefined}
             alt=""
+            referrerPolicy="no-referrer"
             className="size-full object-cover object-center transition duration-500 group-hover:scale-105"
             loading="lazy"
             decoding="async"

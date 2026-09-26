@@ -50,6 +50,9 @@ const StreamEpisode = Schema.Struct({
   japaneseTitle: Schema.NullOr(Schema.String),
   availableAudio: Schema.Array(StreamAudio),
   updatedAt: Schema.NullOr(Schema.String),
+  image: Schema.optionalWith(Schema.NullOr(Schema.String), {
+    default: () => null,
+  }),
 })
 
 const StreamTrack = Schema.Struct({

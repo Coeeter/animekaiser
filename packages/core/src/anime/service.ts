@@ -11,6 +11,7 @@ import * as Option from "effect/Option"
 import * as Schema from "effect/Schema"
 import type { AnimeCatalogRequest } from "./anilist"
 import { AniListAnimeService } from "./anilist"
+import { AniZipService, EpisodeArtwork } from "./anizip"
 import { AnimeCache } from "./cache"
 import { JikanAnimeService } from "./jikan"
 
@@ -24,6 +25,7 @@ export class AnimeService extends Effect.Service<AnimeService>()(
     accessors: true,
     dependencies: [
       AniListAnimeService.Default,
+      AniZipService.Default,
       AnimeCache.Default,
       JikanAnimeService.Default,
     ],
@@ -31,6 +33,7 @@ export class AnimeService extends Effect.Service<AnimeService>()(
       const cache = yield* AnimeCache
       const aniList = yield* AniListAnimeService
       const jikan = yield* JikanAnimeService
+      const aniZip = yield* AniZipService
 
       const cached = <TValue, TEncoded, TError, TRequirements>(
         key: string,
@@ -229,6 +232,26 @@ export class AnimeService extends Effect.Service<AnimeService>()(
         )
       })
 
+      // Artwork is decoration: callers get an empty list instead of an error.
+      const getEpisodeArtwork = Effect.fn("AnimeService.getEpisodeArtwork")(
+        function* (malId: number) {
+          return yield* cached(
+            `anime:episode-artwork:v1:${malId}`,
+            Schema.Array(EpisodeArtwork),
+            24 * 60 * 60,
+            aniZip.getEpisodeArtwork(malId)
+          ).pipe(
+            Effect.tapError((error) =>
+              Effect.logWarning("Episode artwork is unavailable", {
+                malId,
+                message: error.message,
+              })
+            ),
+            Effect.orElseSucceed((): ReadonlyArray<EpisodeArtwork> => [])
+          )
+        }
+      )
+
       const getRandom = Effect.fn("AnimeService.getRandom")(function* () {
         const page = yield* getDiscovery("popular", 1, 50)
         const item = page.items.at(
@@ -249,6 +272,7 @@ export class AnimeService extends Effect.Service<AnimeService>()(
         getDetail,
         getRecommendations,
         getSchedule,
+        getEpisodeArtwork,
         getRandom,
       }
     }),
