@@ -98,11 +98,23 @@ export const LibraryHandlersLive = LibraryRpcs.toLayer(
               Effect.fail(new LibraryOperationError({ message: error.message }))
             )
           )
-          return yield* entry
-            ? Effect.succeed(entry)
-            : new LibraryOperationError({
-                message: "Library entry was not saved.",
-              })
+          if (!entry) {
+            return yield* new LibraryOperationError({
+              message: "Library entry was not saved.",
+            })
+          }
+          if (["watching", "rewatching", "planning"].includes(status)) {
+            yield* AiringService.trackAnime(anime.malId).pipe(
+              Effect.catchAll((error) =>
+                Effect.logWarning("Airing tracking failed", {
+                  malId: anime.malId,
+                  message: error.message,
+                })
+              ),
+              Effect.forkDaemon
+            )
+          }
+          return entry
         }),
       RemoveLibraryEntry: ({ malId, providers }) =>
         Effect.gen(function* () {

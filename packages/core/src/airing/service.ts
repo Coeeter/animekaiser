@@ -137,7 +137,7 @@ export class AiringService extends Effect.Service<AiringService>()(
           )
 
       const syncAiredEpisodes = Effect.fn("AiringService.syncAiredEpisodes")(
-        function* (now: Date) {
+        function* (now: Date, only?: ReadonlyArray<number>) {
           const tracked = yield* query("Unable to load tracked anime.", (db) =>
             db
               .selectDistinct({
@@ -149,7 +149,12 @@ export class AiringService extends Effect.Service<AiringService>()(
                 animeMetadata,
                 eq(animeMetadata.malId, userLibraryEntry.malId)
               )
-              .where(inArray(userLibraryEntry.status, trackedStatuses))
+              .where(
+                and(
+                  inArray(userLibraryEntry.status, trackedStatuses),
+                  only ? inArray(userLibraryEntry.malId, only) : undefined
+                )
+              )
           )
           if (tracked.length === 0) return 0
 
@@ -256,7 +261,7 @@ export class AiringService extends Effect.Service<AiringService>()(
 
       const syncProviderAvailability = Effect.fn(
         "AiringService.syncProviderAvailability"
-      )(function* (now: Date) {
+      )(function* (now: Date, only?: ReadonlyArray<number>) {
         const candidates = yield* query(
           "Unable to load availability candidates.",
           (db) =>
@@ -268,6 +273,7 @@ export class AiringService extends Effect.Service<AiringService>()(
               .from(animeAiringState)
               .where(
                 and(
+                  only ? inArray(animeAiringState.malId, only) : undefined,
                   gt(
                     animeAiringState.latestAiredEpisode,
                     sql`coalesce(${animeAiringState.availableEpisode}, 0)`
@@ -424,7 +430,25 @@ export class AiringService extends Effect.Service<AiringService>()(
         }
       )
 
-      return { sync, listNewEpisodes }
+      // New library entries would otherwise wait for the hourly sync before
+      // showing up in continue watching.
+      const trackAnime = Effect.fn("AiringService.trackAnime")(function* (
+        malId: number
+      ) {
+        const known = yield* query("Unable to load airing state.", (db) =>
+          db
+            .select({ malId: animeAiringState.malId })
+            .from(animeAiringState)
+            .where(eq(animeAiringState.malId, malId))
+            .limit(1)
+        )
+        if (known.length > 0) return
+        const now = new Date()
+        yield* syncAiredEpisodes(now, [malId])
+        yield* syncProviderAvailability(now, [malId])
+      })
+
+      return { sync, trackAnime, listNewEpisodes }
     }),
   }
 ) {}
