@@ -22,9 +22,18 @@ on. Sync happens through an event log (`library_sync_event` rows worked by a
 background job), so a failed sync is visible and retryable instead of quietly
 blocking a write. Refresh tokens get rotated by their own worker.
 
-**Discovery.** Browse, search, seasonal schedule, and a "surprise me" endpoint,
-backed by AniList's GraphQL API and Jikan (the MAL REST mirror), with Redis
-caching in front of both.
+**Discovery.** Browse, search, a weekly airing schedule, a latest-episodes feed,
+and a "surprise me" endpoint. It's backed by AniList's GraphQL API and Jikan
+(the MAL REST mirror), with Redis caching in front of both.
+[ani.zip](https://api.ani.zip) adds per-episode titles, synopses, stills and air
+dates, plus series logo art for the home hero.
+
+**Airing tracking.** An hourly worker asks AniList for the airing status of
+every show someone is watching or planning, then checks the providers to see
+whether the new episode is actually streamable. The worker is backed by the
+`anime_airing_state` table. A show you add to your list starts being tracked
+right away. That drives the "up next" cards in continue watching and the
+plan-to-watch row for airing shows.
 
 **Streaming.** Finding and proxying actual streams is handled by a separate
 service that isn't part of this repo. AnimeKaiser only talks to it over a
@@ -35,8 +44,13 @@ implementation and point `STREAMING_SERVICE_URL` / `STREAMING_SECRET` at it.
 Without those set, streaming just shows as unavailable — nothing else
 breaks.
 
-The web app itself has a player with subtitles and server/audio-track
-selection, and watch progress feeds the history and "continue watching" row.
+The web app has a player with subtitles, server and audio selection, seek
+thumbnails, skip intro/outro, and a theater mode that keeps the episode list
+beside the video. Watch progress feeds a history grouped by show and the
+"continue watching" row. Playback settings cover default audio, preferred
+provider, subtitle language, spoiler blur for unwatched episodes, and
+landscape-on-fullscreen for phones. ⌘K opens a command palette for search,
+pages and quick actions like switching between English and romaji titles.
 
 ## Architecture
 
