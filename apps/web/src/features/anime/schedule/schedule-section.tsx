@@ -7,7 +7,7 @@ import { Link } from "@tanstack/react-router"
 import { Clock3 } from "lucide-react"
 import { useState } from "react"
 import { DataError } from "../../../components/data-error"
-import { AnimeSubtitle, AnimeTitle } from "../common/anime-title"
+import { AnimeTitle } from "../common/anime-title"
 import { formatAnimeMeta } from "../common/format"
 import { scheduleAtom } from "./atoms"
 import { NextEpisodeCountdown } from "./next-episode-countdown"
@@ -42,23 +42,25 @@ const isAired = (anime: AnimeItem) =>
     ? anime.nextAiringEpisode.airingAt * 1000 <= Date.now()
     : false
 
-export function ScheduleSection() {
+export function ScheduleSection({ heading = true }: { heading?: boolean }) {
   const week = getCurrentWeek()
   const [day, setDay] = useState<AnimeScheduleDay>(() => getTodayScheduleDay())
   const today = getTodayScheduleDay()
 
   return (
     <section className="flex min-w-0 flex-col gap-3">
-      <div className="flex items-end justify-between gap-4">
-        <div className="min-w-0">
-          <p className="mb-1 text-[11px] font-semibold tracking-[0.16em] text-primary uppercase">
-            Airing this week
-          </p>
-          <h2 className="font-heading text-lg font-bold tracking-tight md:text-xl">
-            Schedule
-          </h2>
+      {heading ? (
+        <div className="flex items-end justify-between gap-4">
+          <div className="min-w-0">
+            <p className="mb-1 text-[11px] font-semibold tracking-[0.16em] text-primary uppercase">
+              Airing this week
+            </p>
+            <h2 className="font-heading text-lg font-bold tracking-tight md:text-xl">
+              Schedule
+            </h2>
+          </div>
         </div>
-      </div>
+      ) : null}
 
       <div className="no-scrollbar flex gap-1 overflow-x-auto rounded-2xl border bg-card p-1">
         {week.map((item) => {
@@ -124,16 +126,19 @@ function ScheduleList({ items }: { items: ReadonlyArray<AnimeItem> }) {
   }
 
   return (
-    <div className="divide-y rounded-2xl border bg-card/80">
+    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
       {items.map((anime) => (
         <Link
           key={anime.malId}
           to="/series/$id"
           params={{ id: anime.malId }}
           preload="intent"
-          className="group flex items-center gap-3 p-3 transition hover:bg-accent"
+          className={cn(
+            "group flex gap-3 rounded-2xl border bg-card/80 p-3 transition hover:border-primary/40 hover:bg-accent/40",
+            isAired(anime) && "opacity-75"
+          )}
         >
-          <div className="w-12 shrink-0 overflow-hidden rounded-lg">
+          <div className="w-16 shrink-0 overflow-hidden rounded-lg">
             {anime.coverImage ? (
               <img
                 src={anime.coverImage}
@@ -147,41 +152,41 @@ function ScheduleList({ items }: { items: ReadonlyArray<AnimeItem> }) {
             )}
           </div>
 
-          <div className="flex min-w-0 flex-1 flex-col gap-1">
-            <h3 className="line-clamp-1 text-sm font-medium group-hover:text-primary">
+          <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+            <div className="flex flex-wrap items-center gap-1.5 text-xs">
+              <span className="inline-flex items-center gap-1 font-semibold tabular-nums">
+                <Clock3 className="size-3.5 text-muted-foreground" />
+                {airingTime(anime)}
+              </span>
+              {anime.nextAiringEpisode ? (
+                <Badge
+                  variant={isAired(anime) ? "outline" : "secondary"}
+                  className="text-[11px] tabular-nums"
+                >
+                  {isAired(anime) ? (
+                    `Ep ${anime.nextAiringEpisode.episode} · Aired`
+                  ) : (
+                    <>
+                      Ep {anime.nextAiringEpisode.episode} ·{" "}
+                      <NextEpisodeCountdown
+                        airingAt={anime.nextAiringEpisode.airingAt}
+                      />
+                    </>
+                  )}
+                </Badge>
+              ) : null}
+            </div>
+            <h3 className="line-clamp-2 text-sm leading-snug font-medium group-hover:text-primary">
               <AnimeTitle title={anime.title} />
             </h3>
-            <AnimeSubtitle title={anime.title}>
-              {(subtitle) => (
-                <p className="line-clamp-1 text-xs text-muted-foreground">
-                  {subtitle}
-                </p>
-              )}
-            </AnimeSubtitle>
-            <p className="text-xs text-muted-foreground">
-              {formatAnimeMeta(anime.format, anime.status, anime.episodes)}
+            <p className="mt-auto truncate text-xs text-muted-foreground">
+              {[
+                formatAnimeMeta(anime.format, anime.status, anime.episodes),
+                anime.genres.slice(0, 2).join(" · "),
+              ]
+                .filter(Boolean)
+                .join(" · ")}
             </p>
-          </div>
-
-          <div className="hidden shrink-0 items-center gap-1.5 sm:flex">
-            <Badge variant="outline" className="gap-1 text-xs">
-              <Clock3 className="size-3" />
-              {airingTime(anime)}
-            </Badge>
-            {anime.nextAiringEpisode ? (
-              <Badge variant="secondary" className="text-xs">
-                {isAired(anime) ? (
-                  `Ep ${anime.nextAiringEpisode.episode} · Aired`
-                ) : (
-                  <>
-                    Ep {anime.nextAiringEpisode.episode}:{" "}
-                    <NextEpisodeCountdown
-                      airingAt={anime.nextAiringEpisode.airingAt}
-                    />
-                  </>
-                )}
-              </Badge>
-            ) : null}
           </div>
         </Link>
       ))}

@@ -5,7 +5,7 @@ import { sessionAtom } from "../../auth/atoms"
 import { ContinueWatchingRow } from "../../history/continue-watching-row"
 import { PlanToWatchAiringRow } from "../../library/new-episodes-rows"
 import { AnimeScrollRow } from "../common/anime-scroll-row"
-import { ScheduleSection } from "../schedule/schedule-section"
+import { AiringTodayRow } from "../schedule/airing-today"
 import { homeAtom } from "./atoms"
 import { HeroCarousel } from "./hero-carousel"
 
@@ -34,6 +34,7 @@ export function HomePage() {
         <div className="mx-auto flex w-full min-w-0 max-w-7xl flex-col gap-9 px-4 md:px-6">
           {isAuthenticated ? <ContinueWatchingRow /> : null}
           {isAuthenticated ? <PlanToWatchAiringRow /> : null}
+          <AiringTodayRow />
 
           <AnimeScrollRow
             eyebrow="Airing now"
@@ -45,7 +46,7 @@ export function HomePage() {
           <AnimeScrollRow
             eyebrow="Highest rated"
             title="Top anime"
-            items={data.trending}
+            items={data.topRated}
             more={{ to: "/discover", search: { tab: "topRated", page: 1 } }}
           />
 
@@ -55,8 +56,6 @@ export function HomePage() {
             items={data.popular}
             more={{ to: "/discover", search: { tab: "popular", page: 1 } }}
           />
-
-          <ScheduleSection />
         </div>
       </div>
     ))
@@ -67,7 +66,7 @@ export function HomePendingPage() {
   return (
     <div className="flex w-full flex-col gap-9 pb-10">
       <div className="mx-auto w-full max-w-7xl px-3 pt-3 md:px-6 md:pt-6">
-        <Skeleton className="aspect-4/5 w-full rounded-3xl sm:aspect-2/1 md:aspect-[2.6/1]" />
+        <Skeleton className="aspect-4/3 w-full rounded-3xl sm:aspect-2/1 md:aspect-[2.6/1]" />
       </div>
 
       <div className="mx-auto flex w-full max-w-7xl flex-col gap-9 px-4 md:px-6">

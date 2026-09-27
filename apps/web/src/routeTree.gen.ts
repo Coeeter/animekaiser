@@ -16,6 +16,7 @@ import { Route as LatestEpisodesRouteImport } from './routes/latest-episodes'
 import { Route as MyListRouteImport } from './routes/my-list'
 import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as RandomRouteImport } from './routes/random'
+import { Route as ScheduleRouteImport } from './routes/schedule'
 import { Route as SeriesRouteImport } from './routes/series'
 import { Route as SyncActivityRouteImport } from './routes/sync-activity'
 import { Route as WatchHistoryRouteImport } from './routes/watch-history'
@@ -62,6 +63,11 @@ const ProfileRoute = ProfileRouteImport.update({
 const RandomRoute = RandomRouteImport.update({
   id: '/random',
   path: '/random',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ScheduleRoute = ScheduleRouteImport.update({
+  id: '/schedule',
+  path: '/schedule',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SeriesRoute = SeriesRouteImport.update({
@@ -138,6 +144,7 @@ export interface FileRoutesByFullPath {
   '/my-list': typeof MyListRoute
   '/profile': typeof ProfileRoute
   '/random': typeof RandomRoute
+  '/schedule': typeof ScheduleRoute
   '/series': typeof SeriesRouteWithChildren
   '/sync-activity': typeof SyncActivityRoute
   '/watch-history': typeof WatchHistoryRoute
@@ -159,6 +166,7 @@ export interface FileRoutesByTo {
   '/my-list': typeof MyListRoute
   '/profile': typeof ProfileRoute
   '/random': typeof RandomRoute
+  '/schedule': typeof ScheduleRoute
   '/sync-activity': typeof SyncActivityRoute
   '/watch-history': typeof WatchHistoryRoute
   '/welcome': typeof WelcomeRoute
@@ -181,6 +189,7 @@ export interface FileRoutesById {
   '/my-list': typeof MyListRoute
   '/profile': typeof ProfileRoute
   '/random': typeof RandomRoute
+  '/schedule': typeof ScheduleRoute
   '/series': typeof SeriesRouteWithChildren
   '/sync-activity': typeof SyncActivityRoute
   '/watch-history': typeof WatchHistoryRoute
@@ -204,6 +213,7 @@ export interface FileRouteTypes {
     | '/my-list'
     | '/profile'
     | '/random'
+    | '/schedule'
     | '/series'
     | '/sync-activity'
     | '/watch-history'
@@ -225,6 +235,7 @@ export interface FileRouteTypes {
     | '/my-list'
     | '/profile'
     | '/random'
+    | '/schedule'
     | '/sync-activity'
     | '/watch-history'
     | '/welcome'
@@ -246,6 +257,7 @@ export interface FileRouteTypes {
     | '/my-list'
     | '/profile'
     | '/random'
+    | '/schedule'
     | '/series'
     | '/sync-activity'
     | '/watch-history'
@@ -269,6 +281,7 @@ export interface RootRouteChildren {
   MyListRoute: typeof MyListRoute
   ProfileRoute: typeof ProfileRoute
   RandomRoute: typeof RandomRoute
+  ScheduleRoute: typeof ScheduleRoute
   SeriesRoute: typeof SeriesRouteWithChildren
   SyncActivityRoute: typeof SyncActivityRoute
   WatchHistoryRoute: typeof WatchHistoryRoute
@@ -328,6 +341,13 @@ declare module '@tanstack/react-router' {
       path: '/random'
       fullPath: '/random'
       preLoaderRoute: typeof RandomRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/schedule': {
+      id: '/schedule'
+      path: '/schedule'
+      fullPath: '/schedule'
+      preLoaderRoute: typeof ScheduleRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/series': {
@@ -459,6 +479,7 @@ const rootRouteChildren: RootRouteChildren = {
   MyListRoute: MyListRoute,
   ProfileRoute: ProfileRoute,
   RandomRoute: RandomRoute,
+  ScheduleRoute: ScheduleRoute,
   SeriesRoute: SeriesRouteWithChildren,
   SyncActivityRoute: SyncActivityRoute,
   WatchHistoryRoute: WatchHistoryRoute,

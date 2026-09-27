@@ -32,6 +32,7 @@ import { Link, useLocation } from "@tanstack/react-router"
 import type { LucideIcon } from "lucide-react"
 import {
   Bookmark,
+  CalendarDays,
   Clapperboard,
   Compass,
   History,
@@ -60,6 +61,7 @@ const mainLinks: ReadonlyArray<NavItem> = [
   { title: "Discover", href: "/discover", icon: Sparkles },
   { title: "Random", href: "/random", icon: Shuffle },
   { title: "Latest Episodes", href: "/latest-episodes", icon: Clapperboard },
+  { title: "Schedule", href: "/schedule", icon: CalendarDays },
 ]
 
 const personalLinks: ReadonlyArray<NavItem> = [

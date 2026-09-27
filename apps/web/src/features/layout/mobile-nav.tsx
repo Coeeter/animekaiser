@@ -19,6 +19,7 @@ import { Link, useLocation } from "@tanstack/react-router"
 import type { LucideIcon } from "lucide-react"
 import {
   Bookmark,
+  CalendarDays,
   Clapperboard,
   Compass,
   History,
@@ -59,6 +60,12 @@ const moreLinks: ReadonlyArray<MoreLink> = [
     href: "/latest-episodes",
     icon: Clapperboard,
     description: "Freshly released episodes",
+  },
+  {
+    title: "Schedule",
+    href: "/schedule",
+    icon: CalendarDays,
+    description: "What airs this week, in your time",
   },
   {
     title: "Random",
