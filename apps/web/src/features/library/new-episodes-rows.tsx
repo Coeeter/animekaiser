@@ -5,7 +5,7 @@ import { Link } from "@tanstack/react-router"
 import { Play } from "lucide-react"
 import { MediaRow } from "../anime/common/anime-scroll-row"
 import { AnimeTitle } from "../anime/common/anime-title"
-import { planningNewEpisodesAtom, watchingNewEpisodesAtom } from "./atoms"
+import { planningNewEpisodesAtom } from "./atoms"
 
 const relativeTime = (date: Date) => {
   const formatter = new Intl.RelativeTimeFormat(undefined, { numeric: "auto" })
@@ -41,44 +41,22 @@ const summary = (item: LibraryNewEpisode) => {
   return `${next} · ${remaining} left`
 }
 
-export function NewEpisodesRows() {
-  return (
-    <>
-      <NewEpisodesRow
-        atom={watchingNewEpisodesAtom}
-        title="Up next in your list"
-        eyebrow="Watching"
-      />
-      <NewEpisodesRow
-        atom={planningNewEpisodesAtom}
-        title="Now airing from your plan to watch"
-        eyebrow="Plan to watch"
-      />
-    </>
-  )
-}
-
-function NewEpisodesRow({
-  atom,
-  title,
-  eyebrow,
-}: {
-  atom: typeof watchingNewEpisodesAtom
-  title: string
-  eyebrow: string
-}) {
-  const result = useAtomValue(atom)
+export function PlanToWatchAiringRow() {
+  const result = useAtomValue(planningNewEpisodesAtom)
 
   return Result.builder(result)
     .onSuccess((items) =>
       items.length === 0 ? null : (
-        <MediaRow title={title} eyebrow={eyebrow}>
+        <MediaRow
+          title="Now airing from your plan to watch"
+          eyebrow="Plan to watch"
+        >
           {items.map((item) => (
             <div
               key={item.anime.malId}
               className="w-44 shrink-0 sm:w-52 md:w-60 lg:w-64"
             >
-              <NewEpisodeCard item={item} />
+              <UpNextCard item={item} />
             </div>
           ))}
         </MediaRow>
@@ -87,16 +65,16 @@ function NewEpisodesRow({
     .orElse(() => null)
 }
 
-function NewEpisodeCard({ item }: { item: LibraryNewEpisode }) {
+export function UpNextCard({ item }: { item: LibraryNewEpisode }) {
   const image = item.nextEpisodeImage ?? item.anime.coverImage
   const available = !isBehindProviders(item)
   const recent = isRecent(item)
 
   return (
     <Link
-      to="/series/$id"
-      params={{ id: item.anime.malId }}
-      preload="intent"
+      {...(available
+        ? { to: "/play/$malId", params: { malId: item.anime.malId } }
+        : { to: "/series/$id", params: { id: item.anime.malId } })}
       className="group flex min-w-0 flex-col gap-2 rounded-2xl outline-none focus-visible:ring-2 focus-visible:ring-ring/60"
     >
       <div className="relative aspect-video overflow-hidden rounded-2xl bg-muted ring-1 ring-white/10 transition group-hover:ring-primary/50">

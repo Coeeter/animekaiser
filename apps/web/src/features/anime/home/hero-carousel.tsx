@@ -128,7 +128,7 @@ function HeroSlide({
     <div className="relative min-w-0 shrink-0 grow-0 basis-full">
       {/* From md up the aspect ratio alone yields a frame shorter than the text
           block, which clipped the title between roughly 768px and 1300px. */}
-      <div className="relative aspect-4/5 sm:aspect-2/1 md:aspect-[2.6/1] md:min-h-88">
+      <div className="relative aspect-4/3 sm:aspect-2/1 md:aspect-[2.6/1] md:min-h-88">
         {portraitImage ? (
           <picture className="block size-full">
             {bannerImage && bannerImage !== portraitImage ? (

@@ -24,6 +24,7 @@ import { Route as AuthForgotPasswordRouteImport } from './routes/_auth.forgot-pa
 import { Route as AuthLoginRouteImport } from './routes/_auth.login'
 import { Route as AuthRegisterRouteImport } from './routes/_auth.register'
 import { Route as ListUsernameRouteImport } from './routes/list.$username'
+import { Route as PlayMalIdRouteImport } from './routes/play.$malId'
 import { Route as SeriesIndexRouteImport } from './routes/series.index'
 import { Route as SeriesIdRouteImport } from './routes/series.$id'
 import { Route as UUsernameRouteImport } from './routes/u.$username'
@@ -103,6 +104,11 @@ const ListUsernameRoute = ListUsernameRouteImport.update({
   path: '/list/$username',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PlayMalIdRoute = PlayMalIdRouteImport.update({
+  id: '/play/$malId',
+  path: '/play/$malId',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SeriesIndexRoute = SeriesIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -140,6 +146,7 @@ export interface FileRoutesByFullPath {
   '/login': typeof AuthLoginRoute
   '/register': typeof AuthRegisterRoute
   '/list/$username': typeof ListUsernameRoute
+  '/play/$malId': typeof PlayMalIdRoute
   '/series/$id': typeof SeriesIdRoute
   '/u/$username': typeof UUsernameRoute
   '/series/': typeof SeriesIndexRoute
@@ -159,6 +166,7 @@ export interface FileRoutesByTo {
   '/login': typeof AuthLoginRoute
   '/register': typeof AuthRegisterRoute
   '/list/$username': typeof ListUsernameRoute
+  '/play/$malId': typeof PlayMalIdRoute
   '/series/$id': typeof SeriesIdRoute
   '/u/$username': typeof UUsernameRoute
   '/series': typeof SeriesIndexRoute
@@ -181,6 +189,7 @@ export interface FileRoutesById {
   '/_auth/login': typeof AuthLoginRoute
   '/_auth/register': typeof AuthRegisterRoute
   '/list/$username': typeof ListUsernameRoute
+  '/play/$malId': typeof PlayMalIdRoute
   '/series/$id': typeof SeriesIdRoute
   '/u/$username': typeof UUsernameRoute
   '/series/': typeof SeriesIndexRoute
@@ -203,6 +212,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/register'
     | '/list/$username'
+    | '/play/$malId'
     | '/series/$id'
     | '/u/$username'
     | '/series/'
@@ -222,6 +232,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/register'
     | '/list/$username'
+    | '/play/$malId'
     | '/series/$id'
     | '/u/$username'
     | '/series'
@@ -243,6 +254,7 @@ export interface FileRouteTypes {
     | '/_auth/login'
     | '/_auth/register'
     | '/list/$username'
+    | '/play/$malId'
     | '/series/$id'
     | '/u/$username'
     | '/series/'
@@ -262,6 +274,7 @@ export interface RootRouteChildren {
   WatchHistoryRoute: typeof WatchHistoryRoute
   WelcomeRoute: typeof WelcomeRoute
   ListUsernameRoute: typeof ListUsernameRoute
+  PlayMalIdRoute: typeof PlayMalIdRoute
   UUsernameRoute: typeof UUsernameRoute
   WatchMalIdProviderEpisodeIdRoute: typeof WatchMalIdProviderEpisodeIdRoute
 }
@@ -373,6 +386,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ListUsernameRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/play/$malId': {
+      id: '/play/$malId'
+      path: '/play/$malId'
+      fullPath: '/play/$malId'
+      preLoaderRoute: typeof PlayMalIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/series/': {
       id: '/series/'
       path: '/'
@@ -444,6 +464,7 @@ const rootRouteChildren: RootRouteChildren = {
   WatchHistoryRoute: WatchHistoryRoute,
   WelcomeRoute: WelcomeRoute,
   ListUsernameRoute: ListUsernameRoute,
+  PlayMalIdRoute: PlayMalIdRoute,
   UUsernameRoute: UUsernameRoute,
   WatchMalIdProviderEpisodeIdRoute: WatchMalIdProviderEpisodeIdRoute,
 }

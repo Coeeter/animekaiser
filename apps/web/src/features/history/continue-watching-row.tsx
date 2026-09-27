@@ -14,11 +14,10 @@ import { Play, Server } from "lucide-react"
 import { CardActions } from "../anime/common/anime-card"
 import { MediaRow } from "../anime/common/anime-scroll-row"
 import { AnimeSubtitle, AnimeTitle } from "../anime/common/anime-title"
+import { UpNextCard } from "../library/new-episodes-rows"
 import { providerLabelAtom } from "../streaming/atoms"
 import { audioLabel, formatTime } from "../streaming/player-format"
-import { continueWatchingAtom } from "./atoms"
-
-const continueWatchingLimit = 12
+import { continueRowAtom } from "./atoms"
 
 const percentWatched = (item: ContinueWatchingItem) => {
   if (!item.durationSeconds || item.durationSeconds <= 0) return 0
@@ -38,7 +37,7 @@ const remainingLabel = (item: ContinueWatchingItem) => {
 }
 
 export function ContinueWatchingRow() {
-  const result = useAtomValue(continueWatchingAtom(continueWatchingLimit))
+  const result = useAtomValue(continueRowAtom)
 
   return Result.builder(result)
     .onInitialOrWaiting(() => <ContinueWatchingPending />)
@@ -46,9 +45,21 @@ export function ContinueWatchingRow() {
     .onSuccess((items) =>
       items.length === 0 ? null : (
         <MediaRow title="Continue watching">
-          {items.map((item) => (
-            <ContinueWatchingItemCell key={item.malId} item={item} />
-          ))}
+          {items.map((entry) =>
+            entry.kind === "resume" ? (
+              <ContinueWatchingItemCell
+                key={entry.item.malId}
+                item={entry.item}
+              />
+            ) : (
+              <div
+                key={entry.item.anime.malId}
+                className="w-44 shrink-0 sm:w-52 md:w-60 lg:w-64"
+              >
+                <UpNextCard item={entry.item} />
+              </div>
+            )
+          )}
         </MediaRow>
       )
     )
