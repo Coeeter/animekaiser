@@ -602,7 +602,7 @@ function StreamPlayer({
           {mode === "full" ? (
             <PlayerCenterIndicator
               icon={centerIndicatorIcon}
-              visible={!(media.playing && !controlsVisible && !mediaLoading)}
+              visible={!media.playing || mediaLoading}
             />
           ) : null}
 

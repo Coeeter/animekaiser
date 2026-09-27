@@ -48,8 +48,6 @@ export function PlayerMobileControls({
   playerPortalContainer: HTMLElement | null
 }) {
   const isMobile = useIsMobile()
-  const mediaLoading = loading || !playing
-
   return (
     <>
       <div
@@ -106,7 +104,7 @@ export function PlayerMobileControls({
           className="size-16 rounded-full bg-black/50 text-white backdrop-blur-sm hover:bg-black/70 hover:text-white [&_svg]:size-8"
           onClick={onTogglePlayback}
         >
-          {mediaLoading ? (
+          {loading ? (
             <Loader2 className="animate-spin" />
           ) : playing ? (
             <Pause />

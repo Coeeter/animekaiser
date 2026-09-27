@@ -28,8 +28,6 @@ export function PlayerMiniControls({
   onSeekBy: (seconds: number) => void
   onClose?: () => void
 }) {
-  const mediaLoading = loading || !playing
-
   return (
     <>
       <div className="absolute top-2 right-2 z-50 flex cursor-default items-center gap-1 opacity-0 transition-opacity group-hover/miniplayer:opacity-100 focus-within:opacity-100">
@@ -78,7 +76,7 @@ export function PlayerMiniControls({
           className="rounded-full bg-white text-black hover:bg-white/85"
           onClick={onTogglePlayback}
         >
-          {mediaLoading ? (
+          {loading ? (
             <Loader2 className="animate-spin" />
           ) : playing ? (
             <Pause />
