@@ -20,11 +20,19 @@ const cacheKey = (scope: string, value: object) =>
   `${scope}:${JSON.stringify(value)}`
 const NullableAnimeDetail = Schema.NullOr(AnimeDetail)
 
-// AniList synopses end with credits like "(Source: Crunchyroll)" or
-// "[Written by MAL Rewrite]", which read as noise in a three-line teaser.
+// AniList synopses keep inline HTML even with asHtml:false, and end with
+// credits like "(Source: Crunchyroll)" or "[Written by MAL Rewrite]", which
+// read as noise in a three-line teaser.
 export const heroSynopsis = (description: string | null) => {
   if (!description) return null
   const text = description
+    .replace(/<br\s*\/?>/gi, " ")
+    .replace(/<[^>]*>/g, "")
+    .replace(/&quot;/g, '"')
+    .replace(/&#0?39;|&apos;/g, "'")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&amp;/g, "&")
     .replace(/\s*[([](?:source|written by)[^)\]]*[)\]]\s*$/i, "")
     .replace(/\s+/g, " ")
     .trim()
@@ -142,7 +150,7 @@ export class AnimeService extends Effect.Service<AnimeService>()(
 
       const getHome = Effect.fn("AnimeService.getHome")(function* () {
         return yield* cached(
-          "anime:home:v5",
+          "anime:home:v6",
           AnimeHome,
           2 * 60 * 60,
           Effect.all(

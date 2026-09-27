@@ -11,6 +11,14 @@ describe("heroSynopsis", () => {
     )
   })
 
+  it("strips inline HTML and decodes entities", () => {
+    expect(
+      heroSynopsis(
+        "The third season of <i>Mushoku Tensei</i>.<br><br>Rudy &amp; Eris&#039; journey."
+      )
+    ).toBe("The third season of Mushoku Tensei. Rudy & Eris' journey.")
+  })
+
   it("keeps credits-like text in the middle of a synopsis", () => {
     expect(heroSynopsis("The (source) of power lies within.")).toBe(
       "The (source) of power lies within."
