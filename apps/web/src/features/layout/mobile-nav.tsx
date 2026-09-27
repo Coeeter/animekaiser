@@ -35,7 +35,6 @@ import {
 } from "lucide-react"
 import { useState } from "react"
 import { ModeToggle } from "../../components/theme"
-import { searchOpenAtom } from "../anime/common/search-atoms"
 import { sessionAtom } from "../auth/atoms"
 import { displayUsername, userInitials } from "../auth/user"
 import { settingsOpenAtom, settingsSectionAtom } from "../settings/atoms"
@@ -94,7 +93,6 @@ const isRouteActive = (pathname: string, href: string) =>
 
 export function MobileNav() {
   const pathname = useLocation({ select: (l) => l.pathname })
-  const setSearchOpen = useAtomSet(searchOpenAtom)
   const [moreOpen, setMoreOpen] = useState(false)
 
   return (
@@ -119,7 +117,8 @@ export function MobileNav() {
           <MobileNavTab
             label="Search"
             icon={Search}
-            onClick={() => setSearchOpen(true)}
+            href="/search"
+            active={isRouteActive(pathname, "/search")}
           />
           <MobileNavTab
             label="My list"

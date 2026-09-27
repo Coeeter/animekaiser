@@ -82,3 +82,12 @@ export const searchShortcutAtom = Atom.make((get) => {
   window.addEventListener("keydown", keydown)
   get.addFinalizer(() => window.removeEventListener("keydown", keydown))
 })
+
+export const suggestedGenres = [
+  "Action",
+  "Romance",
+  "Comedy",
+  "Fantasy",
+  "Slice of Life",
+  "Thriller",
+]

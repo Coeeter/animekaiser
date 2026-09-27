@@ -10,6 +10,7 @@ import {
   CommandSeparator,
 } from "@animekaiser/ui/components/command"
 import { Skeleton } from "@animekaiser/ui/components/skeleton"
+import { cn } from "@animekaiser/ui/lib/utils"
 import {
   Result,
   useAtom,
@@ -29,7 +30,6 @@ import {
   SearchX,
   Settings,
   Star,
-  TrendingUp,
   X,
 } from "lucide-react"
 import { useTheme } from "next-themes"
@@ -43,6 +43,7 @@ import {
   updatePlayerPreferencesAtom,
 } from "../../streaming/preferences"
 import { catalogAtom } from "../catalog/atoms"
+import { homeAtom } from "../home/atoms"
 import { formatAnimeFormat, formatAnimeStatus } from "./format"
 import {
   clearRecentSearchesAtom,
@@ -50,6 +51,7 @@ import {
   rememberSearchAtom,
   searchOpenAtom,
   searchShortcutAtom,
+  suggestedGenres,
 } from "./search-atoms"
 import {
   animeTitlePreferenceAtom,
@@ -60,15 +62,6 @@ import {
 const searchDebounceMs = 220
 const minSearchLength = 2
 const searchResultLimit = 8
-
-const suggestedGenres = [
-  "Action",
-  "Romance",
-  "Comedy",
-  "Fantasy",
-  "Slice of Life",
-  "Thriller",
-]
 
 export function SearchDialog() {
   const [open, setOpen] = useAtom(searchOpenAtom)
@@ -114,7 +107,6 @@ export function SearchDialog() {
           placeholder="Search anime by title…"
         />
         <CommandList>
-          <PaletteCommands query={trimmedQuery} onDone={close} />
           {hasQuery ? (
             <>
               <SearchResults
@@ -141,13 +133,11 @@ export function SearchDialog() {
               </CommandGroup>
             </>
           ) : (
-            <SearchIdleState
-              onPick={(value) => {
-                setQuery(value)
-              }}
-              onSubmit={goToCatalog}
-            />
+            <SearchIdleState onSubmit={goToCatalog} onDone={close} />
           )}
+          {trimmedQuery.length > 0 ? (
+            <PaletteCommands query={trimmedQuery} onDone={close} />
+          ) : null}
         </CommandList>
       </Command>
     </CommandDialog>
@@ -183,8 +173,7 @@ function PaletteCommands({
   const { resolvedTheme, setTheme } = useTheme()
 
   const needle = query.toLowerCase()
-  const matches = (text: string) =>
-    needle.length === 0 || text.toLowerCase().includes(needle)
+  const matches = (text: string) => text.toLowerCase().includes(needle)
 
   const pages = [...mainLinks, ...(signedIn ? personalLinks : [])].filter(
     (link) => matches(link.title)
@@ -236,7 +225,7 @@ function PaletteCommands({
   return (
     <>
       {pages.length > 0 ? (
-        <CommandGroup heading="Go to">
+        <CommandGroup heading="Pages">
           {pages.map((link) => (
             <CommandItem
               key={link.href}
@@ -254,7 +243,7 @@ function PaletteCommands({
         </CommandGroup>
       ) : null}
       {actions.length > 0 ? (
-        <CommandGroup heading="Actions">
+        <CommandGroup heading="Shortcuts">
           {actions.map((action) => (
             <CommandItem
               key={action.id}
@@ -275,52 +264,107 @@ function PaletteCommands({
   )
 }
 
+const chipItem =
+  "h-8 w-auto shrink-0 rounded-full border px-3 py-0 text-xs data-[selected=true]:border-primary/60"
+const chipGroup =
+  "[&_[cmdk-group-items]]:flex [&_[cmdk-group-items]]:flex-wrap [&_[cmdk-group-items]]:gap-2"
+
 function SearchIdleState({
-  onPick,
   onSubmit,
+  onDone,
 }: {
-  onPick: (query: string) => void
   onSubmit: (query: string) => void
+  onDone: () => void
 }) {
+  const navigate = useNavigate()
   const recents = useAtomValue(recentSearchesAtom)
   const clearRecents = useAtomSet(clearRecentSearchesAtom)
+  const preference = useAtomValue(animeTitlePreferenceAtom)
+  const trending = Result.builder(useAtomValue(homeAtom))
+    .onSuccess((home) => home.trending.slice(0, 6))
+    .orElse(() => [])
 
   return (
     <>
       {recents.length > 0 ? (
-        <CommandGroup heading="Recent searches">
+        <CommandGroup heading="Recent searches" className={chipGroup}>
           {recents.map((recent) => (
             <CommandItem
               key={recent}
               value={`recent-${recent}`}
-              className="gap-2.5"
+              className={chipItem}
               onSelect={() => onSubmit(recent)}
             >
               <Clock3 />
-              <span className="truncate">{recent}</span>
+              <span className="max-w-40 truncate">{recent}</span>
             </CommandItem>
           ))}
           <CommandItem
             value="clear-recent-searches"
-            className="gap-2.5 text-muted-foreground"
+            className={cn(chipItem, "border-dashed text-muted-foreground")}
             onSelect={() => clearRecents()}
           >
             <X />
-            <span>Clear recent searches</span>
+            Clear
           </CommandItem>
         </CommandGroup>
       ) : null}
 
-      <CommandGroup heading="Browse by genre">
+      {trending.length > 0 ? (
+        <CommandGroup
+          heading="Trending now"
+          className="[&_[cmdk-group-items]]:grid [&_[cmdk-group-items]]:grid-cols-3 [&_[cmdk-group-items]]:gap-2 sm:[&_[cmdk-group-items]]:grid-cols-6"
+        >
+          {trending.map((anime) => {
+            const title = getAnimeTitle(anime.title, preference)
+            return (
+              <CommandItem
+                key={anime.malId}
+                value={`trending-${anime.malId}`}
+                className="flex-col items-stretch gap-1.5 p-1.5"
+                onSelect={() => {
+                  onDone()
+                  void navigate({
+                    to: "/series/$id",
+                    params: { id: anime.malId },
+                  })
+                }}
+              >
+                {anime.coverImage ? (
+                  <img
+                    src={anime.coverImage}
+                    alt=""
+                    className="aspect-2/3 w-full rounded-lg bg-muted object-cover"
+                    loading="lazy"
+                    decoding="async"
+                  />
+                ) : (
+                  <div className="aspect-2/3 w-full rounded-lg bg-muted" />
+                )}
+                <span className="line-clamp-2 text-xs leading-snug font-medium">
+                  {title}
+                </span>
+              </CommandItem>
+            )
+          })}
+        </CommandGroup>
+      ) : null}
+
+      <CommandGroup heading="Browse by genre" className={chipGroup}>
         {suggestedGenres.map((genre) => (
           <CommandItem
             key={genre}
             value={`genre-${genre}`}
-            className="gap-2.5"
-            onSelect={() => onPick(genre)}
+            className={chipItem}
+            onSelect={() => {
+              onDone()
+              void navigate({
+                to: "/series",
+                search: { genre, page: 1, sort: "popularity" },
+              })
+            }}
           >
-            <TrendingUp />
-            <span>{genre}</span>
+            {genre}
           </CommandItem>
         ))}
       </CommandGroup>

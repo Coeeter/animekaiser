@@ -288,17 +288,7 @@ export function AppSidebar({ children }: { children: ReactNode }) {
                 </span>
               </Link>
 
-              <button
-                type="button"
-                onClick={() => setSearchOpen(true)}
-                aria-label="Search anime"
-                className="ml-auto flex h-9 flex-1 items-center gap-2 overflow-hidden rounded-2xl border bg-input/40 px-3 text-sm text-muted-foreground transition active:bg-input/70"
-              >
-                <Search className="size-4 shrink-0" />
-                <span className="truncate">Search</span>
-              </button>
-
-              <TitleLanguageToggle className="shrink-0" />
+              <TitleLanguageToggle className="ml-auto shrink-0" />
 
               {user ? (
                 <Link

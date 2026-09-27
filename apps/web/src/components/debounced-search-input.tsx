@@ -17,6 +17,7 @@ export function DebouncedSearchInput({
   label,
   debounceMs = defaultDebounceMs,
   className,
+  autoFocus,
 }: {
   committed: string
   onCommit: (query: string | undefined) => void
@@ -24,6 +25,7 @@ export function DebouncedSearchInput({
   label: string
   debounceMs?: number
   className?: string
+  autoFocus?: boolean
 }) {
   const [value, setValue] = useState(committed)
   const debounced = useDebouncedText(value.trim(), debounceMs)
@@ -43,6 +45,8 @@ export function DebouncedSearchInput({
         onChange={(event) => setValue(event.currentTarget.value)}
         placeholder={placeholder}
         aria-label={label}
+        autoFocus={autoFocus}
+        enterKeyHint="search"
       />
       {value.length > 0 ? (
         <InputGroupAddon align="inline-end">
