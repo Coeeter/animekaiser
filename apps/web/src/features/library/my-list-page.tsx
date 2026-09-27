@@ -233,32 +233,57 @@ function LibraryStatTiles({ stats }: { stats: LibraryStats }) {
   const meanScore = formatMeanScore(stats.meanScore)
 
   return (
-    <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-      <StatTile
-        icon={ListVideo}
-        label="Titles"
-        value={stats.total.toLocaleString()}
-        hint={`${stats.byStatus.planning.toLocaleString()} planned`}
-      />
-      <StatTile
-        icon={Play}
-        label="Watching"
-        value={stats.byStatus.watching.toLocaleString()}
-        hint={`${stats.byStatus.rewatching.toLocaleString()} rewatching`}
-      />
-      <StatTile
-        icon={CheckCircle2}
-        label="Completed"
-        value={stats.byStatus.completed.toLocaleString()}
-        hint={`${stats.byStatus.dropped.toLocaleString()} dropped`}
-      />
-      <StatTile
-        icon={Star}
-        label="Mean score"
-        value={meanScore ?? "—"}
-        hint={meanScore ? "Across rated titles" : "Nothing rated yet"}
-      />
-    </div>
+    <>
+      <dl className="grid grid-cols-4 divide-x rounded-2xl border bg-card/70 py-3 md:hidden">
+        {[
+          { label: "Titles", value: stats.total.toLocaleString() },
+          {
+            label: "Watching",
+            value: stats.byStatus.watching.toLocaleString(),
+          },
+          { label: "Done", value: stats.byStatus.completed.toLocaleString() },
+          { label: "Score", value: meanScore ?? "—" },
+        ].map((stat) => (
+          <div
+            key={stat.label}
+            className="flex flex-col-reverse items-center gap-0.5"
+          >
+            <dt className="text-[10px] font-semibold tracking-[0.12em] text-muted-foreground uppercase">
+              {stat.label}
+            </dt>
+            <dd className="font-heading text-lg font-black tabular-nums">
+              {stat.value}
+            </dd>
+          </div>
+        ))}
+      </dl>
+      <div className="hidden grid-cols-4 gap-3 md:grid">
+        <StatTile
+          icon={ListVideo}
+          label="Titles"
+          value={stats.total.toLocaleString()}
+          hint={`${stats.byStatus.planning.toLocaleString()} planned`}
+        />
+        <StatTile
+          icon={Play}
+          label="Watching"
+          value={stats.byStatus.watching.toLocaleString()}
+          hint={`${stats.byStatus.rewatching.toLocaleString()} rewatching`}
+        />
+        <StatTile
+          icon={CheckCircle2}
+          label="Completed"
+          value={stats.byStatus.completed.toLocaleString()}
+          hint={`${stats.byStatus.dropped.toLocaleString()} dropped`}
+        />
+        <StatTile
+          icon={Star}
+          label="Mean score"
+          value={meanScore ?? "—"}
+          hint={meanScore ? "Across rated titles" : "Nothing rated yet"}
+        />
+      </div>
+    </>
   )
 }
 
