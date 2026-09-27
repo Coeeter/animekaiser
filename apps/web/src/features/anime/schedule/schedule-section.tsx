@@ -27,6 +27,16 @@ const dateLabel = (date: Date) =>
     day: "numeric",
   }).format(date)
 
+// AniList schedules carry the exact airing instant; Jikan's fallback only has
+// a broadcast string in Japan time.
+const airingTime = (anime: AnimeItem) =>
+  anime.nextAiringEpisode
+    ? new Date(anime.nextAiringEpisode.airingAt * 1000).toLocaleTimeString(
+        undefined,
+        { hour: "numeric", minute: "2-digit" }
+      )
+    : (anime.broadcast?.time ?? "TBA")
+
 const isAired = (anime: AnimeItem) =>
   anime.nextAiringEpisode
     ? anime.nextAiringEpisode.airingAt * 1000 <= Date.now()
@@ -156,7 +166,7 @@ function ScheduleList({ items }: { items: ReadonlyArray<AnimeItem> }) {
           <div className="hidden shrink-0 items-center gap-1.5 sm:flex">
             <Badge variant="outline" className="gap-1 text-xs">
               <Clock3 className="size-3" />
-              {anime.broadcast?.time ?? "TBA"}
+              {airingTime(anime)}
             </Badge>
             {anime.nextAiringEpisode ? (
               <Badge variant="secondary" className="text-xs">
