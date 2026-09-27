@@ -58,6 +58,8 @@ import {
   streamProvidersAtom,
 } from "./atoms"
 import { EpisodeThumbnail } from "./episode-thumbnail"
+import { preferredAudio } from "./player-format"
+import { playerPreferencesAtom } from "./preferences"
 
 const decodeProviderId = Schema.decodeUnknownSync(StreamProviderId)
 
@@ -71,12 +73,6 @@ const audioLabel = (audio: StreamAudio) => audioLabels[audio]
 type ProviderEpisode = StreamProviderEpisodes["episodes"][number]
 
 type EpisodeActionState = Partial<EpisodeProgress> & { current?: boolean }
-
-const preferredAudio = (episode: ProviderEpisode): StreamAudio | null => {
-  if (episode.availableAudio.includes("sub")) return "sub"
-  if (episode.availableAudio.includes("dub")) return "dub"
-  return null
-}
 
 const episodeHrefProps = ({
   anime,
@@ -459,16 +455,22 @@ function EpisodeRow({
   provider: StreamProviderEpisodes
   episode: ProviderEpisode
 } & EpisodeActionState) {
-  const audio = preferredAudio(episode)
+  const { preferredAudio: audioPreference, blurUnwatched } = useAtomValue(
+    playerPreferencesAtom
+  )
+  const audio = preferredAudio(episode, audioPreference)
   const title = episodeTitle(episode)
   const progress = watched ? 100 : clampProgress(progressPercent)
   const showProgress = watched || continueWatching || progress > 0
   const highlighted = current || upNext
+  const hideSpoilers =
+    blurUnwatched && !watched && !continueWatching && !current
   const content = (
     <>
       <div className="flex min-w-0 flex-1 items-center gap-4">
         {episode.image ? (
           <EpisodeThumbnail
+            blur={hideSpoilers}
             image={episode.image}
             number={episode.number}
             progress={showProgress ? progress : undefined}
@@ -518,7 +520,7 @@ function EpisodeRow({
               </Badge>
             ))}
           </div>
-          {episode.description ? (
+          {episode.description && !hideSpoilers ? (
             <p className="mt-1.5 line-clamp-2 max-w-3xl text-xs leading-relaxed text-muted-foreground">
               {episode.description}
             </p>
@@ -584,7 +586,10 @@ function EpisodeNumberButton({
   provider: StreamProviderEpisodes
   episode: ProviderEpisode
 } & EpisodeActionState) {
-  const audio = preferredAudio(episode)
+  const { preferredAudio: audioPreference } = useAtomValue(
+    playerPreferencesAtom
+  )
+  const audio = preferredAudio(episode, audioPreference)
   const title = episodeTitle(episode)
   const progress = watched ? 100 : clampProgress(progressPercent)
   const label = title ?? episodeLabel(episode)

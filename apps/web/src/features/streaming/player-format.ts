@@ -84,10 +84,12 @@ export const watchHref = ({
   return `/watch/${malId}/${provider}/${encodeURIComponent(episodeId)}?${search.toString()}`
 }
 
-export const preferredAudio = (episode: StreamEpisode): StreamAudio | null => {
-  if (episode.availableAudio.includes("sub")) return "sub"
-  if (episode.availableAudio.includes("dub")) return "dub"
-  return null
+export const preferredAudio = (
+  episode: StreamEpisode,
+  preferred: StreamAudio = "sub"
+): StreamAudio | null => {
+  if (episode.availableAudio.includes(preferred)) return preferred
+  return episode.availableAudio.at(0) ?? null
 }
 
 export const nextStreamServer = (

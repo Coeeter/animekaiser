@@ -5,6 +5,7 @@ import * as Effect from "effect/Effect"
 import { KaiserRpcClient } from "../../services/api-clients"
 import { libraryProgressOf } from "../library/atoms"
 import { preferredAudio, watchAction } from "./player-format"
+import { playerPreferencesAtom, preferredProviderAtom } from "./preferences"
 
 export const streamProvidersAtom = KaiserRpcClient.query(
   "ListStreamProviders",
@@ -71,8 +72,12 @@ const watchTargetFamily = Atom.family(
   ({ malId, provider: preferredProvider }: WatchTargetKey) =>
     Atom.make((get) =>
       Effect.gen(function* () {
+        const preferences = get(playerPreferencesAtom)
         const catalog = yield* get.result(
-          streamEpisodesAtom(malId, preferredProvider)
+          streamEpisodesAtom(
+            malId,
+            preferredProvider ?? get(preferredProviderAtom)
+          )
         )
         const libraryProgress = yield* libraryProgressOf(get, malId)
 
@@ -93,7 +98,9 @@ const watchTargetFamily = Atom.family(
           ? episodes.find((item) => item.number === action.episodeNumber)
           : undefined
 
-        const audio = episode ? preferredAudio(episode) : null
+        const audio = episode
+          ? preferredAudio(episode, preferences.preferredAudio)
+          : null
 
         return provider && action && episode && audio
           ? ({

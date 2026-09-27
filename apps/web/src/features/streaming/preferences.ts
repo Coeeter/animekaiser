@@ -1,3 +1,4 @@
+import { StreamProviderId } from "@animekaiser/domain"
 import { Atom } from "@effect-atom/atom-react"
 import * as Option from "effect/Option"
 import * as Schema from "effect/Schema"
@@ -44,6 +45,17 @@ export const PlayerPreferences = Schema.Struct({
   }),
   videoFit: Schema.optionalWith(VideoFit, { default: () => "contain" }),
   viewMode: Schema.optionalWith(PlayerViewMode, { default: () => "theater" }),
+  preferredAudio: Schema.optionalWith(Schema.Literal("sub", "dub"), {
+    default: () => "sub",
+  }),
+  preferredProvider: Schema.optionalWith(Schema.NullOr(Schema.String), {
+    default: () => null,
+  }),
+  subtitleLanguage: Schema.optionalWith(Schema.NullOr(Schema.String), {
+    default: () => null,
+  }),
+  blurUnwatched: Schema.optionalWith(Schema.Boolean, { default: () => false }),
+  autoLandscape: Schema.optionalWith(Schema.Boolean, { default: () => false }),
 })
 export type PlayerPreferences = typeof PlayerPreferences.Type
 
@@ -57,6 +69,11 @@ export const defaultPlayerPreferences: PlayerPreferences = {
   ...subtitlePreferenceDefaults,
   videoFit: "contain",
   viewMode: "theater",
+  preferredAudio: "sub",
+  preferredProvider: null,
+  subtitleLanguage: null,
+  blurUnwatched: false,
+  autoLandscape: false,
 }
 
 export const playerPreferencesStorageKey = "kaiser-player-preferences"
@@ -103,4 +120,12 @@ export const updatePlayerPreferencesAtom = Atom.writable<
     writeStoredPlayerPreferences(next)
     ctx.set(playerPreferencesAtom, next)
   }
+)
+
+const decodeProviderOption = Schema.decodeUnknownOption(StreamProviderId)
+
+export const preferredProviderAtom = Atom.make((get) =>
+  Option.getOrUndefined(
+    decodeProviderOption(get(playerPreferencesAtom).preferredProvider)
+  )
 )

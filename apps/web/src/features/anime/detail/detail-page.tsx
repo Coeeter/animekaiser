@@ -50,6 +50,7 @@ import { AddToLibraryDialog } from "../../library/add-to-library-dialog"
 import { libraryEntryAtom } from "../../library/atoms"
 import { libraryStatuses } from "../../library/constants"
 import { EpisodesPanel } from "../../streaming/episodes-panel"
+import { preferredProviderAtom } from "../../streaming/preferences"
 import { WatchNowButton } from "../../streaming/watch-now-button"
 import { AnimeGrid } from "../common/anime-grid"
 import { AnimeSubtitle, AnimeTitle } from "../common/anime-title"
@@ -189,7 +190,7 @@ function SeriesDetail({
   isAuthenticated,
   activeTab,
   episodePage,
-  episodeProvider,
+  episodeProvider: requestedProvider,
   onEpisodePageChange,
   onEpisodeProviderChange,
   onTabChange,
@@ -204,6 +205,8 @@ function SeriesDetail({
   onEpisodeProviderChange: (provider: StreamProviderId) => void
   onTabChange: (tab: AnimeDetailTab) => void
 }) {
+  const preferredProvider = useAtomValue(preferredProviderAtom)
+  const episodeProvider = requestedProvider ?? preferredProvider
   const description = stripHtml(anime.description)
   const recommendationsResult = useAtomValue(recommendationsAtom(anime.malId))
 

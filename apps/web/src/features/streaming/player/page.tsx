@@ -61,7 +61,17 @@ import {
   PlayerSubtitleOverlay,
 } from "./video-overlays"
 
-const defaultCaptionValue = (playback: StreamPlayback) => {
+const defaultCaptionValue = (
+  playback: StreamPlayback,
+  language: string | null
+) => {
+  if (language) {
+    const preferred = language.toLowerCase()
+    const index = playback.tracks.findIndex((track) =>
+      track.label.toLowerCase().startsWith(preferred)
+    )
+    if (index >= 0) return String(index)
+  }
   const defaultIndex = playback.tracks.findIndex((track) => track.default)
   if (defaultIndex >= 0) return String(defaultIndex)
   return playback.audio === "sub" && playback.tracks.length > 0 ? "0" : "off"
@@ -270,6 +280,7 @@ function StreamPlayer({
   const { fullscreen, toggleFullscreen } = useFullscreen({
     playerRef,
     videoRef: media.videoRef,
+    autoLandscape: preferences.autoLandscape,
   })
 
   const { navigateToEpisode, toggleMiniPlayer } = useEpisodeNavigation({
@@ -311,7 +322,10 @@ function StreamPlayer({
     mode,
   })
 
-  const defaultCaption = defaultCaptionValue(playback)
+  const defaultCaption = defaultCaptionValue(
+    playback,
+    preferences.subtitleLanguage
+  )
 
   const selectedCaptionTrack =
     caption === "off" ? null : (playback.tracks[Number(caption)] ?? null)

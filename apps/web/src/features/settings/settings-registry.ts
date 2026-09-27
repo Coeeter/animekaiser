@@ -140,6 +140,36 @@ export const settingEntries: ReadonlyArray<SettingEntry> = [
     keywords: ["immersive", "layout", "episodes", "sidebar", "view"],
   },
   {
+    id: "playback.audio",
+    section: "Playback",
+    title: "Default audio",
+    keywords: ["sub", "dub", "dubbed", "subbed", "language"],
+  },
+  {
+    id: "playback.provider",
+    section: "Playback",
+    title: "Preferred provider",
+    keywords: ["server", "source", "provider"],
+  },
+  {
+    id: "playback.subtitleLanguage",
+    section: "Playback",
+    title: "Subtitle language",
+    keywords: ["captions", "cc", "language", "subtitles"],
+  },
+  {
+    id: "playback.blurUnwatched",
+    section: "Playback",
+    title: "Hide spoilers",
+    keywords: ["blur", "spoiler", "thumbnail", "synopsis"],
+  },
+  {
+    id: "playback.autoLandscape",
+    section: "Playback",
+    title: "Landscape in fullscreen",
+    keywords: ["rotate", "orientation", "mobile", "fullscreen"],
+  },
+  {
     id: "playback.autoplay",
     section: "Playback",
     title: "Autoplay episodes",

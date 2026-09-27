@@ -20,9 +20,19 @@ const isFullscreenElement = (): boolean =>
       (document as WebkitDocument).webkitFullscreenElement
   )
 
+type LockableOrientation = ScreenOrientation & {
+  lock?: (orientation: "landscape") => Promise<void>
+}
+
+const lockLandscape = () => {
+  const orientation = screen.orientation as LockableOrientation | undefined
+  orientation?.lock?.("landscape").catch(() => undefined)
+}
+
 const enterFullscreen = (
   player: HTMLElement,
-  video: HTMLVideoElement
+  video: HTMLVideoElement,
+  autoLandscape: boolean
 ): void => {
   if (
     isWebkitVideo(video) &&
@@ -32,7 +42,9 @@ const enterFullscreen = (
     return
   }
 
-  void player.requestFullscreen()
+  void player.requestFullscreen().then(() => {
+    if (autoLandscape) lockLandscape()
+  })
 }
 
 const exitFullscreen = (video: HTMLVideoElement): void => {
@@ -51,9 +63,11 @@ const exitFullscreen = (video: HTMLVideoElement): void => {
 export function useFullscreen({
   playerRef,
   videoRef,
+  autoLandscape = false,
 }: {
   playerRef: RefObject<HTMLElement | null>
   videoRef: RefObject<HTMLVideoElement | null>
+  autoLandscape?: boolean
 }) {
   const [fullscreen, setFullscreen] = useState(false)
 
@@ -95,7 +109,7 @@ export function useFullscreen({
       return
     }
 
-    enterFullscreen(player, video)
+    enterFullscreen(player, video, autoLandscape)
   }
 
   return { fullscreen, toggleFullscreen } as const

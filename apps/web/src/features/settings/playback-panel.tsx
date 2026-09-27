@@ -1,5 +1,18 @@
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@animekaiser/ui/components/select"
 import { Switch } from "@animekaiser/ui/components/switch"
-import { useAtomSet, useAtomValue } from "@effect-atom/atom-react"
+import {
+  ToggleGroup,
+  ToggleGroupItem,
+} from "@animekaiser/ui/components/toggle-group"
+import { Result, useAtomSet, useAtomValue } from "@effect-atom/atom-react"
+import { streamProvidersAtom } from "../streaming/atoms"
 import {
   playerPreferencesAtom,
   updatePlayerPreferencesAtom,
@@ -13,6 +26,8 @@ type PlayerPreferenceKey =
   | "autoSkipIntro"
   | "autoSkipOutro"
   | "syncLibraryOnFinish"
+  | "blurUnwatched"
+  | "autoLandscape"
 
 const preferenceRows: ReadonlyArray<{
   id: string
@@ -50,7 +65,101 @@ const preferenceRows: ReadonlyArray<{
     title: "External list sync",
     description: "Update linked list providers after you finish an episode.",
   },
+  {
+    id: "playback.blurUnwatched",
+    key: "blurUnwatched",
+    title: "Hide spoilers",
+    description:
+      "Blur thumbnails and hide synopses of episodes you have not watched.",
+  },
+  {
+    id: "playback.autoLandscape",
+    key: "autoLandscape",
+    title: "Landscape in fullscreen",
+    description:
+      "Rotate to landscape when the player goes fullscreen on a phone.",
+  },
 ]
+
+const subtitleLanguages = [
+  "English",
+  "Spanish",
+  "Portuguese",
+  "French",
+  "German",
+  "Italian",
+  "Arabic",
+  "Indonesian",
+  "Russian",
+]
+
+const automatic = "auto"
+
+function ProviderSelect() {
+  const providers = useAtomValue(streamProvidersAtom)
+  const { preferredProvider } = useAtomValue(playerPreferencesAtom)
+  const updatePreferences = useAtomSet(updatePlayerPreferencesAtom)
+  const options = Result.isSuccess(providers) ? providers.value : []
+  const value = preferredProvider ?? automatic
+
+  return (
+    <Select
+      value={value}
+      onValueChange={(next) =>
+        updatePreferences({
+          preferredProvider: next === automatic ? null : next,
+        })
+      }
+    >
+      <SelectTrigger className="w-40">
+        <SelectValue>
+          {options.find((provider) => provider.id === value)?.label ??
+            "Automatic"}
+        </SelectValue>
+      </SelectTrigger>
+      <SelectContent>
+        <SelectGroup>
+          <SelectItem value={automatic}>Automatic</SelectItem>
+          {options.map((provider) => (
+            <SelectItem key={provider.id} value={provider.id}>
+              {provider.label}
+            </SelectItem>
+          ))}
+        </SelectGroup>
+      </SelectContent>
+    </Select>
+  )
+}
+
+function SubtitleLanguageSelect() {
+  const { subtitleLanguage } = useAtomValue(playerPreferencesAtom)
+  const updatePreferences = useAtomSet(updatePlayerPreferencesAtom)
+
+  return (
+    <Select
+      value={subtitleLanguage ?? automatic}
+      onValueChange={(next) =>
+        updatePreferences({
+          subtitleLanguage: next === automatic ? null : next,
+        })
+      }
+    >
+      <SelectTrigger className="w-40">
+        <SelectValue>{subtitleLanguage ?? "Provider default"}</SelectValue>
+      </SelectTrigger>
+      <SelectContent>
+        <SelectGroup>
+          <SelectItem value={automatic}>Provider default</SelectItem>
+          {subtitleLanguages.map((language) => (
+            <SelectItem key={language} value={language}>
+              {language}
+            </SelectItem>
+          ))}
+        </SelectGroup>
+      </SelectContent>
+    </Select>
+  )
+}
 
 export function PlaybackPanel() {
   const preferences = useAtomValue(playerPreferencesAtom)
@@ -76,6 +185,41 @@ export function PlaybackPanel() {
               }
             />
           }
+        />
+      </SettingCard>
+      <SettingCard id="playback.audio" className="p-4">
+        <SettingHeading
+          title="Default audio"
+          description="Pick subbed or dubbed first when an episode offers both."
+          action={
+            <ToggleGroup
+              type="single"
+              variant="outline"
+              value={preferences.preferredAudio}
+              onValueChange={(value) => {
+                if (value === "sub" || value === "dub") {
+                  updatePreferences({ preferredAudio: value })
+                }
+              }}
+            >
+              <ToggleGroupItem value="sub">Sub</ToggleGroupItem>
+              <ToggleGroupItem value="dub">Dub</ToggleGroupItem>
+            </ToggleGroup>
+          }
+        />
+      </SettingCard>
+      <SettingCard id="playback.provider" className="p-4">
+        <SettingHeading
+          title="Preferred provider"
+          description="Open episodes from this provider when it has the show."
+          action={<ProviderSelect />}
+        />
+      </SettingCard>
+      <SettingCard id="playback.subtitleLanguage" className="p-4">
+        <SettingHeading
+          title="Subtitle language"
+          description="Turn on this caption track automatically when a stream has it."
+          action={<SubtitleLanguageSelect />}
         />
       </SettingCard>
       {preferenceRows.map((row) => (

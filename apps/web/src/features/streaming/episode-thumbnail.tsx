@@ -5,8 +5,10 @@ export function EpisodeThumbnail({
   number,
   progress,
   highlighted = false,
+  blur = false,
   className,
 }: {
+  blur?: boolean
   image: string | null
   number: number
   progress?: number
@@ -36,7 +38,10 @@ export function EpisodeThumbnail({
           loading="lazy"
           decoding="async"
           referrerPolicy="no-referrer"
-          className="absolute inset-0 size-full object-cover"
+          className={cn(
+            "absolute inset-0 size-full object-cover",
+            blur && "scale-110 blur-md"
+          )}
           onError={(event) => {
             event.currentTarget.hidden = true
           }}
