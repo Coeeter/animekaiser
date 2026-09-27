@@ -27,9 +27,7 @@ export function HomePage() {
     ))
     .onSuccess((data) => (
       <div className="flex w-full flex-col gap-9 pb-10">
-        <div className="mx-auto w-full max-w-7xl px-3 pt-3 md:px-6 md:pt-6">
-          <HeroCarousel items={data.trending.slice(0, 10)} />
-        </div>
+        <HeroCarousel items={data.trending.slice(0, 10)} />
 
         <div className="mx-auto flex w-full min-w-0 max-w-7xl flex-col gap-9 px-4 md:px-6">
           {isAuthenticated ? <ContinueWatchingRow /> : null}
@@ -65,9 +63,7 @@ export function HomePage() {
 export function HomePendingPage() {
   return (
     <div className="flex w-full flex-col gap-9 pb-10">
-      <div className="mx-auto w-full max-w-7xl px-3 pt-3 md:px-6 md:pt-6">
-        <Skeleton className="aspect-4/3 w-full rounded-3xl sm:aspect-2/1 md:aspect-[2.6/1]" />
-      </div>
+      <Skeleton className="aspect-video w-full rounded-none md:aspect-auto md:h-[min(72vh,620px)] md:min-h-[460px]" />
 
       <div className="mx-auto flex w-full max-w-7xl flex-col gap-9 px-4 md:px-6">
         {Array.from({ length: 2 }, (_section, sectionIndex) => (

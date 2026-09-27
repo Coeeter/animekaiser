@@ -77,7 +77,6 @@ const animeItemFields = {
   broadcast: Schema.NullOr(AnimeBroadcast),
   nextAiringEpisode: Schema.NullOr(AnimeNextAiringEpisode),
   isAdult: Schema.Boolean,
-  logo: Schema.optional(Schema.NullOr(Schema.String)),
 }
 
 export const AnimeItem = Schema.Struct(animeItemFields)
@@ -133,8 +132,15 @@ export const LatestEpisode = Schema.Struct({
 })
 export type LatestEpisode = typeof LatestEpisode.Type
 
+export const AnimeHeroItem = Schema.Struct({
+  ...animeItemFields,
+  description: Schema.NullOr(Schema.String),
+  backdrop: Schema.NullOr(Schema.String),
+})
+export type AnimeHeroItem = typeof AnimeHeroItem.Type
+
 export const AnimeHome = Schema.Struct({
-  trending: Schema.Array(AnimeItem),
+  trending: Schema.Array(AnimeHeroItem),
   seasonal: Schema.Array(AnimeItem),
   topRated: Schema.Array(AnimeItem),
   popular: Schema.Array(AnimeItem),

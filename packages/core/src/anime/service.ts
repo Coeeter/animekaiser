@@ -20,6 +20,17 @@ const cacheKey = (scope: string, value: object) =>
   `${scope}:${JSON.stringify(value)}`
 const NullableAnimeDetail = Schema.NullOr(AnimeDetail)
 
+// AniList synopses end with credits like "(Source: Crunchyroll)" or
+// "[Written by MAL Rewrite]", which read as noise in a three-line teaser.
+export const heroSynopsis = (description: string | null) => {
+  if (!description) return null
+  const text = description
+    .replace(/\s*[([](?:source|written by)[^)\]]*[)\]]\s*$/i, "")
+    .replace(/\s+/g, " ")
+    .trim()
+  return text.length > 0 ? text : null
+}
+
 export class AnimeService extends Effect.Service<AnimeService>()(
   "@animekaiser/core/AnimeService",
   {
@@ -131,7 +142,7 @@ export class AnimeService extends Effect.Service<AnimeService>()(
 
       const getHome = Effect.fn("AnimeService.getHome")(function* () {
         return yield* cached(
-          "anime:home:v4",
+          "anime:home:v5",
           AnimeHome,
           2 * 60 * 60,
           Effect.all(
@@ -141,8 +152,23 @@ export class AnimeService extends Effect.Service<AnimeService>()(
                   Effect.forEach(
                     page.items,
                     (item) =>
-                      getAniZip(item.malId).pipe(
-                        Effect.map((data) => ({ ...item, logo: data.logo }))
+                      Effect.all(
+                        {
+                          metadata: getAniZip(item.malId),
+                          description: getDetail(item.malId).pipe(
+                            Effect.map((detail) =>
+                              heroSynopsis(detail.description)
+                            ),
+                            Effect.orElseSucceed(() => null)
+                          ),
+                        },
+                        { concurrency: 2 }
+                      ).pipe(
+                        Effect.map(({ metadata, description }) => ({
+                          ...item,
+                          description,
+                          backdrop: metadata.fanart ?? item.bannerImage,
+                        }))
                       ),
                     { concurrency: 5 }
                   )
@@ -263,7 +289,7 @@ export class AnimeService extends Effect.Service<AnimeService>()(
             })
           ),
           Effect.orElseSucceed(
-            (): AniZipData => ({ episodes: [], logo: null, fanart: null })
+            (): AniZipData => ({ episodes: [], fanart: null })
           )
         )
       })

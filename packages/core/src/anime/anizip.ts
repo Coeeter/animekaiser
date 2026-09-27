@@ -37,7 +37,6 @@ const AniZipImage = Schema.Struct({
 
 export const AniZipData = Schema.Struct({
   episodes: Schema.Array(EpisodeMetadata),
-  logo: Schema.NullOr(Schema.String),
   fanart: Schema.NullOr(Schema.String),
 })
 export type AniZipData = typeof AniZipData.Type
@@ -81,7 +80,6 @@ export const aniZipData = (
   mappings: typeof AniZipMappings.Type
 ): AniZipData => ({
   episodes: episodeMetadata(mappings),
-  logo: imageOf(mappings, "Clearlogo"),
   fanart: imageOf(mappings, "Fanart"),
 })
 
