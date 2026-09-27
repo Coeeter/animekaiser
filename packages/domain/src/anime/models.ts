@@ -125,6 +125,14 @@ export const AnimePage = Schema.Struct({
 })
 export type AnimePage = typeof AnimePage.Type
 
+export const LatestEpisode = Schema.Struct({
+  anime: AnimeItem,
+  episode: Schema.Int.pipe(Schema.positive()),
+  airedAt: Schema.Int.pipe(Schema.positive()),
+  image: Schema.NullOr(Schema.String),
+})
+export type LatestEpisode = typeof LatestEpisode.Type
+
 export const AnimeHome = Schema.Struct({
   trending: Schema.Array(AnimeItem),
   seasonal: Schema.Array(AnimeItem),

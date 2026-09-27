@@ -5,6 +5,7 @@ import {
   AnimeNotFoundError,
   AnimePage,
   AnimeUnavailableError,
+  LatestEpisode,
 } from "@animekaiser/domain"
 import * as Effect from "effect/Effect"
 import * as Option from "effect/Option"
@@ -270,6 +271,68 @@ export class AnimeService extends Effect.Service<AnimeService>()(
       const getEpisodeMetadata = (malId: number) =>
         getAniZip(malId).pipe(Effect.map((data) => data.episodes))
 
+      const latestWindowSeconds = 3 * 24 * 60 * 60
+      const latestBucketSeconds = 15 * 60
+
+      // Bucketing "now" lets every request in the same 15 minutes share one
+      // cached AniList lookup.
+      const getLatestEpisodes = Effect.fn("AnimeService.getLatestEpisodes")(
+        function* () {
+          const to =
+            Math.floor(Date.now() / 1000 / latestBucketSeconds) *
+            latestBucketSeconds
+          const from = to - latestWindowSeconds
+          return yield* cached(
+            `anime:latest:v1:${to}`,
+            Schema.Array(LatestEpisode),
+            latestBucketSeconds,
+            Effect.forEach([1, 2], (page) =>
+              aniList.getSchedule(from, to, page, 50)
+            ).pipe(
+              Effect.map((pages) =>
+                pages
+                  .flatMap((page) => page.items)
+                  .flatMap((anime) =>
+                    anime.nextAiringEpisode && !anime.isAdult
+                      ? [{ anime, next: anime.nextAiringEpisode }]
+                      : []
+                  )
+                  .sort(
+                    (left, right) => right.next.airingAt - left.next.airingAt
+                  )
+              ),
+              Effect.flatMap((items) =>
+                Effect.forEach(
+                  items,
+                  ({ anime, next }) =>
+                    getAniZip(anime.malId).pipe(
+                      Effect.map(
+                        (data): LatestEpisode => ({
+                          anime,
+                          episode: next.episode,
+                          airedAt: next.airingAt,
+                          image:
+                            data.episodes.find(
+                              (episode) => episode.number === next.episode
+                            )?.image ?? null,
+                        })
+                      )
+                    ),
+                  { concurrency: 6 }
+                )
+              )
+            )
+          ).pipe(
+            Effect.mapError(
+              () =>
+                new AnimeUnavailableError({
+                  message: "Latest episodes are unavailable.",
+                })
+            )
+          )
+        }
+      )
+
       const getRandom = Effect.fn("AnimeService.getRandom")(function* () {
         const page = yield* getDiscovery("popular", 1, 50)
         const item = page.items.at(
@@ -290,6 +353,7 @@ export class AnimeService extends Effect.Service<AnimeService>()(
         getDetail,
         getRecommendations,
         getSchedule,
+        getLatestEpisodes,
         getEpisodeMetadata,
         getRandom,
       }

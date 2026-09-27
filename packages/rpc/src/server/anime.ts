@@ -15,6 +15,7 @@ export const AnimeHandlersLive = AnimeRpcs.toLayer(
             new AnimeUnavailableError({ message: "Schedule range is invalid." })
           )
         : AnimeService.getSchedule(from, to, page, perPage),
+    ListLatestEpisodes: () => AnimeService.getLatestEpisodes(),
     GetRandomAnime: () => AnimeService.getRandom(),
     GetAnimeDetail: ({ malId }) => AnimeService.getDetail(malId),
     ListAnimeRecommendations: ({ malId, page, perPage }) =>
