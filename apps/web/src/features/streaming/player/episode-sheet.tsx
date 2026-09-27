@@ -47,6 +47,7 @@ import {
 import { useState } from "react"
 import { AnimeTitle } from "../../anime/common/anime-title"
 import { NextAiringNotice } from "../../anime/schedule/next-airing-notice"
+import { episodeSpoilerAtom } from "../../history/atoms"
 import { streamEpisodesAtom, streamProvidersAtom } from "../atoms"
 import { EpisodeThumbnail } from "../episode-thumbnail"
 import {
@@ -328,10 +329,18 @@ function EpisodeSheetRow({
     selectedProvider === selection.provider &&
     episode.id === selection.episodeId
   const title = episodeTitle(episode)
+  const spoiler = useAtomValue(
+    episodeSpoilerAtom({
+      malId: selection.malId,
+      provider: selection.provider,
+      number: episode.number,
+    })
+  )
   const content = (
     <>
       {episode.image ? (
         <EpisodeThumbnail
+          blur={spoiler && !isCurrent}
           image={episode.image}
           number={episode.number}
           highlighted={isCurrent}

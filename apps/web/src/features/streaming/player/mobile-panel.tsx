@@ -16,6 +16,7 @@ import {
 import type { ReactNode } from "react"
 import { AnimeTitle } from "../../anime/common/anime-title"
 import { NextAiringNotice } from "../../anime/schedule/next-airing-notice"
+import { episodeSpoilerAtom } from "../../history/atoms"
 import { providerLabelAtom } from "../atoms"
 import { EpisodeThumbnail } from "../episode-thumbnail"
 import {
@@ -210,11 +211,19 @@ function MobileEpisodeRow({
     : preferredAudio(episode)
   const isCurrent = episode.id === playback.episode.id
   const title = episodeTitle(episode)
+  const spoiler = useAtomValue(
+    episodeSpoilerAtom({
+      malId: playback.anime.malId,
+      provider: playback.provider,
+      number: episode.number,
+    })
+  )
 
   const content = (
     <>
       {episode.image ? (
         <EpisodeThumbnail
+          blur={spoiler && !isCurrent}
           image={episode.image}
           number={episode.number}
           highlighted={isCurrent}

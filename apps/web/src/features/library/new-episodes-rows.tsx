@@ -1,11 +1,13 @@
 import type { LibraryNewEpisode } from "@animekaiser/domain"
 import { Badge } from "@animekaiser/ui/components/badge"
+import { cn } from "@animekaiser/ui/lib/utils"
 import { Result, useAtomValue } from "@effect-atom/atom-react"
 import { Link } from "@tanstack/react-router"
 import { Play } from "lucide-react"
 import { MediaRow } from "../anime/common/anime-scroll-row"
 import { AnimeTitle } from "../anime/common/anime-title"
 import { NextEpisodeCountdown } from "../anime/schedule/next-episode-countdown"
+import { spoilerBlurAtom } from "../streaming/preferences"
 import { planningNewEpisodesAtom } from "./atoms"
 
 const relativeTime = (date: Date) => {
@@ -68,6 +70,8 @@ export function PlanToWatchAiringRow() {
 
 export function UpNextCard({ item }: { item: LibraryNewEpisode }) {
   const image = item.nextEpisodeImage ?? item.anime.coverImage
+  const spoiler =
+    useAtomValue(spoilerBlurAtom) && item.nextEpisodeImage !== null
   const available = !isBehindProviders(item)
   const recent = isRecent(item)
 
@@ -84,7 +88,10 @@ export function UpNextCard({ item }: { item: LibraryNewEpisode }) {
             src={image}
             alt=""
             referrerPolicy="no-referrer"
-            className="size-full object-cover object-center transition duration-500 group-hover:scale-105"
+            className={cn(
+              "size-full object-cover object-center transition duration-500 group-hover:scale-105",
+              spoiler && "scale-110 blur-md group-hover:scale-110"
+            )}
             loading="lazy"
             decoding="async"
           />

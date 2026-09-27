@@ -122,6 +122,10 @@ export const updatePlayerPreferencesAtom = Atom.writable<
   }
 )
 
+export const spoilerBlurAtom = Atom.make(
+  (get) => get(playerPreferencesAtom).blurUnwatched
+)
+
 const decodeProviderOption = Schema.decodeUnknownOption(StreamProviderId)
 
 export const preferredProviderAtom = Atom.make((get) =>

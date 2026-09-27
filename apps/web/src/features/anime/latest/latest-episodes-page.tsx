@@ -1,11 +1,13 @@
 import type { LatestEpisode } from "@animekaiser/domain"
 import { Skeleton } from "@animekaiser/ui/components/skeleton"
+import { cn } from "@animekaiser/ui/lib/utils"
 import { Result, useAtomRefresh, useAtomValue } from "@effect-atom/atom-react"
 import { Link } from "@tanstack/react-router"
 import { Clapperboard } from "lucide-react"
 import { DataError } from "../../../components/data-error"
 import { PageHero } from "../../../components/page-hero"
 import { KaiserRpcClient } from "../../../services/api-clients"
+import { spoilerBlurAtom } from "../../streaming/preferences"
 import { AnimeTitle } from "../common/anime-title"
 import { formatAnimeFormat } from "../common/format"
 
@@ -63,6 +65,7 @@ export function LatestEpisodesPage() {
 function LatestEpisodeCard({ item }: { item: LatestEpisode }) {
   const image =
     item.image ?? item.anime.bannerImage ?? item.anime.coverImage ?? null
+  const spoiler = useAtomValue(spoilerBlurAtom) && item.image !== null
 
   return (
     <Link
@@ -77,7 +80,10 @@ function LatestEpisodeCard({ item }: { item: LatestEpisode }) {
             src={image}
             alt=""
             referrerPolicy="no-referrer"
-            className="size-full object-cover transition duration-500 group-hover:scale-105"
+            className={cn(
+              "size-full object-cover transition duration-500 group-hover:scale-105",
+              spoiler && "scale-110 blur-md group-hover:scale-110"
+            )}
             loading="lazy"
             decoding="async"
           />

@@ -3,13 +3,14 @@ import type {
   LibraryNewEpisode,
   StreamProviderId,
 } from "@animekaiser/domain"
-import { Atom } from "@effect-atom/atom-react"
+import { Atom, Result } from "@effect-atom/atom-react"
 import * as Data from "effect/Data"
 import * as Effect from "effect/Effect"
 import { KaiserRpcClient } from "../../services/api-clients"
 import { libraryProgressOf, watchingNewEpisodesAtom } from "../library/atoms"
 import { profileReactivityKeys } from "../profile/atoms"
 import { streamEpisodesAtom } from "../streaming/atoms"
+import { spoilerBlurAtom } from "../streaming/preferences"
 import { episodeProgressByNumber } from "./episode-progress"
 
 export const watchHistoryReactivityKeys = {
@@ -119,6 +120,24 @@ const episodeProgressFamily = Atom.family(
 
 export const episodeProgressAtom = (key: EpisodeProgressKey) =>
   episodeProgressFamily(Data.struct(key))
+
+type EpisodeSpoilerKey = EpisodeProgressKey & { readonly number: number }
+
+// Episodes stay hidden while progress is still loading, so a spoiler never
+// flashes before the watched state arrives.
+const episodeSpoilerFamily = Atom.family(
+  ({ malId, provider, number }: EpisodeSpoilerKey) =>
+    Atom.make((get) => {
+      if (!get(spoilerBlurAtom)) return false
+      const progress = get(episodeProgressAtom({ malId, provider }))
+      if (!Result.isSuccess(progress)) return true
+      const state = progress.value.get(number)
+      return !(state?.watched || state?.continueWatching)
+    })
+)
+
+export const episodeSpoilerAtom = (key: EpisodeSpoilerKey) =>
+  episodeSpoilerFamily(Data.struct(key))
 
 export const recordWatchProgressAtom = KaiserRpcClient.mutation(
   "RecordWatchProgress"
