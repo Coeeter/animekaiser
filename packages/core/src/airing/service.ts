@@ -5,7 +5,18 @@ import {
   userLibraryEntry,
 } from "@animekaiser/db"
 import type { LibraryNewEpisode, LibraryStatus } from "@animekaiser/domain"
-import { and, desc, eq, gt, inArray, isNull, lt, or, sql } from "drizzle-orm"
+import {
+  and,
+  desc,
+  eq,
+  gt,
+  inArray,
+  isNull,
+  lt,
+  ne,
+  or,
+  sql,
+} from "drizzle-orm"
 import * as Chunk from "effect/Chunk"
 import * as Effect from "effect/Effect"
 import * as Schema from "effect/Schema"
@@ -357,7 +368,11 @@ export class AiringService extends Effect.Service<AiringService>()(
                     animeAiringState.latestAiredEpisode,
                     userLibraryEntry.progress
                   ),
+                  // Anything in progress with episodes left counts, like the
+                  // old aniways continue-watching; plan-to-watch only surfaces
+                  // what is airing now or aired recently.
                   or(
+                    ne(userLibraryEntry.status, "planning"),
                     eq(animeAiringState.airingStatus, "RELEASING"),
                     gt(
                       animeAiringState.latestAiredAt,
@@ -370,7 +385,7 @@ export class AiringService extends Effect.Service<AiringService>()(
                 sql`${animeAiringState.latestAiredAt} desc nulls last`,
                 desc(userLibraryEntry.updatedAt)
               )
-              .limit(40)
+              .limit(60)
           )
 
           return yield* Effect.forEach(

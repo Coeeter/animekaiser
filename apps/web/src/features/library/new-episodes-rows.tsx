@@ -16,17 +16,29 @@ const relativeTime = (date: Date) => {
   return formatter.format(Math.round(hours / 24), "day")
 }
 
-const newEpisodeCount = (item: LibraryNewEpisode) =>
+const recentWindowMs = 14 * 24 * 60 * 60 * 1000
+
+const remainingEpisodes = (item: LibraryNewEpisode) =>
   item.latestAiredEpisode - item.progress
 
-const isAvailable = (item: LibraryNewEpisode) =>
-  item.availableEpisode !== null && item.availableEpisode > item.progress
+const isRecent = (item: LibraryNewEpisode) =>
+  item.latestAiredAt !== null &&
+  Date.now() - item.latestAiredAt.getTime() < recentWindowMs
+
+// Availability is only known for airing shows the sync has checked, so an
+// unchecked (null) value is not treated as missing.
+const isBehindProviders = (item: LibraryNewEpisode) =>
+  item.availableEpisode !== null && item.availableEpisode <= item.progress
 
 const summary = (item: LibraryNewEpisode) => {
   const next = `Episode ${item.progress + 1}`
-  if (!isAvailable(item)) return `${next} · not on providers yet`
-  const count = newEpisodeCount(item)
-  return count > 1 ? `${next} · ${count} new` : `${next} · new`
+  const remaining = remainingEpisodes(item)
+  if (isBehindProviders(item)) return `${next} · not on providers yet`
+  if (item.status === "planning") return `${next} · ${remaining} out`
+  if (isRecent(item)) {
+    return remaining > 1 ? `${next} · ${remaining} new` : `${next} · new`
+  }
+  return `${next} · ${remaining} left`
 }
 
 export function NewEpisodesRows() {
@@ -34,8 +46,8 @@ export function NewEpisodesRows() {
     <>
       <NewEpisodesRow
         atom={watchingNewEpisodesAtom}
-        title="New episodes"
-        eyebrow="From your watching list"
+        title="Up next in your list"
+        eyebrow="Watching"
       />
       <NewEpisodesRow
         atom={planningNewEpisodesAtom}
@@ -77,7 +89,8 @@ function NewEpisodesRow({
 
 function NewEpisodeCard({ item }: { item: LibraryNewEpisode }) {
   const image = item.nextEpisodeImage ?? item.anime.coverImage
-  const available = isAvailable(item)
+  const available = !isBehindProviders(item)
+  const recent = isRecent(item)
 
   return (
     <Link
@@ -99,11 +112,13 @@ function NewEpisodeCard({ item }: { item: LibraryNewEpisode }) {
         ) : null}
         <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent" />
 
-        <span className="absolute top-2 left-2">
-          <Badge variant={available ? "default" : "secondary"}>
-            {available ? "New" : "Aired"}
-          </Badge>
-        </span>
+        {!available || recent ? (
+          <span className="absolute top-2 left-2">
+            <Badge variant={available ? "default" : "secondary"}>
+              {available ? "New" : "Aired"}
+            </Badge>
+          </span>
+        ) : null}
 
         {available ? (
           <span className="absolute inset-0 grid place-items-center">
@@ -117,7 +132,7 @@ function NewEpisodeCard({ item }: { item: LibraryNewEpisode }) {
           <span className="truncate text-[11px] font-medium text-white/85">
             {summary(item)}
           </span>
-          {item.latestAiredAt ? (
+          {item.latestAiredAt && recent ? (
             <span className="truncate text-[11px] text-white/60">
               Episode {item.latestAiredEpisode} aired{" "}
               {relativeTime(item.latestAiredAt)}
