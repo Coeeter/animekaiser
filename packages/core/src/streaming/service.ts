@@ -4,6 +4,7 @@ import type {
   StreamAudio,
   StreamEpisode,
   StreamEpisodeCatalog,
+  StreamProviderAvailability,
   StreamProviderEpisodes,
   StreamProviderId,
 } from "@animekaiser/domain"
@@ -213,8 +214,38 @@ export class StreamingService extends Effect.Service<StreamingService>()(
         return { ...playback, episode: withMetadata(playback.episode, artwork) }
       })
 
+      // Opened on demand from the provider picker: it asks every provider for
+      // its episode list, which the streaming service caches.
+      const listAvailability = Effect.fn("StreamingService.listAvailability")(
+        function* (malId: number) {
+          const anime = yield* getAnime(malId)
+          const providers = yield* streaming.listProviders
+          return yield* Effect.forEach(
+            providers,
+            (provider) =>
+              episodesFor(anime, provider.id, provider.label).pipe(
+                Effect.map(
+                  (episodes): StreamProviderAvailability => ({
+                    provider: provider.id,
+                    label: provider.label,
+                    status: episodes.status,
+                    sub: episodes.episodes.filter((episode) =>
+                      episode.availableAudio.includes("sub")
+                    ).length,
+                    dub: episodes.episodes.filter((episode) =>
+                      episode.availableAudio.includes("dub")
+                    ).length,
+                  })
+                )
+              ),
+            { concurrency: "unbounded" }
+          )
+        }
+      )
+
       return {
         listEpisodes,
+        listAvailability,
         getPlayback,
         listProviders: streaming.listProviders,
       }

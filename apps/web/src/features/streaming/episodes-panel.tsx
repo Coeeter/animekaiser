@@ -52,7 +52,11 @@ import { useMemo, useState } from "react"
 import { DataError } from "../../components/data-error"
 import { episodeProgressAtom } from "../history/atoms"
 import type { EpisodeProgress } from "../history/episode-progress"
-import { streamEpisodesAtom, streamProvidersAtom } from "./atoms"
+import {
+  streamAvailabilityAtom,
+  streamEpisodesAtom,
+  streamProvidersAtom,
+} from "./atoms"
 import { EpisodeThumbnail } from "./episode-thumbnail"
 
 const decodeProviderId = Schema.decodeUnknownSync(StreamProviderId)
@@ -171,13 +175,21 @@ export function EpisodesPanel({
         onValueChange={(value) => onProviderChange(decodeProviderId(value))}
       >
         <SelectTrigger className="w-full sm:w-44">
-          <SelectValue placeholder="Provider" />
+          <SelectValue placeholder="Provider">
+            {
+              providerOptions.find(
+                (entry) =>
+                  entry.id === (currentProvider?.provider ?? selectedProvider)
+              )?.label
+            }
+          </SelectValue>
         </SelectTrigger>
         <SelectContent>
           <SelectGroup>
             {providerOptions.map((entry) => (
               <SelectItem key={entry.id} value={entry.id}>
                 {entry.label}
+                <ProviderAvailability malId={anime.malId} provider={entry.id} />
               </SelectItem>
             ))}
           </SelectGroup>
@@ -405,6 +417,32 @@ function ProviderEpisodes({
       ) : null}
     </div>
   )
+}
+
+function ProviderAvailability({
+  malId,
+  provider,
+}: {
+  malId: number
+  provider: StreamProviderId
+}) {
+  const result = useAtomValue(streamAvailabilityAtom(malId))
+  const label = Result.builder(result)
+    .onSuccess((items) => {
+      const entry = items.find((item) => item.provider === provider)
+      if (entry?.status !== "available") return "No match"
+      return entry.dub > 0
+        ? `${entry.sub} sub · ${entry.dub} dub`
+        : `${entry.sub} sub`
+    })
+    .onFailure(() => null)
+    .orElse(() => "Checking…")
+
+  return label ? (
+    <span className="ml-auto text-xs font-normal text-muted-foreground">
+      {label}
+    </span>
+  ) : null
 }
 
 function EpisodeRow({

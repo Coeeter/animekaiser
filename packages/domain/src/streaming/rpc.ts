@@ -8,6 +8,7 @@ import {
   StreamingUnavailableError,
   StreamPlayback,
   StreamProvider,
+  StreamProviderAvailability,
   StreamProviderId,
   StreamProviderNotFoundError,
   StreamProviderUnavailableError,
@@ -34,6 +35,12 @@ export class ListStreamEpisodes extends Rpc.make("ListStreamEpisodes", {
   error: StreamingUnavailableError,
 }) {}
 
+export class ListStreamAvailability extends Rpc.make("ListStreamAvailability", {
+  payload: { malId: MalId },
+  success: Schema.Array(StreamProviderAvailability),
+  error: StreamingUnavailableError,
+}) {}
+
 export class GetStreamPlayback extends Rpc.make("GetStreamPlayback", {
   payload: {
     malId: MalId,
@@ -49,5 +56,6 @@ export class GetStreamPlayback extends Rpc.make("GetStreamPlayback", {
 export class StreamingRpcs extends RpcGroup.make(
   ListStreamProviders,
   ListStreamEpisodes,
+  ListStreamAvailability,
   GetStreamPlayback
 ) {}

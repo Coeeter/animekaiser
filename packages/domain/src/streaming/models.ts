@@ -47,6 +47,15 @@ export const StreamProviderEpisodes = Schema.Struct({
 })
 export type StreamProviderEpisodes = typeof StreamProviderEpisodes.Type
 
+export const StreamProviderAvailability = Schema.Struct({
+  provider: StreamProviderId,
+  label: Schema.String.pipe(Schema.minLength(1)),
+  status: Schema.Literal("available", "unmatched", "unavailable"),
+  sub: Schema.NonNegativeInt,
+  dub: Schema.NonNegativeInt,
+})
+export type StreamProviderAvailability = typeof StreamProviderAvailability.Type
+
 export const StreamEpisodeCatalog = Schema.Struct({
   anime: AnimeDetail,
   providers: Schema.Array(StreamProviderEpisodes),

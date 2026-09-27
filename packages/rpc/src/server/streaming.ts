@@ -7,6 +7,8 @@ export const StreamingHandlersLive = StreamingRpcs.toLayer(
     ListStreamProviders: () => StreamingService.listProviders,
     ListStreamEpisodes: ({ malId, provider }) =>
       StreamingService.listEpisodes(malId, provider),
+    ListStreamAvailability: ({ malId }) =>
+      StreamingService.listAvailability(malId),
     GetStreamPlayback: ({ malId, provider, episodeId, audio, serverId }) =>
       StreamingService.getPlayback(malId, provider, episodeId, audio, serverId),
   })
