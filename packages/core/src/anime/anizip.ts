@@ -30,7 +30,20 @@ const AniZipEpisode = Schema.Struct({
   airDateUtc: Schema.optional(Schema.NullOr(Schema.String)),
 })
 
+const AniZipImage = Schema.Struct({
+  coverType: Schema.String,
+  url: Schema.String,
+})
+
+export const AniZipData = Schema.Struct({
+  episodes: Schema.Array(EpisodeMetadata),
+  logo: Schema.NullOr(Schema.String),
+  fanart: Schema.NullOr(Schema.String),
+})
+export type AniZipData = typeof AniZipData.Type
+
 const AniZipMappings = Schema.Struct({
+  images: Schema.optional(Schema.NullOr(Schema.Array(AniZipImage))),
   episodes: Schema.optional(
     Schema.NullOr(Schema.Record({ key: Schema.String, value: AniZipEpisode }))
   ),
@@ -58,6 +71,20 @@ export const episodeMetadata = (
     })
     .sort((left, right) => left.number - right.number)
 
+const imageOf = (
+  mappings: typeof AniZipMappings.Type,
+  coverType: "Clearlogo" | "Fanart"
+) =>
+  mappings.images?.find((image) => image.coverType === coverType)?.url ?? null
+
+export const aniZipData = (
+  mappings: typeof AniZipMappings.Type
+): AniZipData => ({
+  episodes: episodeMetadata(mappings),
+  logo: imageOf(mappings, "Clearlogo"),
+  fanart: imageOf(mappings, "Fanart"),
+})
+
 export class AniZipService extends Effect.Service<AniZipService>()(
   "@animekaiser/core/AniZipService",
   {
@@ -68,31 +95,31 @@ export class AniZipService extends Effect.Service<AniZipService>()(
         HttpClient.withTracerPropagation(false)
       )
 
-      const getEpisodeMetadata = Effect.fn("AniZipService.getEpisodeMetadata")(
-        function* (malId: number) {
-          const mappings = yield* http
-            .execute(
-              HttpClientRequest.get(
-                `https://api.ani.zip/mappings?mal_id=${malId}`
-              )
+      const getData = Effect.fn("AniZipService.getData")(function* (
+        malId: number
+      ) {
+        const mappings = yield* http
+          .execute(
+            HttpClientRequest.get(
+              `https://api.ani.zip/mappings?mal_id=${malId}`
             )
-            .pipe(
-              Effect.flatMap(HttpClientResponse.filterStatusOk),
-              Effect.flatMap(HttpClientResponse.schemaBodyJson(AniZipMappings)),
-              Effect.timeout("10 seconds"),
-              Effect.mapError(
-                (cause) =>
-                  new AniZipRequestError({
-                    message: "ani.zip request failed.",
-                    cause,
-                  })
-              )
+          )
+          .pipe(
+            Effect.flatMap(HttpClientResponse.filterStatusOk),
+            Effect.flatMap(HttpClientResponse.schemaBodyJson(AniZipMappings)),
+            Effect.timeout("10 seconds"),
+            Effect.mapError(
+              (cause) =>
+                new AniZipRequestError({
+                  message: "ani.zip request failed.",
+                  cause,
+                })
             )
-          return episodeMetadata(mappings)
-        }
-      )
+          )
+        return aniZipData(mappings)
+      })
 
-      return { getEpisodeMetadata }
+      return { getData }
     }),
   }
 ) {}

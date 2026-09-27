@@ -170,9 +170,22 @@ function HeroSlide({
         ) : null}
 
         <div className="flex min-w-0 flex-1 flex-col gap-2.5">
-          <h2 className="line-clamp-2 max-w-2xl font-heading text-2xl leading-[1.1] font-black tracking-tight text-white sm:text-3xl md:text-5xl">
-            {title}
-          </h2>
+          {anime.logo ? (
+            <h2>
+              <span className="sr-only">{title}</span>
+              <img
+                src={anime.logo}
+                alt=""
+                referrerPolicy="no-referrer"
+                decoding="async"
+                className="max-h-16 max-w-[70%] object-contain object-left drop-shadow-[0_4px_24px_rgba(0,0,0,0.6)] sm:max-h-24 md:max-h-32 md:max-w-md"
+              />
+            </h2>
+          ) : (
+            <h2 className="line-clamp-2 max-w-2xl font-heading text-2xl leading-[1.1] font-black tracking-tight text-white sm:text-3xl md:text-5xl">
+              {title}
+            </h2>
+          )}
 
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-white/70 sm:text-sm">
             {anime.averageScore ? (

@@ -11,7 +11,7 @@ import * as Option from "effect/Option"
 import * as Schema from "effect/Schema"
 import type { AnimeCatalogRequest } from "./anilist"
 import { AniListAnimeService } from "./anilist"
-import { AniZipService, EpisodeMetadata } from "./anizip"
+import { AniZipData, AniZipService } from "./anizip"
 import { AnimeCache } from "./cache"
 import { JikanAnimeService } from "./jikan"
 
@@ -130,13 +130,22 @@ export class AnimeService extends Effect.Service<AnimeService>()(
 
       const getHome = Effect.fn("AnimeService.getHome")(function* () {
         return yield* cached(
-          "anime:home:v2",
+          "anime:home:v3",
           AnimeHome,
           2 * 60 * 60,
           Effect.all(
             {
               trending: getDiscovery("trending", 1, 10).pipe(
-                Effect.map((page) => page.items)
+                Effect.flatMap((page) =>
+                  Effect.forEach(
+                    page.items,
+                    (item) =>
+                      getAniZip(item.malId).pipe(
+                        Effect.map((data) => ({ ...item, logo: data.logo }))
+                      ),
+                    { concurrency: 5 }
+                  )
+                )
               ),
               seasonal: getDiscovery("seasonal", 1, 20).pipe(
                 Effect.map((page) => page.items)
@@ -232,26 +241,31 @@ export class AnimeService extends Effect.Service<AnimeService>()(
         )
       })
 
-      // Episode metadata only decorates or cross-checks other sources, so
-      // callers get an empty list instead of an error.
-      const getEpisodeMetadata = Effect.fn("AnimeService.getEpisodeMetadata")(
-        function* (malId: number) {
-          return yield* cached(
-            `anime:episode-metadata:v2:${malId}`,
-            Schema.Array(EpisodeMetadata),
-            24 * 60 * 60,
-            aniZip.getEpisodeMetadata(malId)
-          ).pipe(
-            Effect.tapError((error) =>
-              Effect.logWarning("Episode metadata is unavailable", {
-                malId,
-                message: error.message,
-              })
-            ),
-            Effect.orElseSucceed((): ReadonlyArray<EpisodeMetadata> => [])
+      // ani.zip only decorates or cross-checks other sources, so callers get
+      // empty data instead of an error.
+      const getAniZip = Effect.fn("AnimeService.getAniZip")(function* (
+        malId: number
+      ) {
+        return yield* cached(
+          `anime:anizip:v1:${malId}`,
+          AniZipData,
+          24 * 60 * 60,
+          aniZip.getData(malId)
+        ).pipe(
+          Effect.tapError((error) =>
+            Effect.logWarning("ani.zip data is unavailable", {
+              malId,
+              message: error.message,
+            })
+          ),
+          Effect.orElseSucceed(
+            (): AniZipData => ({ episodes: [], logo: null, fanart: null })
           )
-        }
-      )
+        )
+      })
+
+      const getEpisodeMetadata = (malId: number) =>
+        getAniZip(malId).pipe(Effect.map((data) => data.episodes))
 
       const getRandom = Effect.fn("AnimeService.getRandom")(function* () {
         const page = yield* getDiscovery("popular", 1, 50)

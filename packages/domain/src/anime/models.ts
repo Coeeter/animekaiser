@@ -77,6 +77,7 @@ const animeItemFields = {
   broadcast: Schema.NullOr(AnimeBroadcast),
   nextAiringEpisode: Schema.NullOr(AnimeNextAiringEpisode),
   isAdult: Schema.Boolean,
+  logo: Schema.optional(Schema.NullOr(Schema.String)),
 }
 
 export const AnimeItem = Schema.Struct(animeItemFields)
