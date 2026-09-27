@@ -218,7 +218,7 @@ export function PlaybackPanel() {
       <SettingCard id="playback.subtitleLanguage" className="p-4">
         <SettingHeading
           title="Subtitle language"
-          description="Turn on this caption track automatically when a stream has it."
+          description="Turn on this caption track automatically when a stream has it. Some providers only ship English or label tracks oddly, so this may not always apply."
           action={<SubtitleLanguageSelect />}
         />
       </SettingCard>

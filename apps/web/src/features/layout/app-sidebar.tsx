@@ -34,7 +34,10 @@ import type { ReactNode } from "react"
 import { useEffect, useRef, useState } from "react"
 import { ModeToggle } from "../../components/theme"
 import { searchOpenAtom } from "../anime/common/search-atoms"
-import { TitleLanguageToggle } from "../anime/common/title-language-toggle"
+import {
+  TitleLanguageSwitch,
+  TitleLanguageToggle,
+} from "../anime/common/title-language-toggle"
 import { sessionAtom } from "../auth/atoms"
 import { displayUsername, userInitials } from "../auth/user"
 import { settingsOpenAtom, settingsSectionAtom } from "../settings/atoms"
@@ -204,6 +207,7 @@ export function AppSidebar({ children }: { children: ReactNode }) {
           ) : null}
         </SidebarContent>
         <SidebarFooter className="border-t p-3">
+          <TitleLanguageSwitch className="group-data-[collapsible=icon]:hidden" />
           <div className="flex items-center gap-2 group-data-[collapsible=icon]:flex-col group-data-[collapsible=icon]:items-center">
             {user ? (
               <FooterTooltip label="Profile">
@@ -253,7 +257,7 @@ export function AppSidebar({ children }: { children: ReactNode }) {
                 </FooterTooltip>
               </>
             )}
-            <TitleLanguageToggle />
+            <TitleLanguageToggle className="hidden group-data-[collapsible=icon]:inline-flex" />
             <ModeToggle />
             <FooterTooltip label="Settings">
               <Button
