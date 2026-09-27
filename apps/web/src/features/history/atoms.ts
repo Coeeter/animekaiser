@@ -62,6 +62,17 @@ export const watchHistoryPageAtom = (
     { reactivityKeys: [watchHistoryReactivityKeys.all] }
   )
 
+export const watchHistoryShowsAtom = (
+  page: number,
+  perPage: number,
+  query?: string
+) =>
+  KaiserRpcClient.query(
+    "ListWatchHistoryShows",
+    { page, perPage, query },
+    { reactivityKeys: [watchHistoryReactivityKeys.all] }
+  )
+
 export const episodeWatchProgressAtom = (malId: number, episode: number) =>
   KaiserRpcClient.query(
     "GetEpisodeWatchProgress",

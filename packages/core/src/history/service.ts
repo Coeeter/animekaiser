@@ -1,12 +1,19 @@
-import { animeMetadata, Database, watchHistory } from "@animekaiser/db"
+import {
+  animeAiringState,
+  animeMetadata,
+  Database,
+  watchHistory,
+} from "@animekaiser/db"
 import type {
   AnimeLibraryMetadata,
   ContinueWatchingItem,
   StreamAudio,
   StreamProviderId,
+  WatchHistoryNext,
+  WatchHistoryShow,
   WatchHistoryStatus,
 } from "@animekaiser/domain"
-import { and, desc, eq, sql } from "drizzle-orm"
+import { and, desc, eq, inArray, max, sql } from "drizzle-orm"
 import * as Effect from "effect/Effect"
 import * as Schema from "effect/Schema"
 import { AnimeService } from "../anime"
@@ -29,6 +36,28 @@ const resolveStatus = (
   positionSeconds >= durationSeconds * completionRatio
     ? "completed"
     : "watching"
+
+// The newest entry decides what to offer: an unfinished episode resumes;
+// otherwise the following episode, unless it has not aired or does not exist.
+export const nextForShow = (input: {
+  latestEpisode: number
+  latestStatus: WatchHistoryStatus
+  totalEpisodes: number | null
+  latestAiredEpisode: number | null
+  nextAiringAt: Date | null
+}): WatchHistoryNext => {
+  if (input.latestStatus === "watching") {
+    return { _tag: "resume", episode: input.latestEpisode }
+  }
+  const next = input.latestEpisode + 1
+  if (input.totalEpisodes !== null && next > input.totalEpisodes) {
+    return { _tag: "completed" }
+  }
+  if (input.latestAiredEpisode !== null && next > input.latestAiredEpisode) {
+    return { _tag: "caughtUp", nextAiringAt: input.nextAiringAt }
+  }
+  return { _tag: "next", episode: next }
+}
 
 type HistoryRow = typeof watchHistory.$inferSelect
 
@@ -340,6 +369,119 @@ export class WatchHistoryService extends Effect.Service<WatchHistoryService>()(
         }
       )
 
+      const listHistoryShows = Effect.fn(
+        "WatchHistoryService.listHistoryShows"
+      )(function* (
+        userId: string,
+        page: number,
+        perPage: number,
+        query?: string
+      ) {
+        const search = query?.trim()
+        const searchFilter = search
+          ? sql`(${animeMetadata.titleRomaji} ilike ${`%${search}%`} or coalesce(${animeMetadata.titleEnglish}, '') ilike ${`%${search}%`})`
+          : undefined
+        const fail = (message: string) => (cause: unknown) =>
+          new WatchHistoryServiceError({ message, cause })
+
+        const lastWatched = max(watchHistory.updatedAt)
+        const shows = yield* database
+          .execute((db) =>
+            db
+              .select({ malId: watchHistory.malId, lastWatched })
+              .from(watchHistory)
+              .innerJoin(
+                animeMetadata,
+                eq(watchHistory.malId, animeMetadata.malId)
+              )
+              .where(and(eq(watchHistory.userId, userId), searchFilter))
+              .groupBy(watchHistory.malId)
+              .orderBy(desc(lastWatched), desc(watchHistory.malId))
+              .limit(perPage + 1)
+              .offset((page - 1) * perPage)
+          )
+          .pipe(Effect.mapError(fail("Unable to load watch history.")))
+
+        const pageShows = shows.slice(0, perPage)
+        const malIds = pageShows.map((show) => show.malId)
+        if (malIds.length === 0) return { items: [], hasNextPage: false }
+
+        const rows = yield* database
+          .execute((db) =>
+            db
+              .select({
+                history: watchHistory,
+                anime: animeMetadata,
+                airing: animeAiringState,
+              })
+              .from(watchHistory)
+              .innerJoin(
+                animeMetadata,
+                eq(watchHistory.malId, animeMetadata.malId)
+              )
+              .leftJoin(
+                animeAiringState,
+                eq(animeAiringState.malId, watchHistory.malId)
+              )
+              .where(
+                and(
+                  eq(watchHistory.userId, userId),
+                  inArray(watchHistory.malId, malIds)
+                )
+              )
+              .orderBy(desc(watchHistory.episode))
+          )
+          .pipe(Effect.mapError(fail("Unable to load watch history.")))
+
+        const items = yield* Effect.forEach(
+          pageShows,
+          (show) =>
+            Effect.gen(function* () {
+              const showRows = rows.filter(
+                (row) => row.history.malId === show.malId
+              )
+              const first = showRows[0]
+              if (!first) return []
+              const anime: AnimeLibraryMetadata = {
+                malId: first.anime.malId,
+                aniListId: first.anime.aniListId,
+                title: {
+                  romaji: first.anime.titleRomaji,
+                  english: first.anime.titleEnglish,
+                },
+                coverImage: first.anime.coverImage,
+                episodes: first.anime.episodes,
+              }
+              const episodes = yield* withEpisodeImages(
+                showRows.map((row) => ({ ...toEntry(row.history), anime }))
+              )
+              const latest = episodes.reduce((newest, item) =>
+                item.updatedAt > newest.updatedAt ? item : newest
+              )
+              return [
+                {
+                  anime,
+                  episodesWatched: episodes.length,
+                  latest,
+                  episodes,
+                  next: nextForShow({
+                    latestEpisode: latest.episode,
+                    latestStatus: latest.status,
+                    totalEpisodes:
+                      first.airing?.totalEpisodes ?? first.anime.episodes,
+                    latestAiredEpisode:
+                      first.airing?.latestAiredEpisode ?? null,
+                    nextAiringAt: first.airing?.nextAiringAt ?? null,
+                  }),
+                } satisfies WatchHistoryShow,
+              ]
+            }),
+          { concurrency: 4 }
+        )
+
+        return { items: items.flat(), hasNextPage: shows.length > perPage }
+      })
+
       const clearAll = Effect.fn("WatchHistoryService.clearAll")(function* (
         userId: string
       ) {
@@ -389,6 +531,7 @@ export class WatchHistoryService extends Effect.Service<WatchHistoryService>()(
         listForAnime,
         listContinueWatching,
         listHistory,
+        listHistoryShows,
         clearForAnime,
         clearAll,
       }

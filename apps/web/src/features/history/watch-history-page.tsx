@@ -1,4 +1,7 @@
-import type { ContinueWatchingItem } from "@animekaiser/domain"
+import type {
+  ContinueWatchingItem,
+  WatchHistoryShow,
+} from "@animekaiser/domain"
 import { Badge } from "@animekaiser/ui/components/badge"
 import { Button } from "@animekaiser/ui/components/button"
 import {
@@ -33,17 +36,18 @@ import { DebouncedSearchInput } from "../../components/debounced-search-input"
 import { PageHero } from "../../components/page-hero"
 import { isStaleResult, useLastSuccess } from "../../hooks/use-last-success"
 import { AnimeTitle } from "../anime/common/anime-title"
+import { NextEpisodeCountdown } from "../anime/schedule/next-episode-countdown"
 import { providerLabelAtom } from "../streaming/atoms"
 import { formatTime } from "../streaming/player-format"
 import {
   clearWatchHistoryEntryAtom,
   watchHistoryClearKeys,
-  watchHistoryPageAtom,
+  watchHistoryShowsAtom,
 } from "./atoms"
 import { ClearWatchHistoryButton } from "./clear-watch-history"
 import type { WatchHistorySearch } from "./search"
 
-const perPage = 24
+const perPage = 18
 
 const percentWatched = (item: ContinueWatchingItem) => {
   if (item.status === "completed") return 100
@@ -65,7 +69,7 @@ const formatWatchedAt = (value: Date) =>
 
 export function WatchHistoryPage({ search }: { search: WatchHistorySearch }) {
   const navigate = useNavigate()
-  const atom = watchHistoryPageAtom(
+  const atom = watchHistoryShowsAtom(
     search.page,
     perPage,
     search.q?.trim() || undefined
@@ -131,13 +135,15 @@ export function WatchHistoryPage({ search }: { search: WatchHistorySearch }) {
               </Empty>
             ) : (
               <>
-                {page.items.map((item) => (
-                  <WatchHistoryRow
-                    key={`${item.malId}-${item.episode}`}
-                    item={item}
-                    onCleared={refresh}
-                  />
-                ))}
+                <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                  {page.items.map((show) => (
+                    <WatchHistoryShowCard
+                      key={show.anime.malId}
+                      show={show}
+                      onCleared={refresh}
+                    />
+                  ))}
+                </div>
                 <WatchHistoryPagination
                   search={search}
                   hasNextPage={page.hasNextPage}
@@ -152,24 +158,24 @@ export function WatchHistoryPage({ search }: { search: WatchHistorySearch }) {
   )
 }
 
-function WatchHistoryRow({
-  item,
+function WatchHistoryShowCard({
+  show,
   onCleared,
 }: {
-  item: ContinueWatchingItem
+  show: WatchHistoryShow
   onCleared: () => void
 }) {
-  const providerName = useAtomValue(providerLabelAtom(item.provider))
   const clearEntry = useAtomSet(clearWatchHistoryEntryAtom, {
     mode: "promise",
   })
-  const percent = percentWatched(item)
-  const completed = item.status === "completed"
+  const others = show.episodes.filter(
+    (item) => item.episode !== show.latest.episode
+  )
 
   const clear = async () => {
     try {
       await clearEntry({
-        payload: { malId: item.malId },
+        payload: { malId: show.anime.malId },
         reactivityKeys: watchHistoryClearKeys,
       })
       onCleared()
@@ -180,7 +186,135 @@ function WatchHistoryRow({
   }
 
   return (
-    <div className="flex items-center gap-3 rounded-2xl border bg-card/70 p-2.5 transition hover:border-primary/40">
+    <article className="flex flex-col overflow-hidden rounded-2xl border bg-card/70">
+      <div className="flex gap-3 p-3">
+        <Link
+          to="/series/$id"
+          params={{ id: show.anime.malId }}
+          className="w-14 shrink-0 overflow-hidden rounded-lg bg-muted"
+        >
+          {show.anime.coverImage ? (
+            <img
+              src={show.anime.coverImage}
+              alt=""
+              className="aspect-2/3 w-full object-cover"
+              loading="lazy"
+              decoding="async"
+            />
+          ) : (
+            <div className="aspect-2/3 w-full" />
+          )}
+        </Link>
+        <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+          <Link
+            to="/series/$id"
+            params={{ id: show.anime.malId }}
+            className="line-clamp-2 text-sm leading-snug font-medium hover:text-primary"
+          >
+            <AnimeTitle title={show.anime.title} />
+          </Link>
+          <p className="text-xs text-muted-foreground">
+            {show.episodesWatched}{" "}
+            {show.episodesWatched === 1 ? "episode" : "episodes"} watched ·{" "}
+            {formatWatchedAt(show.latest.updatedAt)}
+          </p>
+          <div className="mt-auto pt-1">
+            <NextAction show={show} />
+          </div>
+        </div>
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          aria-label="Remove from history"
+          className="shrink-0 text-muted-foreground hover:text-destructive"
+          onClick={() => void clear()}
+        >
+          <Trash2 />
+        </Button>
+      </div>
+      <div className="border-t p-2.5">
+        <WatchHistoryRow item={show.latest} />
+      </div>
+      {others.length > 0 ? (
+        <details className="border-t px-3 py-2">
+          <summary className="cursor-pointer text-xs font-medium text-muted-foreground hover:text-foreground">
+            Show {others.length} more{" "}
+            {others.length === 1 ? "episode" : "episodes"}
+          </summary>
+          <div className="flex flex-col gap-2 pt-2 pb-1">
+            {others.map((item) => (
+              <WatchHistoryRow key={item.episode} item={item} />
+            ))}
+          </div>
+        </details>
+      ) : null}
+    </article>
+  )
+}
+
+function NextAction({ show }: { show: WatchHistoryShow }) {
+  switch (show.next._tag) {
+    case "resume":
+      return (
+        <Button asChild size="sm">
+          <Link
+            to="/watch/$malId/$provider/$episodeId"
+            params={{
+              malId: show.latest.malId,
+              provider: show.latest.provider,
+              episodeId: show.latest.episodeId,
+            }}
+            search={{
+              audio: show.latest.audio,
+              serverId: show.latest.serverId ?? undefined,
+            }}
+          >
+            <Play data-icon="inline-start" />
+            Resume EP {show.next.episode}
+          </Link>
+        </Button>
+      )
+    case "next":
+      return (
+        <Button asChild size="sm">
+          <Link to="/play/$malId" params={{ malId: show.anime.malId }}>
+            <Play data-icon="inline-start" />
+            Next: EP {show.next.episode}
+          </Link>
+        </Button>
+      )
+    case "caughtUp":
+      return (
+        <Badge variant="secondary" className="gap-1">
+          <CheckCircle2 data-icon="inline-start" />
+          Caught up
+          {show.next.nextAiringAt ? (
+            <>
+              {" · next in "}
+              <NextEpisodeCountdown
+                airingAt={Math.floor(show.next.nextAiringAt.getTime() / 1000)}
+              />
+            </>
+          ) : null}
+        </Badge>
+      )
+    case "completed":
+      return (
+        <Badge variant="outline">
+          <CheckCircle2 data-icon="inline-start" />
+          Completed
+        </Badge>
+      )
+  }
+}
+
+function WatchHistoryRow({ item }: { item: ContinueWatchingItem }) {
+  const providerName = useAtomValue(providerLabelAtom(item.provider))
+  const percent = percentWatched(item)
+  const completed = item.status === "completed"
+
+  return (
+    <div className="flex items-center gap-3">
       <Link
         to="/watch/$malId/$provider/$episodeId"
         params={{
@@ -189,7 +323,7 @@ function WatchHistoryRow({
           episodeId: item.episodeId,
         }}
         search={{ audio: item.audio, serverId: item.serverId ?? undefined }}
-        className="group relative aspect-video w-28 shrink-0 overflow-hidden rounded-xl bg-muted sm:w-36"
+        className="group relative aspect-video w-24 shrink-0 overflow-hidden rounded-lg bg-muted sm:w-28"
       >
         {item.episodeImage || item.anime.coverImage ? (
           <img
@@ -218,14 +352,7 @@ function WatchHistoryRow({
       </Link>
 
       <div className="min-w-0 flex-1">
-        <Link
-          to="/series/$id"
-          params={{ id: item.malId }}
-          className="line-clamp-1 text-sm font-medium hover:text-primary"
-        >
-          <AnimeTitle title={item.anime.title} />
-        </Link>
-        <p className="mt-1 truncate text-xs text-muted-foreground">
+        <p className="truncate text-xs text-muted-foreground">
           Episode {item.episode}
           {item.durationSeconds
             ? ` · ${formatTime(item.positionSeconds)} / ${formatTime(item.durationSeconds)}`
@@ -252,16 +379,6 @@ function WatchHistoryRow({
           </span>
         </div>
       </div>
-
-      <Button
-        variant="ghost"
-        size="icon-sm"
-        aria-label="Remove from history"
-        className="shrink-0 text-muted-foreground hover:text-destructive"
-        onClick={() => void clear()}
-      >
-        <Trash2 />
-      </Button>
     </div>
   )
 }
@@ -311,9 +428,9 @@ function WatchHistoryPagination({
 
 function WatchHistoryPending() {
   return (
-    <div className="flex flex-col gap-3">
+    <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
       {Array.from({ length: 6 }).map((_, index) => (
-        <Skeleton key={index} className="h-24 rounded-2xl" />
+        <Skeleton key={index} className="h-48 rounded-2xl" />
       ))}
     </div>
   )

@@ -8,6 +8,7 @@ import {
   ContinueWatchingItem,
   WatchHistoryEntry,
   WatchHistoryOperationError,
+  WatchHistoryShow,
 } from "./models"
 
 export class RecordWatchProgress extends Rpc.make("RecordWatchProgress", {
@@ -40,6 +41,19 @@ export class ListWatchHistory extends Rpc.make("ListWatchHistory", {
   },
   success: Schema.Struct({
     items: Schema.Array(ContinueWatchingItem),
+    hasNextPage: Schema.Boolean,
+  }),
+  error: WatchHistoryOperationError,
+}) {}
+
+export class ListWatchHistoryShows extends Rpc.make("ListWatchHistoryShows", {
+  payload: {
+    page: Schema.Int.pipe(Schema.positive()),
+    perPage: Schema.Int.pipe(Schema.between(1, 50)),
+    query: Schema.optional(Schema.String.pipe(Schema.maxLength(200))),
+  },
+  success: Schema.Struct({
+    items: Schema.Array(WatchHistoryShow),
     hasNextPage: Schema.Boolean,
   }),
   error: WatchHistoryOperationError,
@@ -78,6 +92,7 @@ export class WatchHistoryRpcs extends RpcGroup.make(
   RecordWatchProgress,
   ListContinueWatching,
   ListWatchHistory,
+  ListWatchHistoryShows,
   GetEpisodeWatchProgress,
   ListAnimeWatchProgress,
   ClearWatchHistoryEntry,

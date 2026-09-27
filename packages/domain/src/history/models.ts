@@ -28,6 +28,27 @@ export const ContinueWatchingItem = Schema.Struct({
 })
 export type ContinueWatchingItem = typeof ContinueWatchingItem.Type
 
+export const WatchHistoryNext = Schema.Union(
+  Schema.TaggedStruct("resume", {
+    episode: Schema.Int.pipe(Schema.positive()),
+  }),
+  Schema.TaggedStruct("next", { episode: Schema.Int.pipe(Schema.positive()) }),
+  Schema.TaggedStruct("caughtUp", {
+    nextAiringAt: Schema.NullOr(Schema.DateFromString),
+  }),
+  Schema.TaggedStruct("completed", {})
+)
+export type WatchHistoryNext = typeof WatchHistoryNext.Type
+
+export const WatchHistoryShow = Schema.Struct({
+  anime: AnimeLibraryMetadata,
+  episodesWatched: Schema.NonNegativeInt,
+  latest: ContinueWatchingItem,
+  episodes: Schema.Array(ContinueWatchingItem),
+  next: WatchHistoryNext,
+})
+export type WatchHistoryShow = typeof WatchHistoryShow.Type
+
 export class WatchHistoryOperationError extends Schema.TaggedError<WatchHistoryOperationError>()(
   "WatchHistoryOperationError",
   { message: Schema.String }

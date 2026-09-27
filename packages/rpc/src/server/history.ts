@@ -38,6 +38,16 @@ export const WatchHistoryHandlersLive = WatchHistoryRpcs.toLayer(
             query
           ).pipe(Effect.catchTag("WatchHistoryServiceError", toOperationError))
         }),
+      ListWatchHistoryShows: ({ page, perPage, query }) =>
+        Effect.gen(function* () {
+          const user = yield* CurrentUser
+          return yield* WatchHistoryService.listHistoryShows(
+            user.id,
+            page,
+            perPage,
+            query
+          ).pipe(Effect.catchTag("WatchHistoryServiceError", toOperationError))
+        }),
       GetEpisodeWatchProgress: ({ malId, episode }) =>
         Effect.gen(function* () {
           const user = yield* CurrentUser
