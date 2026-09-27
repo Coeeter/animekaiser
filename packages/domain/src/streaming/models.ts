@@ -32,6 +32,7 @@ export const StreamEpisode = Schema.Struct({
   availableAudio: Schema.Array(StreamAudio),
   updatedAt: Schema.NullOr(Schema.String),
   image: Schema.NullOr(Schema.String),
+  description: Schema.NullOr(Schema.String),
 })
 export type StreamEpisode = typeof StreamEpisode.Type
 

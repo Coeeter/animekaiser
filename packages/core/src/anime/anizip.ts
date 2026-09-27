@@ -12,12 +12,20 @@ export class AniZipRequestError extends Schema.TaggedError<AniZipRequestError>()
 
 export const EpisodeMetadata = Schema.Struct({
   number: Schema.Int.pipe(Schema.positive()),
+  title: Schema.NullOr(Schema.String),
+  overview: Schema.NullOr(Schema.String),
   image: Schema.NullOr(Schema.String),
   airedAt: Schema.NullOr(Schema.String),
 })
 export type EpisodeMetadata = typeof EpisodeMetadata.Type
 
 const AniZipEpisode = Schema.Struct({
+  title: Schema.optional(
+    Schema.NullOr(
+      Schema.Record({ key: Schema.String, value: Schema.NullOr(Schema.String) })
+    )
+  ),
+  overview: Schema.optional(Schema.NullOr(Schema.String)),
   image: Schema.optional(Schema.NullOr(Schema.String)),
   airDateUtc: Schema.optional(Schema.NullOr(Schema.String)),
 })
@@ -40,6 +48,8 @@ export const episodeMetadata = (
         ? [
             {
               number,
+              title: episode.title?.en?.trim() || null,
+              overview: episode.overview?.trim() || null,
               image: episode.image?.trim() || null,
               airedAt: episode.airDateUtc?.trim() || null,
             },

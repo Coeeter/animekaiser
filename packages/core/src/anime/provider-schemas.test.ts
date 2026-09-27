@@ -86,20 +86,28 @@ test("keeps ani.zip numbered episodes and drops specials", () => {
       episodes: {
         "2": { image: "https://artworks.thetvdb.com/2.jpg" },
         "1": {
+          title: { en: "Burn Bright, Mad Dog", ja: null },
+          overview: "Rudeus heads north.",
           image: "https://artworks.thetvdb.com/1.jpg",
           airDateUtc: "2023-09-29T14:00:00Z",
         },
-        "3": { image: null, airDateUtc: null },
         S1: { image: "https://artworks.thetvdb.com/s1.jpg" },
       },
     })
   ).toEqual([
     {
       number: 1,
+      title: "Burn Bright, Mad Dog",
+      overview: "Rudeus heads north.",
       image: "https://artworks.thetvdb.com/1.jpg",
       airedAt: "2023-09-29T14:00:00Z",
     },
-    { number: 2, image: "https://artworks.thetvdb.com/2.jpg", airedAt: null },
-    { number: 3, image: null, airedAt: null },
+    {
+      number: 2,
+      title: null,
+      overview: null,
+      image: "https://artworks.thetvdb.com/2.jpg",
+      airedAt: null,
+    },
   ])
 })

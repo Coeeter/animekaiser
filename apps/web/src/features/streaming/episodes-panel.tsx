@@ -435,7 +435,7 @@ function EpisodeRow({
             number={episode.number}
             progress={showProgress ? progress : undefined}
             highlighted={highlighted}
-            className="w-28 sm:w-40"
+            className="w-28 sm:w-44 lg:w-52"
           />
         ) : (
           <div
@@ -480,6 +480,11 @@ function EpisodeRow({
               </Badge>
             ))}
           </div>
+          {episode.description ? (
+            <p className="mt-1.5 line-clamp-2 max-w-3xl text-xs leading-relaxed text-muted-foreground">
+              {episode.description}
+            </p>
+          ) : null}
           {showProgress && !episode.image ? (
             <div className="mt-3 h-1 overflow-hidden rounded-full bg-muted">
               <div
@@ -505,7 +510,7 @@ function EpisodeRow({
   const className = cn(
     "group/episode flex min-h-20 items-center justify-between gap-4 rounded-xl border bg-card/70 p-3 text-left transition hover:border-primary/40 hover:bg-accent/60 hover:opacity-100",
     highlighted && "border-primary/60 bg-accent",
-    watched && !highlighted && "opacity-60",
+    watched && !highlighted && "opacity-80",
     !audio && "opacity-60"
   )
 

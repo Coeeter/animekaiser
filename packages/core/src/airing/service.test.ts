@@ -4,9 +4,27 @@ import { resolveAiredEpisode } from "./service"
 const now = new Date("2026-09-27T12:00:00Z")
 
 const anizip = [
-  { number: 1, image: null, airedAt: "2026-09-13T15:00:00Z" },
-  { number: 2, image: null, airedAt: "2026-09-20T15:00:00Z" },
-  { number: 3, image: null, airedAt: "2026-10-04T15:00:00Z" },
+  {
+    number: 1,
+    title: null,
+    overview: null,
+    image: null,
+    airedAt: "2026-09-13T15:00:00Z",
+  },
+  {
+    number: 2,
+    title: null,
+    overview: null,
+    image: null,
+    airedAt: "2026-09-20T15:00:00Z",
+  },
+  {
+    number: 3,
+    title: null,
+    overview: null,
+    image: null,
+    airedAt: "2026-10-04T15:00:00Z",
+  },
 ]
 
 test("prefers AniList's next airing episode over ani.zip air dates", () => {
@@ -65,7 +83,9 @@ test("reports nothing when no source knows the airing state", () => {
   expect(
     resolveAiredEpisode({
       anilist: undefined,
-      anizip: [{ number: 1, image: "x", airedAt: null }],
+      anizip: [
+        { number: 1, title: null, overview: null, image: "x", airedAt: null },
+      ],
       knownEpisodes: 12,
       now,
     })

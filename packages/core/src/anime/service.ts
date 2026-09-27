@@ -237,7 +237,7 @@ export class AnimeService extends Effect.Service<AnimeService>()(
       const getEpisodeMetadata = Effect.fn("AnimeService.getEpisodeMetadata")(
         function* (malId: number) {
           return yield* cached(
-            `anime:episode-metadata:v1:${malId}`,
+            `anime:episode-metadata:v2:${malId}`,
             Schema.Array(EpisodeMetadata),
             24 * 60 * 60,
             aniZip.getEpisodeMetadata(malId)

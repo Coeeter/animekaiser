@@ -14,21 +14,31 @@ import type { EpisodeMetadata } from "../anime"
 import { AnimeService } from "../anime"
 import { StreamingClient } from "../streaming-client"
 
-const withArtwork = (
-  episode: StreamEpisode,
-  artwork: ReadonlyMap<number, string>
-): StreamEpisode => ({
-  ...episode,
-  image: episode.image ?? artwork.get(episode.number) ?? null,
-})
+const genericEpisodeTitle = /^(episode|ep\.?)\s*\d+$/i
 
-const artworkByNumber = (episodes: ReadonlyArray<EpisodeMetadata>) =>
-  new Map(
-    episodes.flatMap(
-      (item): Array<[number, string]> =>
-        item.image ? [[item.number, item.image]] : []
-    )
-  )
+const withMetadata = (
+  episode: StreamEpisode,
+  metadata: ReadonlyMap<number, EpisodeMetadata>
+): StreamEpisode => {
+  const known = metadata.get(episode.number)
+  return {
+    ...episode,
+    title:
+      known?.title && genericEpisodeTitle.test(episode.title.trim())
+        ? known.title
+        : episode.title,
+    japaneseTitle:
+      episode.japaneseTitle &&
+      genericEpisodeTitle.test(episode.japaneseTitle.trim())
+        ? null
+        : episode.japaneseTitle,
+    image: episode.image ?? known?.image ?? null,
+    description: episode.description ?? known?.overview ?? null,
+  }
+}
+
+const metadataByNumber = (episodes: ReadonlyArray<EpisodeMetadata>) =>
+  new Map(episodes.map((item) => [item.number, item]))
 
 export class StreamingService extends Effect.Service<StreamingService>()(
   "@animekaiser/core/StreamingService",
@@ -159,7 +169,7 @@ export class StreamingService extends Effect.Service<StreamingService>()(
               episodesFor(anime, selected.id, selected.label),
               animeService
                 .getEpisodeMetadata(malId)
-                .pipe(Effect.map(artworkByNumber)),
+                .pipe(Effect.map(metadataByNumber)),
             ],
             { concurrency: 2 }
           )
@@ -170,7 +180,7 @@ export class StreamingService extends Effect.Service<StreamingService>()(
               {
                 ...episodes,
                 episodes: episodes.episodes.map((episode) =>
-                  withArtwork(episode, artwork)
+                  withMetadata(episode, artwork)
                 ),
               },
             ],
@@ -197,10 +207,10 @@ export class StreamingService extends Effect.Service<StreamingService>()(
           known
         )
         yield* saveMapping(malId, resolved, playback.providerAnimeId, null)
-        const artwork = artworkByNumber(
+        const artwork = metadataByNumber(
           yield* animeService.getEpisodeMetadata(malId)
         )
-        return { ...playback, episode: withArtwork(playback.episode, artwork) }
+        return { ...playback, episode: withMetadata(playback.episode, artwork) }
       })
 
       return {

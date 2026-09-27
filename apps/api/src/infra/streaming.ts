@@ -53,6 +53,9 @@ const StreamEpisode = Schema.Struct({
   image: Schema.optionalWith(Schema.NullOr(Schema.String), {
     default: () => null,
   }),
+  description: Schema.optionalWith(Schema.NullOr(Schema.String), {
+    default: () => null,
+  }),
 })
 
 const StreamTrack = Schema.Struct({
