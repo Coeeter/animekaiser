@@ -18,7 +18,7 @@ import {
 } from "@effect-atom/atom-react"
 import { Link } from "@tanstack/react-router"
 import { LogOut, Search, XIcon } from "lucide-react"
-import { useState } from "react"
+import { useRef, useState } from "react"
 import { toast } from "sonner"
 import { IconInput } from "../../components/icon-input"
 import { authClient, navigateAfterAuthChange } from "../../services/api-clients"
@@ -108,9 +108,11 @@ export function SettingsDialog() {
   const sectionHasMatch = settingEntries.some(
     (entry) => entry.section === selected.title && matchesQuery(entry, query)
   )
+  const panelRef = useRef<HTMLElement>(null)
   const select = (section: SettingsSection) => {
     setActive(section)
     setQuery("")
+    panelRef.current?.scrollTo({ top: 0 })
   }
 
   return (
@@ -198,6 +200,7 @@ export function SettingsDialog() {
             </aside>
           ) : null}
           <main
+            ref={panelRef}
             className={cn(
               "min-h-0 w-full min-w-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain p-4 md:p-6",
               !visibleSections.length && "md:col-span-2"
