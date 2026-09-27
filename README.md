@@ -6,10 +6,6 @@ anime metadata, and two-way sync with AniList and MyAnimeList. A separate
 streaming service resolves playback sources, and whatever you watch gets
 recorded back to your library.
 
-**Status:** actively being built, self-hosted only. No hosted instance, no
-public deployment. Things move fast here — schema, RPC contracts, whatever —
-so don't expect stability between commits yet.
-
 ## What it does
 
 **Library management.** Every entry is keyed by MyAnimeList ID and tracks
