@@ -48,10 +48,24 @@ const providerRecheckMs = 45 * 60 * 1000
 const providerChecksPerSync = 25
 
 // Once a provider lists an episode it stays listed, so a positive answer can be
-// kept for a day. A negative one expires just before the next refresh tick so
-// every tick rechecks it.
+// kept for a day. A show the provider carries is rechecked every refresh tick
+// until the episode lands. A show it doesn't carry at all rarely changes, and
+// a provider error is usually a short outage, so both wait longer.
 const availableEpisodeTtlSeconds = 24 * 60 * 60
-const missingEpisodeTtlSeconds = 9 * 60
+const pendingEpisodeTtlSeconds = 9 * 60
+const unmatchedShowTtlSeconds = 6 * 60 * 60
+const providerErrorTtlSeconds = 30 * 60
+
+export const availabilityTtlSeconds = (
+  catalog: StreamEpisodeCatalog,
+  available: boolean
+) => {
+  if (available) return availableEpisodeTtlSeconds
+  const status = catalog.providers.at(0)?.status
+  if (status === "available") return pendingEpisodeTtlSeconds
+  if (status === "unmatched") return unmatchedShowTtlSeconds
+  return providerErrorTtlSeconds
+}
 
 // The default provider is what the series page and play links open, so
 // "available" means that provider lists the episode.
@@ -478,20 +492,16 @@ export class AiringService extends Effect.Service<AiringService>()(
               onSome: () => Effect.void,
               onNone: () =>
                 streaming.listEpisodes(malId).pipe(
-                  Effect.map(
-                    (catalog) =>
+                  Effect.flatMap((catalog) => {
+                    const available =
                       (latestProviderEpisode(catalog) ?? 0) >= episode
-                  ),
-                  Effect.flatMap((available) =>
-                    cache.set(
+                    return cache.set(
                       availabilityKey(malId, episode),
                       Schema.Boolean,
                       available,
-                      available
-                        ? availableEpisodeTtlSeconds
-                        : missingEpisodeTtlSeconds
+                      availabilityTtlSeconds(catalog, available)
                     )
-                  ),
+                  }),
                   Effect.ignore
                 ),
             })

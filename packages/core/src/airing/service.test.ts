@@ -1,5 +1,6 @@
 import { expect, test } from "bun:test"
-import { resolveAiredEpisode } from "./service"
+import type { StreamEpisodeCatalog } from "@animekaiser/domain"
+import { availabilityTtlSeconds, resolveAiredEpisode } from "./service"
 
 const now = new Date("2026-09-27T12:00:00Z")
 
@@ -90,4 +91,32 @@ test("reports nothing when no source knows the airing state", () => {
       now,
     })
   ).toBeNull()
+})
+
+const catalogWithStatus = (
+  status: "available" | "unmatched" | "unavailable"
+): StreamEpisodeCatalog =>
+  ({
+    providers: [{ status, episodes: [] }],
+  }) as unknown as StreamEpisodeCatalog
+
+test("availability is cached longest once an episode is out", () => {
+  expect(availabilityTtlSeconds(catalogWithStatus("available"), true)).toBe(
+    24 * 60 * 60
+  )
+})
+
+test("a carried show is rechecked every tick until the episode lands", () => {
+  expect(availabilityTtlSeconds(catalogWithStatus("available"), false)).toBe(
+    9 * 60
+  )
+})
+
+test("shows the provider doesn't carry and provider errors back off", () => {
+  expect(availabilityTtlSeconds(catalogWithStatus("unmatched"), false)).toBe(
+    6 * 60 * 60
+  )
+  expect(availabilityTtlSeconds(catalogWithStatus("unavailable"), false)).toBe(
+    30 * 60
+  )
 })
