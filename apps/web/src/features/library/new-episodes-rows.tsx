@@ -5,6 +5,7 @@ import { Link } from "@tanstack/react-router"
 import { Play } from "lucide-react"
 import { MediaRow } from "../anime/common/anime-scroll-row"
 import { AnimeTitle } from "../anime/common/anime-title"
+import { NextEpisodeCountdown } from "../anime/schedule/next-episode-countdown"
 import { planningNewEpisodesAtom } from "./atoms"
 
 const relativeTime = (date: Date) => {
@@ -110,7 +111,16 @@ export function UpNextCard({ item }: { item: LibraryNewEpisode }) {
           <span className="truncate text-[11px] font-medium text-white/85">
             {summary(item)}
           </span>
-          {item.latestAiredAt && recent ? (
+          {item.nextEpisode &&
+          item.nextAiringAt &&
+          item.nextAiringAt.getTime() > Date.now() ? (
+            <span className="truncate text-[11px] text-emerald-300/90">
+              Ep {item.nextEpisode} in{" "}
+              <NextEpisodeCountdown
+                airingAt={Math.floor(item.nextAiringAt.getTime() / 1000)}
+              />
+            </span>
+          ) : item.latestAiredAt && recent ? (
             <span className="truncate text-[11px] text-white/60">
               Episode {item.latestAiredEpisode} aired{" "}
               {relativeTime(item.latestAiredAt)}

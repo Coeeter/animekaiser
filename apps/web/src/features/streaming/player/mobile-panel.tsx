@@ -15,6 +15,7 @@ import {
 } from "lucide-react"
 import type { ReactNode } from "react"
 import { AnimeTitle } from "../../anime/common/anime-title"
+import { NextAiringNotice } from "../../anime/schedule/next-airing-notice"
 import { providerLabelAtom } from "../atoms"
 import {
   audioLabel,
@@ -100,6 +101,8 @@ export function PlayerMobilePanel({
           to={{ malId: playback.anime.malId }}
         />
       </div>
+
+      <NextAiringNotice nextAiringEpisode={playback.anime.nextAiringEpisode} />
 
       {episodes.length > 0 ? (
         <section className="flex flex-col gap-3">

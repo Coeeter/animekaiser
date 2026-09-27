@@ -46,6 +46,7 @@ import {
 } from "lucide-react"
 import { useState } from "react"
 import { AnimeTitle } from "../../anime/common/anime-title"
+import { NextAiringNotice } from "../../anime/schedule/next-airing-notice"
 import { streamEpisodesAtom, streamProvidersAtom } from "../atoms"
 import { EpisodeThumbnail } from "../episode-thumbnail"
 import {
@@ -106,6 +107,11 @@ export function EpisodeSheet({
           </SheetDescription>
         </SheetHeader>
         <SheetBody className="flex flex-col gap-2">
+          {catalog ? (
+            <NextAiringNotice
+              nextAiringEpisode={catalog.anime.nextAiringEpisode}
+            />
+          ) : null}
           <Select
             value={selectedProvider}
             onValueChange={(value) => {

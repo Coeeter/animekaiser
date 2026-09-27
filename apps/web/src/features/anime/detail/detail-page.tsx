@@ -54,6 +54,7 @@ import { WatchNowButton } from "../../streaming/watch-now-button"
 import { AnimeGrid } from "../common/anime-grid"
 import { AnimeSubtitle, AnimeTitle } from "../common/anime-title"
 import { formatAnimeFormat, formatAnimeStatus } from "../common/format"
+import { NextAiringNotice } from "../schedule/next-airing-notice"
 import { detailAtom, recommendationsAtom } from "./atoms"
 
 export const AnimeDetailTab = Schema.Literal(
@@ -266,21 +267,23 @@ function SeriesDetail({
               </span>
             </nav>
 
-            <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 pt-6 pb-6 md:flex-row md:gap-8 md:px-6 md:pt-10 md:pb-8">
-              <div className="flex w-44 shrink-0 flex-col gap-3 self-center md:w-44 md:self-auto lg:w-52">
+            <div className="mx-auto grid w-full max-w-7xl grid-cols-[7rem_1fr] items-end gap-x-4 gap-y-4 px-4 pt-6 pb-6 sm:grid-cols-[9rem_1fr] md:grid-cols-[11rem_1fr] md:gap-x-8 md:px-6 md:pt-10 md:pb-8 lg:grid-cols-[13rem_1fr]">
+              <div className="flex flex-col gap-3 md:row-span-2">
                 {anime.coverImage ? (
                   <PosterDialog anime={anime} src={anime.coverImage} />
                 ) : null}
-                {hasYoutubeTrailer ? <TrailerDialog anime={anime} /> : null}
+                {hasYoutubeTrailer ? (
+                  <TrailerDialog anime={anime} className="hidden md:flex" />
+                ) : null}
               </div>
 
-              <div className="flex min-w-0 flex-1 flex-col justify-end gap-3">
+              <div className="flex min-w-0 flex-col justify-end gap-2 md:gap-3">
                 <AnimeSubtitle title={anime.title}>
                   {(subtitle) => (
                     <p className="text-sm text-white/50">{subtitle}</p>
                   )}
                 </AnimeSubtitle>
-                <h1 className="font-heading text-3xl leading-tight font-black tracking-tight text-white md:text-5xl">
+                <h1 className="line-clamp-3 font-heading text-2xl leading-tight font-black tracking-tight text-white sm:text-3xl md:text-5xl">
                   <AnimeTitle title={anime.title} />
                 </h1>
                 <div className="flex flex-wrap gap-1.5">
@@ -306,28 +309,33 @@ function SeriesDetail({
                   </div>
                 ) : null}
 
-                <div className="flex flex-col gap-3 pt-2 sm:flex-row sm:items-center">
-                  <WatchNowButton
-                    malId={anime.malId}
-                    provider={episodeProvider}
-                    className="w-fit"
-                  />
-                  {isAuthenticated ? (
-                    <AddToLibraryDialog anime={anime} entry={libraryEntry} />
-                  ) : (
-                    <LoginRequiredDialog anime={anime} />
-                  )}
-                  {libraryEntry ? (
-                    <LibraryEntrySummary entry={libraryEntry} />
-                  ) : null}
-                </div>
+                <NextAiringNotice nextAiringEpisode={anime.nextAiringEpisode} />
+              </div>
+
+              <div className="col-span-2 flex flex-wrap items-center gap-2 md:col-span-1 md:col-start-2 md:gap-3">
+                <WatchNowButton
+                  malId={anime.malId}
+                  provider={episodeProvider}
+                  className="w-fit"
+                />
+                {isAuthenticated ? (
+                  <AddToLibraryDialog anime={anime} entry={libraryEntry} />
+                ) : (
+                  <LoginRequiredDialog anime={anime} />
+                )}
+                {libraryEntry ? (
+                  <LibraryEntrySummary entry={libraryEntry} />
+                ) : null}
+                {hasYoutubeTrailer ? (
+                  <TrailerDialog anime={anime} className="md:hidden" />
+                ) : null}
               </div>
             </div>
           </div>
 
           <div className="relative bg-background">
             <div className="mx-auto grid w-full max-w-7xl gap-6 p-4 md:grid-cols-[176px_1fr] md:gap-8 md:p-6 lg:grid-cols-[208px_1fr]">
-              <aside className="flex flex-col gap-4">
+              <aside className="order-last flex flex-col gap-4 md:order-none">
                 <div className="rounded-xl border bg-card/80 p-4">
                   <dl className="flex flex-col gap-3 text-sm">
                     <MetaField
@@ -550,13 +558,19 @@ function PosterDialog({ anime, src }: { anime: AnimeDetail; src: string }) {
   )
 }
 
-function TrailerDialog({ anime }: { anime: AnimeDetail }) {
+function TrailerDialog({
+  anime,
+  className,
+}: {
+  anime: AnimeDetail
+  className?: string
+}) {
   const [open, setOpen] = useState(false)
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button className="w-full" variant="secondary">
+        <Button className={cn("md:w-full", className)} variant="secondary">
           <PlayCircle data-icon="inline-start" />
           Watch Trailer
         </Button>
