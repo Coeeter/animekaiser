@@ -14,6 +14,21 @@ const syncLoop = Effect.gen(function* () {
   )
 })
 
+const latestLoop = AiringService.refreshLatestAvailability().pipe(
+  Effect.tap((episodes) =>
+    Effect.logInfo("[Airing Sync] Latest availability refreshed.", {
+      episodes,
+    })
+  ),
+  Effect.catchAll((error) =>
+    Effect.logError("[Airing Sync] Latest availability refresh failed.", {
+      error,
+    })
+  ),
+  Effect.zipRight(Effect.sleep(Duration.minutes(10))),
+  Effect.forever
+)
+
 export const AiringSyncWorkerLive = Layer.scopedDiscard(
-  Effect.forkScoped(syncLoop)
+  Effect.all([Effect.forkScoped(syncLoop), Effect.forkScoped(latestLoop)])
 ).pipe(Layer.provide(AiringService.Default))

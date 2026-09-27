@@ -1,4 +1,4 @@
-import { AnimeService } from "@animekaiser/core"
+import { AiringService, AnimeService } from "@animekaiser/core"
 import { AnimeRpcs, AnimeUnavailableError } from "@animekaiser/domain"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
@@ -15,10 +15,13 @@ export const AnimeHandlersLive = AnimeRpcs.toLayer(
             new AnimeUnavailableError({ message: "Schedule range is invalid." })
           )
         : AnimeService.getSchedule(from, to, page, perPage),
-    ListLatestEpisodes: () => AnimeService.getLatestEpisodes(),
+    ListLatestEpisodes: () => AiringService.listLatestEpisodes(),
     GetRandomAnime: () => AnimeService.getRandom(),
     GetAnimeDetail: ({ malId }) => AnimeService.getDetail(malId),
     ListAnimeRecommendations: ({ malId, page, perPage }) =>
       AnimeService.getRecommendations(malId, page, perPage),
   })
-).pipe(Layer.provide(AnimeService.Default))
+).pipe(
+  Layer.provide(AnimeService.Default),
+  Layer.provide(AiringService.Default)
+)

@@ -4,7 +4,12 @@ import {
   Database,
   userLibraryEntry,
 } from "@animekaiser/db"
-import type { LibraryNewEpisode, LibraryStatus } from "@animekaiser/domain"
+import type {
+  LatestEpisode,
+  LibraryNewEpisode,
+  LibraryStatus,
+  StreamEpisodeCatalog,
+} from "@animekaiser/domain"
 import {
   and,
   desc,
@@ -19,9 +24,10 @@ import {
 } from "drizzle-orm"
 import * as Chunk from "effect/Chunk"
 import * as Effect from "effect/Effect"
+import * as Option from "effect/Option"
 import * as Schema from "effect/Schema"
 import type { AniListAiringStatus, EpisodeMetadata } from "../anime"
-import { AniListAnimeService, AnimeService } from "../anime"
+import { AniListAnimeService, AnimeCache, AnimeService } from "../anime"
 import { StreamingService } from "../streaming"
 
 export class AiringServiceError extends Schema.TaggedError<AiringServiceError>()(
@@ -40,6 +46,24 @@ const providerRecheckMs = 45 * 60 * 1000
 // Provider sites are scrapers; a cap per sync keeps a large library from
 // turning one tick into hundreds of requests from the VPS.
 const providerChecksPerSync = 25
+
+// Once a provider lists an episode it stays listed, so a positive answer can be
+// kept for a day. A negative one expires just before the next refresh tick so
+// every tick rechecks it.
+const availableEpisodeTtlSeconds = 24 * 60 * 60
+const missingEpisodeTtlSeconds = 9 * 60
+
+// The default provider is what the series page and play links open, so
+// "available" means that provider lists the episode.
+const latestProviderEpisode = (catalog: StreamEpisodeCatalog) => {
+  const provider = catalog.providers.find((item) => item.status === "available")
+  return provider
+    ? Math.max(
+        0,
+        ...provider.episodes.map((episode) => Math.floor(episode.number))
+      )
+    : undefined
+}
 
 export type AiredEpisodeResolution = {
   episode: number
@@ -116,6 +140,7 @@ export class AiringService extends Effect.Service<AiringService>()(
     dependencies: [
       AnimeService.Default,
       AniListAnimeService.Default,
+      AnimeCache.Default,
       StreamingService.Default,
     ],
     effect: Effect.gen(function* () {
@@ -123,6 +148,7 @@ export class AiringService extends Effect.Service<AiringService>()(
       const animeService = yield* AnimeService
       const aniList = yield* AniListAnimeService
       const streaming = yield* StreamingService
+      const cache = yield* AnimeCache
 
       const query = <A>(
         message: string,
@@ -305,19 +331,8 @@ export class AiringService extends Effect.Service<AiringService>()(
               const catalog = yield* streaming
                 .listEpisodes(candidate.malId)
                 .pipe(Effect.option)
-              const provider =
-                catalog._tag === "Some"
-                  ? catalog.value.providers.find(
-                      (item) => item.status === "available"
-                    )
-                  : undefined
-              const availableEpisode = provider
-                ? Math.max(
-                    0,
-                    ...provider.episodes.map((episode) =>
-                      Math.floor(episode.number)
-                    )
-                  )
+              const availableEpisode = Option.isSome(catalog)
+                ? latestProviderEpisode(catalog.value)
                 : undefined
 
               yield* query("Unable to save availability.", (db) =>
@@ -448,7 +463,76 @@ export class AiringService extends Effect.Service<AiringService>()(
         yield* syncProviderAvailability(now, [malId])
       })
 
-      return { sync, trackAnime, listNewEpisodes }
+      const availabilityKey = (malId: number, episode: number) =>
+        `anime:available:v1:${malId}:${episode}`
+
+      const cachedAvailability = (malId: number, episode: number) =>
+        cache
+          .get(availabilityKey(malId, episode), Schema.Boolean)
+          .pipe(Effect.orElseSucceed(() => Option.none<boolean>()))
+
+      const checkAvailability = (malId: number, episode: number) =>
+        cachedAvailability(malId, episode).pipe(
+          Effect.flatMap(
+            Option.match({
+              onSome: () => Effect.void,
+              onNone: () =>
+                streaming.listEpisodes(malId).pipe(
+                  Effect.map(
+                    (catalog) =>
+                      (latestProviderEpisode(catalog) ?? 0) >= episode
+                  ),
+                  Effect.flatMap((available) =>
+                    cache.set(
+                      availabilityKey(malId, episode),
+                      Schema.Boolean,
+                      available,
+                      available
+                        ? availableEpisodeTtlSeconds
+                        : missingEpisodeTtlSeconds
+                    )
+                  ),
+                  Effect.ignore
+                ),
+            })
+          )
+        )
+
+      // Provider lookups take close to a minute for a full feed, so they run
+      // on the worker and requests only read the cached answers.
+      const refreshLatestAvailability = Effect.fn(
+        "AiringService.refreshLatestAvailability"
+      )(function* () {
+        const items = yield* animeService.getLatestEpisodes()
+        yield* Effect.forEach(
+          items,
+          (item) => checkAvailability(item.anime.malId, item.episode),
+          { concurrency: 3, discard: true }
+        )
+        return items.length
+      })
+
+      const listLatestEpisodes = Effect.fn("AiringService.listLatestEpisodes")(
+        function* () {
+          const items = yield* animeService.getLatestEpisodes()
+          return yield* Effect.filter(
+            items,
+            (item: LatestEpisode) =>
+              cachedAvailability(item.anime.malId, item.episode).pipe(
+                Effect.map(Option.getOrElse(() => false))
+              ),
+            { concurrency: "unbounded" }
+          )
+        }
+      )
+
+      return {
+        sync,
+        trackAnime,
+        listNewEpisodes,
+        listLatestEpisodes,
+        refreshLatestAvailability,
+      }
     }),
   }
 ) {}
