@@ -130,7 +130,7 @@ export class AnimeService extends Effect.Service<AnimeService>()(
 
       const getHome = Effect.fn("AnimeService.getHome")(function* () {
         return yield* cached(
-          "anime:home:v3",
+          "anime:home:v4",
           AnimeHome,
           2 * 60 * 60,
           Effect.all(
@@ -150,11 +150,14 @@ export class AnimeService extends Effect.Service<AnimeService>()(
               seasonal: getDiscovery("seasonal", 1, 20).pipe(
                 Effect.map((page) => page.items)
               ),
+              topRated: getDiscovery("topRated", 1, 20).pipe(
+                Effect.map((page) => page.items)
+              ),
               popular: getDiscovery("popular", 1, 20).pipe(
                 Effect.map((page) => page.items)
               ),
             },
-            { concurrency: 3 }
+            { concurrency: 4 }
           )
         )
       })

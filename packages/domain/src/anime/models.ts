@@ -128,6 +128,7 @@ export type AnimePage = typeof AnimePage.Type
 export const AnimeHome = Schema.Struct({
   trending: Schema.Array(AnimeItem),
   seasonal: Schema.Array(AnimeItem),
+  topRated: Schema.Array(AnimeItem),
   popular: Schema.Array(AnimeItem),
 })
 export type AnimeHome = typeof AnimeHome.Type
