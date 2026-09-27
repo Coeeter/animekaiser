@@ -3,9 +3,11 @@ import { Atom } from "@effect-atom/atom-react"
 
 export type AnimeTitlePreference = "english" | "romaji"
 
+const titlePreferenceKey = "anime-title-preference"
+
 const initialTitlePreference = (): AnimeTitlePreference => {
   if (typeof window === "undefined") return "romaji"
-  return window.localStorage.getItem("anime-title-preference") === "english"
+  return window.localStorage.getItem(titlePreferenceKey) === "english"
     ? "english"
     : "romaji"
 }
@@ -13,6 +15,19 @@ const initialTitlePreference = (): AnimeTitlePreference => {
 export const animeTitlePreferenceAtom = Atom.make<AnimeTitlePreference>(
   initialTitlePreference()
 ).pipe(Atom.keepAlive)
+
+export const setAnimeTitlePreferenceAtom = Atom.writable<
+  AnimeTitlePreference,
+  AnimeTitlePreference
+>(
+  (get) => get(animeTitlePreferenceAtom),
+  (ctx, preference) => {
+    ctx.set(animeTitlePreferenceAtom, preference)
+    try {
+      window.localStorage.setItem(titlePreferenceKey, preference)
+    } catch {}
+  }
+)
 
 export const getAnimeTitle = (
   title: AnimeTitle,

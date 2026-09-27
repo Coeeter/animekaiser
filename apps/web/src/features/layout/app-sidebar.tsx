@@ -29,46 +29,18 @@ import {
 import { cn } from "@animekaiser/ui/lib/utils"
 import { Result, useAtomSet, useAtomValue } from "@effect-atom/atom-react"
 import { Link, useLocation } from "@tanstack/react-router"
-import type { LucideIcon } from "lucide-react"
-import {
-  Bookmark,
-  CalendarDays,
-  Clapperboard,
-  Compass,
-  History,
-  Home,
-  LogIn,
-  Search,
-  Settings,
-  Shuffle,
-  Sparkles,
-  User,
-} from "lucide-react"
+import { LogIn, Search, Settings } from "lucide-react"
 import type { ReactNode } from "react"
 import { useEffect, useRef, useState } from "react"
 import { ModeToggle } from "../../components/theme"
 import { searchOpenAtom } from "../anime/common/search-atoms"
+import { TitleLanguageToggle } from "../anime/common/title-language-toggle"
 import { sessionAtom } from "../auth/atoms"
 import { displayUsername, userInitials } from "../auth/user"
 import { settingsOpenAtom, settingsSectionAtom } from "../settings/atoms"
 import { MobileNav } from "./mobile-nav"
-
-type NavItem = { title: string; href: string; icon: LucideIcon }
-
-const mainLinks: ReadonlyArray<NavItem> = [
-  { title: "Home", href: "/", icon: Home },
-  { title: "Browse", href: "/series", icon: Compass },
-  { title: "Discover", href: "/discover", icon: Sparkles },
-  { title: "Random", href: "/random", icon: Shuffle },
-  { title: "Latest Episodes", href: "/latest-episodes", icon: Clapperboard },
-  { title: "Schedule", href: "/schedule", icon: CalendarDays },
-]
-
-const personalLinks: ReadonlyArray<NavItem> = [
-  { title: "Profile", href: "/profile", icon: User },
-  { title: "My List", href: "/my-list", icon: Bookmark },
-  { title: "Watch History", href: "/watch-history", icon: History },
-]
+import type { NavItem } from "./nav-links"
+import { mainLinks, personalLinks } from "./nav-links"
 
 function NavGroup({
   label,
@@ -216,7 +188,7 @@ export function AppSidebar({ children }: { children: ReactNode }) {
             </span>
             <span className="ml-auto hidden items-center gap-1 text-[10px] tracking-[0.2em] text-sidebar-foreground/50 uppercase group-data-[collapsible=icon]:hidden md:flex">
               <span className="rounded-md border border-sidebar-border px-1.5 py-0.5">
-                /
+                ⌘K
               </span>
             </span>
           </button>
@@ -281,6 +253,7 @@ export function AppSidebar({ children }: { children: ReactNode }) {
                 </FooterTooltip>
               </>
             )}
+            <TitleLanguageToggle />
             <ModeToggle />
             <FooterTooltip label="Settings">
               <Button
@@ -320,6 +293,8 @@ export function AppSidebar({ children }: { children: ReactNode }) {
                 <Search className="size-4 shrink-0" />
                 <span className="truncate">Search</span>
               </button>
+
+              <TitleLanguageToggle className="shrink-0" />
 
               {user ? (
                 <Link

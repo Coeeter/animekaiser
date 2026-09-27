@@ -6,7 +6,7 @@ import { useAtom } from "@effect-atom/atom-react"
 import * as Option from "effect/Option"
 import * as Schema from "effect/Schema"
 import { useTheme } from "next-themes"
-import { animeTitlePreferenceAtom } from "../anime/common/title"
+import { setAnimeTitlePreferenceAtom } from "../anime/common/title"
 import { SettingCard, SettingHeading } from "./settings-shared"
 
 const ThemeChoice = Schema.Literal("light", "dark", "system")
@@ -17,7 +17,7 @@ export function AppearancePanel() {
   const selectedTheme = decodeThemeChoiceOption(theme).pipe(
     Option.getOrElse(() => "system" as const)
   )
-  const [title, setTitle] = useAtom(animeTitlePreferenceAtom)
+  const [title, setTitle] = useAtom(setAnimeTitlePreferenceAtom)
   const themeAction = (
     <ToggleGroup
       type="single"
@@ -42,7 +42,6 @@ export function AppearancePanel() {
       onValueChange={(value) => {
         if (value === "english" || value === "romaji") {
           setTitle(value)
-          window.localStorage.setItem("anime-title-preference", value)
         }
       }}
     >

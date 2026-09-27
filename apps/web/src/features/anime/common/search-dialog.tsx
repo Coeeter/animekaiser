@@ -18,17 +18,30 @@ import {
   useAtomValue,
 } from "@effect-atom/atom-react"
 import { useNavigate } from "@tanstack/react-router"
+import type { LucideIcon } from "lucide-react"
 import {
   ArrowRight,
   Clock3,
+  EyeOff,
+  Languages,
+  MoonStar,
   Search,
   SearchX,
+  Settings,
   Star,
   TrendingUp,
   X,
 } from "lucide-react"
+import { useTheme } from "next-themes"
 import { useState } from "react"
 import { useDebouncedText } from "../../../hooks/use-debounced-text"
+import { sessionAtom } from "../../auth/atoms"
+import { mainLinks, personalLinks } from "../../layout/nav-links"
+import { settingsOpenAtom, settingsSectionAtom } from "../../settings/atoms"
+import {
+  playerPreferencesAtom,
+  updatePlayerPreferencesAtom,
+} from "../../streaming/preferences"
 import { catalogAtom } from "../catalog/atoms"
 import { formatAnimeFormat, formatAnimeStatus } from "./format"
 import {
@@ -38,7 +51,11 @@ import {
   searchOpenAtom,
   searchShortcutAtom,
 } from "./search-atoms"
-import { animeTitlePreferenceAtom, getAnimeTitle } from "./title"
+import {
+  animeTitlePreferenceAtom,
+  getAnimeTitle,
+  setAnimeTitlePreferenceAtom,
+} from "./title"
 
 const searchDebounceMs = 220
 const minSearchLength = 2
@@ -97,6 +114,7 @@ export function SearchDialog() {
           placeholder="Search anime by title…"
         />
         <CommandList>
+          <PaletteCommands query={trimmedQuery} onDone={close} />
           {hasQuery ? (
             <>
               <SearchResults
@@ -133,6 +151,127 @@ export function SearchDialog() {
         </CommandList>
       </Command>
     </CommandDialog>
+  )
+}
+
+type PaletteAction = {
+  id: string
+  title: string
+  keywords: string
+  icon: LucideIcon
+  run: () => void
+}
+
+function PaletteCommands({
+  query,
+  onDone,
+}: {
+  query: string
+  onDone: () => void
+}) {
+  const navigate = useNavigate()
+  const signedIn = Result.builder(useAtomValue(sessionAtom))
+    .onSuccess((session) => session !== null)
+    .orElse(() => false)
+  const [titlePreference, setTitlePreference] = useAtom(
+    setAnimeTitlePreferenceAtom
+  )
+  const { blurUnwatched } = useAtomValue(playerPreferencesAtom)
+  const updatePlayerPreferences = useAtomSet(updatePlayerPreferencesAtom)
+  const setSettingsSection = useAtomSet(settingsSectionAtom)
+  const setSettingsOpen = useAtomSet(settingsOpenAtom)
+  const { resolvedTheme, setTheme } = useTheme()
+
+  const needle = query.toLowerCase()
+  const matches = (text: string) =>
+    needle.length === 0 || text.toLowerCase().includes(needle)
+
+  const pages = [...mainLinks, ...(signedIn ? personalLinks : [])].filter(
+    (link) => matches(link.title)
+  )
+
+  const actions: ReadonlyArray<PaletteAction> = [
+    {
+      id: "title-language",
+      title:
+        titlePreference === "english"
+          ? "Show romaji titles"
+          : "Show English titles",
+      keywords: "title language english romaji japanese",
+      icon: Languages,
+      run: () =>
+        setTitlePreference(
+          titlePreference === "english" ? "romaji" : "english"
+        ),
+    },
+    {
+      id: "theme",
+      title:
+        resolvedTheme === "dark"
+          ? "Switch to light theme"
+          : "Switch to dark theme",
+      keywords: "theme dark light mode",
+      icon: MoonStar,
+      run: () => setTheme(resolvedTheme === "dark" ? "light" : "dark"),
+    },
+    {
+      id: "spoilers",
+      title: blurUnwatched ? "Show episode spoilers" : "Hide episode spoilers",
+      keywords: "spoiler blur thumbnails synopsis",
+      icon: EyeOff,
+      run: () => updatePlayerPreferences({ blurUnwatched: !blurUnwatched }),
+    },
+    {
+      id: "settings",
+      title: "Open settings",
+      keywords: "settings preferences playback account",
+      icon: Settings,
+      run: () => {
+        setSettingsSection("Account")
+        setSettingsOpen(true)
+      },
+    },
+  ].filter((action) => matches(`${action.title} ${action.keywords}`))
+
+  return (
+    <>
+      {pages.length > 0 ? (
+        <CommandGroup heading="Go to">
+          {pages.map((link) => (
+            <CommandItem
+              key={link.href}
+              value={`page-${link.href}`}
+              className="gap-2.5"
+              onSelect={() => {
+                onDone()
+                void navigate({ to: link.href })
+              }}
+            >
+              <link.icon />
+              <span>{link.title}</span>
+            </CommandItem>
+          ))}
+        </CommandGroup>
+      ) : null}
+      {actions.length > 0 ? (
+        <CommandGroup heading="Actions">
+          {actions.map((action) => (
+            <CommandItem
+              key={action.id}
+              value={`action-${action.id}`}
+              className="gap-2.5"
+              onSelect={() => {
+                onDone()
+                action.run()
+              }}
+            >
+              <action.icon />
+              <span>{action.title}</span>
+            </CommandItem>
+          ))}
+        </CommandGroup>
+      ) : null}
+    </>
   )
 }
 
