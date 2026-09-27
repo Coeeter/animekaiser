@@ -70,7 +70,6 @@ export function PlayerDesktopControls({
   const preferences = useAtomValue(playerPreferencesAtom)
   const updatePreferences = useAtomSet(updatePlayerPreferencesAtom)
   const isMobile = useIsMobile()
-  const mediaLoading = loading || !playing
   const displayTitle = episodeTitle(playback.episode)
 
   return (
@@ -148,7 +147,7 @@ export function PlayerDesktopControls({
             className="text-white hover:bg-white/10 hover:text-white"
             onClick={onTogglePlayback}
           >
-            {mediaLoading ? (
+            {loading ? (
               <Loader2 className="animate-spin" />
             ) : playing ? (
               <Pause />
@@ -156,7 +155,7 @@ export function PlayerDesktopControls({
               <Play />
             )}
             <span className="sr-only">
-              {mediaLoading ? "Loading" : playing ? "Pause" : "Play"}
+              {loading ? "Loading" : playing ? "Pause" : "Play"}
             </span>
           </Button>
           <div className="group/volume flex items-center gap-1 rounded-full focus-within:bg-white/10 hover:bg-white/10">

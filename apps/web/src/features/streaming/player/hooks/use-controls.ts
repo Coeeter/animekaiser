@@ -43,7 +43,7 @@ export function useControlsVisibility({
   useEffect(() => {
     revealControls()
     return clearTimeout
-  }, [playing, settingsOpen, episodesOpen])
+  }, [playing, settingsOpen, episodesOpen, serversOpen])
 
   return {
     controlsVisible,

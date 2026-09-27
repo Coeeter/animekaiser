@@ -404,10 +404,6 @@ function StreamPlayer({
   }, [defaultCaption, episodeKey])
 
   useEffect(() => {
-    revealControls()
-  }, [episodesOpen, media.playing, settingsOpen, revealControls])
-
-  useEffect(() => {
     if (!selectedCaptionTrack) {
       setSubtitleCues([])
       return
