@@ -17,6 +17,7 @@ import type { ReactNode } from "react"
 import { AnimeTitle } from "../../anime/common/anime-title"
 import { NextAiringNotice } from "../../anime/schedule/next-airing-notice"
 import { providerLabelAtom } from "../atoms"
+import { EpisodeThumbnail } from "../episode-thumbnail"
 import {
   audioLabel,
   episodeLabel,
@@ -32,7 +33,9 @@ export function PlayerMobilePanel({
   onOpenEpisodes,
   onOpenServers,
   onNavigateToEpisode,
+  rail = false,
 }: {
+  rail?: boolean
   playback: StreamPlayback
   episodes: ReadonlyArray<StreamEpisode>
   previousEpisode: StreamEpisode | null
@@ -45,7 +48,14 @@ export function PlayerMobilePanel({
   const displayTitle = episodeTitle(playback.episode)
 
   return (
-    <div className="flex flex-col gap-5 bg-background px-4 pt-4 pb-[calc(4.5rem+env(safe-area-inset-bottom))] text-foreground md:hidden">
+    <div
+      className={cn(
+        "flex flex-col gap-5 bg-background px-4 pt-4 pb-[calc(4.5rem+env(safe-area-inset-bottom))] text-foreground",
+        rail
+          ? "md:sticky md:top-0 md:h-dvh md:w-96 md:shrink-0 md:overflow-y-auto md:border-l md:pb-6"
+          : "md:hidden"
+      )}
+    >
       <div className="flex flex-col gap-2">
         <h1 className="font-heading text-xl leading-tight font-bold tracking-tight">
           <AnimeTitle title={playback.anime.title} />
@@ -203,14 +213,23 @@ function MobileEpisodeRow({
 
   const content = (
     <>
-      <span
-        className={cn(
-          "grid size-11 shrink-0 place-items-center rounded-xl border bg-muted text-sm font-semibold tabular-nums",
-          isCurrent && "border-primary bg-primary text-primary-foreground"
-        )}
-      >
-        {episode.number}
-      </span>
+      {episode.image ? (
+        <EpisodeThumbnail
+          image={episode.image}
+          number={episode.number}
+          highlighted={isCurrent}
+          className="w-24"
+        />
+      ) : (
+        <span
+          className={cn(
+            "grid size-11 shrink-0 place-items-center rounded-xl border bg-muted text-sm font-semibold tabular-nums",
+            isCurrent && "border-primary bg-primary text-primary-foreground"
+          )}
+        >
+          {episode.number}
+        </span>
+      )}
       <span className="min-w-0 flex-1">
         <span className="block truncate text-sm font-medium">
           {title ?? episodeLabel(episode)}

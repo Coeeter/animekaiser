@@ -53,6 +53,7 @@ import { PlayerMobilePanel } from "./mobile-panel"
 import { StreamPlayerPendingPage } from "./pending-page"
 import { PlayerShell } from "./player-shell"
 import { ServerSheet } from "./server-sheet"
+import { PlayerTheaterBar } from "./theater-bar"
 import { playerCaptionAtom, playerUiAtom, updatePlayerUiAtom } from "./ui-state"
 import {
   PlayerLoadingToast,
@@ -528,6 +529,8 @@ function StreamPlayer({
       ? "pause"
       : "play"
   const playerPortalContainer = playerElement
+  const theater =
+    mode === "full" && !fullscreen && preferences.viewMode === "theater"
 
   return (
     <PlayerShell
@@ -535,6 +538,7 @@ function StreamPlayer({
       variant={mode}
       sidebarState={sidebarState}
       className={cn(
+        theater && "md:flex-row md:overflow-y-auto",
         mode === "mini" && miniPlayerClass,
         mode === "full" && !controlsVisible && media.playing && "cursor-none"
       )}
@@ -543,130 +547,146 @@ function StreamPlayer({
       onPointerUp={endInteraction}
       onPointerCancel={endInteraction}
     >
-      <main
-        className={cn(
-          "relative flex items-center justify-center overflow-hidden bg-black",
-          mode === "full" && !fullscreen
-            ? "aspect-video w-full shrink-0 md:aspect-auto md:min-h-0 md:flex-1"
-            : "min-h-0 flex-1",
-          mode === "full" && !fullscreen && "sticky top-0 z-20 md:static"
-        )}
-        onPointerMove={revealControls}
-        onPointerDown={revealControls}
+      <div
+        className={
+          theater
+            ? "contents md:flex md:min-w-0 md:flex-1 md:flex-col md:gap-4 md:p-4"
+            : "contents"
+        }
       >
-        <video
-          ref={media.videoRef}
+        <main
           className={cn(
-            "absolute inset-0 h-full w-full bg-black",
-            videoFitClass[preferences.videoFit]
+            "relative flex items-center justify-center overflow-hidden bg-black",
+            theater
+              ? "aspect-video w-full shrink-0 md:rounded-2xl"
+              : mode === "full" && !fullscreen
+                ? "aspect-video w-full shrink-0 md:aspect-auto md:min-h-0 md:flex-1"
+                : "min-h-0 flex-1",
+            mode === "full" &&
+              !fullscreen &&
+              (theater
+                ? "sticky top-0 z-20 md:relative md:z-auto"
+                : "sticky top-0 z-20 md:static")
           )}
-          playsInline
-          crossOrigin="anonymous"
-          onPointerDown={captureVideoPointer}
-          onClick={handleVideoClick}
-          {...media.videoHandlers}
-          onEnded={finishEpisode}
-        />
-
-        {mode === "full" ? (
-          <PlayerCenterIndicator
-            icon={centerIndicatorIcon}
-            visible={!(media.playing && !controlsVisible && !mediaLoading)}
+          onPointerMove={revealControls}
+          onPointerDown={revealControls}
+        >
+          <video
+            ref={media.videoRef}
+            className={cn(
+              "absolute inset-0 h-full w-full bg-black",
+              videoFitClass[preferences.videoFit]
+            )}
+            playsInline
+            crossOrigin="anonymous"
+            onPointerDown={captureVideoPointer}
+            onClick={handleVideoClick}
+            {...media.videoHandlers}
+            onEnded={finishEpisode}
           />
-        ) : null}
 
-        <PlayerLoadingToast visible={loading} />
-
-        <PlayerSubtitleOverlay
-          html={activeSubtitle}
-          mode={mode}
-          controlsVisible={controlsVisible}
-          preferences={preferences}
-        />
-
-        {mode === "full" ? (
-          <div className="pointer-events-none absolute inset-x-4 bottom-14 z-30 flex flex-wrap justify-center gap-2 md:bottom-36">
-            <PlayerSkipButton
-              kind="intro"
-              segment={playback.intro}
-              currentTime={media.currentTime}
-              duration={media.duration}
-              onSkip={media.skipTo}
+          {mode === "full" ? (
+            <PlayerCenterIndicator
+              icon={centerIndicatorIcon}
+              visible={!(media.playing && !controlsVisible && !mediaLoading)}
             />
-            <PlayerSkipButton
-              kind="outro"
-              segment={playback.outro}
-              currentTime={media.currentTime}
-              duration={media.duration}
-              onSkip={media.skipTo}
-            />
-          </div>
-        ) : null}
+          ) : null}
 
-        {mode === "full" ? (
-          <PlayerMobileControls
-            playback={playback}
-            currentTime={media.currentTime}
-            duration={media.duration}
-            bufferedEnd={media.bufferedEnd}
-            onSeek={media.seekTo}
-            playing={media.playing}
-            loading={mediaLoading}
-            fullscreen={fullscreen}
-            onTogglePlayback={media.togglePlayback}
-            onToggleFullscreen={toggleFullscreen}
-            onSeekBy={media.seekBy}
+          <PlayerLoadingToast visible={loading} />
+
+          <PlayerSubtitleOverlay
+            html={activeSubtitle}
+            mode={mode}
             controlsVisible={controlsVisible}
-            playerPortalContainer={playerPortalContainer}
+            preferences={preferences}
           />
-        ) : null}
 
-        {mode === "full" ? (
-          <PlayerDesktopControls
-            playback={playback}
-            currentTime={media.currentTime}
-            duration={media.duration}
-            bufferedEnd={media.bufferedEnd}
-            onSeek={media.seekTo}
-            playing={media.playing}
-            loading={mediaLoading}
-            muted={media.muted}
-            volume={media.volume}
-            fullscreen={fullscreen}
-            onTogglePlayback={media.togglePlayback}
-            onToggleMute={media.toggleMute}
-            onVolumeChange={media.setVideoVolume}
-            onToggleFullscreen={toggleFullscreen}
-            onOpenEpisodes={() => setEpisodesOpen(true)}
-            onOpenServers={() => setServersOpen(true)}
-            controlsVisible={controlsVisible}
-            playerPortalContainer={playerPortalContainer}
-          />
-        ) : (
-          <PlayerMiniControls
-            playback={playback}
-            serverId={input.serverId}
-            playing={media.playing}
-            loading={mediaLoading}
-            onTogglePlayback={media.togglePlayback}
-            onSeekBy={media.seekBy}
-            onClose={onClose}
-          />
-        )}
-
-        {mode === "mini"
-          ? miniResizeHandles.map((handle) => (
-              <div
-                key={handle.direction}
-                data-mini-resize={handle.direction}
-                className={cn("absolute z-40", handle.className)}
+          {mode === "full" ? (
+            <div className="pointer-events-none absolute inset-x-4 bottom-14 z-30 flex flex-wrap justify-center gap-2 md:bottom-36">
+              <PlayerSkipButton
+                kind="intro"
+                segment={playback.intro}
+                currentTime={media.currentTime}
+                duration={media.duration}
+                onSkip={media.skipTo}
               />
-            ))
-          : null}
-      </main>
+              <PlayerSkipButton
+                kind="outro"
+                segment={playback.outro}
+                currentTime={media.currentTime}
+                duration={media.duration}
+                onSkip={media.skipTo}
+              />
+            </div>
+          ) : null}
+
+          {mode === "full" ? (
+            <PlayerMobileControls
+              playback={playback}
+              currentTime={media.currentTime}
+              duration={media.duration}
+              bufferedEnd={media.bufferedEnd}
+              onSeek={media.seekTo}
+              playing={media.playing}
+              loading={mediaLoading}
+              fullscreen={fullscreen}
+              onTogglePlayback={media.togglePlayback}
+              onToggleFullscreen={toggleFullscreen}
+              onSeekBy={media.seekBy}
+              controlsVisible={controlsVisible}
+              playerPortalContainer={playerPortalContainer}
+            />
+          ) : null}
+
+          {mode === "full" ? (
+            <PlayerDesktopControls
+              playback={playback}
+              currentTime={media.currentTime}
+              duration={media.duration}
+              bufferedEnd={media.bufferedEnd}
+              onSeek={media.seekTo}
+              playing={media.playing}
+              loading={mediaLoading}
+              muted={media.muted}
+              volume={media.volume}
+              fullscreen={fullscreen}
+              onTogglePlayback={media.togglePlayback}
+              onToggleMute={media.toggleMute}
+              onVolumeChange={media.setVideoVolume}
+              onToggleFullscreen={toggleFullscreen}
+              onOpenEpisodes={() => setEpisodesOpen(true)}
+              onOpenServers={() => setServersOpen(true)}
+              controlsVisible={controlsVisible}
+              playerPortalContainer={playerPortalContainer}
+            />
+          ) : (
+            <PlayerMiniControls
+              playback={playback}
+              serverId={input.serverId}
+              playing={media.playing}
+              loading={mediaLoading}
+              onTogglePlayback={media.togglePlayback}
+              onSeekBy={media.seekBy}
+              onClose={onClose}
+            />
+          )}
+
+          {mode === "mini"
+            ? miniResizeHandles.map((handle) => (
+                <div
+                  key={handle.direction}
+                  data-mini-resize={handle.direction}
+                  className={cn("absolute z-40", handle.className)}
+                />
+              ))
+            : null}
+        </main>
+        {theater ? <PlayerTheaterBar playback={playback} /> : null}
+      </div>
 
       {mode === "full" && !fullscreen ? (
         <PlayerMobilePanel
+          rail={theater}
           playback={playback}
           episodes={providerEpisodes}
           previousEpisode={previousEpisode}

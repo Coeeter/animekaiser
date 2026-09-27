@@ -2,7 +2,7 @@ import type { StreamPlayback } from "@animekaiser/domain"
 import { Button } from "@animekaiser/ui/components/button"
 import { useIsMobile } from "@animekaiser/ui/hooks/use-mobile"
 import { cn } from "@animekaiser/ui/lib/utils"
-import { useAtomValue } from "@effect-atom/atom-react"
+import { useAtomSet, useAtomValue } from "@effect-atom/atom-react"
 import { Link } from "@tanstack/react-router"
 import {
   ArrowLeft,
@@ -10,6 +10,7 @@ import {
   Loader2,
   Maximize,
   Minimize,
+  PanelRight,
   Pause,
   Play,
   Server,
@@ -19,6 +20,10 @@ import {
 import { AnimeTitle } from "../../anime/common/anime-title"
 import { providerLabelAtom } from "../atoms"
 import { episodeLabel, episodeTitle } from "../player-format"
+import {
+  playerPreferencesAtom,
+  updatePlayerPreferencesAtom,
+} from "../preferences"
 import { PlayerSettingsPopover } from "./settings-popover"
 import { PlayerTimeline } from "./timeline"
 
@@ -62,6 +67,8 @@ export function PlayerDesktopControls({
   playerPortalContainer: HTMLElement | null
 }) {
   const providerName = useAtomValue(providerLabelAtom(playback.provider))
+  const preferences = useAtomValue(playerPreferencesAtom)
+  const updatePreferences = useAtomSet(updatePlayerPreferencesAtom)
   const isMobile = useIsMobile()
   const mediaLoading = loading || !playing
   const displayTitle = episodeTitle(playback.episode)
@@ -179,6 +186,19 @@ export function PlayerDesktopControls({
           </div>
         </div>
         <div className="flex items-center gap-2">
+          {isMobile ||
+          fullscreen ||
+          preferences.viewMode === "theater" ? null : (
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              className="text-white hover:bg-white/10 hover:text-white"
+              onClick={() => updatePreferences({ viewMode: "theater" })}
+            >
+              <PanelRight />
+              <span className="sr-only">Theater mode</span>
+            </Button>
+          )}
           {isMobile ? null : (
             <PlayerSettingsPopover
               portalContainer={playerPortalContainer}

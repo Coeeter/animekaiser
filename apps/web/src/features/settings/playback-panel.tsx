@@ -62,6 +62,22 @@ export function PlaybackPanel() {
 
   return (
     <div className="flex flex-col gap-4">
+      <SettingCard id="playback.viewMode" className="p-4">
+        <SettingHeading
+          title="Theater mode"
+          description="On desktop, keep episodes and details beside the player instead of filling the screen."
+          action={
+            <Switch
+              checked={preferences.viewMode === "theater"}
+              onCheckedChange={(checked) =>
+                updatePreferences({
+                  viewMode: checked ? "theater" : "immersive",
+                })
+              }
+            />
+          }
+        />
+      </SettingCard>
       {preferenceRows.map((row) => (
         <SettingCard id={row.id} className="p-4" key={row.key}>
           <SettingHeading

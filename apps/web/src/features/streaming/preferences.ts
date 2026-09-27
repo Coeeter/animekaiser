@@ -5,6 +5,9 @@ import * as Schema from "effect/Schema"
 export const VideoFit = Schema.Literal("contain", "cover", "fill")
 export type VideoFit = typeof VideoFit.Type
 
+export const PlayerViewMode = Schema.Literal("theater", "immersive")
+export type PlayerViewMode = typeof PlayerViewMode.Type
+
 export const subtitlePreferenceDefaults = {
   subtitleSizePercent: 100,
   subtitleColor: "#ffffff",
@@ -40,6 +43,7 @@ export const PlayerPreferences = Schema.Struct({
     default: () => subtitlePreferenceDefaults.subtitleShadow,
   }),
   videoFit: Schema.optionalWith(VideoFit, { default: () => "contain" }),
+  viewMode: Schema.optionalWith(PlayerViewMode, { default: () => "theater" }),
 })
 export type PlayerPreferences = typeof PlayerPreferences.Type
 
@@ -52,6 +56,7 @@ export const defaultPlayerPreferences: PlayerPreferences = {
   audioEnhancementPercent: 100,
   ...subtitlePreferenceDefaults,
   videoFit: "contain",
+  viewMode: "theater",
 }
 
 export const playerPreferencesStorageKey = "kaiser-player-preferences"

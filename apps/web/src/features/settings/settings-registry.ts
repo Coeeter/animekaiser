@@ -134,6 +134,12 @@ export const settingEntries: ReadonlyArray<SettingEntry> = [
     keywords: ["romaji", "english", "naming"],
   },
   {
+    id: "playback.viewMode",
+    section: "Playback",
+    title: "Theater mode",
+    keywords: ["immersive", "layout", "episodes", "sidebar", "view"],
+  },
+  {
     id: "playback.autoplay",
     section: "Playback",
     title: "Autoplay episodes",
