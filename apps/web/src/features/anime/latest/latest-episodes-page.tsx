@@ -6,16 +6,10 @@ import { Link } from "@tanstack/react-router"
 import { Clapperboard } from "lucide-react"
 import { DataError } from "../../../components/data-error"
 import { PageHero } from "../../../components/page-hero"
-import { KaiserRpcClient } from "../../../services/api-clients"
 import { spoilerBlurAtom } from "../../streaming/preferences"
 import { AnimeTitle } from "../common/anime-title"
 import { formatAnimeFormat } from "../common/format"
-
-const latestEpisodesAtom = KaiserRpcClient.query(
-  "ListLatestEpisodes",
-  undefined,
-  { timeToLive: "5 minutes" }
-)
+import { latestEpisodesAtom } from "./atoms"
 
 const airedLabel = (airedAt: number) => {
   const formatter = new Intl.RelativeTimeFormat(undefined, { numeric: "auto" })
@@ -62,7 +56,13 @@ export function LatestEpisodesPage() {
   )
 }
 
-function LatestEpisodeCard({ item }: { item: LatestEpisode }) {
+export function LatestEpisodeCard({
+  item,
+  className,
+}: {
+  item: LatestEpisode
+  className?: string
+}) {
   const image =
     item.image ?? item.anime.bannerImage ?? item.anime.coverImage ?? null
   const spoiler = useAtomValue(spoilerBlurAtom) && item.image !== null
@@ -72,7 +72,7 @@ function LatestEpisodeCard({ item }: { item: LatestEpisode }) {
       to="/series/$id"
       params={{ id: item.anime.malId }}
       preload="intent"
-      className="group flex min-w-0 flex-col gap-2"
+      className={cn("group flex min-w-0 flex-col gap-2", className)}
     >
       <div className="relative aspect-video overflow-hidden rounded-xl bg-muted ring-1 ring-white/10 transition group-hover:ring-primary/50">
         {image ? (

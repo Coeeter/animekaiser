@@ -39,6 +39,46 @@ export function AnimeScrollRow({
   )
 }
 
+export function SectionHeading({
+  title,
+  eyebrow,
+  more,
+  children,
+}: {
+  title: string
+  eyebrow?: string
+  more?: RowLink
+  children?: ReactNode
+}) {
+  return (
+    <div className="flex items-end justify-between gap-4">
+      <div className="min-w-0">
+        {eyebrow ? (
+          <p className="mb-1 text-[11px] font-semibold tracking-[0.16em] text-primary uppercase">
+            {eyebrow}
+          </p>
+        ) : null}
+        <h2 className="font-heading text-lg font-bold tracking-tight md:text-xl">
+          {title}
+        </h2>
+      </div>
+      <div className="flex shrink-0 items-center gap-1.5">
+        {children}
+        {more ? (
+          <Link
+            to={more.to}
+            search={more.search as never}
+            className="inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs font-medium text-muted-foreground transition hover:text-foreground"
+          >
+            View all
+            <ArrowRight className="size-3.5" />
+          </Link>
+        ) : null}
+      </div>
+    </div>
+  )
+}
+
 export function MediaRow({
   title,
   eyebrow,
@@ -88,50 +128,28 @@ export function MediaRow({
 
   return (
     <section className="flex min-w-0 flex-col gap-3">
-      <div className="flex items-end justify-between gap-4">
-        <div className="min-w-0">
-          {eyebrow ? (
-            <p className="mb-1 text-[11px] font-semibold tracking-[0.16em] text-primary uppercase">
-              {eyebrow}
-            </p>
-          ) : null}
-          <h2 className="font-heading text-lg font-bold tracking-tight md:text-xl">
-            {title}
-          </h2>
-        </div>
-        <div className="flex shrink-0 items-center gap-1.5">
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            className="hidden md:inline-flex"
-            disabled={!canScrollLeft}
-            onClick={() => scroll("left")}
-          >
-            <ChevronLeft />
-            <span className="sr-only">Scroll left</span>
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            className="hidden md:inline-flex"
-            disabled={!canScrollRight}
-            onClick={() => scroll("right")}
-          >
-            <ChevronRight />
-            <span className="sr-only">Scroll right</span>
-          </Button>
-          {more ? (
-            <Link
-              to={more.to}
-              search={more.search as never}
-              className="inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs font-medium text-muted-foreground transition hover:text-foreground"
-            >
-              View all
-              <ArrowRight className="size-3.5" />
-            </Link>
-          ) : null}
-        </div>
-      </div>
+      <SectionHeading title={title} eyebrow={eyebrow} more={more}>
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          className="hidden md:inline-flex"
+          disabled={!canScrollLeft}
+          onClick={() => scroll("left")}
+        >
+          <ChevronLeft />
+          <span className="sr-only">Scroll left</span>
+        </Button>
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          className="hidden md:inline-flex"
+          disabled={!canScrollRight}
+          onClick={() => scroll("right")}
+        >
+          <ChevronRight />
+          <span className="sr-only">Scroll right</span>
+        </Button>
+      </SectionHeading>
 
       <div className="relative min-w-0">
         <div

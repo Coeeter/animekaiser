@@ -1,8 +1,10 @@
 import type { AnimeItem } from "@animekaiser/domain"
+import { Skeleton } from "@animekaiser/ui/components/skeleton"
+import { cn } from "@animekaiser/ui/lib/utils"
 import { Result, useAtomValue } from "@effect-atom/atom-react"
 import { Link } from "@tanstack/react-router"
-import { Clock3 } from "lucide-react"
-import { MediaRow } from "../common/anime-scroll-row"
+import { Check, Clock3 } from "lucide-react"
+import { SectionHeading } from "../common/anime-scroll-row"
 import { AnimeTitle } from "../common/anime-title"
 import { scheduleAtom } from "./atoms"
 import { NextEpisodeCountdown } from "./next-episode-countdown"
@@ -25,68 +27,89 @@ const todaysLineup = (items: ReadonlyArray<AnimeItem>) => {
   return [...upcoming, ...aired].slice(0, 16)
 }
 
-export function AiringTodayRow() {
+export function AiringTodayList() {
   const range = scheduleRange(getTodayScheduleDay())
   const result = useAtomValue(scheduleAtom(range.from, range.to, 1, 50))
 
-  return Result.builder(result)
-    .onSuccess((page) => {
-      const items = todaysLineup(page.items)
-      return items.length === 0 ? null : (
-        <MediaRow
-          title="Airing today"
-          eyebrow="Schedule"
-          more={{ to: "/schedule" }}
-        >
-          {items.map((anime) => (
-            <AiringTodayCard key={anime.malId} anime={anime} />
-          ))}
-        </MediaRow>
-      )
-    })
-    .orElse(() => null)
+  return (
+    <section className="flex min-w-0 flex-col gap-3">
+      <SectionHeading
+        title="Airing today"
+        eyebrow="Schedule"
+        more={{ to: "/schedule" }}
+      />
+      {Result.builder(result)
+        .onSuccess((page) => {
+          const items = todaysLineup(page.items).slice(0, 8)
+          return items.length === 0 ? (
+            <p className="rounded-2xl border border-dashed p-6 text-center text-sm text-muted-foreground">
+              Nothing else airs today.
+            </p>
+          ) : (
+            <ol className="flex flex-col">
+              {items.map((anime) => (
+                <AiringTodayItem key={anime.malId} anime={anime} />
+              ))}
+            </ol>
+          )
+        })
+        .orElse(() => (
+          <div className="flex flex-col gap-2">
+            {Array.from({ length: 6 }, (_item, index) => (
+              <Skeleton key={index} className="h-16 w-full rounded-xl" />
+            ))}
+          </div>
+        ))}
+    </section>
+  )
 }
 
-function AiringTodayCard({ anime }: { anime: AnimeItem }) {
+function AiringTodayItem({ anime }: { anime: AnimeItem }) {
   const next = anime.nextAiringEpisode
   const aired = next ? next.airingAt * 1000 <= Date.now() : false
 
   return (
-    <Link
-      to="/series/$id"
-      params={{ id: anime.malId }}
-      preload="intent"
-      className="group flex w-32 shrink-0 flex-col gap-2 sm:w-36"
-    >
-      <div className="relative aspect-2/3 overflow-hidden rounded-xl bg-muted ring-1 ring-white/10 transition group-hover:ring-primary/50">
+    <li>
+      <Link
+        to="/series/$id"
+        params={{ id: anime.malId }}
+        preload="intent"
+        className="group flex items-center gap-3 rounded-xl p-2 transition hover:bg-muted/60"
+      >
+        <span
+          className={cn(
+            "w-14 shrink-0 text-sm font-semibold tabular-nums",
+            aired ? "text-muted-foreground" : "text-foreground"
+          )}
+        >
+          {next
+            ? new Date(next.airingAt * 1000).toLocaleTimeString(undefined, {
+                hour: "numeric",
+                minute: "2-digit",
+              })
+            : null}
+        </span>
         {anime.coverImage ? (
           <img
             src={anime.coverImage}
             alt=""
-            className="size-full object-cover transition duration-500 group-hover:scale-105"
+            className="aspect-2/3 w-10 shrink-0 rounded-md object-cover"
             loading="lazy"
             decoding="async"
           />
         ) : null}
-        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 to-transparent p-2 pt-8">
-          {next ? (
-            <p className="flex items-center gap-1 text-[11px] font-semibold text-white tabular-nums">
-              <Clock3 className="size-3" />
-              {new Date(next.airingAt * 1000).toLocaleTimeString(undefined, {
-                hour: "numeric",
-                minute: "2-digit",
-              })}
-            </p>
-          ) : null}
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm font-medium group-hover:text-primary">
+            <AnimeTitle title={anime.title} />
+          </p>
           {next ? (
             <p
-              className={
-                aired
-                  ? "text-[11px] text-white/60"
-                  : "text-[11px] text-emerald-300 tabular-nums"
-              }
+              className={cn(
+                "text-xs tabular-nums",
+                aired ? "text-muted-foreground" : "text-emerald-500"
+              )}
             >
-              Ep {next.episode} ·{" "}
+              Episode {next.episode} ·{" "}
               {aired ? (
                 "aired"
               ) : (
@@ -95,10 +118,12 @@ function AiringTodayCard({ anime }: { anime: AnimeItem }) {
             </p>
           ) : null}
         </div>
-      </div>
-      <h3 className="line-clamp-2 text-xs leading-snug font-medium group-hover:text-primary">
-        <AnimeTitle title={anime.title} />
-      </h3>
-    </Link>
+        {aired ? (
+          <Check className="size-4 shrink-0 text-muted-foreground" />
+        ) : (
+          <Clock3 className="size-4 shrink-0 text-muted-foreground" />
+        )}
+      </Link>
+    </li>
   )
 }
