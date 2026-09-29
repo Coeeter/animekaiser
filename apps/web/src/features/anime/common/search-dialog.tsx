@@ -59,7 +59,7 @@ import {
   setAnimeTitlePreferenceAtom,
 } from "./title"
 
-const searchDebounceMs = 220
+const searchDebounceMs = 1000
 const minSearchLength = 2
 const searchResultLimit = 8
 
@@ -109,14 +109,18 @@ export function SearchDialog() {
         <CommandList>
           {hasQuery ? (
             <>
-              <SearchResults
-                query={debouncedQuery}
-                stale={debouncedQuery !== trimmedQuery}
-                onSelect={(title) => {
-                  rememberSearch(title)
-                  close()
-                }}
-              />
+              {debouncedQuery.length >= minSearchLength ? (
+                <SearchResults
+                  query={debouncedQuery}
+                  stale={debouncedQuery !== trimmedQuery}
+                  onSelect={(title) => {
+                    rememberSearch(title)
+                    close()
+                  }}
+                />
+              ) : (
+                <SearchResultsPending />
+              )}
               <CommandSeparator />
               <CommandGroup>
                 <CommandItem

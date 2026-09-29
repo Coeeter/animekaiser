@@ -37,6 +37,7 @@ export function SearchPage({ query }: { query: string }) {
           }
           placeholder="Search anime"
           label="Search anime"
+          debounceMs={1000}
           className="h-12 rounded-2xl text-base"
           autoFocus
         />

@@ -11,6 +11,7 @@ import * as HttpClientResponse from "@effect/platform/HttpClientResponse"
 import { and, asc, eq, sql } from "drizzle-orm"
 import * as Effect from "effect/Effect"
 import * as Schema from "effect/Schema"
+import { logAniListRateLimit } from "../anime/anilist"
 
 export class LibrarySyncError extends Schema.TaggedError<LibrarySyncError>()(
   "LibrarySyncError",
@@ -139,6 +140,11 @@ export class LibrarySyncService extends Effect.Service<LibrarySyncService>()(
         provider: "mal" | "anilist"
       ) =>
         http.execute(request).pipe(
+          Effect.tap((response) =>
+            provider === "anilist"
+              ? logAniListRateLimit("library-sync")(response)
+              : Effect.void
+          ),
           Effect.mapError(
             (cause) =>
               new LibrarySyncError({

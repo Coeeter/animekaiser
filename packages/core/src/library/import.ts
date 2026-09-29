@@ -14,6 +14,7 @@ import * as Effect from "effect/Effect"
 import * as Either from "effect/Either"
 import * as Schema from "effect/Schema"
 import * as Stream from "effect/Stream"
+import { logAniListRateLimit } from "../anime/anilist"
 
 export const LIBRARY_IMPORT_JOB_CHANNEL = "library_import_jobs"
 export const LIBRARY_IMPORT_JOB_UPDATE_CHANNEL = "library_import_job_updates"
@@ -414,6 +415,7 @@ export class LibraryImportService extends Effect.Service<LibraryImportService>()
           })
         )
         const response = yield* http.execute(request).pipe(
+          Effect.tap(logAniListRateLimit("library-import")),
           Effect.flatMap(HttpClientResponse.filterStatusOk),
           Effect.flatMap(
             HttpClientResponse.schemaBodyJson(AniListImportResponse)

@@ -25,6 +25,17 @@ export class AniListRequestError extends Schema.TaggedError<AniListRequestError>
   { message: Schema.String, cause: Schema.optional(Schema.Unknown) }
 ) {}
 
+export const logAniListRateLimit =
+  (source: string) => (response: HttpClientResponse.HttpClientResponse) =>
+    response.status === 429
+      ? Effect.logWarning("AniList rate limited", {
+          source,
+          retryAfter: response.headers["retry-after"],
+          limit: response.headers["x-ratelimit-limit"],
+          reset: response.headers["x-ratelimit-reset"],
+        })
+      : Effect.void
+
 const PositiveInt = Schema.Int.pipe(Schema.positive())
 const NullableString = Schema.NullOr(Schema.String)
 const NullableInt = Schema.NullOr(Schema.Int)
@@ -416,6 +427,8 @@ export type AnimeCatalogRequest = {
   maxScore?: number
 }
 
+const budgetReserve = 5
+
 export class AniListAnimeService extends Effect.Service<AniListAnimeService>()(
   "@animekaiser/core/AniListAnimeService",
   {
@@ -426,28 +439,61 @@ export class AniListAnimeService extends Effect.Service<AniListAnimeService>()(
         HttpClient.withTracerPropagation(false)
       )
 
+      // AniList's per-minute limit is per IP and only reports remaining
+      // budget, so we stop a few requests early and let callers fall back
+      // instead of spending the reserve other AniList callers need.
+      let blockedUntil = 0
+
+      const trackBudget = (response: HttpClientResponse.HttpClientResponse) =>
+        Effect.sync(() => {
+          const now = Date.now()
+          if (response.status === 429) {
+            const reset = Number(response.headers["x-ratelimit-reset"])
+            const retryAfter = Number(response.headers["retry-after"])
+            blockedUntil = Number.isFinite(reset)
+              ? reset * 1000
+              : now + (Number.isFinite(retryAfter) ? retryAfter : 60) * 1000
+            return
+          }
+          const remaining = Number(response.headers["x-ratelimit-remaining"])
+          if (Number.isFinite(remaining) && remaining <= budgetReserve)
+            blockedUntil = now + 60_000
+        })
+
       const request = <TValue, TEncoded>(
         schema: Schema.Schema<TValue, TEncoded>,
         query: string,
         variables: object
       ) =>
-        http
-          .execute(
-            HttpClientRequest.post("https://graphql.anilist.co", {
-              headers: { "content-type": "application/json" },
-            }).pipe(HttpClientRequest.bodyUnsafeJson({ query, variables }))
-          )
-          .pipe(
-            Effect.flatMap(HttpClientResponse.filterStatusOk),
-            Effect.flatMap(HttpClientResponse.schemaBodyJson(schema)),
-            Effect.mapError(
-              (cause) =>
+        Effect.suspend(() =>
+          Date.now() < blockedUntil
+            ? Effect.fail(
                 new AniListRequestError({
-                  message: "AniList request failed.",
-                  cause,
+                  message: "AniList rate limit budget is exhausted.",
                 })
-            )
-          )
+              )
+            : http
+                .execute(
+                  HttpClientRequest.post("https://graphql.anilist.co", {
+                    headers: { "content-type": "application/json" },
+                  }).pipe(
+                    HttpClientRequest.bodyUnsafeJson({ query, variables })
+                  )
+                )
+                .pipe(
+                  Effect.tap(trackBudget),
+                  Effect.tap(logAniListRateLimit("catalog")),
+                  Effect.flatMap(HttpClientResponse.filterStatusOk),
+                  Effect.flatMap(HttpClientResponse.schemaBodyJson(schema)),
+                  Effect.mapError(
+                    (cause) =>
+                      new AniListRequestError({
+                        message: "AniList request failed.",
+                        cause,
+                      })
+                  )
+                )
+        )
 
       const getCatalog = Effect.fn("AniListAnimeService.getCatalog")(function* (
         input: AnimeCatalogRequest
