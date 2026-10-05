@@ -54,6 +54,7 @@ function AnimeDetailRoute() {
         provider: search.provider,
       },
       replace: true,
+      resetScroll: false,
     })
   }
 
@@ -67,6 +68,7 @@ function AnimeDetailRoute() {
         provider: search.provider,
       },
       replace: true,
+      resetScroll: false,
     })
   }
 
@@ -80,6 +82,7 @@ function AnimeDetailRoute() {
         provider,
       },
       replace: true,
+      resetScroll: false,
     })
   }
 

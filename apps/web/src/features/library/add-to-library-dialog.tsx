@@ -34,7 +34,19 @@ import { Textarea } from "@animekaiser/ui/components/textarea"
 import { useAtomSet, useAtomValue } from "@effect-atom/atom-react"
 import { useForm } from "@tanstack/react-form"
 import * as Schema from "effect/Schema"
-import { BookmarkPlus, ListChecks, Star, Trash2 } from "lucide-react"
+import type { LucideIcon } from "lucide-react"
+import {
+  BookmarkPlus,
+  CheckCircle2,
+  Clock3,
+  Eye,
+  ListChecks,
+  PauseCircle,
+  Repeat2,
+  Star,
+  Trash2,
+  XCircle,
+} from "lucide-react"
 import { useEffect, useId, useState } from "react"
 import { toast } from "sonner"
 import { IconInput } from "../../components/icon-input"
@@ -52,6 +64,40 @@ import {
   libraryDeleteFormDefaults,
   libraryEntryFormDefaults,
 } from "./form"
+
+const statusIcons: Record<LibraryStatus, LucideIcon> = {
+  watching: Eye,
+  completed: CheckCircle2,
+  paused: PauseCircle,
+  dropped: XCircle,
+  planning: Clock3,
+  rewatching: Repeat2,
+}
+
+function TriggerLabel({ entry }: { entry: LibraryEntry | null }) {
+  if (!entry) {
+    return (
+      <>
+        <BookmarkPlus data-icon="inline-start" />
+        Add to Library
+      </>
+    )
+  }
+  const StatusIcon = statusIcons[entry.status]
+  const status =
+    libraryStatuses.find((item) => item.value === entry.status)?.label ??
+    entry.status
+  const progress = entry.anime.episodes
+    ? `${entry.progress}/${entry.anime.episodes}`
+    : `${entry.progress} eps`
+  return (
+    <>
+      <StatusIcon data-icon="inline-start" />
+      {status}
+      <span className="text-muted-foreground">· {progress}</span>
+    </>
+  )
+}
 
 export function AddToLibraryDialog({
   anime,
@@ -140,9 +186,12 @@ export function AddToLibraryDialog({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button className="w-fit" variant="outline">
-          <BookmarkPlus data-icon="inline-start" />
-          {entry ? "Edit Library" : "Add to Library"}
+        <Button
+          className="w-fit"
+          variant="outline"
+          aria-label={entry ? "Edit library entry" : undefined}
+        >
+          <TriggerLabel entry={entry} />
         </Button>
       </DialogTrigger>
       <DialogContent>

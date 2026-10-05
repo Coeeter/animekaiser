@@ -4,7 +4,6 @@ import type {
   StreamProviderEpisodes,
 } from "@animekaiser/domain"
 import { StreamProviderId } from "@animekaiser/domain"
-import { Badge } from "@animekaiser/ui/components/badge"
 import { Button } from "@animekaiser/ui/components/button"
 import {
   Empty,
@@ -27,28 +26,20 @@ import {
   SelectValue,
 } from "@animekaiser/ui/components/select"
 import { Skeleton } from "@animekaiser/ui/components/skeleton"
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@animekaiser/ui/components/tooltip"
 import { cn } from "@animekaiser/ui/lib/utils"
 import { Result, useAtomRefresh, useAtomValue } from "@effect-atom/atom-react"
 import { Link } from "@tanstack/react-router"
 import * as Schema from "effect/Schema"
 import {
   ArrowDownUp,
-  CheckCircle2,
   ChevronLeft,
   ChevronRight,
-  Play,
   RadioTower,
-  RotateCcw,
   Search,
   TvMinimalPlay,
 } from "lucide-react"
-import { useMemo, useState } from "react"
+import type { ReactNode } from "react"
+import { useMemo, useRef, useState } from "react"
 import { DataError } from "../../components/data-error"
 import { episodeProgressAtom } from "../history/atoms"
 import type { EpisodeProgress } from "../history/episode-progress"
@@ -105,12 +96,7 @@ const episodeTitle = (episode: ProviderEpisode) =>
 const clampProgress = (value: number | undefined) =>
   Math.min(Math.max(value ?? 0, 0), 100)
 
-// Every column count in `compactGridClassName` divides this, so a full page
-// always fills whole rows instead of leaving a stray partial row.
-const COMPACT_PAGE_SIZE = 96
-
-const compactGridClassName =
-  "grid-cols-6 sm:grid-cols-8 lg:grid-cols-12 xl:grid-cols-16"
+const PAGE_SIZE = 24
 
 const episodeRangeLabel = (episodes: ReadonlyArray<ProviderEpisode>) => {
   const first = episodes[0]
@@ -155,13 +141,7 @@ export function EpisodesPanel({
   const currentProvider = catalog?.providers.at(0) ?? null
 
   const providerSelector = (
-    <div className="flex flex-col gap-3 rounded-xl border bg-card/80 p-4 sm:flex-row sm:items-center sm:justify-between">
-      <div>
-        <p className="text-sm font-medium">Episodes</p>
-        <p className="text-xs text-muted-foreground">
-          Choose a provider, then pick an episode to watch.
-        </p>
-      </div>
+    <div className="flex items-center gap-2">
       <Select
         value={
           currentProvider?.provider ??
@@ -170,7 +150,7 @@ export function EpisodesPanel({
         }
         onValueChange={(value) => onProviderChange(decodeProviderId(value))}
       >
-        <SelectTrigger className="w-full sm:w-44">
+        <SelectTrigger className="w-40" aria-label="Streaming source">
           <SelectValue placeholder="Provider">
             {
               providerOptions.find(
@@ -230,13 +210,12 @@ export function EpisodesPanel({
 
   return (
     <div className="flex flex-col gap-4">
-      {providerSelector}
-
       <ProviderEpisodes
         anime={anime}
         provider={currentProvider}
         page={page}
         onPageChange={onPageChange}
+        providerSelector={providerSelector}
       />
     </div>
   )
@@ -247,14 +226,17 @@ function ProviderEpisodes({
   provider,
   page,
   onPageChange,
+  providerSelector,
 }: {
   anime: AnimeDetail
   provider: StreamProviderEpisodes
   page: number
   onPageChange: (page: number) => void
+  providerSelector: ReactNode
 }) {
   const [query, setQuery] = useState("")
   const [descending, setDescending] = useState(false)
+  const listRef = useRef<HTMLDivElement>(null)
   const progressResult = useAtomValue(
     episodeProgressAtom({ malId: anime.malId, provider: provider.provider })
   )
@@ -279,31 +261,36 @@ function ProviderEpisodes({
 
   if (provider.status !== "available") {
     return (
-      <EpisodesEmpty
-        title={
-          provider.status === "unmatched"
-            ? "No provider match yet"
-            : "Provider is unavailable"
-        }
-        description={
-          provider.message ??
-          "Try another provider once more streaming sources are available."
-        }
-      />
+      <div className="flex flex-col gap-4">
+        {providerSelector}
+        <EpisodesEmpty
+          title={
+            provider.status === "unmatched"
+              ? "No provider match yet"
+              : "Provider is unavailable"
+          }
+          description={
+            provider.message ??
+            "Try another provider once more streaming sources are available."
+          }
+        />
+      </div>
     )
   }
 
   if (provider.episodes.length === 0) {
     return (
-      <EpisodesEmpty
-        title="No episodes found"
-        description="This provider matched the title, but returned no episodes."
-      />
+      <div className="flex flex-col gap-4">
+        {providerSelector}
+        <EpisodesEmpty
+          title="No episodes found"
+          description="This provider matched the title, but returned no episodes."
+        />
+      </div>
     )
   }
 
-  const compact = provider.episodes.length >= 48
-  const pageSize = compact ? COMPACT_PAGE_SIZE : 24
+  const pageSize = PAGE_SIZE
   const totalPages = Math.max(1, Math.ceil(filteredEpisodes.length / pageSize))
   const currentPage = Math.min(page, totalPages)
   const visibleEpisodes = filteredEpisodes.slice(
@@ -311,11 +298,26 @@ function ProviderEpisodes({
     currentPage * pageSize
   )
   const rangeLabel = episodeRangeLabel(visibleEpisodes)
+  const pageRanges = Array.from({ length: totalPages }, (_, index) => ({
+    page: index + 1,
+    label:
+      episodeRangeLabel(
+        filteredEpisodes.slice(index * pageSize, (index + 1) * pageSize)
+      ) ?? `Page ${index + 1}`,
+  }))
+  const goToPage = (next: number) => {
+    onPageChange(Math.min(Math.max(next, 1), totalPages))
+    listRef.current?.scrollIntoView({ block: "start" })
+  }
 
   return (
-    <div className="flex flex-col gap-3">
-      <div className="flex flex-col gap-2 sm:flex-row">
-        <InputGroup className="h-11 min-w-0 flex-1 md:h-9">
+    <div
+      ref={listRef}
+      className="flex scroll-mt-28 flex-col gap-3 md:scroll-mt-11"
+    >
+      <div className="sticky top-[6.25rem] z-10 -mx-4 flex flex-wrap items-center gap-2 bg-background/90 px-4 py-2 backdrop-blur-md md:top-11 md:-mx-6 md:px-6">
+        {providerSelector}
+        <InputGroup className="order-last h-9 min-w-48 basis-full sm:order-none sm:basis-auto sm:flex-1">
           <InputGroupAddon>
             <Search />
           </InputGroupAddon>
@@ -332,14 +334,34 @@ function ProviderEpisodes({
         <Button
           type="button"
           variant="outline"
+          className="ml-auto sm:ml-0"
           onClick={() => {
             setDescending((value) => !value)
             onPageChange(1)
           }}
         >
           <ArrowDownUp data-icon="inline-start" />
-          {descending ? "Newest first" : "Oldest first"}
+          {descending ? "Newest" : "Oldest"}
         </Button>
+        {totalPages > 1 ? (
+          <Select
+            value={String(currentPage)}
+            onValueChange={(value) => goToPage(Number(value))}
+          >
+            <SelectTrigger className="w-44" aria-label="Episode range">
+              <SelectValue>{rangeLabel}</SelectValue>
+            </SelectTrigger>
+            <SelectContent>
+              <SelectGroup>
+                {pageRanges.map((range) => (
+                  <SelectItem key={range.page} value={String(range.page)}>
+                    {range.label}
+                  </SelectItem>
+                ))}
+              </SelectGroup>
+            </SelectContent>
+          </Select>
+        ) : null}
       </div>
 
       {visibleEpisodes.length === 0 ? (
@@ -347,34 +369,17 @@ function ProviderEpisodes({
           No episodes match your search.
         </div>
       ) : (
-        <TooltipProvider>
-          <div
-            className={cn(
-              "grid gap-2",
-              compact ? compactGridClassName : "grid-cols-1"
-            )}
-          >
-            {visibleEpisodes.map((episode) =>
-              compact ? (
-                <EpisodeNumberButton
-                  key={episode.id}
-                  anime={anime}
-                  provider={provider}
-                  episode={episode}
-                  {...progressByEpisode.get(episode.number)}
-                />
-              ) : (
-                <EpisodeRow
-                  key={episode.id}
-                  anime={anime}
-                  provider={provider}
-                  episode={episode}
-                  {...progressByEpisode.get(episode.number)}
-                />
-              )
-            )}
-          </div>
-        </TooltipProvider>
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+          {visibleEpisodes.map((episode) => (
+            <EpisodeCard
+              key={episode.id}
+              anime={anime}
+              provider={provider}
+              episode={episode}
+              {...progressByEpisode.get(episode.number)}
+            />
+          ))}
+        </div>
       )}
 
       {totalPages > 1 ? (
@@ -384,7 +389,7 @@ function ProviderEpisodes({
             variant="outline"
             size="sm"
             disabled={currentPage <= 1}
-            onClick={() => onPageChange(Math.max(1, currentPage - 1))}
+            onClick={() => goToPage(currentPage - 1)}
           >
             <ChevronLeft data-icon="inline-start" />
             Previous
@@ -404,7 +409,7 @@ function ProviderEpisodes({
             variant="outline"
             size="sm"
             disabled={currentPage >= totalPages}
-            onClick={() => onPageChange(Math.min(totalPages, currentPage + 1))}
+            onClick={() => goToPage(currentPage + 1)}
           >
             Next
             <ChevronRight data-icon="inline-end" />
@@ -441,7 +446,7 @@ function ProviderAvailability({
   ) : null
 }
 
-function EpisodeRow({
+function EpisodeCard({
   anime,
   provider,
   episode,
@@ -461,97 +466,48 @@ function EpisodeRow({
   const audio = preferredAudio(episode, audioPreference)
   const title = episodeTitle(episode)
   const progress = watched ? 100 : clampProgress(progressPercent)
-  const showProgress = watched || continueWatching || progress > 0
   const highlighted = current || upNext
   const hideSpoilers =
     blurUnwatched && !watched && !continueWatching && !current
+  const status = current
+    ? "Now playing"
+    : upNext
+      ? "Up next"
+      : continueWatching
+        ? "Continue"
+        : watched
+          ? "Watched"
+          : null
   const content = (
     <>
-      <div className="flex min-w-0 flex-1 items-center gap-4">
-        {episode.image ? (
-          <EpisodeThumbnail
-            blur={hideSpoilers}
-            image={episode.image}
-            number={episode.number}
-            progress={showProgress ? progress : undefined}
-            highlighted={highlighted}
-            className="w-28 sm:w-44 lg:w-52"
-          />
-        ) : (
-          <div
-            className={cn(
-              "grid size-12 shrink-0 place-items-center rounded-2xl border bg-muted text-sm font-semibold tabular-nums",
-              highlighted &&
-                "border-primary bg-primary text-primary-foreground",
-              watched && !highlighted && "text-muted-foreground"
-            )}
-          >
-            {episode.number}
-          </div>
-        )}
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-2">
-            <p className="truncate text-sm font-medium">
-              {title ?? episodeLabel(episode)}
-            </p>
-            {current ? <Badge>Now playing</Badge> : null}
-            {upNext && !current ? <Badge>Up next</Badge> : null}
-            {continueWatching ? (
-              <Badge variant="secondary">
-                <RotateCcw data-icon="inline-start" />
-                Continue
-              </Badge>
-            ) : null}
-            {watched ? (
-              <Badge variant="outline">
-                <CheckCircle2 data-icon="inline-start" />
-                Watched
-              </Badge>
-            ) : null}
-          </div>
-          <div className="mt-1 flex min-w-0 flex-wrap items-center gap-2 text-xs text-muted-foreground">
-            {title ? <span>{episodeLabel(episode)}</span> : null}
-            {episode.japaneseTitle ? (
-              <span className="truncate">{episode.japaneseTitle}</span>
-            ) : null}
-            {episode.availableAudio.map((item) => (
-              <Badge key={item} variant="outline">
-                {audioLabel(item)}
-              </Badge>
-            ))}
-          </div>
-          {episode.description && !hideSpoilers ? (
-            <p className="mt-1.5 line-clamp-2 max-w-3xl text-xs leading-relaxed text-muted-foreground">
-              {episode.description}
-            </p>
-          ) : null}
-          {showProgress && !episode.image ? (
-            <div className="mt-3 h-1 overflow-hidden rounded-full bg-muted">
-              <div
-                className="h-full rounded-full bg-primary"
-                style={{ width: `${progress}%` }}
-              />
-            </div>
-          ) : null}
-        </div>
-      </div>
-      <div
-        className={cn(
-          "grid size-10 shrink-0 place-items-center rounded-full border bg-background text-foreground transition-colors",
-          audio &&
-            "group-hover/episode:bg-primary group-hover/episode:text-primary-foreground",
-          !audio && "text-muted-foreground"
-        )}
-      >
-        <Play />
+      <EpisodeThumbnail
+        blur={hideSpoilers}
+        image={episode.image}
+        number={episode.number}
+        progress={watched || progress > 0 ? progress : undefined}
+        highlighted={highlighted}
+        className="w-full"
+      />
+      <div className="min-w-0 px-0.5">
+        <p className="truncate text-sm font-medium">
+          {title ?? episodeLabel(episode)}
+        </p>
+        <p className="truncate text-xs text-muted-foreground">
+          {[
+            title ? episodeLabel(episode) : null,
+            status,
+            episode.availableAudio.map(audioLabel).join(" / "),
+          ]
+            .filter(Boolean)
+            .join(" · ")}
+        </p>
       </div>
     </>
   )
   const className = cn(
-    "group/episode flex min-h-20 items-center justify-between gap-4 rounded-xl border bg-card/70 p-3 text-left transition hover:border-primary/40 hover:bg-accent/60 hover:opacity-100",
-    highlighted && "border-primary/60 bg-accent",
-    watched && !highlighted && "opacity-80",
-    !audio && "opacity-60"
+    "flex flex-col gap-2 rounded-xl transition",
+    watched && !highlighted && "opacity-70 hover:opacity-100",
+    !audio && "opacity-50"
   )
 
   if (!audio) {
@@ -565,92 +521,10 @@ function EpisodeRow({
   return (
     <Link
       {...episodeHrefProps({ anime, provider, episode, audio })}
-      className={className}
+      className={cn(className, "hover:[&_img]:brightness-110")}
     >
       {content}
     </Link>
-  )
-}
-
-function EpisodeNumberButton({
-  anime,
-  provider,
-  episode,
-  watched = false,
-  continueWatching = false,
-  progressPercent,
-  upNext = false,
-  current = false,
-}: {
-  anime: AnimeDetail
-  provider: StreamProviderEpisodes
-  episode: ProviderEpisode
-} & EpisodeActionState) {
-  const { preferredAudio: audioPreference } = useAtomValue(
-    playerPreferencesAtom
-  )
-  const audio = preferredAudio(episode, audioPreference)
-  const title = episodeTitle(episode)
-  const progress = watched ? 100 : clampProgress(progressPercent)
-  const label = title ?? episodeLabel(episode)
-  const highlighted = current || upNext
-  const buttonClassName = cn(
-    "relative h-11 overflow-hidden rounded-xl px-0 text-sm tabular-nums",
-    current && "ring-2 ring-primary/40",
-    watched && !highlighted && "text-muted-foreground opacity-60"
-  )
-
-  const progressBar =
-    !watched && progress > 0 ? (
-      <span
-        className="absolute inset-x-0 bottom-0 h-0.5 bg-primary"
-        style={{ width: `${progress}%` }}
-      />
-    ) : null
-
-  const numberButton = audio ? (
-    <Button
-      asChild
-      variant={highlighted ? "default" : "outline"}
-      className={buttonClassName}
-    >
-      <Link {...episodeHrefProps({ anime, provider, episode, audio })}>
-        {episode.number}
-        {progressBar}
-      </Link>
-    </Button>
-  ) : (
-    <span>
-      <Button variant="outline" className={buttonClassName} disabled>
-        {episode.number}
-      </Button>
-    </span>
-  )
-
-  return (
-    <Tooltip>
-      <TooltipTrigger asChild>{numberButton}</TooltipTrigger>
-      <TooltipContent side="top" className="max-w-64">
-        <div className="flex flex-col gap-1">
-          <span className="font-medium">{label}</span>
-          <span className="text-background/70">{episodeLabel(episode)}</span>
-          <span className="text-background/70">
-            {audio
-              ? episode.availableAudio.map(audioLabel).join(" / ")
-              : "No streams"}
-          </span>
-          {upNext && !current ? (
-            <span className="text-background/70">Up next</span>
-          ) : null}
-          {continueWatching ? (
-            <span className="text-background/70">
-              Continue {Math.round(progress)}%
-            </span>
-          ) : null}
-          {watched ? <span className="text-background/70">Watched</span> : null}
-        </div>
-      </TooltipContent>
-    </Tooltip>
   )
 }
 

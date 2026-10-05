@@ -3,7 +3,6 @@ import type {
   AnimeItem,
   AnimeTitle as AnimeTitleValue,
   LibraryEntry,
-  LibraryStatus,
   StreamProviderId,
 } from "@animekaiser/domain"
 import { Badge } from "@animekaiser/ui/components/badge"
@@ -18,7 +17,6 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@animekaiser/ui/components/dialog"
-import { Separator } from "@animekaiser/ui/components/separator"
 import { Skeleton } from "@animekaiser/ui/components/skeleton"
 import {
   Tabs,
@@ -30,25 +28,13 @@ import { cn } from "@animekaiser/ui/lib/utils"
 import { Result, useAtomRefresh, useAtomValue } from "@effect-atom/atom-react"
 import { Link } from "@tanstack/react-router"
 import * as Schema from "effect/Schema"
-import type { LucideIcon } from "lucide-react"
-import {
-  CheckCircle2,
-  Clock3,
-  ExternalLink,
-  Eye,
-  PauseCircle,
-  PlayCircle,
-  Repeat2,
-  Star,
-  XCircle,
-  ZoomIn,
-} from "lucide-react"
+import { ExternalLink, PlayCircle, Star, ZoomIn } from "lucide-react"
+import type { ReactNode } from "react"
 import { useState } from "react"
 import { DataError } from "../../../components/data-error"
 import { sessionAtom } from "../../auth/atoms"
 import { AddToLibraryDialog } from "../../library/add-to-library-dialog"
 import { libraryEntryAtom } from "../../library/atoms"
-import { libraryStatuses } from "../../library/constants"
 import { EpisodesPanel } from "../../streaming/episodes-panel"
 import { preferredProviderAtom } from "../../streaming/preferences"
 import { WatchNowButton } from "../../streaming/watch-now-button"
@@ -61,7 +47,8 @@ import { detailAtom, recommendationsAtom } from "./atoms"
 export const AnimeDetailTab = Schema.Literal(
   "episodes",
   "relations",
-  "recommendations"
+  "recommendations",
+  "details"
 )
 export type AnimeDetailTab = typeof AnimeDetailTab.Type
 
@@ -94,36 +81,6 @@ const sortRelations = (relations: ReadonlyArray<AnimeRelationItem>) =>
       (relation) =>
         !hiddenRelationFormats.has(normalizeRelationValue(relation.format))
     )
-
-const libraryStatusIcons: Record<LibraryStatus, LucideIcon> = {
-  watching: Eye,
-  completed: CheckCircle2,
-  paused: PauseCircle,
-  dropped: XCircle,
-  planning: Clock3,
-  rewatching: Repeat2,
-}
-
-const libraryStatusLabel = (status: LibraryStatus) =>
-  libraryStatuses.find((item) => item.value === status)?.label ?? status
-
-const formatLibraryProgress = (entry: LibraryEntry) =>
-  entry.anime.episodes
-    ? `${entry.progress}/${entry.anime.episodes} episodes`
-    : `${entry.progress} episodes`
-
-const formatLibraryScore = (score: number | null) => {
-  if (score === null) return null
-  const value = score / 10
-  return `${Number.isInteger(value) ? value.toFixed(0) : value.toFixed(1)}/10`
-}
-
-const formatLibraryUpdatedAt = (value: Date) =>
-  new Intl.DateTimeFormat(undefined, {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  }).format(value)
 
 export function AnimeDetailPage({
   id,
@@ -210,13 +167,9 @@ function SeriesDetail({
   const description = stripHtml(anime.description)
   const recommendationsResult = useAtomValue(recommendationsAtom(anime.malId))
 
-  const [synopsisExpanded, setSynopsisExpanded] = useState(false)
-
   const relations = sortRelations(anime.relations)
   const hasYoutubeTrailer = anime.trailer?.site.toLowerCase() === "youtube"
-  const isLongSynopsis = description && description.length > 400
   const bannerSrc = anime.bannerImage ?? anime.coverImage
-  const hasRelations = relations.length > 0
 
   const recommendationsState = Result.builder(recommendationsResult)
     .onInitialOrWaiting(() => ({ items: null, loading: true, failed: false }))
@@ -251,8 +204,8 @@ function SeriesDetail({
         </div>
 
         <div className="relative z-10 -mt-80 md:-mt-96">
-          <div className="min-h-80 md:min-h-96">
-            <nav className="mx-auto flex w-full max-w-7xl items-center gap-2 px-4 pt-3 text-xs text-white/50 md:px-6">
+          <div className="flex min-h-80 flex-col md:min-h-96">
+            <nav className="mx-auto flex w-full max-w-6xl items-center gap-2 px-4 pt-3 text-xs text-white/50 md:px-6">
               <Link to="/" className="transition hover:text-white">
                 Home
               </Link>
@@ -270,48 +223,25 @@ function SeriesDetail({
               </span>
             </nav>
 
-            <div className="mx-auto grid w-full max-w-7xl grid-cols-[7rem_1fr] items-end gap-x-4 gap-y-4 px-4 pt-6 pb-6 sm:grid-cols-[9rem_1fr] md:grid-cols-[11rem_1fr] md:gap-x-8 md:px-6 md:pt-10 md:pb-8 lg:grid-cols-[13rem_1fr]">
-              <div className="flex flex-col gap-3 md:row-span-2">
+            <div className="mx-auto mt-auto grid w-full max-w-6xl grid-cols-[7rem_1fr] items-end gap-x-4 gap-y-4 px-4 pt-6 pb-6 sm:grid-cols-[9rem_1fr] md:grid-cols-[11rem_1fr] md:gap-x-8 md:px-6 md:pb-8 lg:grid-cols-[12rem_1fr]">
+              <div className="md:row-span-2">
                 {anime.coverImage ? (
                   <PosterDialog anime={anime} src={anime.coverImage} />
                 ) : null}
-                {hasYoutubeTrailer ? (
-                  <TrailerDialog anime={anime} className="hidden md:flex" />
-                ) : null}
               </div>
 
-              <div className="flex min-w-0 flex-col justify-end gap-2 md:gap-3">
+              <div className="flex min-w-0 flex-col gap-2 md:gap-3">
                 <AnimeSubtitle title={anime.title}>
                   {(subtitle) => (
-                    <p className="text-sm text-white/50">{subtitle}</p>
+                    <p className="line-clamp-1 text-sm text-white/50">
+                      {subtitle}
+                    </p>
                   )}
                 </AnimeSubtitle>
-                <h1 className="line-clamp-3 font-heading text-2xl leading-tight font-black tracking-tight text-white sm:text-3xl md:text-5xl">
+                <h1 className="line-clamp-3 font-heading text-2xl leading-tight font-black tracking-tight text-white sm:text-3xl md:text-4xl lg:text-5xl">
                   <AnimeTitle title={anime.title} />
                 </h1>
-                <div className="flex flex-wrap gap-1.5">
-                  {anime.genres.slice(0, 6).map((genre) => (
-                    <Badge
-                      key={genre}
-                      className="border-0 bg-white/12 text-xs text-white backdrop-blur-sm"
-                    >
-                      {genre}
-                    </Badge>
-                  ))}
-                </div>
-
-                {anime.averageScore ? (
-                  <div className="flex items-center gap-2 pt-1">
-                    <Star className="size-5 fill-amber-400 text-amber-400" />
-                    <span className="text-xl font-bold text-white">
-                      {(anime.averageScore / 10).toFixed(1)}
-                    </span>
-                    <span className="text-xs tracking-wider text-white/40 uppercase">
-                      / 10
-                    </span>
-                  </div>
-                ) : null}
-
+                <HeaderMeta anime={anime} />
                 <NextAiringNotice nextAiringEpisode={anime.nextAiringEpisode} />
               </div>
 
@@ -326,202 +256,305 @@ function SeriesDetail({
                 ) : (
                   <LoginRequiredDialog anime={anime} />
                 )}
-                {libraryEntry ? (
-                  <LibraryEntrySummary entry={libraryEntry} />
-                ) : null}
-                {hasYoutubeTrailer ? (
-                  <TrailerDialog anime={anime} className="md:hidden" />
-                ) : null}
+                {hasYoutubeTrailer ? <TrailerDialog anime={anime} /> : null}
               </div>
             </div>
           </div>
 
           <div className="relative bg-background">
-            <div className="mx-auto grid w-full max-w-7xl gap-6 p-4 md:grid-cols-[176px_1fr] md:gap-8 md:p-6 lg:grid-cols-[208px_1fr]">
-              <aside className="order-last flex flex-col gap-4 md:order-none">
-                <div className="rounded-xl border bg-card/80 p-4">
-                  <dl className="flex flex-col gap-3 text-sm">
-                    <MetaField
-                      label="Format"
-                      value={formatAnimeFormat(anime.format)}
-                    />
-                    <MetaField
-                      label="Status"
-                      value={formatAnimeStatus(anime.status)}
-                    />
-                    {anime.season || anime.seasonYear ? (
-                      <MetaField
-                        label="Season"
-                        value={[anime.season, anime.seasonYear]
-                          .filter(Boolean)
-                          .join(" ")}
-                      />
-                    ) : null}
-                    <MetaField label="Episodes" value={anime.episodes} />
-                    {anime.duration ? (
-                      <MetaField
-                        label="Duration"
-                        value={`${anime.duration} min`}
-                      />
-                    ) : null}
-                    {anime.averageScore ? (
-                      <MetaField
-                        label="Score"
-                        value={`${anime.averageScore}%`}
-                      />
-                    ) : null}
-                  </dl>
+            <div className="mx-auto flex w-full max-w-6xl flex-col gap-8 p-4 md:p-6">
+              <About description={description} genres={anime.genres} />
 
-                  {anime.studios.length > 0 ? (
-                    <>
-                      <Separator className="my-3" />
-                      <p className="mb-2 text-[11px] font-medium tracking-wider text-muted-foreground uppercase">
-                        Studios
-                      </p>
-                      <div className="flex flex-wrap gap-1.5">
-                        {anime.studios.slice(0, 5).map((studio) => (
-                          <Badge
-                            key={studio}
-                            variant="secondary"
-                            className="text-xs"
-                          >
-                            {studio}
-                          </Badge>
-                        ))}
-                      </div>
-                    </>
-                  ) : null}
-
-                  {anime.tags.length > 0 ? (
-                    <>
-                      <Separator className="my-3" />
-                      <p className="mb-2 text-[11px] font-medium tracking-wider text-muted-foreground uppercase">
-                        Tags
-                      </p>
-                      <div className="flex flex-wrap gap-1.5">
-                        {anime.tags.slice(0, 8).map((tag) => (
-                          <Badge
-                            key={tag}
-                            variant="outline"
-                            className="text-xs"
-                          >
-                            {tag}
-                          </Badge>
-                        ))}
-                      </div>
-                    </>
-                  ) : null}
-                </div>
-
-                <div className="rounded-xl border bg-card/80 p-4">
-                  <p className="mb-2 text-[11px] font-medium tracking-wider text-muted-foreground uppercase">
-                    Links
-                  </p>
-                  <div className="flex flex-col gap-0.5">
-                    <ExternalSiteLink
-                      href={`https://myanimelist.net/anime/${anime.malId}`}
-                      label="MyAnimeList"
-                    />
-                    {anime.aniListId ? (
-                      <ExternalSiteLink
-                        href={`https://anilist.co/anime/${anime.aniListId}`}
-                        label="AniList"
-                      />
-                    ) : null}
-                    {anime.externalLinks.slice(0, 5).map((link) => (
-                      <ExternalSiteLink
-                        key={`${link.site}-${link.url}`}
-                        href={link.url}
-                        label={link.site}
-                      />
-                    ))}
-                  </div>
-                </div>
-              </aside>
-
-              <main className="flex min-w-0 flex-col gap-6">
-                <section>
-                  <h2 className="text-[11px] font-medium tracking-wider text-muted-foreground uppercase">
-                    Synopsis
-                  </h2>
-                  <div className="mt-2">
-                    {description ? (
-                      <>
-                        <p
-                          className={cn(
-                            "text-sm leading-7 text-muted-foreground",
-                            !synopsisExpanded &&
-                              isLongSynopsis &&
-                              "line-clamp-5"
-                          )}
-                        >
-                          {description}
-                        </p>
-                        {isLongSynopsis ? (
-                          <button
-                            type="button"
-                            className="mt-1 text-sm font-medium text-primary hover:underline"
-                            onClick={() =>
-                              setSynopsisExpanded(!synopsisExpanded)
-                            }
-                          >
-                            {synopsisExpanded ? "Show less" : "Show more"}
-                          </button>
-                        ) : null}
-                      </>
-                    ) : (
-                      <p className="text-sm text-muted-foreground">
-                        No synopsis is available for this title yet.
-                      </p>
-                    )}
-                  </div>
-                </section>
-
-                <Tabs
-                  value={activeTab}
-                  onValueChange={(value) =>
-                    onTabChange(decodeAnimeDetailTab(value))
-                  }
-                  className="max-w-full min-w-0 gap-4"
-                >
+              <Tabs
+                value={activeTab}
+                onValueChange={(value) =>
+                  onTabChange(decodeAnimeDetailTab(value))
+                }
+                className="max-w-full min-w-0 gap-4"
+              >
+                <div className="sticky top-14 z-20 -mx-4 flex h-11 items-center bg-background/90 px-4 backdrop-blur-md md:top-0 md:-mx-6 md:px-6">
                   <TabsList
                     variant="line"
                     className="max-w-full justify-start overflow-x-auto"
                   >
                     <TabsTrigger value="episodes">Episodes</TabsTrigger>
-                    <TabsTrigger value="relations" disabled={!hasRelations}>
-                      Relations
+                    <TabsTrigger
+                      value="relations"
+                      disabled={relations.length === 0}
+                    >
+                      Related
                     </TabsTrigger>
                     <TabsTrigger value="recommendations">
-                      Recommendations
+                      More like this
                     </TabsTrigger>
+                    <TabsTrigger value="details">Details</TabsTrigger>
                   </TabsList>
-                  <TabsContent value="episodes">
-                    <EpisodesPanel
-                      anime={anime}
-                      page={episodePage}
-                      provider={episodeProvider}
-                      onPageChange={onEpisodePageChange}
-                      onProviderChange={onEpisodeProviderChange}
-                    />
-                  </TabsContent>
-                  <TabsContent value="relations">
-                    <RelationsPanel relations={relations} />
-                  </TabsContent>
-                  <TabsContent value="recommendations">
-                    <RecommendationsPanel
-                      recommendations={recommendationsState.items}
-                      loading={recommendationsLoading}
-                      failed={recommendationsFailed}
-                    />
-                  </TabsContent>
-                </Tabs>
-              </main>
+                </div>
+                <TabsContent value="episodes">
+                  <EpisodesPanel
+                    anime={anime}
+                    page={episodePage}
+                    provider={episodeProvider}
+                    onPageChange={onEpisodePageChange}
+                    onProviderChange={onEpisodeProviderChange}
+                  />
+                </TabsContent>
+                <TabsContent value="relations">
+                  <RelationsPanel relations={relations} />
+                </TabsContent>
+                <TabsContent value="recommendations">
+                  <RecommendationsPanel
+                    recommendations={recommendationsState.items}
+                    loading={recommendationsLoading}
+                    failed={recommendationsFailed}
+                  />
+                </TabsContent>
+                <TabsContent value="details">
+                  <DetailsPanel anime={anime} />
+                </TabsContent>
+              </Tabs>
             </div>
           </div>
         </div>
       </div>
     </div>
+  )
+}
+
+const catalogStatus = (status: AnimeDetail["status"]) => {
+  if (status === "RELEASING") return "airing"
+  if (status === "FINISHED") return "complete"
+  if (status === "NOT_YET_RELEASED") return "upcoming"
+  return undefined
+}
+
+const seasonLabel = (season: AnimeDetail["season"]) =>
+  season ? season.charAt(0) + season.slice(1).toLowerCase() : null
+
+const metaLink =
+  "underline-offset-4 transition hover:text-white hover:underline"
+
+function HeaderMeta({ anime }: { anime: AnimeDetail }) {
+  const status = formatAnimeStatus(anime.status)
+  const statusFilter = catalogStatus(anime.status)
+  const studio = anime.studios.at(0)
+  const items = [
+    anime.averageScore ? (
+      <span
+        key="score"
+        className="inline-flex items-center gap-1 font-semibold text-white"
+      >
+        <Star className="size-3.5 fill-amber-400 text-amber-400" />
+        {(anime.averageScore / 10).toFixed(1)}
+      </span>
+    ) : null,
+    anime.format ? (
+      <Link
+        key="format"
+        to="/series"
+        search={{ format: anime.format, page: 1, sort: "popularity" }}
+        className={metaLink}
+      >
+        {formatAnimeFormat(anime.format)}
+      </Link>
+    ) : null,
+    status && statusFilter ? (
+      <Link
+        key="status"
+        to="/series"
+        search={{ status: statusFilter, page: 1, sort: "popularity" }}
+        className={metaLink}
+      >
+        {status}
+      </Link>
+    ) : status ? (
+      <span key="status">{status}</span>
+    ) : null,
+    anime.seasonYear ? (
+      <Link
+        key="season"
+        to="/series"
+        search={{
+          season: anime.season ?? undefined,
+          seasonYear: anime.seasonYear,
+          page: 1,
+          sort: "popularity",
+        }}
+        className={metaLink}
+      >
+        {[seasonLabel(anime.season), anime.seasonYear]
+          .filter(Boolean)
+          .join(" ")}
+      </Link>
+    ) : null,
+    anime.episodes ? (
+      <span key="episodes">
+        {anime.episodes} {anime.episodes === 1 ? "ep" : "eps"}
+        {anime.duration ? ` × ${anime.duration}m` : ""}
+      </span>
+    ) : null,
+    studio ? (
+      <Link
+        key="studio"
+        to="/series"
+        search={{ studio, page: 1, sort: "popularity" }}
+        className={metaLink}
+      >
+        {studio}
+      </Link>
+    ) : null,
+  ].filter((item) => item !== null)
+
+  return (
+    <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-white/70">
+      {items.flatMap((item, index) =>
+        index === 0
+          ? [item]
+          : [
+              <span key={`dot-${index}`} aria-hidden className="text-white/30">
+                ·
+              </span>,
+              item,
+            ]
+      )}
+    </div>
+  )
+}
+
+function About({
+  description,
+  genres,
+}: {
+  description: string | null
+  genres: ReadonlyArray<string>
+}) {
+  const [expanded, setExpanded] = useState(false)
+  const isLong = (description?.length ?? 0) > 320
+
+  return (
+    <section className="flex max-w-4xl flex-col gap-3">
+      {description ? (
+        <div>
+          <p
+            className={cn(
+              "text-sm leading-7 text-muted-foreground md:text-[15px]",
+              !expanded && isLong && "line-clamp-3"
+            )}
+          >
+            {description}
+          </p>
+          {isLong ? (
+            <button
+              type="button"
+              className="mt-1 text-sm font-medium text-foreground hover:underline"
+              onClick={() => setExpanded(!expanded)}
+            >
+              {expanded ? "Show less" : "Show more"}
+            </button>
+          ) : null}
+        </div>
+      ) : null}
+      {genres.length > 0 ? (
+        <div className="flex flex-wrap gap-1.5">
+          {genres.map((genre) => (
+            <Link
+              key={genre}
+              to="/series"
+              search={{ genre, page: 1, sort: "popularity" }}
+              className="rounded-full border px-3 py-1 text-xs font-medium transition hover:border-primary/60 hover:text-primary"
+            >
+              {genre}
+            </Link>
+          ))}
+        </div>
+      ) : null}
+    </section>
+  )
+}
+
+function DetailsPanel({ anime }: { anime: AnimeDetail }) {
+  const alternativeTitles = [
+    anime.title.english,
+    anime.title.romaji,
+    ...anime.synonyms,
+  ].filter(
+    (title, index, all): title is string =>
+      Boolean(title) && all.indexOf(title) === index
+  )
+
+  return (
+    <dl className="grid max-w-4xl gap-x-8 gap-y-6 sm:grid-cols-[10rem_1fr]">
+      {anime.studios.length > 0 ? (
+        <DetailRow label="Studios">
+          <div className="flex flex-wrap gap-x-3 gap-y-1">
+            {anime.studios.map((studio) => (
+              <Link
+                key={studio}
+                to="/series"
+                search={{ studio, page: 1, sort: "popularity" }}
+                className="font-medium underline-offset-4 hover:text-primary hover:underline"
+              >
+                {studio}
+              </Link>
+            ))}
+          </div>
+        </DetailRow>
+      ) : null}
+      {alternativeTitles.length > 0 ? (
+        <DetailRow label="Also known as">
+          <p className="leading-6">{alternativeTitles.join(" · ")}</p>
+        </DetailRow>
+      ) : null}
+      {anime.tags.length > 0 ? (
+        <DetailRow label="Tags">
+          <div className="flex flex-wrap gap-1.5">
+            {anime.tags.map((tag) => (
+              <Badge key={tag} variant="outline" className="text-xs">
+                {tag}
+              </Badge>
+            ))}
+          </div>
+        </DetailRow>
+      ) : null}
+      <DetailRow label="Links">
+        <div className="flex flex-wrap gap-2">
+          <ExternalSiteLink
+            href={`https://myanimelist.net/anime/${anime.malId}`}
+            label="MyAnimeList"
+          />
+          {anime.aniListId ? (
+            <ExternalSiteLink
+              href={`https://anilist.co/anime/${anime.aniListId}`}
+              label="AniList"
+            />
+          ) : null}
+          {anime.externalLinks.map((link) => (
+            <ExternalSiteLink
+              key={`${link.site}-${link.url}`}
+              href={link.url}
+              label={link.site}
+            />
+          ))}
+        </div>
+      </DetailRow>
+    </dl>
+  )
+}
+
+function DetailRow({
+  label,
+  children,
+}: {
+  label: string
+  children: ReactNode
+}) {
+  return (
+    <>
+      <dt className="text-xs font-medium tracking-wider text-muted-foreground uppercase sm:pt-0.5">
+        {label}
+      </dt>
+      <dd className="-mt-4 text-sm sm:mt-0">{children}</dd>
+    </>
   )
 }
 
@@ -573,7 +606,7 @@ function TrailerDialog({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button className={cn("md:w-full", className)} variant="secondary">
+        <Button className={className} variant="secondary">
           <PlayCircle data-icon="inline-start" />
           Watch Trailer
         </Button>
@@ -637,38 +670,30 @@ export function AnimeDetailPendingPage() {
   return (
     <div className="flex w-full flex-col">
       <div className="relative bg-muted">
-        <div className="mx-auto flex w-full max-w-7xl items-center gap-2 px-4 pt-3 md:px-6">
+        <div className="mx-auto flex w-full max-w-6xl items-center gap-2 px-4 pt-3 md:px-6">
           <Skeleton className="h-3.5 w-48 bg-white/10" />
         </div>
-        <div className="mx-auto flex w-full max-w-7xl gap-6 px-4 pt-6 pb-6 md:gap-8 md:px-6 md:pt-10 md:pb-8">
-          <div className="flex w-36 shrink-0 flex-col gap-3 md:w-44 lg:w-52">
-            <Skeleton className="aspect-2/3 w-full rounded-xl bg-white/10" />
-            <Skeleton className="h-9 w-full rounded-md bg-white/10" />
-          </div>
-          <div className="flex min-w-0 flex-1 flex-col justify-end gap-3">
+        <div className="mx-auto flex w-full max-w-6xl items-end gap-4 px-4 pt-6 pb-6 md:gap-8 md:px-6 md:pt-24 md:pb-8">
+          <Skeleton className="aspect-2/3 w-28 shrink-0 rounded-xl bg-white/10 sm:w-36 md:w-44 lg:w-48" />
+          <div className="flex min-w-0 flex-1 flex-col gap-3">
             <Skeleton className="h-4 w-32 bg-white/10" />
             <Skeleton className="h-10 w-3/4 bg-white/10 md:h-12" />
-            <div className="flex gap-1.5">
-              <Skeleton className="h-5 w-16 rounded-full bg-white/10" />
-              <Skeleton className="h-5 w-20 rounded-full bg-white/10" />
-              <Skeleton className="h-5 w-14 rounded-full bg-white/10" />
+            <Skeleton className="h-4 w-64 bg-white/10" />
+            <div className="flex gap-2 pt-2">
+              <Skeleton className="h-9 w-36 rounded-4xl bg-white/10" />
+              <Skeleton className="h-9 w-32 rounded-4xl bg-white/10" />
             </div>
-            <Skeleton className="h-6 w-24 bg-white/10" />
           </div>
         </div>
       </div>
 
-      <div className="relative bg-background">
-        <div className="mx-auto grid w-full max-w-7xl gap-6 p-4 md:grid-cols-[176px_1fr] md:gap-8 md:p-6 lg:grid-cols-[208px_1fr]">
-          <div className="flex flex-col gap-4">
-            <Skeleton className="h-64 rounded-xl" />
-            <Skeleton className="h-32 rounded-xl" />
-          </div>
-          <div className="flex flex-col gap-4">
-            <Skeleton className="h-48 rounded-xl" />
-            <Skeleton className="h-64 rounded-xl" />
-          </div>
+      <div className="mx-auto flex w-full max-w-6xl flex-col gap-8 p-4 md:p-6">
+        <div className="flex max-w-4xl flex-col gap-2">
+          <Skeleton className="h-4 w-full" />
+          <Skeleton className="h-4 w-full" />
+          <Skeleton className="h-4 w-2/3" />
         </div>
+        <Skeleton className="h-64 rounded-xl" />
       </div>
     </div>
   )
@@ -676,35 +701,6 @@ export function AnimeDetailPendingPage() {
 
 function AnimeTitleText({ title }: { title: AnimeTitleValue }) {
   return <AnimeTitle title={title} />
-}
-
-function LibraryEntrySummary({ entry }: { entry: LibraryEntry }) {
-  const StatusIcon = libraryStatusIcons[entry.status]
-  const score = formatLibraryScore(entry.score)
-
-  return (
-    <div className="flex min-w-0 flex-wrap items-center gap-2 rounded-xl border border-white/15 bg-black/25 px-3 py-2 text-xs text-white/80 backdrop-blur-md">
-      <span className="inline-flex items-center gap-1.5 font-semibold text-white">
-        <StatusIcon className="size-3.5" />
-        {libraryStatusLabel(entry.status)}
-      </span>
-      <span className="h-3 w-px bg-white/20" />
-      <span>{formatLibraryProgress(entry)}</span>
-      {score ? (
-        <>
-          <span className="h-3 w-px bg-white/20" />
-          <span className="inline-flex items-center gap-1">
-            <Star className="size-3 fill-amber-400 text-amber-400" />
-            {score}
-          </span>
-        </>
-      ) : null}
-      <span className="h-3 w-px bg-white/20" />
-      <span className="text-white/55">
-        Updated {formatLibraryUpdatedAt(entry.updatedAt)}
-      </span>
-    </div>
-  )
 }
 
 function RelationsPanel({
@@ -794,34 +790,16 @@ function RecommendationsPanel({
   return <AnimeGrid items={recommendations ?? []} />
 }
 
-function MetaField({
-  label,
-  value,
-}: {
-  label: string
-  value: string | number | null | undefined
-}) {
-  if (value === null || value === undefined) return null
-  return (
-    <div>
-      <dt className="text-[11px] font-medium tracking-wider text-muted-foreground uppercase">
-        {label}
-      </dt>
-      <dd className="mt-0.5 font-medium">{value}</dd>
-    </div>
-  )
-}
-
 function ExternalSiteLink({ href, label }: { href: string; label: string }) {
   return (
     <a
       href={href}
       target="_blank"
       rel="noreferrer"
-      className="inline-flex items-center justify-between gap-2 rounded-lg px-2 py-1.5 text-sm transition hover:bg-accent"
+      className="inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition hover:border-primary/60 hover:text-primary"
     >
-      <span className="truncate">{label}</span>
-      <ExternalLink className="size-3.5 shrink-0 text-muted-foreground" />
+      {label}
+      <ExternalLink className="size-3 text-muted-foreground" />
     </a>
   )
 }
