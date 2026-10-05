@@ -16,11 +16,12 @@ show its direct relations, so the order is built by walking the chain.
 
 - Walk `PREQUEL` edges back to the root, then `SEQUEL` edges forward from it.
   The current show is always on the path.
-- Keep TV, TV_SHORT, ONA and MOVIE. Leave out SPECIAL, OVA, MUSIC, recaps
-  (`SUMMARY`), side stories, spin-offs and alternatives. They stay in the
-  Related tab.
+- Every `PREQUEL`/`SEQUEL` edge is part of the story, whatever its format
+  (TV, ONA, movie, OVA, special). Only MUSIC is dropped. Side stories,
+  spin-offs, alternatives and recaps aren't sequel/prequel edges, so they stay
+  in the Related tab. (Decided 2026-10-05.)
 - Branches: when a step has several sequels, take the first one by format
-  (TV > ONA > TV_SHORT > MOVIE), breaking ties by start season. The others stay
+  (TV > ONA > TV_SHORT > MOVIE > OVA > SPECIAL), breaking ties by start season. The others stay
   in Related.
 - Drop entries without a MAL ID (domain rule).
 - Guards: a visited set (AniList has relation cycles) and a hop limit of 30.
@@ -70,12 +71,15 @@ Today "Continue watching" = mid-episode history (`status = watching`) plus
 library entries with new aired episodes. A finished season shows up in
 neither, so it drops off the row.
 
-- In `listContinueWatching`, or in a new `ListNextSeasons` RPC, take shows
-  whose latest history episode is the final one (the `nextForShow` →
-  `completed` case) and were finished in the last 30 days. Return the next
-  watch-order entry when:
+- New `ListNextSeasons` RPC (decided 2026-10-05, option B). Source: library
+  entries with status `completed` that were updated in the last 30 days. That
+  covers seasons finished in our player, marked completed by hand, or
+  imported. For each, take the next watch-order entry when:
   - it has aired (`status` ≠ `NOT_YET_RELEASED`), and
-  - it has no history yet, and isn't completed/dropped in the library.
+  - it isn't already in the library as watching, completed or dropped.
+    "Planning" still shows the card, since that's a nudge to start it.
+- The 30-day window stops a large list import from flooding the row with
+  sequels to shows finished years ago.
 - Shape: `{ _tag: "nextSeason", from: AnimeItem, next: AnimeItem }`. Prefer
   a separate RPC so the existing contract stays untouched.
 
@@ -162,10 +166,9 @@ entries become "Season 1, 2, 3…" in order, movies "Movie", ONAs "ONA".
 3. Player next-season continue: auto next, end card, Next button.
 4. History `ListNextSeasons` and the home card.
 
-## Open questions
+## Decisions
 
-1. Movies in the main flow: include movies that AniList links as
-   sequels/prequels (e.g. Mugen Train, JJK 0) as proposed, or TV/ONA only?
-2. Should the home "Start Season 2" card also appear for shows finished
-   before this ships (any completed library entry), or only for seasons
-   finished through our player in the last 30 days?
+1. Movies, OVAs and specials are included when AniList links them as a
+   prequel or sequel.
+2. "Start next season" uses option B: any completed library entry updated in
+   the last 30 days.
