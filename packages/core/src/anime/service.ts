@@ -156,26 +156,45 @@ export class AnimeService extends Effect.Service<AnimeService>()(
           ...input,
           query: input.query?.trim().replace(/\s+/g, " ").toLowerCase(),
         }
+        const studio = input.studio?.trim()
         const key = cacheKey("anime:catalog:v2", request)
         const ttlSeconds = 6 * 60 * 60
-        return yield* (
-          request.rating
-            ? cached(key, AnimePage, ttlSeconds, jikan.getCatalog(request))
-            : cachedWithFallback(
-                key,
-                AnimePage,
-                ttlSeconds,
-                aniList.getCatalog(request),
-                jikan.getCatalog(request)
-              )
-        ).pipe(
-          Effect.mapError(
-            () =>
-              new AnimeUnavailableError({
-                message: "Anime catalog is unavailable.",
-              })
-          )
+        const unavailable = Effect.mapError(
+          () =>
+            new AnimeUnavailableError({
+              message: "Anime catalog is unavailable.",
+            })
         )
+        if (studio) {
+          const studioRequest = { ...request, studio }
+          return yield* cachedWithFallback(
+            cacheKey("anime:studio:v1", {
+              studio: studio.toLowerCase(),
+              page: request.page,
+              perPage: request.perPage,
+              sort: request.sort,
+            }),
+            AnimePage,
+            ttlSeconds,
+            aniList.getStudioCatalog(studioRequest),
+            jikan.getStudioCatalog(studioRequest)
+          ).pipe(unavailable)
+        }
+        if (request.rating) {
+          return yield* cached(
+            key,
+            AnimePage,
+            ttlSeconds,
+            jikan.getCatalog(request)
+          ).pipe(unavailable)
+        }
+        return yield* cachedWithFallback(
+          key,
+          AnimePage,
+          ttlSeconds,
+          aniList.getCatalog(request),
+          jikan.getCatalog(request)
+        ).pipe(unavailable)
       })
 
       const getDiscovery = Effect.fn("AnimeService.getDiscovery")(function* (

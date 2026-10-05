@@ -161,6 +161,22 @@ const mapAnimeList = (anime: ReadonlyArray<JikanAnime>) =>
     return mapped ? [mapped] : []
   })
 
+const jikanOrder = (sort: AnimeCatalogRequest["sort"]) => {
+  if (sort === "score") return "score"
+  if (sort === "title") return "title"
+  if (sort === "episodes") return "episodes"
+  return "members"
+}
+
+const JikanProducerResponse = Schema.Struct({
+  data: Schema.Array(
+    Schema.Struct({
+      mal_id: Schema.Int.pipe(Schema.positive()),
+      titles: Schema.Array(Schema.Struct({ title: Schema.String })),
+    })
+  ),
+})
+
 const queryUrl = (
   path: string,
   params: Readonly<Record<string, string | number | undefined>>
@@ -195,47 +211,74 @@ export class JikanAnimeService extends Effect.Service<JikanAnimeService>()(
           )
         )
 
-      const getCatalog = Effect.fn("JikanAnimeService.getCatalog")(function* (
-        input: AnimeCatalogRequest
-      ) {
-        const response = yield* get(
+      const listPage = (
+        input: AnimeCatalogRequest,
+        params: Readonly<Record<string, string | number | undefined>>
+      ) =>
+        get(
           JikanListResponse,
           queryUrl("anime", {
             sfw: "true",
             genres_exclude: 19,
-            q: input.query,
             page: input.page,
             limit: input.perPage,
-            order_by:
-              input.sort === "score"
-                ? "score"
-                : input.sort === "title"
-                  ? "title"
-                  : input.sort === "episodes"
-                    ? "episodes"
-                    : "members",
+            order_by: jikanOrder(input.sort),
             sort: "desc",
-            status:
-              input.status === "airing"
-                ? "airing"
-                : input.status === "complete"
-                  ? "complete"
-                  : input.status === "upcoming"
-                    ? "upcoming"
-                    : undefined,
-            type: input.format?.toLowerCase(),
-            rating: input.rating,
-            min_score: input.minScore,
-            max_score: input.maxScore,
+            ...params,
           })
+        ).pipe(
+          Effect.map(
+            (response): AnimePage => ({
+              items: mapAnimeList(response.data),
+              page: input.page,
+              perPage: input.perPage,
+              hasNextPage: response.pagination.has_next_page,
+            })
+          )
         )
-        return {
-          items: mapAnimeList(response.data),
-          page: input.page,
-          perPage: input.perPage,
-          hasNextPage: response.pagination.has_next_page,
-        } satisfies AnimePage
+
+      const getCatalog = Effect.fn("JikanAnimeService.getCatalog")(function* (
+        input: AnimeCatalogRequest
+      ) {
+        return yield* listPage(input, {
+          q: input.query,
+          status:
+            input.status === "airing"
+              ? "airing"
+              : input.status === "complete"
+                ? "complete"
+                : input.status === "upcoming"
+                  ? "upcoming"
+                  : undefined,
+          type: input.format?.toLowerCase(),
+          rating: input.rating,
+          min_score: input.minScore,
+          max_score: input.maxScore,
+        })
       })
+
+      const getStudioCatalog = Effect.fn("JikanAnimeService.getStudioCatalog")(
+        function* (input: AnimeCatalogRequest & { studio: string }) {
+          const producers = yield* get(
+            JikanProducerResponse,
+            queryUrl("producers", { q: input.studio, limit: 10 })
+          )
+          const name = input.studio.toLowerCase()
+          const producer =
+            producers.data.find((item) =>
+              item.titles.some((title) => title.title.toLowerCase() === name)
+            ) ?? producers.data[0]
+          if (!producer) {
+            return {
+              items: [],
+              page: input.page,
+              perPage: input.perPage,
+              hasNextPage: false,
+            } satisfies AnimePage
+          }
+          return yield* listPage(input, { producers: producer.mal_id })
+        }
+      )
 
       const getDetail = Effect.fn("JikanAnimeService.getDetail")(function* (
         malId: number
@@ -311,7 +354,13 @@ export class JikanAnimeService extends Effect.Service<JikanAnimeService>()(
         }
       })
 
-      return { getCatalog, getDetail, getRecommendations, getSchedule }
+      return {
+        getCatalog,
+        getStudioCatalog,
+        getDetail,
+        getRecommendations,
+        getSchedule,
+      }
     }),
   }
 ) {}

@@ -35,6 +35,7 @@ export const CatalogSearch = Schema.Struct({
   rating: Schema.optional(AnimeRating),
   minScore: Schema.optional(Score),
   maxScore: Schema.optional(Score),
+  studio: Schema.optional(Schema.String),
 })
 export type CatalogSearch = typeof CatalogSearch.Type
 
@@ -68,4 +69,5 @@ export const catalogInput = (
   rating: search.rating,
   minScore: search.minScore,
   maxScore: search.maxScore,
+  studio: search.studio?.trim() || undefined,
 })

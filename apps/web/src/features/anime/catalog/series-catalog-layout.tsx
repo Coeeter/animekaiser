@@ -61,9 +61,13 @@ export function SeriesCatalogLayout({
 
       <PageHero
         icon={Compass}
-        kicker="Browse catalog"
-        title="Find a series"
-        description="Search and filter anime by season, format, score, status, and audience rating."
+        kicker={search.studio ? "Studio" : "Browse catalog"}
+        title={search.studio ?? "Find a series"}
+        description={
+          search.studio
+            ? `Series animated by ${search.studio}.`
+            : "Search and filter anime by season, format, score, status, and audience rating."
+        }
       >
         {activeFilters.length > 0 ? (
           <span className="text-sm text-muted-foreground">

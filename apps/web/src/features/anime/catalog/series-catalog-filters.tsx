@@ -162,9 +162,10 @@ const seasonYearOptions = (() => {
 })()
 
 const comboboxTriggerClass =
-  "flex w-full cursor-default items-center justify-between gap-1.5 rounded-3xl border border-transparent bg-input/50 px-3 text-sm h-9 whitespace-nowrap transition-[color,box-shadow,background-color] outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/30"
+  "flex w-full disabled:cursor-not-allowed disabled:opacity-50 cursor-default items-center justify-between gap-1.5 rounded-3xl border border-transparent bg-input/50 px-3 text-sm h-9 whitespace-nowrap transition-[color,box-shadow,background-color] outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/30"
 
 const activeFilterKeys = [
+  "studio",
   "q",
   "format",
   "status",
@@ -176,6 +177,7 @@ const activeFilterKeys = [
 const filterLabel = (key: keyof CatalogSearch, search: CatalogSearch) => {
   const value = search[key]
   if (key === "q") return `"${value}"`
+  if (key === "studio") return `Studio: ${value}`
   if (key === "format")
     return (
       formatOptions.find((option) => option.value === value)?.label ??
@@ -209,11 +211,13 @@ function SeasonYearCombobox({
   year,
   onChange,
   id,
+  disabled,
 }: {
   season: AnimeSeason | undefined
   year: number | undefined
   onChange: (season: AnimeSeason | undefined, year: number | undefined) => void
   id?: string
+  disabled?: boolean
 }) {
   const [open, setOpen] = useState(false)
 
@@ -231,6 +235,7 @@ function SeasonYearCombobox({
           type="button"
           role="combobox"
           aria-expanded={open}
+          disabled={disabled}
           className={comboboxTriggerClass}
         >
           <span
@@ -294,10 +299,12 @@ function GenreCombobox({
   value,
   onChange,
   id,
+  disabled,
 }: {
   value: string | undefined
   onChange: (value: string | undefined) => void
   id?: string
+  disabled?: boolean
 }) {
   const [open, setOpen] = useState(false)
   const selected = value ? value.split(",") : []
@@ -324,6 +331,7 @@ function GenreCombobox({
           type="button"
           role="combobox"
           aria-expanded={open}
+          disabled={disabled}
           className={comboboxTriggerClass}
         >
           <span
@@ -386,7 +394,8 @@ export function SeriesCatalogFilters({
   const searchId = useId()
   const form = useForm({
     defaultValues: { q: search.q ?? "" },
-    onSubmit: ({ value }) => updateSearch({ q: value.q || undefined }),
+    onSubmit: ({ value }) =>
+      updateSearch({ q: value.q || undefined, studio: undefined }),
   })
   useEffect(() => {
     form.reset({ q: search.q ?? "" })
@@ -402,8 +411,10 @@ export function SeriesCatalogFilters({
       seasonYear: undefined,
       rating: undefined,
       genre: undefined,
+      studio: undefined,
     })
   }
+  const studioOnly = search.studio !== undefined
 
   return (
     <form
@@ -494,6 +505,7 @@ export function SeriesCatalogFilters({
             </FieldLabel>
             <SeasonYearCombobox
               id={`${mode}-series-season-year`}
+              disabled={studioOnly}
               season={search.season}
               year={search.seasonYear}
               onChange={(season, year) =>
@@ -505,6 +517,7 @@ export function SeriesCatalogFilters({
           <Field>
             <FieldLabel htmlFor={`${mode}-series-format`}>Format</FieldLabel>
             <Select
+              disabled={studioOnly}
               value={search.format ?? "all"}
               onValueChange={(value) =>
                 updateSearch({
@@ -531,6 +544,7 @@ export function SeriesCatalogFilters({
           <Field>
             <FieldLabel htmlFor={`${mode}-series-status`}>Status</FieldLabel>
             <Select
+              disabled={studioOnly}
               value={search.status ?? "all"}
               onValueChange={(value) =>
                 updateSearch({
@@ -557,6 +571,7 @@ export function SeriesCatalogFilters({
           <Field>
             <FieldLabel htmlFor={`${mode}-series-rating`}>Rating</FieldLabel>
             <Select
+              disabled={studioOnly}
               value={search.rating ?? "all"}
               onValueChange={(value) =>
                 updateSearch({
@@ -584,10 +599,17 @@ export function SeriesCatalogFilters({
             <FieldLabel htmlFor={`${mode}-series-genre`}>Genre</FieldLabel>
             <GenreCombobox
               id={`${mode}-series-genre`}
+              disabled={studioOnly}
               value={search.genre}
               onChange={(genre) => updateSearch({ genre })}
             />
           </Field>
+          {studioOnly ? (
+            <p className="col-span-2 text-xs text-muted-foreground lg:col-span-3">
+              Studio results can only be sorted. Clear the studio to use the
+              other filters.
+            </p>
+          ) : null}
         </FieldGroup>
       ) : null}
     </form>

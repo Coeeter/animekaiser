@@ -120,6 +120,26 @@ export const AniListPageResponse = Schema.Struct({
   errors: Schema.optional(Schema.Array(AniListGraphQlError)),
 })
 
+const AniListStudioCatalogResponse = Schema.Struct({
+  data: Schema.NullOr(
+    Schema.Struct({
+      Studio: Schema.NullOr(
+        Schema.Struct({
+          media: Schema.NullOr(
+            Schema.Struct({
+              pageInfo: Schema.NullOr(
+                Schema.Struct({ hasNextPage: Schema.NullOr(Schema.Boolean) })
+              ),
+              nodes: Schema.NullOr(Schema.Array(Schema.NullOr(AniListMedia))),
+            })
+          ),
+        })
+      ),
+    })
+  ),
+  errors: Schema.optional(Schema.Array(AniListGraphQlError)),
+})
+
 const AniListRelation = Schema.Struct({
   relationType: Schema.NullOr(Schema.String),
   node: Schema.NullOr(AniListMedia),
@@ -294,6 +314,17 @@ const catalogQuery = `
   }
 `
 
+const studioCatalogQuery = `
+  query StudioCatalog($studio:String!,$page:Int!,$perPage:Int!,$sort:[MediaSort]) {
+    Studio(search:$studio) {
+      media(isMain:true,page:$page,perPage:$perPage,sort:$sort) {
+        pageInfo { hasNextPage }
+        nodes { ${listFields} }
+      }
+    }
+  }
+`
+
 const detailQuery = `
   query Detail($malId:Int!) {
     Media(type:ANIME,idMal:$malId) {
@@ -425,6 +456,7 @@ export type AnimeCatalogRequest = {
   rating?: AnimeRating
   minScore?: number
   maxScore?: number
+  studio?: string
 }
 
 const budgetReserve = 5
@@ -527,6 +559,33 @@ export class AniListAnimeService extends Effect.Service<AniListAnimeService>()(
           input.page,
           input.perPage,
           response.data?.Page?.pageInfo?.hasNextPage
+        )
+      })
+
+      const getStudioCatalog = Effect.fn(
+        "AniListAnimeService.getStudioCatalog"
+      )(function* (input: AnimeCatalogRequest & { studio: string }) {
+        const response = yield* request(
+          AniListStudioCatalogResponse,
+          studioCatalogQuery,
+          {
+            studio: input.studio,
+            page: input.page,
+            perPage: input.perPage,
+            sort: anilistSort(input.sort, false),
+          }
+        )
+        if (response.errors?.length) {
+          return yield* new AniListRequestError({
+            message: response.errors[0].message,
+          })
+        }
+        const media = response.data?.Studio?.media
+        return pageFromMedia(
+          media?.nodes,
+          input.page,
+          input.perPage,
+          media?.pageInfo?.hasNextPage
         )
       })
 
@@ -733,6 +792,7 @@ export class AniListAnimeService extends Effect.Service<AniListAnimeService>()(
 
       return {
         getCatalog,
+        getStudioCatalog,
         getDiscovery,
         getDetail,
         getRecommendations,

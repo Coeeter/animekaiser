@@ -37,6 +37,7 @@ export class ListAnimeCatalog extends Rpc.make("ListAnimeCatalog", {
     rating: Schema.optional(AnimeRating),
     minScore: Schema.optional(Schema.Number.pipe(Schema.between(0, 10))),
     maxScore: Schema.optional(Schema.Number.pipe(Schema.between(0, 10))),
+    studio: Schema.optional(Schema.String.pipe(Schema.maxLength(120))),
   },
   success: AnimePage,
   error: AnimeUnavailableError,
