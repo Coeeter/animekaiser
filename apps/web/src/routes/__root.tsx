@@ -4,7 +4,6 @@ import { useAtomMount } from "@effect-atom/atom-react"
 import { createRootRoute, Outlet } from "@tanstack/react-router"
 import { DocumentTitle } from "../components/document-title"
 import { RouteErrorPage } from "../components/route-error-page"
-import { ThemeProvider } from "../components/theme"
 import { AppShell } from "../features/layout/app-shell"
 import { streamProvidersAtom } from "../features/streaming/atoms"
 import "../styles/globals.css"
@@ -38,9 +37,9 @@ function RootRouteComponent() {
 
 function RootDocument({ children }: { children: React.ReactNode }) {
   return (
-    <ThemeProvider>
+    <>
       <TooltipProvider>{children}</TooltipProvider>
       <Toaster position="top-center" richColors />
-    </ThemeProvider>
+    </>
   )
 }

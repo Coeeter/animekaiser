@@ -34,7 +34,6 @@ import {
   User,
 } from "lucide-react"
 import { useState } from "react"
-import { ModeToggle } from "../../components/theme"
 import { sessionAtom } from "../auth/atoms"
 import { displayUsername, userInitials } from "../auth/user"
 import { settingsOpenAtom, settingsSectionAtom } from "../settings/atoms"
@@ -312,7 +311,6 @@ function MobileMoreSheet({
               <Settings data-icon="inline-start" />
               Settings
             </Button>
-            <ModeToggle />
           </div>
         </SheetBody>
       </SheetContent>

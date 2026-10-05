@@ -29,7 +29,7 @@ export const settingsSections: ReadonlyArray<SettingsSectionDef> = [
   {
     title: "Appearance",
     icon: Palette,
-    description: "Theme and site-wide display preferences.",
+    description: "Site-wide display preferences.",
   },
   {
     title: "Playback",
@@ -120,12 +120,6 @@ export const settingEntries: ReadonlyArray<SettingEntry> = [
     section: "Profile",
     title: "What visitors can see",
     keywords: ["statistics", "activity", "anime list", "share"],
-  },
-  {
-    id: "appearance.theme",
-    section: "Appearance",
-    title: "Theme",
-    keywords: ["dark", "light", "system", "colour", "color"],
   },
   {
     id: "appearance.titleLanguage",

@@ -32,7 +32,6 @@ import { Link, useLocation } from "@tanstack/react-router"
 import { LogIn, Search, Settings } from "lucide-react"
 import type { ReactNode } from "react"
 import { useEffect, useRef, useState } from "react"
-import { ModeToggle } from "../../components/theme"
 import { searchOpenAtom } from "../anime/common/search-atoms"
 import {
   TitleLanguageSwitch,
@@ -259,7 +258,6 @@ export function AppSidebar({ children }: { children: ReactNode }) {
               </>
             )}
             <TitleLanguageToggle className="hidden group-data-[collapsible=icon]:inline-flex" />
-            <ModeToggle />
             <FooterTooltip label="Settings">
               <Button
                 variant="ghost"

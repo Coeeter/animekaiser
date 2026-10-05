@@ -25,14 +25,12 @@ import {
   Clock3,
   EyeOff,
   Languages,
-  MoonStar,
   Search,
   SearchX,
   Settings,
   Star,
   X,
 } from "lucide-react"
-import { useTheme } from "next-themes"
 import { useState } from "react"
 import { useDebouncedText } from "../../../hooks/use-debounced-text"
 import { sessionAtom } from "../../auth/atoms"
@@ -174,7 +172,6 @@ function PaletteCommands({
   const updatePlayerPreferences = useAtomSet(updatePlayerPreferencesAtom)
   const setSettingsSection = useAtomSet(settingsSectionAtom)
   const setSettingsOpen = useAtomSet(settingsOpenAtom)
-  const { resolvedTheme, setTheme } = useTheme()
 
   const needle = query.toLowerCase()
   const matches = (text: string) => text.toLowerCase().includes(needle)
@@ -196,16 +193,6 @@ function PaletteCommands({
         setTitlePreference(
           titlePreference === "english" ? "romaji" : "english"
         ),
-    },
-    {
-      id: "theme",
-      title:
-        resolvedTheme === "dark"
-          ? "Switch to light theme"
-          : "Switch to dark theme",
-      keywords: "theme dark light mode",
-      icon: MoonStar,
-      run: () => setTheme(resolvedTheme === "dark" ? "light" : "dark"),
     },
     {
       id: "spoilers",
