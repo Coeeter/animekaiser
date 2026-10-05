@@ -27,7 +27,7 @@ export function SiteFooter() {
     .orElse(() => false)
 
   return (
-    <footer className="border-t border-sidebar-border bg-sidebar text-sidebar-foreground">
+    <footer className="border-t bg-surface-sunken">
       <div className="mx-auto flex w-full max-w-6xl flex-col gap-10 px-4 py-12 md:px-6">
         <div className="grid gap-10 md:grid-cols-[1.4fr_repeat(3,1fr)]">
           <div className="flex flex-col items-start gap-4">
@@ -89,7 +89,7 @@ export function SiteFooter() {
           </FooterColumn>
         </div>
 
-        <div className="flex flex-col gap-2 border-t border-sidebar-border pt-6 text-xs text-muted-foreground/80 md:flex-row md:items-center md:justify-between">
+        <div className="flex flex-col gap-2 border-t pt-6 text-xs text-muted-foreground/80 md:flex-row md:items-center md:justify-between">
           <p>© {new Date().getFullYear()} AnimeKaiser</p>
           <p className="max-w-2xl md:text-right">
             No video is hosted here; streams come from third-party providers.
