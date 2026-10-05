@@ -44,6 +44,7 @@ import { settingsOpenAtom, settingsSectionAtom } from "../settings/atoms"
 import { MobileNav } from "./mobile-nav"
 import type { NavItem } from "./nav-links"
 import { mainLinks, personalLinks } from "./nav-links"
+import { SiteFooter } from "./site-footer"
 
 function NavGroup({
   label,
@@ -330,7 +331,16 @@ export function AppSidebar({ children }: { children: ReactNode }) {
               : "pb-[calc(3.5rem+env(safe-area-inset-bottom))] md:pb-0"
           )}
         >
-          {children}
+          {isWatchRoute ? (
+            children
+          ) : (
+            <>
+              <div className="flex min-h-[calc(100svh-3.5rem)] flex-col md:min-h-svh">
+                {children}
+              </div>
+              <SiteFooter />
+            </>
+          )}
         </div>
       </SidebarInset>
       <MobileNav />
