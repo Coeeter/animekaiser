@@ -305,7 +305,7 @@ function ConnectStep({
         {accounts.map((account) => (
           <div
             key={account.provider}
-            className="flex items-center justify-between gap-3 rounded-2xl border bg-card/70 p-3"
+            className="flex items-center justify-between gap-3 rounded-2xl border bg-card p-3"
           >
             <div className="min-w-0">
               <p className="font-medium">{providerLabels[account.provider]}</p>

@@ -388,7 +388,7 @@ function EpisodeSheetRow({
     </>
   )
   const className = cn(
-    "group/episode flex min-h-16 items-center gap-3 rounded-xl border bg-card/70 p-2.5 text-left transition hover:border-primary/40 hover:bg-accent/60",
+    "group/episode flex min-h-16 items-center gap-3 rounded-xl border bg-card p-2.5 text-left transition hover:border-primary/40 hover:bg-accent/60",
     isCurrent && "border-primary/60 bg-accent",
     !audio && "opacity-60"
   )

@@ -360,7 +360,7 @@ function SignOutButton() {
 
 function PublicPreviewBanner({ username }: { username: string }) {
   return (
-    <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-dashed bg-card/60 px-4 py-3">
+    <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-dashed bg-card px-4 py-3">
       <p className="text-sm text-muted-foreground">
         You are viewing your profile as another user sees it.
       </p>

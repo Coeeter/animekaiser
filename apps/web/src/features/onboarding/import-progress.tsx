@@ -108,7 +108,7 @@ export function ImportProgress({
             <div
               key={item.id}
               className={cn(
-                "flex items-center gap-3 rounded-2xl border bg-card/70 p-3 transition-colors",
+                "flex items-center gap-3 rounded-2xl border bg-card p-3 transition-colors",
                 active && "border-primary/50",
                 complete && "text-muted-foreground"
               )}

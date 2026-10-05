@@ -134,7 +134,7 @@ function ScheduleList({ items }: { items: ReadonlyArray<AnimeItem> }) {
           params={{ id: anime.malId }}
           preload="intent"
           className={cn(
-            "group flex gap-3 rounded-2xl border bg-card/80 p-3 transition hover:border-primary/40 hover:bg-accent/40",
+            "group flex gap-3 rounded-2xl border bg-card p-3 transition hover:border-primary/40 hover:bg-accent/40",
             isAired(anime) && "opacity-75"
           )}
         >

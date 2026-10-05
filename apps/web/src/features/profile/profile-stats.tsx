@@ -147,7 +147,7 @@ function StatPanel({
   children: ReactNode
 }) {
   return (
-    <section className="flex flex-col gap-4 rounded-2xl border bg-card/70 p-4 md:p-5">
+    <section className="flex flex-col gap-4 rounded-2xl border bg-card p-4 md:p-5">
       <div>
         <h2 className="font-heading text-base font-semibold">{title}</h2>
         {description ? (

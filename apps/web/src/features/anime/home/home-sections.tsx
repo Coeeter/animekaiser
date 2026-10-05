@@ -139,7 +139,7 @@ export function CompactList({
   if (items.length === 0) return null
 
   return (
-    <section className="flex w-[85%] min-w-0 shrink-0 snap-start flex-col gap-2 rounded-2xl border bg-card/40 p-3 md:w-auto">
+    <section className="flex w-[85%] min-w-0 shrink-0 snap-start flex-col gap-2 rounded-2xl border bg-card p-3 md:w-auto">
       <div className="px-1 pt-1">
         <SectionHeading title={title} more={more} />
       </div>

@@ -220,7 +220,7 @@ export function SettingsDialog() {
                         "inline-flex h-9 shrink-0 items-center gap-2 rounded-full border px-3 text-sm font-medium whitespace-nowrap transition",
                         selected.title === section.title
                           ? "border-primary/60 bg-primary/15 text-primary"
-                          : "bg-card/60 text-muted-foreground"
+                          : "bg-card text-muted-foreground"
                       )}
                       onClick={() => select(section.title)}
                     >

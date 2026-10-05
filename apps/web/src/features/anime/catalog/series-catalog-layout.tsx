@@ -77,7 +77,7 @@ export function SeriesCatalogLayout({
         ) : null}
       </PageHero>
 
-      <section className="rounded-xl border bg-card/80">
+      <section className="rounded-xl border bg-card">
         <div className="flex flex-col gap-4 p-4 md:p-5">
           <div className="md:hidden">
             <div className="flex flex-col gap-4">

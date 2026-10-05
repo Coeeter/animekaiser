@@ -237,7 +237,7 @@ function MobileMoreSheet({
             <Link
               to="/profile"
               onClick={() => onOpenChange(false)}
-              className="flex items-center gap-3 rounded-2xl border bg-card/70 p-3 transition active:bg-accent"
+              className="flex items-center gap-3 rounded-2xl border bg-card p-3 transition active:bg-accent"
             >
               <Avatar className="size-11">
                 <AvatarImage

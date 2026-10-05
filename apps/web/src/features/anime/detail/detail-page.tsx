@@ -714,7 +714,7 @@ function RelationsPanel({
         const content = (
           <div
             key={`${relation.relationType}-${relation.malId ?? relation.aniListId}`}
-            className="flex min-w-0 gap-3 rounded-xl border bg-card/80 p-3 transition hover:bg-accent"
+            className="flex min-w-0 gap-3 rounded-xl border bg-card p-3 transition hover:bg-accent"
           >
             {relation.coverImage ? (
               <img

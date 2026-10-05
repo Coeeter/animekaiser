@@ -30,7 +30,7 @@ export function SeriesCatalogResults({
         <AnimeGrid items={page.items} />
       </section>
 
-      <div className="flex items-center justify-between gap-3 rounded-xl border bg-card/80 p-3">
+      <div className="flex items-center justify-between gap-3 rounded-xl border bg-card p-3">
         {search.page <= 1 ? (
           <Button variant="outline" disabled>
             <ChevronLeft className="size-4" />

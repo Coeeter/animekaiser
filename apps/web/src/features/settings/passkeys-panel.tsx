@@ -164,7 +164,7 @@ function PasskeyRow({
     setEditing(false)
   }
   return (
-    <div className="flex items-center gap-3 rounded-xl border bg-card/40 p-3">
+    <div className="flex items-center gap-3 rounded-xl border bg-card p-3">
       <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-muted">
         <KeyRound className="size-5" />
       </div>

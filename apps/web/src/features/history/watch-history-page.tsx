@@ -186,7 +186,7 @@ function WatchHistoryShowCard({
   }
 
   return (
-    <article className="flex flex-col overflow-hidden rounded-2xl border bg-card/70">
+    <article className="flex flex-col overflow-hidden rounded-2xl border bg-card">
       <div className="flex gap-3 p-3">
         <Link
           to="/series/$id"
@@ -394,7 +394,7 @@ function WatchHistoryPagination({
   if (page <= 1 && !hasNextPage) return null
 
   return (
-    <nav className="flex items-center justify-between gap-3 rounded-2xl border bg-card/60 p-3">
+    <nav className="flex items-center justify-between gap-3 rounded-2xl border bg-card p-3">
       {page <= 1 ? (
         <Button variant="outline" size="sm" disabled>
           <ChevronLeft data-icon="inline-start" />

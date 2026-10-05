@@ -55,7 +55,7 @@ export function ServerSheet({
                 }}
                 replace
                 className={cn(
-                  "flex min-h-16 items-center gap-3 rounded-xl border bg-card/70 p-3 transition hover:border-primary/40 hover:bg-accent/60",
+                  "flex min-h-16 items-center gap-3 rounded-xl border bg-card p-3 transition hover:border-primary/40 hover:bg-accent/60",
                   selected && "border-primary/60 bg-accent"
                 )}
                 onClick={() => onOpenChange(false)}

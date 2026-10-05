@@ -167,7 +167,7 @@ function PanelRow({
   to?: { malId: number }
 }) {
   const className =
-    "flex min-h-14 w-full items-center gap-3 rounded-2xl border bg-card/70 px-3 text-left transition active:bg-accent"
+    "flex min-h-14 w-full items-center gap-3 rounded-2xl border bg-card px-3 text-left transition active:bg-accent"
 
   const content = (
     <>
@@ -256,7 +256,7 @@ function MobileEpisodeRow({
   )
 
   const className = cn(
-    "flex min-h-16 items-center gap-3 rounded-2xl border bg-card/70 p-2.5 transition active:bg-accent",
+    "flex min-h-16 items-center gap-3 rounded-2xl border bg-card p-2.5 transition active:bg-accent",
     isCurrent && "border-primary/60 bg-accent",
     !audio && "opacity-60"
   )

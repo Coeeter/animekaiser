@@ -234,7 +234,7 @@ function LibraryStatTiles({ stats }: { stats: LibraryStats }) {
 
   return (
     <>
-      <dl className="grid grid-cols-4 divide-x rounded-2xl border bg-card/70 py-3 md:hidden">
+      <dl className="grid grid-cols-4 divide-x rounded-2xl border bg-card py-3 md:hidden">
         {[
           { label: "Titles", value: stats.total.toLocaleString() },
           {
@@ -299,7 +299,7 @@ function MyListToolbar({
   const navigate = useNavigate()
 
   return (
-    <section className="rounded-xl border bg-card/80">
+    <section className="rounded-xl border bg-card">
       <div className="flex flex-col gap-4 p-4 md:p-5">
         <DebouncedSearchInput
           committed={search.q?.trim() ?? ""}
@@ -526,7 +526,7 @@ function LibraryPagination({
   })
 
   return (
-    <nav className="flex flex-col gap-3 rounded-xl border bg-card/80 p-3 sm:flex-row sm:items-center sm:justify-between">
+    <nav className="flex flex-col gap-3 rounded-xl border bg-card p-3 sm:flex-row sm:items-center sm:justify-between">
       {page > 1 ? (
         <Button variant="outline" size="sm" asChild>
           <Link to="/my-list" search={search(page - 1)}>

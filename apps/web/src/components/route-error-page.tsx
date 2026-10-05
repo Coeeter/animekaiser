@@ -15,7 +15,7 @@ export function RouteErrorPage({
     <main className="mx-auto flex min-h-[60vh] w-full max-w-2xl items-center justify-center p-4 md:p-6">
       <div
         role="alert"
-        className="flex w-full flex-col items-center gap-5 rounded-2xl border border-dashed bg-card/50 p-8 text-center"
+        className="flex w-full flex-col items-center gap-5 rounded-2xl border border-dashed bg-card p-8 text-center"
       >
         <div className="grid size-12 place-items-center rounded-full bg-destructive/10 text-destructive">
           <AlertTriangle className="size-6" />

@@ -231,7 +231,7 @@ function PublicListCard({ entry }: { entry: LibraryEntry }) {
   const status = libraryStatuses.find((item) => item.value === entry.status)
 
   return (
-    <article className="group flex gap-3 rounded-2xl border bg-card/70 p-2.5 transition hover:border-primary/40">
+    <article className="group flex gap-3 rounded-2xl border bg-card p-2.5 transition hover:border-primary/40">
       <Link
         to="/series/$id"
         params={{ id: entry.malId }}
