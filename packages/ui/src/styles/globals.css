@@ -136,21 +136,19 @@
     @apply border-border outline-ring/50;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground backdrop-dots;
   }
 }
 
+/* Fixed to the viewport so the pattern lines up across every element that
+   uses it, including opaque page sections drawn over the body. */
 @utility backdrop-dots {
   background-image: radial-gradient(
-    color-mix(in oklch, var(--foreground) 10%, transparent) 1px,
+    color-mix(in oklch, var(--foreground) 7%, transparent) 1px,
     transparent 1.5px
   );
   background-size: 22px 22px;
-  mask-image: radial-gradient(
-    ellipse 85% 65% at 50% 0%,
-    black 20%,
-    transparent 75%
-  );
+  background-attachment: fixed;
 }
 
 @utility backdrop-glow {

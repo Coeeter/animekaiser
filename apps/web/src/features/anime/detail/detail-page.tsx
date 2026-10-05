@@ -261,7 +261,7 @@ function SeriesDetail({
             </div>
           </div>
 
-          <div className="relative bg-background">
+          <div className="relative bg-background backdrop-dots">
             <div className="mx-auto flex w-full max-w-6xl flex-col gap-8 p-4 md:p-6">
               <About description={description} genres={anime.genres} />
 

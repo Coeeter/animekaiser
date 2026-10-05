@@ -78,11 +78,8 @@ export function AppShell({ children }: { children: ReactNode }) {
     <>
       <div
         aria-hidden
-        className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[56rem] overflow-hidden"
-      >
-        <div className="absolute inset-0 backdrop-dots" />
-        <div className="absolute inset-0 backdrop-glow" />
-      </div>
+        className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[56rem] backdrop-glow"
+      />
       <AppSidebarProvider>
         <AppSidebar>{children}</AppSidebar>
         <SearchDialog />
