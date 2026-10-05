@@ -137,6 +137,27 @@
   }
 }
 
+@utility backdrop-dots {
+  background-image: radial-gradient(
+    color-mix(in oklch, var(--foreground) 10%, transparent) 1px,
+    transparent 1.5px
+  );
+  background-size: 22px 22px;
+  mask-image: radial-gradient(
+    ellipse 85% 65% at 50% 0%,
+    black 20%,
+    transparent 75%
+  );
+}
+
+@utility backdrop-glow {
+  background: radial-gradient(
+    ellipse 50% 45% at 50% -8%,
+    color-mix(in oklch, var(--primary) 22%, transparent),
+    transparent 70%
+  );
+}
+
 /* Hides the scrollbar while keeping the element scrollable. Referenced by
    command lists, the sidebar, and horizontal media rows. */
 @utility no-scrollbar {

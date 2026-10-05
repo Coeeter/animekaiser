@@ -78,10 +78,10 @@ export function AppShell({ children }: { children: ReactNode }) {
     <>
       <div
         aria-hidden
-        className="pointer-events-none fixed inset-0 -z-10 overflow-hidden"
+        className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[56rem] overflow-hidden"
       >
-        <div className="absolute -top-40 left-[20%] size-96 rounded-full bg-primary/12 blur-3xl" />
-        <div className="absolute right-[8%] -bottom-40 size-96 rounded-full bg-chart-2/10 blur-3xl" />
+        <div className="absolute inset-0 backdrop-dots" />
+        <div className="absolute inset-0 backdrop-glow" />
       </div>
       <AppSidebarProvider>
         <AppSidebar>{children}</AppSidebar>
