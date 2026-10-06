@@ -12,6 +12,7 @@ import {
   AnimeSeason,
   AnimeSort,
   AnimeUnavailableError,
+  AnimeWatchOrder,
   LatestEpisode,
   MalId,
 } from "./models"
@@ -80,6 +81,12 @@ export class GetAnimeDetail extends Rpc.make("GetAnimeDetail", {
   error: animeFailure,
 }) {}
 
+export class GetAnimeWatchOrder extends Rpc.make("GetAnimeWatchOrder", {
+  payload: { malId: MalId },
+  success: AnimeWatchOrder,
+  error: animeFailure,
+}) {}
+
 export class ListAnimeRecommendations extends Rpc.make(
   "ListAnimeRecommendations",
   {
@@ -101,5 +108,6 @@ export class AnimeRpcs extends RpcGroup.make(
   ListLatestEpisodes,
   GetRandomAnime,
   GetAnimeDetail,
+  GetAnimeWatchOrder,
   ListAnimeRecommendations
 ) {}

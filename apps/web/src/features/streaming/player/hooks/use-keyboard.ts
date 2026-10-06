@@ -20,7 +20,7 @@ export function usePlayerKeyboard({
   toggleMiniPlayer,
   navigateToEpisode,
   revealControls,
-  nextEpisode,
+  goNext,
   previousEpisode,
 }: {
   togglePlayback: () => void
@@ -32,7 +32,7 @@ export function usePlayerKeyboard({
   toggleMiniPlayer: () => void
   navigateToEpisode: (episode: StreamEpisode | null) => void
   revealControls: () => void
-  nextEpisode: StreamEpisode | null
+  goNext: () => void
   previousEpisode: StreamEpisode | null
 }) {
   const handlersRef = useRef({
@@ -45,7 +45,7 @@ export function usePlayerKeyboard({
     toggleMiniPlayer,
     navigateToEpisode,
     revealControls,
-    nextEpisode,
+    goNext,
     previousEpisode,
   })
 
@@ -59,7 +59,7 @@ export function usePlayerKeyboard({
     toggleMiniPlayer,
     navigateToEpisode,
     revealControls,
-    nextEpisode,
+    goNext,
     previousEpisode,
   }
 
@@ -131,7 +131,7 @@ export function usePlayerKeyboard({
       }
       if (event.key.toLowerCase() === "n") {
         event.preventDefault()
-        h.navigateToEpisode(h.nextEpisode)
+        h.goNext()
         return
       }
       if (event.key.toLowerCase() === "p") {

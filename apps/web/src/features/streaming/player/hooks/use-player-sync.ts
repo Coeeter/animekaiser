@@ -1,4 +1,4 @@
-import type { StreamEpisode, StreamPlayback } from "@animekaiser/domain"
+import type { StreamPlayback } from "@animekaiser/domain"
 import { useAtomSet } from "@effect-atom/atom-react"
 import { toast } from "sonner"
 import { libraryMutationKeys, upsertLibraryAtom } from "../../../library/atoms"
@@ -11,9 +11,7 @@ export function usePlayerSync({
   libraryEntry,
   syncLibraryOnFinish,
   flushWatchProgress,
-  navigateToEpisode,
-  nextEpisode,
-  autoNext,
+  onFinished,
 }: {
   playback: StreamPlayback
   episodeKey: string
@@ -26,9 +24,7 @@ export function usePlayerSync({
   } | null
   syncLibraryOnFinish: boolean
   flushWatchProgress: () => void
-  navigateToEpisode: (episode: StreamEpisode | null) => void
-  nextEpisode: StreamEpisode | null
-  autoNext: boolean
+  onFinished: () => void
 }) {
   const upsertLibrary = useAtomSet(upsertLibraryAtom, { mode: "promise" })
 
@@ -68,7 +64,7 @@ export function usePlayerSync({
   const finishEpisode = () => {
     void syncLibraryProgress()
     flushWatchProgress()
-    if (autoNext) navigateToEpisode(nextEpisode)
+    onFinished()
   }
 
   return { finishEpisode } as const

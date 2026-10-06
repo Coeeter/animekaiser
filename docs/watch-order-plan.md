@@ -1,6 +1,6 @@
 # Plan: franchise watch order and auto-continue
 
-Status: proposed (2026-10-05). Input for implementation, not a spec.
+Status: implemented and validated locally (2026-10-05), not committed. See "Progress" at the end.
 
 ## Goal
 
@@ -172,3 +172,90 @@ entries become "Season 1, 2, 3…" in order, movies "Movie", ONAs "ONA".
    prequel or sequel.
 2. "Start next season" uses option B: any completed library entry updated in
    the last 30 days.
+
+## Progress
+
+### Done (all four phases)
+
+- **Phase 1, backend.**
+  - `packages/core/src/anime/watch-order.ts` (`buildWatchOrder`) with
+    `watch-order.test.ts` (6 tests).
+  - `AnimeService.getWatchOrder`, cached as `anime:watch-order:v1:{malId}`:
+    24h, or 5 min when partial or any hop came from Jikan.
+  - Domain `AnimeWatchOrder` + `GetAnimeWatchOrder` RPC and handler.
+  - Jikan `getDetail` maps `relations`.
+- **Phase 2, series page strip.**
+  - `ListLibraryEntries({ malIds })` batch read (service, RPC, handler).
+  - Web `libraryEntriesAtom`, `watchOrderAtom`, `watchOrderItemsAtom` (skips
+    the library read when logged out).
+  - `anime/detail/watch-order-strip.tsx`, mounted under the synopsis.
+- **Phase 3, player.**
+  - `nextSeasonAtom` in `streaming/atoms.ts`: the next aired watch-order entry
+    resolved through `watchTargetAtom`, preferring the current provider.
+  - The page computes `finale` (no next episode, FINISHED, last episode) and
+    a single `goNext`, used by Auto next, the `N` key and the panel's Next
+    button (labelled "Next season" at a finale).
+  - `next-season-card.tsx`: the end card when Auto next is off.
+  - `usePlayerSync` now takes `onFinished`; `usePlayerKeyboard` takes `goNext`.
+- **Phase 4, home.**
+  - `AiringService.listNextSeasons`: completed entries updated in the last 30
+    days, up to 12. It skips sequels already in the list as watching,
+    rewatching, completed, paused or dropped; planning still shows.
+  - `ListLibraryNextSeasons` RPC and handler, `libraryNextSeasonsAtom`, the
+    `nextSeason` kind in `continueRowAtom`, and `NextSeasonCard` in
+    `library/new-episodes-rows.tsx`.
+
+### Discoveries and deviations
+
+- **Labels:** "Season N" labels were dropped. AniList splits cours into
+  separate entries, so counting TV entries mislabels them (AoT "Season 3
+  Part 2" would read "Season 4"). Cards show the real title with a position
+  number, format and year. The player and home copy say "Up next in the
+  story" / "Next in story" plus the title, not "Season 2".
+- **Branch ties:** broken by MAL ID, since relations carry no season.
+- **Jikan timeout:** Jikan requests had no timeout. With AniList throttled and
+  Jikan unreachable, one hop hung ~78s. They now time out after 8s
+  (`jikan.ts`), which affects every Jikan fallback.
+- **Paused also skips the home card:** the plan didn't list paused; a
+  paused sequel was set aside on purpose.
+- **AniList data shapes some orders:**
+  - AoT stops at "THE FINAL CHAPTERS Special 1" (no sequel edge to Special 2).
+  - Monogatari lists Owarimonogatari before Tsukimonogatari, as AniList
+    links them.
+
+### Validation
+
+- **Real API** (scratch WebSocket client, since deleted):
+  - JJK S2 → JJK 0, S1, *S2*, S3 P1, P2.
+  - Frieren S1–S3.
+  - AoT No Regrets → … → Special 1.
+  - Mushoku 6 entries; Haikyu 8; Bleach 5; Gintama 10.
+  - Monogatari 12 (1.7s cold once AniList recovered).
+- **Browser, logged out:**
+  - The JJK S2 strip: current entry centred, links work, "Upcoming" shows on
+    the unreleased part.
+  - Your Name has no strip.
+  - JJK S1 episode 24, Auto next off: the end card appears, and "Start
+    watching" opens S2 episode 1 on the same provider.
+  - Auto next on: `ended` goes straight to S2 episode 1.
+  - Mid-season `ended` (S2 episode 1, Auto next on) goes to episode 2.
+  - The panel button reads "Next season" only on the finale.
+  - `ended` was dispatched on the video element: the background tab stalls
+    real playback in its last 2s. That's the same `onEnded` → `finishEpisode`
+    path.
+- **Browser, logged in** (local e2e test account, signed out afterwards):
+  - Marking JJK S1 Completed through the library dialog updated the strip to
+    "✓ Completed" at once.
+  - Home showed "Next in story · After Jujutsu Kaisen · Jujutsu Kaisen 2nd
+    Season", which opens S2 episode 1.
+  - After finishing S2 episode 1 (the player saved it as Watching), the card
+    was replaced by the regular "Episode 2 · 22 left" item.
+- `bun typecheck`, `bun lint` and `bun run test` (88 pass) all pass.
+
+### Remaining / uncertainty
+
+- Jikan relations mapping is untested at runtime: Jikan is unreachable from
+  this machine.
+- The strip appears after the watch order loads and pushes the tabs down when
+  it does. Cached orders arrive fast; a cold franchise can take a few seconds.
+- Nothing is committed (the execute skill says not to unless asked).

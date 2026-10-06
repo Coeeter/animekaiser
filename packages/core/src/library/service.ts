@@ -216,6 +216,39 @@ export class LibraryService extends Effect.Service<LibraryService>()(
         return rows[0] ? toEntry(rows[0]) : null
       })
 
+      const listEntries = Effect.fn("LibraryService.listEntries")(function* (
+        userId: string,
+        malIds: ReadonlyArray<number>
+      ) {
+        if (malIds.length === 0) return []
+        const rows = yield* database
+          .execute((db) =>
+            db
+              .select({ entry: userLibraryEntry, anime: animeMetadata })
+              .from(userLibraryEntry)
+              .innerJoin(
+                animeMetadata,
+                eq(userLibraryEntry.malId, animeMetadata.malId)
+              )
+              .where(
+                and(
+                  eq(userLibraryEntry.userId, userId),
+                  inArray(userLibraryEntry.malId, [...malIds])
+                )
+              )
+          )
+          .pipe(
+            Effect.mapError(
+              (cause) =>
+                new LibraryServiceError({
+                  message: "Unable to load library entries.",
+                  cause,
+                })
+            )
+          )
+        return rows.map(toEntry)
+      })
+
       const getStats = Effect.fn("LibraryService.getStats")(function* (
         userId: string
       ) {
@@ -615,6 +648,7 @@ export class LibraryService extends Effect.Service<LibraryService>()(
 
       return {
         getEntry,
+        listEntries,
         getPage,
         upsertEntry,
         removeEntry,

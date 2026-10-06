@@ -1,5 +1,5 @@
 import * as Schema from "effect/Schema"
-import { AniListId, AnimeTitle, MalId } from "../anime/models"
+import { AniListId, AnimeItem, AnimeTitle, MalId } from "../anime/models"
 import { ExternalListProvider } from "../integrations/models"
 
 export const LibraryStatus = Schema.Literal(
@@ -138,6 +138,13 @@ export const LibraryNewEpisode = Schema.Struct({
   nextEpisodeImage: Schema.NullOr(Schema.String),
 })
 export type LibraryNewEpisode = typeof LibraryNewEpisode.Type
+
+export const LibraryNextSeason = Schema.Struct({
+  from: AnimeLibraryMetadata,
+  next: AnimeItem,
+  completedAt: Schema.DateFromString,
+})
+export type LibraryNextSeason = typeof LibraryNextSeason.Type
 
 export class LibraryOperationError extends Schema.TaggedError<LibraryOperationError>()(
   "LibraryOperationError",

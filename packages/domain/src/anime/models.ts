@@ -116,6 +116,11 @@ export const AnimeDetail = Schema.Struct({
 })
 export type AnimeDetail = typeof AnimeDetail.Type
 
+export const AnimeWatchOrder = Schema.Struct({
+  entries: Schema.Array(AnimeItem),
+})
+export type AnimeWatchOrder = typeof AnimeWatchOrder.Type
+
 export const AnimePage = Schema.Struct({
   items: Schema.Array(AnimeItem),
   page: Schema.Int.pipe(Schema.positive()),

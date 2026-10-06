@@ -18,6 +18,7 @@ export const AnimeHandlersLive = AnimeRpcs.toLayer(
     ListLatestEpisodes: () => AiringService.listLatestEpisodes(),
     GetRandomAnime: () => AnimeService.getRandom(),
     GetAnimeDetail: ({ malId }) => AnimeService.getDetail(malId),
+    GetAnimeWatchOrder: ({ malId }) => AnimeService.getWatchOrder(malId),
     ListAnimeRecommendations: ({ malId, page, perPage }) =>
       AnimeService.getRecommendations(malId, page, perPage),
   })

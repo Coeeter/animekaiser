@@ -73,6 +73,15 @@ export const LibraryHandlersLive = LibraryRpcs.toLayer(
             )
           )
         }),
+      ListLibraryEntries: ({ malIds }) =>
+        Effect.gen(function* () {
+          const user = yield* CurrentUser
+          return yield* LibraryService.listEntries(user.id, malIds).pipe(
+            Effect.catchTag("LibraryServiceError", (error) =>
+              Effect.fail(new LibraryOperationError({ message: error.message }))
+            )
+          )
+        }),
       UpsertLibraryEntry: ({
         anime,
         status,
@@ -203,6 +212,15 @@ export const LibraryHandlersLive = LibraryRpcs.toLayer(
               updatedAt: event.updatedAt,
             })),
           }
+        }),
+      ListLibraryNextSeasons: () =>
+        Effect.gen(function* () {
+          const user = yield* CurrentUser
+          return yield* AiringService.listNextSeasons(user.id).pipe(
+            Effect.catchTag("AiringServiceError", (error) =>
+              Effect.fail(new LibraryOperationError({ message: error.message }))
+            )
+          )
         }),
       ListLibraryNewEpisodes: () =>
         Effect.gen(function* () {

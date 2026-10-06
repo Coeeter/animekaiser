@@ -14,7 +14,7 @@ import { Play, Server } from "lucide-react"
 import { CardActions } from "../anime/common/anime-card"
 import { MediaRow } from "../anime/common/anime-scroll-row"
 import { AnimeSubtitle, AnimeTitle } from "../anime/common/anime-title"
-import { UpNextCard } from "../library/new-episodes-rows"
+import { NextSeasonCard, UpNextCard } from "../library/new-episodes-rows"
 import { providerLabelAtom } from "../streaming/atoms"
 import { audioLabel, formatTime } from "../streaming/player-format"
 import { continueRowAtom } from "./atoms"
@@ -51,12 +51,19 @@ export function ContinueWatchingRow() {
                 key={entry.item.malId}
                 item={entry.item}
               />
-            ) : (
+            ) : entry.kind === "next" ? (
               <div
                 key={entry.item.anime.malId}
                 className="w-44 shrink-0 sm:w-52 md:w-60 lg:w-64"
               >
                 <UpNextCard item={entry.item} />
+              </div>
+            ) : (
+              <div
+                key={entry.item.next.malId}
+                className="w-44 shrink-0 sm:w-52 md:w-60 lg:w-64"
+              >
+                <NextSeasonCard item={entry.item} />
               </div>
             )
           )}

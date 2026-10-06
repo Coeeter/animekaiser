@@ -71,6 +71,18 @@ export const libraryEntryAtom = (malId: number) =>
     { reactivityKeys: [libraryReactivityKeys.entry(malId)] }
   )
 
+// Keyed by a joined string so the same set of IDs maps to one query atom.
+const libraryEntriesFamily = Atom.family((malIds: string) =>
+  KaiserRpcClient.query(
+    "ListLibraryEntries",
+    { malIds: malIds.split(",").map(Number) },
+    { reactivityKeys: [libraryReactivityKeys.all] }
+  )
+)
+
+export const libraryEntriesAtom = (malIds: ReadonlyArray<number>) =>
+  libraryEntriesFamily(malIds.join(","))
+
 export const libraryProgressOf = (get: Atom.Context, malId: number) =>
   get.result(libraryEntryAtom(malId)).pipe(
     Effect.map((entry) => entry?.progress ?? null),
@@ -112,6 +124,12 @@ export type { LibraryPage, LibrarySyncEventPage }
 
 export const libraryNewEpisodesAtom = KaiserRpcClient.query(
   "ListLibraryNewEpisodes",
+  undefined,
+  { reactivityKeys: [libraryReactivityKeys.all], timeToLive: "5 minutes" }
+)
+
+export const libraryNextSeasonsAtom = KaiserRpcClient.query(
+  "ListLibraryNextSeasons",
   undefined,
   { reactivityKeys: [libraryReactivityKeys.all], timeToLive: "5 minutes" }
 )

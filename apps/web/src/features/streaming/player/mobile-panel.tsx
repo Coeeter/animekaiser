@@ -30,7 +30,8 @@ export function PlayerMobilePanel({
   playback,
   episodes,
   previousEpisode,
-  nextEpisode,
+  onNext,
+  nextLabel,
   onOpenEpisodes,
   onOpenServers,
   onNavigateToEpisode,
@@ -40,7 +41,8 @@ export function PlayerMobilePanel({
   playback: StreamPlayback
   episodes: ReadonlyArray<StreamEpisode>
   previousEpisode: StreamEpisode | null
-  nextEpisode: StreamEpisode | null
+  onNext: (() => void) | null
+  nextLabel: string
   onOpenEpisodes: () => void
   onOpenServers: () => void
   onNavigateToEpisode: (episode: StreamEpisode | null) => void
@@ -82,13 +84,9 @@ export function PlayerMobilePanel({
           <SkipBack data-icon="inline-start" />
           Previous
         </Button>
-        <Button
-          size="lg"
-          disabled={!nextEpisode}
-          onClick={() => onNavigateToEpisode(nextEpisode)}
-        >
+        <Button size="lg" disabled={!onNext} onClick={() => onNext?.()}>
           <SkipForward data-icon="inline-start" />
-          Next
+          <span className="truncate">{nextLabel}</span>
         </Button>
       </div>
 

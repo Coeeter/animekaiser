@@ -11,6 +11,7 @@ import {
   AnimeLibraryMetadata,
   LibraryEntry,
   LibraryNewEpisode,
+  LibraryNextSeason,
   LibraryOperationError,
   LibraryPage,
   LibraryRemovalResult,
@@ -51,6 +52,12 @@ export class GetPublicLibrary extends Rpc.make("GetPublicLibrary", {
 export class GetLibraryEntry extends Rpc.make("GetLibraryEntry", {
   payload: { malId: MalId },
   success: Schema.NullOr(LibraryEntry),
+  error: LibraryOperationError,
+}) {}
+
+export class ListLibraryEntries extends Rpc.make("ListLibraryEntries", {
+  payload: { malIds: Schema.Array(MalId).pipe(Schema.maxItems(50)) },
+  success: Schema.Array(LibraryEntry),
   error: LibraryOperationError,
 }) {}
 
@@ -118,6 +125,11 @@ export class ListLibraryNewEpisodes extends Rpc.make("ListLibraryNewEpisodes", {
   error: LibraryOperationError,
 }) {}
 
+export class ListLibraryNextSeasons extends Rpc.make("ListLibraryNextSeasons", {
+  success: Schema.Array(LibraryNextSeason),
+  error: LibraryOperationError,
+}) {}
+
 class PublicLibraryRpcs extends RpcGroup.make(GetPublicLibrary).middleware(
   OptionalAuthentication
 ) {}
@@ -125,6 +137,7 @@ class PublicLibraryRpcs extends RpcGroup.make(GetPublicLibrary).middleware(
 class AuthenticatedLibraryRpcs extends RpcGroup.make(
   GetLibraryPage,
   GetLibraryEntry,
+  ListLibraryEntries,
   UpsertLibraryEntry,
   RemoveLibraryEntry,
   ClearLibrary,
@@ -132,7 +145,8 @@ class AuthenticatedLibraryRpcs extends RpcGroup.make(
   WatchLibraryImport,
   ListLibrarySyncEvents,
   RetryLibrarySyncEvents,
-  ListLibraryNewEpisodes
+  ListLibraryNewEpisodes,
+  ListLibraryNextSeasons
 ).middleware(Authentication) {}
 
 export class LibraryRpcs extends RpcGroup.make().merge(

@@ -1,9 +1,10 @@
-import type { AnimeDiscoveryCategory } from "@animekaiser/domain"
+import type { AnimeDiscoveryCategory, AnimeItem } from "@animekaiser/domain"
 import {
   AnimeDetail,
   AnimeNotFoundError,
   AnimePage,
   AnimeUnavailableError,
+  AnimeWatchOrder,
   LatestEpisode,
 } from "@animekaiser/domain"
 import * as Effect from "effect/Effect"
@@ -16,11 +17,24 @@ import { AniListAnimeService, type AniListRequestError } from "./anilist"
 import { AniZipData, AniZipService } from "./anizip"
 import { AnimeCache } from "./cache"
 import { JikanAnimeService } from "./jikan"
+import { buildWatchOrder } from "./watch-order"
 
 const cacheKey = (scope: string, value: object) =>
   `${scope}:${JSON.stringify(value)}`
 const fallbackTtlSeconds = 5 * 60
 const NullableAnimeDetail = Schema.NullOr(AnimeDetail)
+const watchOrderTtlSeconds = 24 * 60 * 60
+
+const toAnimeItem = ({
+  description: _description,
+  synonyms: _synonyms,
+  tags: _tags,
+  studios: _studios,
+  trailer: _trailer,
+  relations: _relations,
+  externalLinks: _externalLinks,
+  ...item
+}: AnimeDetail): AnimeItem => item
 
 // AniList synopses keep inline HTML even with asHtml:false, and end with
 // credits like "(Source: Crunchyroll)" or "[Written by MAL Rewrite]", which
@@ -304,6 +318,27 @@ export class AnimeService extends Effect.Service<AnimeService>()(
         return detail
       })
 
+      // Jikan details carry no AniList ID, so a chain built partly from the
+      // fallback is cached briefly, like any other fallback data.
+      const getWatchOrder = Effect.fn("AnimeService.getWatchOrder")(function* (
+        malId: number
+      ) {
+        const start = yield* getDetail(malId)
+        return yield* cachedFor(
+          `anime:watch-order:v1:${malId}`,
+          AnimeWatchOrder,
+          buildWatchOrder(start, getDetail).pipe(
+            Effect.map(({ entries, complete }) => ({
+              value: { entries: entries.map(toAnimeItem) },
+              ttlSeconds:
+                complete && entries.every((entry) => entry.aniListId !== null)
+                  ? watchOrderTtlSeconds
+                  : fallbackTtlSeconds,
+            }))
+          )
+        )
+      })
+
       const getRecommendations = Effect.fn("AnimeService.getRecommendations")(
         function* (malId: number, page: number, perPage: number) {
           return yield* cachedWithFallback(
@@ -451,6 +486,7 @@ export class AnimeService extends Effect.Service<AnimeService>()(
         getDiscovery,
         getHome,
         getDetail,
+        getWatchOrder,
         getRecommendations,
         getSchedule,
         getLatestEpisodes,

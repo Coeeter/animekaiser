@@ -1,4 +1,4 @@
-import type { LibraryNewEpisode } from "@animekaiser/domain"
+import type { LibraryNewEpisode, LibraryNextSeason } from "@animekaiser/domain"
 import { Badge } from "@animekaiser/ui/components/badge"
 import { cn } from "@animekaiser/ui/lib/utils"
 import { Result, useAtomValue } from "@effect-atom/atom-react"
@@ -138,6 +138,50 @@ export function UpNextCard({ item }: { item: LibraryNewEpisode }) {
 
       <h3 className="line-clamp-1 text-sm font-medium transition-colors group-hover:text-primary">
         <AnimeTitle title={item.anime.title} />
+      </h3>
+    </Link>
+  )
+}
+
+export function NextSeasonCard({ item }: { item: LibraryNextSeason }) {
+  const { next, from } = item
+  const image = next.bannerImage ?? next.coverImage
+
+  return (
+    <Link
+      to="/play/$malId"
+      params={{ malId: next.malId }}
+      className="group flex min-w-0 flex-col gap-2 rounded-2xl outline-none focus-visible:ring-2 focus-visible:ring-ring/60"
+    >
+      <div className="relative aspect-video overflow-hidden rounded-2xl bg-muted ring-1 ring-white/10 transition group-hover:ring-primary/50">
+        {image ? (
+          <img
+            src={image}
+            alt=""
+            referrerPolicy="no-referrer"
+            className="size-full object-cover object-center transition duration-500 group-hover:scale-105"
+            loading="lazy"
+            decoding="async"
+          />
+        ) : null}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent" />
+        <span className="absolute top-2 left-2">
+          <Badge>Next in story</Badge>
+        </span>
+        <span className="absolute inset-0 grid place-items-center">
+          <span className="grid size-11 place-items-center rounded-full bg-black/50 text-white ring-1 ring-white/25 backdrop-blur-md transition group-hover:bg-primary group-hover:ring-primary">
+            <Play className="size-5 fill-current" />
+          </span>
+        </span>
+        <span className="absolute inset-x-0 bottom-0 p-2.5">
+          <span className="line-clamp-1 text-[11px] font-medium text-white/85">
+            After <AnimeTitle title={from.title} />
+          </span>
+        </span>
+      </div>
+
+      <h3 className="line-clamp-1 text-sm font-medium transition-colors group-hover:text-primary">
+        <AnimeTitle title={next.title} />
       </h3>
     </Link>
   )

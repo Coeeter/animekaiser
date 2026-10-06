@@ -7,6 +7,7 @@ import {
 import type {
   LatestEpisode,
   LibraryNewEpisode,
+  LibraryNextSeason,
   LibraryStatus,
   StreamEpisodeCatalog,
 } from "@animekaiser/domain"
@@ -15,6 +16,7 @@ import {
   desc,
   eq,
   gt,
+  gte,
   inArray,
   isNull,
   lt,
@@ -42,6 +44,16 @@ const trackedStatuses = [
 ] as const satisfies ReadonlyArray<LibraryStatus>
 
 const recentWindowMs = 14 * 24 * 60 * 60 * 1000
+const nextSeasonWindowMs = 30 * 24 * 60 * 60 * 1000
+// A sequel already in the list this way was started or set aside on purpose;
+// "planning" still gets the nudge.
+const nextSeasonSkipStatuses: ReadonlyArray<LibraryStatus> = [
+  "watching",
+  "rewatching",
+  "completed",
+  "paused",
+  "dropped",
+]
 const providerRecheckMs = 45 * 60 * 1000
 // Provider sites are scrapers; a cap per sync keeps a large library from
 // turning one tick into hundreds of requests from the VPS.
@@ -376,6 +388,103 @@ export class AiringService extends Effect.Service<AiringService>()(
         })
       })
 
+      const listNextSeasons = Effect.fn("AiringService.listNextSeasons")(
+        function* (userId: string) {
+          const completed = yield* query(
+            "Unable to load completed anime.",
+            (db) =>
+              db
+                .select({ entry: userLibraryEntry, anime: animeMetadata })
+                .from(userLibraryEntry)
+                .innerJoin(
+                  animeMetadata,
+                  eq(animeMetadata.malId, userLibraryEntry.malId)
+                )
+                .where(
+                  and(
+                    eq(userLibraryEntry.userId, userId),
+                    eq(userLibraryEntry.status, "completed"),
+                    gte(
+                      userLibraryEntry.updatedAt,
+                      new Date(Date.now() - nextSeasonWindowMs)
+                    )
+                  )
+                )
+                .orderBy(desc(userLibraryEntry.updatedAt))
+                .limit(12)
+          )
+
+          const candidates = yield* Effect.forEach(
+            completed,
+            ({ entry, anime }) =>
+              animeService.getWatchOrder(entry.malId).pipe(
+                Effect.map((order) => {
+                  const index = order.entries.findIndex(
+                    (item) => item.malId === entry.malId
+                  )
+                  const next = order.entries[index + 1]
+                  return index !== -1 &&
+                    next &&
+                    next.status !== "NOT_YET_RELEASED"
+                    ? [{ entry, anime, next }]
+                    : []
+                }),
+                Effect.orElseSucceed(() => [])
+              ),
+            { concurrency: 4 }
+          ).pipe(Effect.map((groups) => groups.flat()))
+
+          if (candidates.length === 0) return []
+
+          const existing = yield* query(
+            "Unable to load library entries.",
+            (db) =>
+              db
+                .select({
+                  malId: userLibraryEntry.malId,
+                  status: userLibraryEntry.status,
+                })
+                .from(userLibraryEntry)
+                .where(
+                  and(
+                    eq(userLibraryEntry.userId, userId),
+                    inArray(
+                      userLibraryEntry.malId,
+                      candidates.map(({ next }) => next.malId)
+                    )
+                  )
+                )
+          )
+          const skipped = new Set(
+            existing
+              .filter((row) => nextSeasonSkipStatuses.includes(row.status))
+              .map((row) => row.malId)
+          )
+
+          const seen = new Set<number>()
+          return candidates.flatMap(({ entry, anime, next }) => {
+            if (skipped.has(next.malId) || seen.has(next.malId)) return []
+            seen.add(next.malId)
+            return [
+              {
+                from: {
+                  malId: anime.malId,
+                  aniListId: anime.aniListId,
+                  title: {
+                    romaji: anime.titleRomaji,
+                    english: anime.titleEnglish,
+                  },
+                  coverImage: anime.coverImage,
+                  episodes: anime.episodes,
+                },
+                next,
+                completedAt: entry.updatedAt,
+              } satisfies LibraryNextSeason,
+            ]
+          })
+        }
+      )
+
       const listNewEpisodes = Effect.fn("AiringService.listNewEpisodes")(
         function* (userId: string) {
           const now = new Date()
@@ -540,6 +649,7 @@ export class AiringService extends Effect.Service<AiringService>()(
         sync,
         trackAnime,
         listNewEpisodes,
+        listNextSeasons,
         listLatestEpisodes,
         refreshLatestAvailability,
       }

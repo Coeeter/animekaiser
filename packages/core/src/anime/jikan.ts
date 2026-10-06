@@ -59,6 +59,20 @@ const JikanAnime = Schema.Struct({
   external: Schema.optional(
     Schema.Array(Schema.Struct({ name: Schema.String, url: Schema.String }))
   ),
+  relations: Schema.optional(
+    Schema.Array(
+      Schema.Struct({
+        relation: Schema.String,
+        entry: Schema.Array(
+          Schema.Struct({
+            mal_id: Schema.Int.pipe(Schema.positive()),
+            type: Schema.String,
+            name: Schema.String,
+          })
+        ),
+      })
+    )
+  ),
 })
 type JikanAnime = typeof JikanAnime.Type
 
@@ -177,6 +191,10 @@ const JikanProducerResponse = Schema.Struct({
   ),
 })
 
+// Jikan is only a fallback; an unreachable host must fail fast instead of
+// holding the caller until the OS gives up on the connection.
+const requestTimeout = "8 seconds"
+
 const queryUrl = (
   path: string,
   params: Readonly<Record<string, string | number | undefined>>
@@ -205,6 +223,7 @@ export class JikanAnimeService extends Effect.Service<JikanAnimeService>()(
         http.execute(HttpClientRequest.get(url)).pipe(
           Effect.flatMap(HttpClientResponse.filterStatusOk),
           Effect.flatMap(HttpClientResponse.schemaBodyJson(schema)),
+          Effect.timeout(requestTimeout),
           Effect.mapError(
             (cause) =>
               new JikanRequestError({ message: "Jikan request failed.", cause })
@@ -304,7 +323,19 @@ export class JikanAnimeService extends Effect.Service<JikanAnimeService>()(
                   response.data.trailer.images?.maximum_image_url ?? null,
               }
             : null,
-          relations: [],
+          relations: (response.data.relations ?? []).flatMap((group) =>
+            group.entry
+              .filter((entry) => entry.type === "anime")
+              .map((entry) => ({
+                malId: entry.mal_id,
+                aniListId: null,
+                relationType: group.relation.toUpperCase().replace(/\s+/g, "_"),
+                title: { romaji: entry.name, english: null },
+                format: null,
+                status: null,
+                coverImage: null,
+              }))
+          ),
           externalLinks:
             response.data.external?.map((link) => ({
               site: link.name,

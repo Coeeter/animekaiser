@@ -8,6 +8,7 @@ import { useSidebar } from "@animekaiser/ui/components/sidebar"
 import { useIsMobile } from "@animekaiser/ui/hooks/use-mobile"
 import { cn } from "@animekaiser/ui/lib/utils"
 import {
+  Atom,
   Result,
   useAtomRefresh,
   useAtomSet,
@@ -22,7 +23,12 @@ import { DataError } from "../../../components/data-error"
 import { useResumePlayback } from "../../history/use-resume-playback"
 import { useWatchProgress } from "../../history/use-watch-progress"
 import { libraryEntryAtom } from "../../library/atoms"
-import { streamEpisodesAtom, streamPlaybackAtom } from "../atoms"
+import {
+  type NextSeason,
+  nextSeasonAtom,
+  streamEpisodesAtom,
+  streamPlaybackAtom,
+} from "../atoms"
 import {
   miniPlayerFrameAtom,
   setMiniPlayerFrameAtom,
@@ -50,6 +56,7 @@ import { usePlayerSync } from "./hooks/use-player-sync"
 import { PlayerMiniControls } from "./mini-controls"
 import { PlayerMobileControls } from "./mobile-controls"
 import { PlayerMobilePanel } from "./mobile-panel"
+import { PlayerNextSeasonCard } from "./next-season-card"
 import { StreamPlayerPendingPage } from "./pending-page"
 import { PlayerShell } from "./player-shell"
 import { ServerSheet } from "./server-sheet"
@@ -76,6 +83,8 @@ const defaultCaptionValue = (
   if (defaultIndex >= 0) return String(defaultIndex)
   return playback.audio === "sub" && playback.tracks.length > 0 ? "0" : "off"
 }
+
+const noNextSeasonAtom = Atom.make(Result.success<NextSeason | null>(null))
 
 export function StreamPlayerPage({
   input,
@@ -245,6 +254,7 @@ function StreamPlayer({
 
   const [subtitleCues, setSubtitleCues] = useState<Array<SubtitleCue>>([])
   const [syncedEpisodeKey, setSyncedEpisodeKey] = useState<string | null>(null)
+  const [endedEpisodeKey, setEndedEpisodeKey] = useState<string | null>(null)
   const [playerElement, setPlayerElement] = useState<HTMLElement | null>(null)
 
   const sourceUrl = playback.sourceUrl
@@ -360,6 +370,48 @@ function StreamPlayer({
     .onSuccess((value) => value)
     .orNull()
 
+  // Only the last episode of a finished show continues into the next entry
+  // of the watch order; a gap in the provider's list mid-season does not.
+  const finale =
+    mode === "full" &&
+    !nextEpisode &&
+    playback.anime.status === "FINISHED" &&
+    (playback.anime.episodes === null ||
+      playback.episode.number >= playback.anime.episodes)
+
+  const nextSeason = Result.builder(
+    useAtomValue(
+      finale
+        ? nextSeasonAtom({
+            malId: playback.anime.malId,
+            provider: playback.provider,
+          })
+        : noNextSeasonAtom
+    )
+  )
+    .onSuccess((value) => value)
+    .orNull()
+
+  const navigateToNextSeason = () => {
+    if (!nextSeason) return
+    const { target } = nextSeason
+    void navigate({
+      to: "/watch/$malId/$provider/$episodeId",
+      params: {
+        malId: target.malId,
+        provider: target.provider,
+        episodeId: target.episodeId,
+      },
+      search: { audio: target.audio },
+    })
+  }
+
+  const goNext = nextEpisode
+    ? () => navigateToEpisode(nextEpisode)
+    : nextSeason
+      ? navigateToNextSeason
+      : null
+
   const { finishEpisode } = usePlayerSync({
     playback,
     episodeKey,
@@ -368,9 +420,10 @@ function StreamPlayer({
     libraryEntry,
     syncLibraryOnFinish: preferences.syncLibraryOnFinish,
     flushWatchProgress,
-    navigateToEpisode,
-    nextEpisode,
-    autoNext: preferences.autoNext,
+    onFinished: () => {
+      if (preferences.autoNext && goNext) goNext()
+      else setEndedEpisodeKey(episodeKey)
+    },
   })
 
   const cycleCaptions = () => {
@@ -393,7 +446,7 @@ function StreamPlayer({
     toggleMiniPlayer,
     navigateToEpisode,
     revealControls,
-    nextEpisode,
+    goNext: () => goNext?.(),
     previousEpisode,
   })
 
@@ -630,6 +683,14 @@ function StreamPlayer({
             </div>
           ) : null}
 
+          {nextSeason && endedEpisodeKey === episodeKey ? (
+            <PlayerNextSeasonCard
+              nextSeason={nextSeason}
+              onPlay={navigateToNextSeason}
+              onDismiss={() => setEndedEpisodeKey(null)}
+            />
+          ) : null}
+
           {mode === "full" ? (
             <PlayerMobileControls
               playback={playback}
@@ -700,7 +761,8 @@ function StreamPlayer({
           playback={playback}
           episodes={providerEpisodes}
           previousEpisode={previousEpisode}
-          nextEpisode={nextEpisode}
+          onNext={goNext}
+          nextLabel={nextEpisode || !nextSeason ? "Next" : "Next season"}
           onOpenEpisodes={() => setEpisodesOpen(true)}
           onOpenServers={() => setServersOpen(true)}
           onNavigateToEpisode={navigateToEpisode}

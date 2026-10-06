@@ -43,6 +43,7 @@ import { AnimeSubtitle, AnimeTitle } from "../common/anime-title"
 import { formatAnimeFormat, formatAnimeStatus } from "../common/format"
 import { NextAiringNotice } from "../schedule/next-airing-notice"
 import { detailAtom, recommendationsAtom } from "./atoms"
+import { WatchOrderStrip } from "./watch-order-strip"
 
 export const AnimeDetailTab = Schema.Literal(
   "episodes",
@@ -264,6 +265,8 @@ function SeriesDetail({
           <div className="relative bg-background backdrop-dots">
             <div className="mx-auto flex w-full max-w-6xl flex-col gap-8 p-4 md:p-6">
               <About description={description} genres={anime.genres} />
+
+              <WatchOrderStrip malId={anime.malId} />
 
               <Tabs
                 value={activeTab}
