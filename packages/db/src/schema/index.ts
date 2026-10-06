@@ -1,4 +1,5 @@
 export * from "./airing"
+export * from "./anime"
 export * from "./auth"
 export * from "./external-list-account"
 export * from "./history"

@@ -18,6 +18,7 @@ import * as HttpClient from "@effect/platform/HttpClient"
 import * as HttpClientRequest from "@effect/platform/HttpClientRequest"
 import * as HttpClientResponse from "@effect/platform/HttpClientResponse"
 import * as Effect from "effect/Effect"
+import * as RateLimiter from "effect/RateLimiter"
 import * as Schema from "effect/Schema"
 
 export class AniListRequestError extends Schema.TaggedError<AniListRequestError>()(
@@ -204,6 +205,19 @@ export const AniListDetailResponse = Schema.Struct({
   errors: Schema.optional(Schema.Array(AniListGraphQlError)),
 })
 
+export const AniListDetailsResponse = Schema.Struct({
+  data: Schema.NullOr(
+    Schema.Struct({
+      Page: Schema.NullOr(
+        Schema.Struct({
+          media: Schema.NullOr(Schema.Array(Schema.NullOr(AniListDetailMedia))),
+        })
+      ),
+    })
+  ),
+  errors: Schema.optional(Schema.Array(AniListGraphQlError)),
+})
+
 export const AniListRecommendationsResponse = Schema.Struct({
   data: Schema.NullOr(
     Schema.Struct({
@@ -254,6 +268,57 @@ export const AniListScheduleResponse = Schema.Struct({
         })
       ),
     })
+  ),
+  errors: Schema.optional(Schema.Array(AniListGraphQlError)),
+})
+
+const AniListMediaList = Schema.NullOr(
+  Schema.Struct({
+    media: Schema.NullOr(
+      Schema.Array(
+        Schema.NullOr(
+          Schema.Struct({
+            ...AniListMedia.fields,
+            description: Schema.optional(NullableString),
+          })
+        )
+      )
+    ),
+  })
+)
+
+export const AniListHomeResponse = Schema.Struct({
+  data: Schema.NullOr(
+    Schema.Struct({
+      trending: AniListMediaList,
+      seasonal: AniListMediaList,
+      topRated: AniListMediaList,
+      popular: AniListMediaList,
+      upcoming: AniListMediaList,
+    })
+  ),
+  errors: Schema.optional(Schema.Array(AniListGraphQlError)),
+})
+
+const AniListScheduleList = Schema.NullOr(
+  Schema.Struct({
+    airingSchedules: Schema.NullOr(
+      Schema.Array(
+        Schema.NullOr(
+          Schema.Struct({
+            episode: Schema.NullOr(PositiveInt),
+            airingAt: Schema.NullOr(PositiveInt),
+            media: Schema.NullOr(AniListMedia),
+          })
+        )
+      )
+    ),
+  })
+)
+
+export const AniListRecentScheduleResponse = Schema.Struct({
+  data: Schema.NullOr(
+    Schema.Struct({ first: AniListScheduleList, second: AniListScheduleList })
   ),
   errors: Schema.optional(Schema.Array(AniListGraphQlError)),
 })
@@ -325,15 +390,25 @@ const studioCatalogQuery = `
   }
 `
 
+const detailFields = `
+  ${listFields}
+  description(asHtml:false) synonyms tags { name rank isMediaSpoiler }
+  studios { nodes { name isAnimationStudio } }
+  trailer { site id thumbnail }
+  relations { edges { relationType(version:2) node { ${listFields} } } }
+  externalLinks { site url type }
+`
+
 const detailQuery = `
   query Detail($malId:Int!) {
-    Media(type:ANIME,idMal:$malId) {
-      ${listFields}
-      description(asHtml:false) synonyms tags { name rank isMediaSpoiler }
-      studios { nodes { name isAnimationStudio } }
-      trailer { site id thumbnail }
-      relations { edges { relationType(version:2) node { ${listFields} } } }
-      externalLinks { site url type }
+    Media(type:ANIME,idMal:$malId) { ${detailFields} }
+  }
+`
+
+const detailsQuery = `
+  query Details($ids:[Int]) {
+    Page(page:1,perPage:50) {
+      media(idMal_in:$ids,type:ANIME) { ${detailFields} }
     }
   }
 `
@@ -359,6 +434,61 @@ const scheduleQuery = `
     }
   }
 `
+
+const catalogFilter = "type:ANIME,isAdult:false,idMal_not:null,format_not:MUSIC"
+
+// One request for every home row; aliases keep each list separate.
+const homeQuery = `
+  query Home($season:MediaSeason,$seasonYear:Int) {
+    trending: Page(page:1,perPage:10) {
+      media(${catalogFilter},sort:[TRENDING_DESC]) { ${listFields} description(asHtml:false) }
+    }
+    seasonal: Page(page:1,perPage:20) {
+      media(${catalogFilter},season:$season,seasonYear:$seasonYear,sort:[POPULARITY_DESC]) { ${listFields} }
+    }
+    topRated: Page(page:1,perPage:20) {
+      media(${catalogFilter},sort:[SCORE_DESC]) { ${listFields} }
+    }
+    popular: Page(page:1,perPage:20) {
+      media(${catalogFilter},sort:[POPULARITY_DESC]) { ${listFields} }
+    }
+    upcoming: Page(page:1,perPage:10) {
+      media(${catalogFilter},status:NOT_YET_RELEASED,sort:[START_DATE_DESC]) { ${listFields} }
+    }
+  }
+`
+
+const itemsQuery = `
+  query Items($ids:[Int]) {
+    Page(page:1,perPage:50) {
+      pageInfo { hasNextPage }
+      media(idMal_in:$ids,type:ANIME) { ${listFields} }
+    }
+  }
+`
+
+const recentScheduleQuery = `
+  query RecentSchedule($from:Int!,$to:Int!) {
+    first: Page(page:1,perPage:50) {
+      airingSchedules(airingAt_greater:$from,airingAt_lesser:$to,sort:TIME) {
+        episode airingAt media { ${listFields} }
+      }
+    }
+    second: Page(page:2,perPage:50) {
+      airingSchedules(airingAt_greater:$from,airingAt_lesser:$to,sort:TIME) {
+        episode airingAt media { ${listFields} }
+      }
+    }
+  }
+`
+
+const currentSeason = (now: Date): AnimeSeason => {
+  const month = now.getUTCMonth()
+  if (month < 3) return "WINTER"
+  if (month < 6) return "SPRING"
+  if (month < 9) return "SUMMER"
+  return "FALL"
+}
 
 const firstText = (...values: ReadonlyArray<string | null | undefined>) =>
   values.map((value) => value?.trim()).find((value) => Boolean(value)) ?? null
@@ -408,17 +538,92 @@ const mapMedia = (media: AniListMedia): AnimeItem | null => {
   }
 }
 
+const mapMediaList = (
+  media: ReadonlyArray<AniListMedia | null> | null | undefined
+) =>
+  (media ?? []).flatMap((item) => {
+    if (!item) return []
+    const mapped = mapMedia(item)
+    return mapped ? [mapped] : []
+  })
+
+type AniListSchedule = {
+  readonly episode: number | null
+  readonly airingAt: number | null
+  readonly media: AniListMedia | null
+}
+
+const scheduleItems = (
+  schedules: ReadonlyArray<AniListSchedule | null> | null | undefined
+) =>
+  (schedules ?? []).flatMap((schedule) => {
+    if (!schedule?.media) return []
+    const item = mapMedia(schedule.media)
+    if (!item) return []
+    return [
+      {
+        ...item,
+        nextAiringEpisode:
+          schedule.episode && schedule.airingAt
+            ? { episode: schedule.episode, airingAt: schedule.airingAt }
+            : item.nextAiringEpisode,
+      },
+    ]
+  })
+
+const decodeDetail = (media: typeof AniListDetailMedia.Type) => {
+  const item = mapMedia(media)
+  if (!item) return Effect.succeed(null)
+  const detail: AnimeDetail = {
+    ...item,
+    description: media.description,
+    synonyms: media.synonyms ?? [],
+    tags: (media.tags ?? [])
+      .filter((tag) => !tag.isMediaSpoiler)
+      .sort((left, right) => (right.rank ?? 0) - (left.rank ?? 0))
+      .map((tag) => tag.name),
+    studios: (media.studios?.nodes ?? []).flatMap((studio) =>
+      studio?.isAnimationStudio ? [studio.name] : []
+    ),
+    trailer: media.trailer,
+    relations: (media.relations?.edges ?? []).flatMap((relation) => {
+      if (!relation?.node || relation.node.isAdult) return []
+      const related = mapMedia(relation.node)
+      if (!related) return []
+      return [
+        {
+          malId: related.malId,
+          aniListId: related.aniListId,
+          relationType: relation.relationType ?? "OTHER",
+          title: related.title,
+          format: related.format,
+          status: related.status,
+          coverImage: related.coverImage,
+        },
+      ]
+    }),
+    externalLinks: (media.externalLinks ?? []).flatMap((link) =>
+      link ? [{ site: link.site, url: link.url, type: link.type }] : []
+    ),
+  }
+  return Schema.decode(AnimeDetailSchema)(detail).pipe(
+    Effect.mapError(
+      (cause) =>
+        new AniListRequestError({
+          message: "AniList detail was invalid.",
+          cause,
+        })
+    )
+  )
+}
+
 const pageFromMedia = (
   media: ReadonlyArray<AniListMedia | null> | null | undefined,
   page: number,
   perPage: number,
   hasNextPage: boolean | null | undefined
 ): AnimePage => ({
-  items: (media ?? []).flatMap((item) => {
-    if (!item) return []
-    const mapped = mapMedia(item)
-    return mapped ? [mapped] : []
-  }),
+  items: mapMediaList(media),
   page,
   perPage,
   hasNextPage: Boolean(hasNextPage),
@@ -459,37 +664,45 @@ export type AnimeCatalogRequest = {
   studio?: string
 }
 
-const budgetReserve = 5
-
 export class AniListAnimeService extends Effect.Service<AniListAnimeService>()(
   "@animekaiser/core/AniListAnimeService",
   {
     accessors: true,
     dependencies: [FetchHttpClient.layer],
-    effect: Effect.gen(function* () {
+    scoped: Effect.gen(function* () {
       const http = (yield* HttpClient.HttpClient).pipe(
         HttpClient.withTracerPropagation(false)
       )
 
-      // AniList's per-minute limit is per IP and only reports remaining
-      // budget, so we stop a few requests early and let callers fall back
-      // instead of spending the reserve other AniList callers need.
+      // AniList limits per IP: 30 req/min while it is "degraded" (its
+      // X-RateLimit-Remaining header still reports the normal 90), plus an
+      // undocumented burst limiter. Every catalog request goes through one
+      // queue that stays under both.
+      const perMinute = yield* RateLimiter.make({
+        limit: 25,
+        interval: "1 minute",
+      })
+      const spacing = yield* RateLimiter.make({
+        limit: 1,
+        interval: "400 millis",
+      })
+      const inFlight = yield* Effect.makeSemaphore(2)
+      const throttle = <A, E>(effect: Effect.Effect<A, E>) =>
+        perMinute(spacing(inFlight.withPermits(1)(effect)))
+
       let blockedUntil = 0
 
-      const trackBudget = (response: HttpClientResponse.HttpClientResponse) =>
+      const trackRateLimit = (
+        response: HttpClientResponse.HttpClientResponse
+      ) =>
         Effect.sync(() => {
-          const now = Date.now()
-          if (response.status === 429) {
-            const reset = Number(response.headers["x-ratelimit-reset"])
-            const retryAfter = Number(response.headers["retry-after"])
-            blockedUntil = Number.isFinite(reset)
-              ? reset * 1000
-              : now + (Number.isFinite(retryAfter) ? retryAfter : 60) * 1000
-            return
-          }
-          const remaining = Number(response.headers["x-ratelimit-remaining"])
-          if (Number.isFinite(remaining) && remaining <= budgetReserve)
-            blockedUntil = now + 60_000
+          if (response.status !== 429) return
+          const reset = Number(response.headers["x-ratelimit-reset"])
+          const retryAfter = Number(response.headers["retry-after"])
+          blockedUntil = Number.isFinite(reset)
+            ? reset * 1000
+            : Date.now() +
+              (Number.isFinite(retryAfter) ? retryAfter : 60) * 1000
         })
 
       const request = <TValue, TEncoded>(
@@ -501,30 +714,32 @@ export class AniListAnimeService extends Effect.Service<AniListAnimeService>()(
           Date.now() < blockedUntil
             ? Effect.fail(
                 new AniListRequestError({
-                  message: "AniList rate limit budget is exhausted.",
+                  message: "AniList is rate limiting us.",
                 })
               )
-            : http
-                .execute(
-                  HttpClientRequest.post("https://graphql.anilist.co", {
-                    headers: { "content-type": "application/json" },
-                  }).pipe(
-                    HttpClientRequest.bodyUnsafeJson({ query, variables })
+            : throttle(
+                http
+                  .execute(
+                    HttpClientRequest.post("https://graphql.anilist.co", {
+                      headers: { "content-type": "application/json" },
+                    }).pipe(
+                      HttpClientRequest.bodyUnsafeJson({ query, variables })
+                    )
                   )
+                  .pipe(Effect.timeout("15 seconds"))
+              ).pipe(
+                Effect.tap(trackRateLimit),
+                Effect.tap(logAniListRateLimit("catalog")),
+                Effect.flatMap(HttpClientResponse.filterStatusOk),
+                Effect.flatMap(HttpClientResponse.schemaBodyJson(schema)),
+                Effect.mapError(
+                  (cause) =>
+                    new AniListRequestError({
+                      message: "AniList request failed.",
+                      cause,
+                    })
                 )
-                .pipe(
-                  Effect.tap(trackBudget),
-                  Effect.tap(logAniListRateLimit("catalog")),
-                  Effect.flatMap(HttpClientResponse.filterStatusOk),
-                  Effect.flatMap(HttpClientResponse.schemaBodyJson(schema)),
-                  Effect.mapError(
-                    (cause) =>
-                      new AniListRequestError({
-                        message: "AniList request failed.",
-                        cause,
-                      })
-                  )
-                )
+              )
         )
 
       const getCatalog = Effect.fn("AniListAnimeService.getCatalog")(function* (
@@ -596,15 +811,7 @@ export class AniListAnimeService extends Effect.Service<AniListAnimeService>()(
           perPage: number
         ) {
           const now = new Date()
-          const month = now.getUTCMonth()
-          const season: AnimeSeason =
-            month < 3
-              ? "WINTER"
-              : month < 6
-                ? "SPRING"
-                : month < 9
-                  ? "SUMMER"
-                  : "FALL"
+          const season = currentSeason(now)
           const requestInput: AnimeCatalogRequest = {
             page,
             perPage,
@@ -637,49 +844,27 @@ export class AniListAnimeService extends Effect.Service<AniListAnimeService>()(
           })
         }
         const media = response.data?.Media
-        const item = media ? mapMedia(media) : null
-        if (!media || !item) return null
-        const detail: AnimeDetail = {
-          ...item,
-          description: media.description,
-          synonyms: media.synonyms ?? [],
-          tags: (media.tags ?? [])
-            .filter((tag) => !tag.isMediaSpoiler)
-            .sort((left, right) => (right.rank ?? 0) - (left.rank ?? 0))
-            .map((tag) => tag.name),
-          studios: (media.studios?.nodes ?? []).flatMap((studio) =>
-            studio?.isAnimationStudio ? [studio.name] : []
-          ),
-          trailer: media.trailer,
-          relations: (media.relations?.edges ?? []).flatMap((relation) => {
-            if (!relation?.node || relation.node.isAdult) return []
-            const related = mapMedia(relation.node)
-            if (!related) return []
-            return [
-              {
-                malId: related.malId,
-                aniListId: related.aniListId,
-                relationType: relation.relationType ?? "OTHER",
-                title: related.title,
-                format: related.format,
-                status: related.status,
-                coverImage: related.coverImage,
-              },
-            ]
-          }),
-          externalLinks: (media.externalLinks ?? []).flatMap((link) =>
-            link ? [{ site: link.site, url: link.url, type: link.type }] : []
-          ),
+        return media ? yield* decodeDetail(media) : null
+      })
+
+      // Full details for up to 50 MAL ids in one request.
+      const getDetails = Effect.fn("AniListAnimeService.getDetails")(function* (
+        malIds: ReadonlyArray<number>
+      ) {
+        if (malIds.length === 0) return []
+        const response = yield* request(AniListDetailsResponse, detailsQuery, {
+          ids: malIds.slice(0, 50),
+        })
+        if (response.errors?.length) {
+          return yield* new AniListRequestError({
+            message: response.errors[0].message,
+          })
         }
-        return yield* Schema.decode(AnimeDetailSchema)(detail).pipe(
-          Effect.mapError(
-            (cause) =>
-              new AniListRequestError({
-                message: "AniList detail was invalid.",
-                cause,
-              })
-          )
+        const details = yield* Effect.forEach(
+          response.data?.Page?.media ?? [],
+          (media) => (media ? decodeDetail(media) : Effect.succeed(null))
         )
+        return details.filter((detail) => detail !== null)
       })
 
       const getRecommendations = Effect.fn(
@@ -737,21 +922,7 @@ export class AniListAnimeService extends Effect.Service<AniListAnimeService>()(
               message: response.errors[0].message,
             })
           }
-          const schedules = response.data?.Page?.airingSchedules ?? []
-          const items = schedules.flatMap((schedule) => {
-            if (!schedule?.media) return []
-            const item = mapMedia(schedule.media)
-            if (!item) return []
-            return [
-              {
-                ...item,
-                nextAiringEpisode:
-                  schedule.episode && schedule.airingAt
-                    ? { episode: schedule.episode, airingAt: schedule.airingAt }
-                    : item.nextAiringEpisode,
-              },
-            ]
-          })
+          const items = scheduleItems(response.data?.Page?.airingSchedules)
           return {
             items,
             page,
@@ -760,6 +931,69 @@ export class AniListAnimeService extends Effect.Service<AniListAnimeService>()(
           }
         }
       )
+
+      const getHome = Effect.fn("AniListAnimeService.getHome")(function* () {
+        const now = new Date()
+        const response = yield* request(AniListHomeResponse, homeQuery, {
+          season: currentSeason(now),
+          seasonYear: now.getUTCFullYear(),
+        })
+        if (response.errors?.length || !response.data) {
+          return yield* new AniListRequestError({
+            message: response.errors?.[0]?.message ?? "AniList home was empty.",
+          })
+        }
+        const { trending, seasonal, topRated, popular, upcoming } =
+          response.data
+        return {
+          trending: (trending?.media ?? []).flatMap((media) => {
+            const item = media ? mapMedia(media) : null
+            return item && media
+              ? [{ ...item, description: media.description ?? null }]
+              : []
+          }),
+          seasonal: mapMediaList(seasonal?.media),
+          topRated: mapMediaList(topRated?.media),
+          popular: mapMediaList(popular?.media),
+          upcoming: mapMediaList(upcoming?.media),
+        }
+      })
+
+      // Card data for up to 50 MAL ids in one request; ids AniList doesn't
+      // know are simply missing from the result.
+      const getItems = Effect.fn("AniListAnimeService.getItems")(function* (
+        malIds: ReadonlyArray<number>
+      ) {
+        if (malIds.length === 0) return []
+        const response = yield* request(AniListPageResponse, itemsQuery, {
+          ids: malIds.slice(0, 50),
+        })
+        if (response.errors?.length) {
+          return yield* new AniListRequestError({
+            message: response.errors[0].message,
+          })
+        }
+        return mapMediaList(response.data?.Page?.media)
+      })
+
+      const getRecentSchedule = Effect.fn(
+        "AniListAnimeService.getRecentSchedule"
+      )(function* (from: number, to: number) {
+        const response = yield* request(
+          AniListRecentScheduleResponse,
+          recentScheduleQuery,
+          { from, to }
+        )
+        if (response.errors?.length) {
+          return yield* new AniListRequestError({
+            message: response.errors[0].message,
+          })
+        }
+        return [
+          ...scheduleItems(response.data?.first?.airingSchedules),
+          ...scheduleItems(response.data?.second?.airingSchedules),
+        ]
+      })
 
       // AniList caps a page at 50 media, so callers batch MAL ids in 50s.
       const getAiringStatus = Effect.fn("AniListAnimeService.getAiringStatus")(
@@ -794,9 +1028,13 @@ export class AniListAnimeService extends Effect.Service<AniListAnimeService>()(
         getCatalog,
         getStudioCatalog,
         getDiscovery,
+        getHome,
+        getItems,
         getDetail,
+        getDetails,
         getRecommendations,
         getSchedule,
+        getRecentSchedule,
         getAiringStatus,
       }
     }),

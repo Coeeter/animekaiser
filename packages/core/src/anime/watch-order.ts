@@ -1,7 +1,15 @@
-import type { AnimeDetail, AnimeFormat } from "@animekaiser/domain"
+import type { AnimeFormat } from "@animekaiser/domain"
 import * as Effect from "effect/Effect"
 
-type Relation = AnimeDetail["relations"][number]
+type Relation = {
+  readonly malId: number | null
+  readonly relationType: string
+  readonly format: AnimeFormat | null
+}
+export type StoryNode = {
+  readonly malId: number
+  readonly relations: ReadonlyArray<Relation>
+}
 type Direction = "PREQUEL" | "SEQUEL"
 
 export const watchOrderHopLimit = 30
@@ -24,7 +32,7 @@ const relationKind = (relation: Relation) =>
   relation.relationType.trim().replace(/[\s-]/g, "_").toUpperCase()
 
 export const nextStoryRelation = (
-  anime: AnimeDetail,
+  anime: StoryNode,
   direction: Direction,
   visited: ReadonlySet<number>
 ) =>
@@ -42,17 +50,17 @@ export const nextStoryRelation = (
     )
     .at(0) ?? null
 
-export type WatchOrder = {
-  readonly entries: ReadonlyArray<AnimeDetail>
+export type WatchOrder<Node extends StoryNode> = {
+  readonly entries: ReadonlyArray<Node>
   readonly complete: boolean
 }
 
 // Walks prequels back from the starting show and sequels forward from it, so
 // the starting show is always on the path even when the franchise branches.
 // A failed lookup ends that direction early and marks the order incomplete.
-export const buildWatchOrder = <E>(
-  start: AnimeDetail,
-  lookup: (malId: number) => Effect.Effect<AnimeDetail, E>
+export const buildWatchOrder = <Node extends StoryNode, E>(
+  start: Node,
+  lookup: (malId: number) => Effect.Effect<Node, E>
 ) =>
   Effect.gen(function* () {
     const visited = new Set([start.malId])
@@ -60,7 +68,7 @@ export const buildWatchOrder = <E>(
 
     const walk = (direction: Direction) =>
       Effect.gen(function* () {
-        const found: Array<AnimeDetail> = []
+        const found: Array<Node> = []
         let current = start
         while (state.hops < watchOrderHopLimit) {
           const relation = nextStoryRelation(current, direction, visited)
@@ -85,5 +93,79 @@ export const buildWatchOrder = <E>(
     return {
       entries: [...prequels.reverse(), start, ...sequels],
       complete: state.complete,
-    } satisfies WatchOrder
+    } satisfies WatchOrder<Node>
   })
+
+type FranchiseLink = {
+  readonly source_id: number
+  readonly target_id: number
+  readonly relation: string
+}
+
+const isStoryLink = (link: FranchiseLink) =>
+  link.relation === "prequel" || link.relation === "sequel"
+
+// Only shows joined to the start by prequel/sequel links can be on its watch
+// order, so the rest of a large franchise never needs looking up.
+export const storyComponent = (
+  links: ReadonlyArray<FranchiseLink>,
+  start: number
+) => {
+  const neighbours = new Map<number, Array<number>>()
+  for (const link of links.filter(isStoryLink)) {
+    neighbours.set(link.source_id, [
+      ...(neighbours.get(link.source_id) ?? []),
+      link.target_id,
+    ])
+    neighbours.set(link.target_id, [
+      ...(neighbours.get(link.target_id) ?? []),
+      link.source_id,
+    ])
+  }
+  const seen = new Set([start])
+  const queue = [start]
+  for (
+    let current = queue.shift();
+    current !== undefined;
+    current = queue.shift()
+  ) {
+    for (const next of neighbours.get(current) ?? []) {
+      if (seen.has(next)) continue
+      seen.add(next)
+      queue.push(next)
+    }
+  }
+  return [...seen]
+}
+
+// Turns franchise links into story nodes for the shows we have data for;
+// links to anything else (adult, music, unknown to AniList) are dropped.
+export const franchiseStoryNodes = <
+  Item extends { readonly malId: number; readonly format: AnimeFormat | null },
+>(
+  links: ReadonlyArray<FranchiseLink>,
+  items: ReadonlyArray<Item>
+) => {
+  const byId = new Map(items.map((item) => [item.malId, item]))
+  return new Map(
+    items.map((item) => [
+      item.malId,
+      {
+        malId: item.malId,
+        item,
+        relations: links.flatMap((link) => {
+          const target = byId.get(link.target_id)
+          return link.source_id === item.malId && isStoryLink(link) && target
+            ? [
+                {
+                  malId: target.malId,
+                  relationType: link.relation.toUpperCase(),
+                  format: target.format,
+                },
+              ]
+            : []
+        }),
+      },
+    ])
+  )
+}

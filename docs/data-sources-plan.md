@@ -1,6 +1,6 @@
 # Anime data sources and caching
 
-Status: proposal (2026-10-06). Input for implementation, not a spec.
+Status: implemented locally (2026-10-06), not committed. See "Progress".
 
 ## Problem
 
@@ -152,6 +152,46 @@ a separate decision.
    rating filter).
 5. **Optional:** durable detail records in Postgres, refreshed by the job
    queue.
+
+## Progress
+
+All five phases are implemented, plus one extra found in the audit. Measured
+locally against the real APIs, with Redis `anime:*` keys and
+`anime_detail_record` cleared:
+
+- **Cold start, background jobs:** 5 AniList requests (recent schedule, 3
+  airing-status batches for 105 tracked shows, 1 batched detail query for 42
+  shows). Before, it was one detail request per latest episode, about 40 or
+  more, and that set off a real 429.
+- **Cold home page:** 3 requests (home, latest feed, today's schedule), down
+  from about 15.
+- **Watch order:** Shikimori graph plus one `idMal_in` query. The orders are
+  better than the old walk: Monogatari puts Tsuki before Owari, and AoT runs
+  through The Final Chapters.
+- **Durable details:** with the Redis key deleted, `GetAnimeDetail` answered
+  in 25ms from Postgres with 0 AniList requests.
+- **Stale data:** a stale entry was served in 13ms, then one background
+  refresh set it fresh again (12h, since the show is airing).
+- **MAL fallback:** detail, the 5 discovery lists, search and
+  recommendations all returned correctly against the real API; a missing ID
+  maps to `null`.
+
+Extra beyond the plan: the availability workers fetched one detail per show
+(through `StreamingService`). `AnimeService.prefetchDetails` now fills those
+details in batches of 50 first.
+
+Not done, deliberately:
+- No user-first priority in the AniList queue. After batching, background
+  work is a handful of requests an hour.
+- Refreshes run as stale-while-revalidate, not as Postgres jobs.
+- User-token AniList calls (list sync, import, OAuth) don't go through the
+  queue; they count against the same per-IP limit, but there are few of them.
+- The card hover synopsis still fetches one detail per hovered card. It is
+  cached for 12h–30d now.
+- The MAL fallback's seasonal list includes long-running shows (One Piece)
+  that AniList's leaves out.
+- The detail-walk fallback for watch order and MAL's 404 → null path were
+  exercised only indirectly.
 
 ## Open questions
 

@@ -120,6 +120,13 @@
       "when": 1790445267900,
       "tag": "0016_anime_airing_state",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1791293148156,
+      "tag": "0017_anime_detail_record",
+      "breakpoints": true
     }
   ]
 }

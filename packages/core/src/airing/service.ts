@@ -350,6 +350,9 @@ export class AiringService extends Effect.Service<AiringService>()(
               .limit(providerChecksPerSync)
         )
 
+        yield* animeService.prefetchDetails(
+          candidates.map((candidate) => candidate.malId)
+        )
         yield* Effect.forEach(
           candidates,
           (candidate) =>
@@ -623,6 +626,9 @@ export class AiringService extends Effect.Service<AiringService>()(
         "AiringService.refreshLatestAvailability"
       )(function* () {
         const items = yield* animeService.getLatestEpisodes()
+        yield* animeService.prefetchDetails(
+          items.map((item) => item.anime.malId)
+        )
         yield* Effect.forEach(
           items,
           (item) => checkAvailability(item.anime.malId, item.episode),

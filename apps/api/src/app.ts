@@ -7,6 +7,7 @@ import { BetterAuthLive, ExternalListOAuthConfigLive } from "./auth"
 import { Env } from "./env"
 import { DatabaseListenerLive, makeDatabaseLive } from "./infra/database"
 import { CorsLive, HttpServerLive } from "./infra/http"
+import { MalApiConfigLive } from "./infra/mal"
 import { ProfileMediaStorageLive } from "./infra/profile-media"
 import { RedisKeyValueStoreLive } from "./infra/redis"
 import { RpcServerConfigLive } from "./infra/rpc"
@@ -42,6 +43,7 @@ export const ApiLive = HttpLayerRouter.serve(RoutesLive, {
   Layer.provideMerge(ExternalListOAuthConfigLive),
   Layer.provideMerge(BetterAuthLive),
   Layer.provide(StreamingClientLive),
+  Layer.provide(MalApiConfigLive),
   Layer.provide(RedisKeyValueStoreLive),
   Layer.provide(makeDatabaseLive(migrationsFolder)),
   Layer.provide(HttpServerLive),

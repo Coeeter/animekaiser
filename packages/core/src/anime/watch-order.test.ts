@@ -1,7 +1,12 @@
 import { describe, expect, it } from "bun:test"
 import type { AnimeDetail, AnimeFormat } from "@animekaiser/domain"
 import * as Effect from "effect/Effect"
-import { buildWatchOrder, watchOrderHopLimit } from "./watch-order"
+import {
+  buildWatchOrder,
+  franchiseStoryNodes,
+  storyComponent,
+  watchOrderHopLimit,
+} from "./watch-order"
 
 type Edge = {
   to: number | null
@@ -152,5 +157,63 @@ describe("buildWatchOrder", () => {
     const order = orderOf(first, shows)
     expect(order.ids).toHaveLength(watchOrderHopLimit + 1)
     expect(order.complete).toBe(false)
+  })
+})
+
+describe("franchise graphs", () => {
+  const link = (source: number, target: number, relation: string) => ({
+    source_id: source,
+    target_id: target,
+    relation,
+  })
+  const item = (malId: number, format: AnimeFormat = "TV") => ({
+    malId,
+    format,
+  })
+
+  // JJK 0 (film) → S1 → S2 → S3, with a recap and a spin-off hanging off S2.
+  const links = [
+    link(48561, 40748, "sequel"),
+    link(40748, 48561, "prequel"),
+    link(40748, 51009, "sequel"),
+    link(51009, 40748, "prequel"),
+    link(51009, 57658, "sequel"),
+    link(57658, 51009, "prequel"),
+    link(51009, 56243, "summary"),
+    link(51009, 99999, "spin_off"),
+  ]
+
+  it("keeps only shows joined to the start by story links", () => {
+    expect(storyComponent(links, 51009).sort()).toEqual(
+      [40748, 48561, 51009, 57658].sort()
+    )
+  })
+
+  it("orders the story through the franchise graph", () => {
+    const nodes = franchiseStoryNodes(links, [
+      item(48561, "MOVIE"),
+      item(40748),
+      item(51009),
+      item(57658),
+    ])
+    const start = nodes.get(51009)
+    if (!start) throw new Error("start is missing")
+    const order = Effect.runSync(
+      buildWatchOrder(start, (malId) => {
+        const node = nodes.get(malId)
+        return node ? Effect.succeed(node) : Effect.fail("missing")
+      })
+    )
+    expect(order.entries.map((entry) => entry.malId)).toEqual([
+      48561, 40748, 51009, 57658,
+    ])
+    expect(order.complete).toBe(true)
+  })
+
+  it("drops links to shows without data instead of stopping at them", () => {
+    const nodes = franchiseStoryNodes(links, [item(40748), item(51009)])
+    expect(nodes.get(51009)?.relations).toEqual([
+      { malId: 40748, relationType: "PREQUEL", format: "TV" },
+    ])
   })
 })
