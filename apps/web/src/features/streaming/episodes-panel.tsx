@@ -431,6 +431,7 @@ function ProviderAvailability({
   const label = Result.builder(result)
     .onSuccess((items) => {
       const entry = items.find((item) => item.provider === provider)
+      if (entry?.status === "unavailable") return "Unavailable"
       if (entry?.status !== "available") return "No match"
       return entry.dub > 0
         ? `${entry.sub} sub · ${entry.dub} dub`

@@ -157,17 +157,32 @@ export class StreamingService extends Effect.Service<StreamingService>()(
             } satisfies StreamEpisodeCatalog
           }
 
-          const selected = yield* resolveProvider(provider)
-          if (selected === undefined) {
+          const providers = yield* streaming.listProviders
+          const requested = providers.find((entry) => entry.id === provider)
+          if (providers.length === 0) {
             return {
               anime,
               providers: [],
             } satisfies StreamEpisodeCatalog
           }
 
+          // Without a requested provider, the first one that actually has
+          // episodes wins, so a provider that is down or has no match
+          // doesn't hide the others.
+          const firstWithEpisodes = Effect.gen(function* () {
+            let first: StreamProviderEpisodes | undefined
+            for (const entry of requested ? [requested] : providers) {
+              const result = yield* episodesFor(anime, entry.id, entry.label)
+              if (result.status === "available" && result.episodes.length > 0)
+                return result
+              first ??= result
+            }
+            return first as StreamProviderEpisodes
+          })
+
           const [episodes, artwork] = yield* Effect.all(
             [
-              episodesFor(anime, selected.id, selected.label),
+              firstWithEpisodes,
               animeService
                 .getEpisodeMetadata(malId)
                 .pipe(Effect.map(metadataByNumber)),
