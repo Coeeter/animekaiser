@@ -420,7 +420,7 @@ function DoneStep() {
       <Confetti />
       <Card>
         <CardHeader className="items-center text-center">
-          <div className="grid size-14 place-items-center rounded-2xl bg-primary/15 text-primary">
+          <div className="grid size-14 place-items-center rounded-2xl bg-primary/15 text-foreground">
             <PartyPopper className="size-7" />
           </div>
           <CardTitle>

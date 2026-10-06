@@ -26,7 +26,7 @@ export function EpisodeThumbnail({
       <span
         className={cn(
           "absolute inset-0 grid place-items-center text-sm font-semibold tabular-nums text-muted-foreground",
-          highlighted && "text-primary"
+          highlighted && "text-foreground"
         )}
       >
         {number}

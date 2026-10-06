@@ -188,7 +188,7 @@ export function AddToLibraryDialog({
       <DialogTrigger asChild>
         <Button
           className="w-fit"
-          variant="outline"
+          variant="secondary"
           aria-label={entry ? "Edit library entry" : undefined}
         >
           <TriggerLabel entry={entry} />

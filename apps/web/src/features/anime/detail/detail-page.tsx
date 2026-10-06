@@ -190,41 +190,38 @@ function SeriesDetail({
 
   return (
     <div className="flex w-full flex-col">
-      <div className="relative bg-black">
-        <div className="sticky top-0 z-0 h-80 overflow-hidden md:h-96">
+      <div>
+        <div className="relative h-44 overflow-hidden bg-black sm:h-56 md:h-72">
           {bannerSrc ? (
             <img
               src={bannerSrc}
               alt=""
-              className="absolute inset-0 size-full object-cover opacity-50"
+              className="absolute inset-0 size-full object-cover opacity-70"
             />
           ) : null}
-          <div className="absolute inset-0 bg-gradient-to-t from-black via-black/50 to-black/20" />
-          <div className="absolute inset-0 bg-gradient-to-r from-black/60 to-transparent" />
-          <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-black to-transparent backdrop-blur-[3px]" />
+          <div className="absolute inset-0 bg-gradient-to-t from-background via-background/30 to-black/40" />
+          <nav className="relative mx-auto flex w-full max-w-6xl items-center gap-2 px-4 pt-3 text-xs text-white/60 md:px-6">
+            <Link to="/" className="transition hover:text-white">
+              Home
+            </Link>
+            <span>/</span>
+            <Link
+              to="/series"
+              search={{ sort: "popularity", page: 1 }}
+              className="transition hover:text-white"
+            >
+              Series
+            </Link>
+            <span>/</span>
+            <span className="max-w-40 truncate text-white/80 md:max-w-80">
+              <AnimeTitleText title={anime.title} />
+            </span>
+          </nav>
         </div>
 
-        <div className="relative z-10 -mt-80 md:-mt-96">
-          <div className="flex min-h-80 flex-col md:min-h-96">
-            <nav className="mx-auto flex w-full max-w-6xl items-center gap-2 px-4 pt-3 text-xs text-white/50 md:px-6">
-              <Link to="/" className="transition hover:text-white">
-                Home
-              </Link>
-              <span>/</span>
-              <Link
-                to="/series"
-                search={{ sort: "popularity", page: 1 }}
-                className="transition hover:text-white"
-              >
-                Series
-              </Link>
-              <span>/</span>
-              <span className="max-w-40 truncate text-white/70 md:max-w-80">
-                <AnimeTitleText title={anime.title} />
-              </span>
-            </nav>
-
-            <div className="mx-auto mt-auto grid w-full max-w-6xl grid-cols-[7rem_1fr] items-end gap-x-4 gap-y-4 px-4 pt-6 pb-6 sm:grid-cols-[9rem_1fr] md:grid-cols-[11rem_1fr] md:gap-x-8 md:px-6 md:pb-8 lg:grid-cols-[12rem_1fr]">
+        <div className="relative">
+          <div className="relative z-10 -mt-20 sm:-mt-24 md:-mt-36">
+            <div className="mx-auto grid w-full max-w-6xl grid-cols-[7rem_1fr] items-end gap-x-4 gap-y-4 px-4 sm:grid-cols-[9rem_1fr] md:grid-cols-[11rem_1fr] md:gap-x-8 md:px-6 lg:grid-cols-[12rem_1fr]">
               <div className="md:row-span-2">
                 {anime.coverImage ? (
                   <PosterDialog anime={anime} src={anime.coverImage} />
@@ -643,7 +640,7 @@ function LoginRequiredDialog({ anime }: { anime: AnimeDetail }) {
   return (
     <Dialog>
       <DialogTrigger asChild>
-        <Button className="w-fit" variant="outline">
+        <Button className="w-fit" variant="secondary">
           Add to Library
         </Button>
       </DialogTrigger>
@@ -730,7 +727,7 @@ function RelationsPanel({
               <p className="line-clamp-2 text-sm font-medium">
                 <AnimeTitle title={relation.title} />
               </p>
-              <p className="text-xs font-semibold text-primary capitalize">
+              <p className="text-xs font-semibold text-foreground/70 capitalize">
                 {relation.relationType.split("_").join(" ").toLowerCase()}
               </p>
               <p className="mt-0.5 text-xs text-muted-foreground">

@@ -85,22 +85,21 @@ function WatchOrderCard({
         ) : null}
       </div>
       <div className="flex min-w-0 flex-col gap-0.5">
-        <p
-          className={cn(
-            "text-[11px] font-semibold tracking-wide uppercase tabular-nums",
-            current ? "text-primary" : "text-muted-foreground"
-          )}
-        >
-          {current
-            ? "You're here"
-            : [
-                position,
-                anime.format && formatAnimeFormat(anime.format),
-                anime.seasonYear,
-              ]
-                .filter(Boolean)
-                .join(" · ")}
-        </p>
+        {current ? (
+          <span className="w-fit rounded-full bg-primary px-2 py-0.5 text-[10px] font-semibold tracking-wide text-primary-foreground uppercase">
+            You're here
+          </span>
+        ) : (
+          <p className="text-[11px] font-semibold tracking-wide text-muted-foreground uppercase tabular-nums">
+            {[
+              position,
+              anime.format && formatAnimeFormat(anime.format),
+              anime.seasonYear,
+            ]
+              .filter(Boolean)
+              .join(" · ")}
+          </p>
+        )}
         <p className="line-clamp-2 text-sm leading-snug font-medium">
           <AnimeTitle title={anime.title} />
         </p>

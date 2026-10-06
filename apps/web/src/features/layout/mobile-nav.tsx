@@ -287,7 +287,7 @@ function MobileMoreSheet({
                 <span
                   className={cn(
                     "grid size-10 shrink-0 place-items-center rounded-xl border bg-card",
-                    active && "border-primary/60 bg-primary/15 text-primary"
+                    active && "border-primary/60 bg-primary/15 text-foreground"
                   )}
                 >
                   <link.icon className="size-4" />

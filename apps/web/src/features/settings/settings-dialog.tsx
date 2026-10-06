@@ -219,7 +219,7 @@ export function SettingsDialog() {
                       className={cn(
                         "inline-flex h-9 shrink-0 items-center gap-2 rounded-full border px-3 text-sm font-medium whitespace-nowrap transition",
                         selected.title === section.title
-                          ? "border-primary/60 bg-primary/15 text-primary"
+                          ? "border-primary/60 bg-primary/15 text-foreground"
                           : "bg-card text-muted-foreground"
                       )}
                       onClick={() => select(section.title)}
