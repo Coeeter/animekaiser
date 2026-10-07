@@ -31,7 +31,7 @@ import { Result, useAtomSet, useAtomValue } from "@effect-atom/atom-react"
 import { Link, useLocation } from "@tanstack/react-router"
 import { LogIn, Search, Settings } from "lucide-react"
 import type { ReactNode } from "react"
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useState } from "react"
 import { searchOpenAtom } from "../anime/common/search-atoms"
 import {
   TitleLanguageSwitch,
@@ -116,26 +116,38 @@ function MobileSidebarCloser({ pathname }: { pathname: string }) {
   return null
 }
 
+const isPlayerRoute = (pathname: string) =>
+  pathname.startsWith("/watch/") || pathname.startsWith("/play/")
+
+// The player always gets the icon rail; everywhere else uses the reader's own
+// choice, which the player never overwrites. Opening the sidebar on a player
+// page lasts only for that page.
 export function AppSidebarProvider({ children }: { children: ReactNode }) {
   const pathname = useLocation({ select: (l) => l.pathname })
-  const isWatchRoute = pathname.startsWith("/watch/")
-  const [open, setOpen] = useState(!isWatchRoute)
-  const openBeforeWatchRef = useRef(open)
-  const wasWatchRouteRef = useRef(isWatchRoute)
+  const onPlayer = isPlayerRoute(pathname)
+  const [preferredOpen, setPreferredOpen] = useState(true)
+  const [openOnPlayerPage, setOpenOnPlayerPage] = useState<string | null>(null)
+  const open = onPlayer ? openOnPlayerPage === pathname : preferredOpen
 
+  // The rail swaps in together with the page instead of sliding after it.
+  const [settledOnPlayer, setSettledOnPlayer] = useState(onPlayer)
+  const swapping = settledOnPlayer !== onPlayer
   useEffect(() => {
-    if (isWatchRoute && !wasWatchRouteRef.current) {
-      openBeforeWatchRef.current = open
-      setOpen(false)
-    } else if (!isWatchRoute && wasWatchRouteRef.current) {
-      setOpen(openBeforeWatchRef.current)
-    }
-
-    wasWatchRouteRef.current = isWatchRoute
-  }, [isWatchRoute, open])
+    if (!swapping) return
+    const frame = requestAnimationFrame(() => setSettledOnPlayer(onPlayer))
+    return () => cancelAnimationFrame(frame)
+  }, [swapping, onPlayer])
 
   return (
-    <SidebarProvider open={open} onOpenChange={setOpen}>
+    <SidebarProvider
+      open={open}
+      onOpenChange={(next) =>
+        onPlayer
+          ? setOpenOnPlayerPage(next ? pathname : null)
+          : setPreferredOpen(next)
+      }
+      className={cn(swapping && "[&_*]:transition-none")}
+    >
       <MobileSidebarCloser pathname={pathname} />
       {children}
     </SidebarProvider>
@@ -144,7 +156,7 @@ export function AppSidebarProvider({ children }: { children: ReactNode }) {
 
 export function AppSidebar({ children }: { children: ReactNode }) {
   const pathname = useLocation({ select: (l) => l.pathname })
-  const isWatchRoute = pathname.startsWith("/watch/")
+  const isWatchRoute = isPlayerRoute(pathname)
   const setSearchOpen = useAtomSet(searchOpenAtom)
   const setSettingsSection = useAtomSet(settingsSectionAtom)
   const setSettingsOpen = useAtomSet(settingsOpenAtom)
