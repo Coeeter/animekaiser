@@ -6,6 +6,7 @@ import {
   Compass,
   History,
   Home,
+  MonitorPlay,
   Shuffle,
   Sparkles,
   User,
@@ -24,6 +25,7 @@ export const mainLinks: ReadonlyArray<NavItem> = [
 
 export const personalLinks: ReadonlyArray<NavItem> = [
   { title: "Profile", href: "/profile", icon: User },
+  { title: "Watching", href: "/watching", icon: MonitorPlay },
   { title: "My List", href: "/my-list", icon: Bookmark },
   { title: "Watch History", href: "/watch-history", icon: History },
 ]

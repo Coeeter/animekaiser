@@ -51,8 +51,9 @@ export function PlanToWatchAiringRow() {
     .onSuccess((items) =>
       items.length === 0 ? null : (
         <MediaRow
-          title="Now airing from your plan to watch"
+          title="Airing from your plan to watch"
           eyebrow="Plan to watch"
+          more={{ to: "/watching" }}
         >
           {items.map((item) => (
             <div

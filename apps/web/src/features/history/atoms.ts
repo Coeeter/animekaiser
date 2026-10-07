@@ -43,29 +43,31 @@ export type ContinueRowItem =
 // A show mid-episode resumes from history; otherwise the library's next aired
 // episode stands in, then the next entry of a recently finished franchise, so
 // each show appears once.
-export const continueRowAtom = Atom.make((get) =>
-  Effect.gen(function* () {
-    const history = yield* get.result(continueWatchingAtom(12))
-    const upNext = yield* get
-      .result(watchingNewEpisodesAtom)
-      .pipe(Effect.orElseSucceed((): ReadonlyArray<LibraryNewEpisode> => []))
-    const nextSeasons = yield* get
-      .result(libraryNextSeasonsAtom)
-      .pipe(Effect.orElseSucceed((): ReadonlyArray<LibraryNextSeason> => []))
-    const resumed = new Set(history.map((item) => item.malId))
-    const nextItems = upNext.filter((item) => !resumed.has(item.anime.malId))
-    const shown = new Set([
-      ...resumed,
-      ...nextItems.map((item) => item.anime.malId),
-    ])
-    return [
-      ...history.map((item): ContinueRowItem => ({ kind: "resume", item })),
-      ...nextItems.map((item): ContinueRowItem => ({ kind: "next", item })),
-      ...nextSeasons
-        .filter((item) => !shown.has(item.next.malId))
-        .map((item): ContinueRowItem => ({ kind: "nextSeason", item })),
-    ]
-  })
+export const continueItemsAtom = Atom.family((limit: number) =>
+  Atom.make((get) =>
+    Effect.gen(function* () {
+      const history = yield* get.result(continueWatchingAtom(limit))
+      const upNext = yield* get
+        .result(watchingNewEpisodesAtom)
+        .pipe(Effect.orElseSucceed((): ReadonlyArray<LibraryNewEpisode> => []))
+      const nextSeasons = yield* get
+        .result(libraryNextSeasonsAtom)
+        .pipe(Effect.orElseSucceed((): ReadonlyArray<LibraryNextSeason> => []))
+      const resumed = new Set(history.map((item) => item.malId))
+      const nextItems = upNext.filter((item) => !resumed.has(item.anime.malId))
+      const shown = new Set([
+        ...resumed,
+        ...nextItems.map((item) => item.anime.malId),
+      ])
+      return [
+        ...history.map((item): ContinueRowItem => ({ kind: "resume", item })),
+        ...nextItems.map((item): ContinueRowItem => ({ kind: "next", item })),
+        ...nextSeasons
+          .filter((item) => !shown.has(item.next.malId))
+          .map((item): ContinueRowItem => ({ kind: "nextSeason", item })),
+      ]
+    })
+  )
 )
 
 export const watchHistoryPageAtom = (

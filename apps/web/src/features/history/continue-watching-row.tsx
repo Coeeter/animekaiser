@@ -17,7 +17,7 @@ import { AnimeSubtitle, AnimeTitle } from "../anime/common/anime-title"
 import { NextSeasonCard, UpNextCard } from "../library/new-episodes-rows"
 import { providerLabelAtom } from "../streaming/atoms"
 import { audioLabel, formatTime } from "../streaming/player-format"
-import { continueRowAtom } from "./atoms"
+import { continueItemsAtom } from "./atoms"
 
 const percentWatched = (item: ContinueWatchingItem) => {
   if (!item.durationSeconds || item.durationSeconds <= 0) return 0
@@ -37,14 +37,14 @@ const remainingLabel = (item: ContinueWatchingItem) => {
 }
 
 export function ContinueWatchingRow() {
-  const result = useAtomValue(continueRowAtom)
+  const result = useAtomValue(continueItemsAtom(12))
 
   return Result.builder(result)
     .onInitialOrWaiting(() => <ContinueWatchingPending />)
     .onFailure(() => null)
     .onSuccess((items) =>
       items.length === 0 ? null : (
-        <MediaRow title="Continue watching">
+        <MediaRow title="Continue watching" more={{ to: "/watching" }}>
           {items.map((entry) =>
             entry.kind === "resume" ? (
               <ContinueWatchingItemCell
@@ -93,7 +93,7 @@ function ContinueWatchingItemCell({ item }: { item: ContinueWatchingItem }) {
   )
 }
 
-function ContinueWatchingCard({ item }: { item: ContinueWatchingItem }) {
+export function ContinueWatchingCard({ item }: { item: ContinueWatchingItem }) {
   const percent = percentWatched(item)
 
   return (

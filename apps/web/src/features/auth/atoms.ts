@@ -14,6 +14,7 @@ const protectedRoutes = new Set([
   "/profile",
   "/sync-activity",
   "/watch-history",
+  "/watching",
 ])
 
 export const isProtectedRoute = (pathname: string) =>

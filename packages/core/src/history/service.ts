@@ -13,7 +13,7 @@ import type {
   WatchHistoryShow,
   WatchHistoryStatus,
 } from "@animekaiser/domain"
-import { and, desc, eq, inArray, max, sql } from "drizzle-orm"
+import { and, desc, eq, gte, inArray, max, sql } from "drizzle-orm"
 import * as Effect from "effect/Effect"
 import * as Schema from "effect/Schema"
 import { AnimeService } from "../anime"
@@ -22,6 +22,10 @@ export class WatchHistoryServiceError extends Schema.TaggedError<WatchHistorySer
   "WatchHistoryServiceError",
   { message: Schema.String, cause: Schema.optional(Schema.Unknown) }
 ) {}
+
+// An episode opened for a few seconds is a misclick or a preview, not
+// something to resume.
+const minimumResumeSeconds = 120
 
 // Streams end slightly before their reported duration, so requiring 100%
 // would leave episodes stuck as "watching".
@@ -266,7 +270,8 @@ export class WatchHistoryService extends Effect.Service<WatchHistoryService>()(
               .where(
                 and(
                   eq(watchHistory.userId, userId),
-                  eq(watchHistory.status, "watching")
+                  eq(watchHistory.status, "watching"),
+                  gte(watchHistory.positionSeconds, minimumResumeSeconds)
                 )
               )
               .orderBy(watchHistory.malId, desc(watchHistory.updatedAt))

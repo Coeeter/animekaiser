@@ -25,6 +25,7 @@ import {
   History,
   Home,
   LogIn,
+  MonitorPlay,
   MoreHorizontal,
   RefreshCcw,
   Search,
@@ -70,6 +71,13 @@ const moreLinks: ReadonlyArray<MoreLink> = [
     href: "/random",
     icon: Shuffle,
     description: "Surprise me with something",
+  },
+  {
+    title: "Watching",
+    href: "/watching",
+    icon: MonitorPlay,
+    description: "Continue watching and what's next",
+    requiresAuth: true,
   },
   {
     title: "Watch history",
