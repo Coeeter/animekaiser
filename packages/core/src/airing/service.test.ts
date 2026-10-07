@@ -1,6 +1,10 @@
 import { expect, test } from "bun:test"
 import type { StreamEpisodeCatalog } from "@animekaiser/domain"
-import { availabilityTtlSeconds, resolveAiredEpisode } from "./service"
+import {
+  availabilityTtlSeconds,
+  resolveAiredEpisode,
+  resolveLatestAiredAt,
+} from "./service"
 
 const now = new Date("2026-09-27T12:00:00Z")
 
@@ -119,4 +123,83 @@ test("shows the provider doesn't carry and provider errors back off", () => {
   expect(availabilityTtlSeconds(catalogWithStatus("unavailable"), false)).toBe(
     30 * 60
   )
+})
+
+const episode = (number: number, airedAt: string | null) => ({
+  number,
+  title: null,
+  overview: null,
+  image: null,
+  airedAt,
+})
+
+test("a finished show catching up its episode count is not a new airing", () => {
+  // K-ON!: ani.zip dates episodes 1-12 (2009) but not 13, so a sync without
+  // AniList stored 12, and the next sync with AniList answered 13.
+  const konAniZip = [
+    episode(1, "2009-04-02T15:00:00Z"),
+    episode(12, "2009-06-18T15:00:00Z"),
+    episode(13, null),
+  ]
+  expect(
+    resolveLatestAiredAt({
+      resolved: { episode: 13, source: "anilist", airedAt: null },
+      airingStatus: "FINISHED",
+      prior: {
+        airingStatus: "FINISHED",
+        latestAiredEpisode: 12,
+        latestAiredAt: null,
+      },
+      anizip: konAniZip,
+      now,
+    })
+  ).toEqual(new Date("2009-06-18T15:00:00Z"))
+})
+
+test("a finished show without dated episodes drops a stale recent airing", () => {
+  expect(
+    resolveLatestAiredAt({
+      resolved: { episode: 13, source: "anilist", airedAt: null },
+      airingStatus: "FINISHED",
+      prior: {
+        airingStatus: "FINISHED",
+        latestAiredEpisode: 13,
+        latestAiredAt: new Date("2026-09-27T11:10:00Z"),
+      },
+      anizip: [],
+      now,
+    })
+  ).toBeNull()
+})
+
+test("an airing show advancing without a date aired since the last sync", () => {
+  expect(
+    resolveLatestAiredAt({
+      resolved: { episode: 5, source: "anilist", airedAt: null },
+      airingStatus: "RELEASING",
+      prior: {
+        airingStatus: "RELEASING",
+        latestAiredEpisode: 4,
+        latestAiredAt: new Date("2026-09-20T15:00:00Z"),
+      },
+      anizip: [],
+      now,
+    })
+  ).toEqual(now)
+})
+
+test("a finale that just ended an airing show still counts as new", () => {
+  expect(
+    resolveLatestAiredAt({
+      resolved: { episode: 12, source: "anilist", airedAt: null },
+      airingStatus: "FINISHED",
+      prior: {
+        airingStatus: "RELEASING",
+        latestAiredEpisode: 11,
+        latestAiredAt: new Date("2026-09-20T15:00:00Z"),
+      },
+      anizip: [],
+      now,
+    })
+  ).toEqual(now)
 })

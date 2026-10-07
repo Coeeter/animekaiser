@@ -159,6 +159,48 @@ export const resolveAiredEpisode = (input: {
   return null
 }
 
+const isAiring = (status: string | null | undefined) =>
+  status === "RELEASING" || status === "HIATUS"
+
+const latestDatedAiring = (
+  episodes: ReadonlyArray<EpisodeMetadata>,
+  now: Date
+) =>
+  episodes.reduce<Date | null>((latest, episode) => {
+    const airedAt = episode.airedAt ? new Date(episode.airedAt) : null
+    if (!airedAt || airedAt.getTime() > now.getTime()) return latest
+    return !latest || airedAt > latest ? airedAt : latest
+  }, null)
+
+// When the aired-episode count goes up without a known air date, it is only
+// "just aired" for a show that is airing. A finished show's count also rises
+// when one source catches up with another (AniList answering after ani.zip
+// stood in), which once marked K-ON! episode 13 as aired minutes ago.
+export const resolveLatestAiredAt = (input: {
+  resolved: AiredEpisodeResolution | null
+  airingStatus: string | null
+  prior: {
+    airingStatus: string | null
+    latestAiredEpisode: number | null
+    latestAiredAt: Date | null
+  } | null
+  anizip: ReadonlyArray<EpisodeMetadata>
+  now: Date
+}) => {
+  const { resolved, prior, now } = input
+  if (resolved?.airedAt) return resolved.airedAt
+  const advanced =
+    resolved !== null &&
+    prior?.latestAiredEpisode != null &&
+    resolved.episode > prior.latestAiredEpisode
+  const sinceLastSync = advanced ? now : (prior?.latestAiredAt ?? null)
+  if (isAiring(input.airingStatus)) return sinceLastSync
+  return (
+    latestDatedAiring(input.anizip, now) ??
+    (isAiring(prior?.airingStatus) ? sinceLastSync : null)
+  )
+}
+
 export class AiringService extends Effect.Service<AiringService>()(
   "@animekaiser/core/AiringService",
   {
@@ -272,17 +314,18 @@ export class AiringService extends Effect.Service<AiringService>()(
                 }
 
                 const prior = previous.get(anime.malId)
-                const advanced =
-                  resolved !== null &&
-                  prior?.latestAiredEpisode !== undefined &&
-                  prior.latestAiredEpisode !== null &&
-                  resolved.episode > prior.latestAiredEpisode
-                const latestAiredAt =
-                  resolved?.airedAt ??
-                  (advanced ? now : (prior?.latestAiredAt ?? null))
+                const airingStatus =
+                  anilist?.status ?? prior?.airingStatus ?? null
+                const latestAiredAt = resolveLatestAiredAt({
+                  resolved,
+                  airingStatus,
+                  prior: prior ?? null,
+                  anizip,
+                  now,
+                })
 
                 const values = {
-                  airingStatus: anilist?.status ?? prior?.airingStatus ?? null,
+                  airingStatus,
                   totalEpisodes: anilist?.episodes ?? anime.episodes,
                   latestAiredEpisode:
                     resolved?.episode ?? prior?.latestAiredEpisode ?? null,
