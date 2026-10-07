@@ -67,9 +67,8 @@ export function PlayerSkipButton({
 
   return (
     <Button
-      className="pointer-events-auto border border-white/35 bg-black/70 text-white shadow-[0_8px_30px_rgba(0,0,0,0.55)] backdrop-blur-md hover:border-white hover:bg-white hover:text-black"
+      className="pointer-events-auto border border-white/35 bg-black/70 text-white shadow-[0_8px_30px_rgba(0,0,0,0.55)] backdrop-blur-md animate-in fade-in-0 hover:border-white hover:bg-white hover:text-black"
       variant="secondary"
-      size="sm"
       onClick={() => onSkip(target)}
     >
       <SkipForward data-icon="inline-start" />

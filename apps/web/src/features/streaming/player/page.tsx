@@ -665,7 +665,14 @@ function StreamPlayer({
           />
 
           {mode === "full" ? (
-            <div className="pointer-events-none absolute inset-x-4 bottom-14 z-30 flex flex-wrap justify-center gap-2 md:bottom-36">
+            <div
+              className={cn(
+                "pointer-events-none absolute right-4 z-30 flex gap-2 transition-[bottom] duration-200 md:right-8",
+                controlsVisible
+                  ? "bottom-14 md:bottom-36"
+                  : "bottom-4 md:bottom-10"
+              )}
+            >
               <PlayerSkipButton
                 kind="intro"
                 segment={playback.intro}
