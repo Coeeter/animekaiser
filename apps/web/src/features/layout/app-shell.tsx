@@ -17,6 +17,7 @@ import {
 import { SearchDialog } from "../anime/common/search-dialog"
 import { isProtectedRoute, sessionAtom } from "../auth/atoms"
 import { ownProfileAtom } from "../profile/atoms"
+import { preferencesSyncAtom } from "../settings/preferences-sync"
 import { SettingsDialog } from "../settings/settings-dialog"
 import { PlaybackSessionHost } from "../streaming/playback-session"
 import { AppSidebar, AppSidebarProvider } from "./app-sidebar"
@@ -96,6 +97,7 @@ function RpcConnectionMonitor() {
   const status = useAtomValue(rpcConnectionStatusAtom)
 
   useAtomMount(rpcConnectionRecoveryAtom(registry))
+  useAtomMount(preferencesSyncAtom)
 
   if (status === "connected") return null
 

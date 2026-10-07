@@ -122,6 +122,16 @@ export const ProfileHandlersLive = ProfileRpcs.toLayer(
             },
           })
         }),
+      GetPreferences: () =>
+        Effect.gen(function* () {
+          const current = yield* CurrentUser
+          return yield* ProfileService.getPreferences(current.id)
+        }),
+      UpdatePreferences: ({ preferences }) =>
+        Effect.gen(function* () {
+          const current = yield* CurrentUser
+          yield* ProfileService.updatePreferences(current.id, preferences)
+        }),
       UpdateProfile: ({ description }) =>
         Effect.gen(function* () {
           const current = yield* CurrentUser

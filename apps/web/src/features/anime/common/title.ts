@@ -1,7 +1,7 @@
-import type { AnimeTitle } from "@animekaiser/domain"
+import type { AnimeTitle, AnimeTitlePreference } from "@animekaiser/domain"
 import { Atom } from "@effect-atom/atom-react"
 
-export type AnimeTitlePreference = "english" | "romaji"
+export type { AnimeTitlePreference }
 
 const titlePreferenceKey = "anime-title-preference"
 
@@ -16,6 +16,14 @@ export const animeTitlePreferenceAtom = Atom.make<AnimeTitlePreference>(
   initialTitlePreference()
 ).pipe(Atom.keepAlive)
 
+export const writeStoredTitlePreference = (
+  preference: AnimeTitlePreference
+) => {
+  try {
+    window.localStorage.setItem(titlePreferenceKey, preference)
+  } catch {}
+}
+
 export const setAnimeTitlePreferenceAtom = Atom.writable<
   AnimeTitlePreference,
   AnimeTitlePreference
@@ -23,9 +31,7 @@ export const setAnimeTitlePreferenceAtom = Atom.writable<
   (get) => get(animeTitlePreferenceAtom),
   (ctx, preference) => {
     ctx.set(animeTitlePreferenceAtom, preference)
-    try {
-      window.localStorage.setItem(titlePreferenceKey, preference)
-    } catch {}
+    writeStoredTitlePreference(preference)
   }
 )
 

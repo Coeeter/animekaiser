@@ -1,8 +1,9 @@
 import { Database, profile, user } from "@animekaiser/db"
-import { ProfileOperationError } from "@animekaiser/domain"
+import { ProfileOperationError, UserPreferences } from "@animekaiser/domain"
 import { eq, inArray } from "drizzle-orm"
 import * as Effect from "effect/Effect"
 import * as Option from "effect/Option"
+import * as Schema from "effect/Schema"
 import { usernameCandidates, usernameFromEmail } from "./username"
 
 export type ProfileRecord = {
@@ -239,6 +240,64 @@ export class ProfileService extends Effect.Service<ProfileService>()(
           )
       })
 
+      // Stored preferences that no longer decode are treated as never saved,
+      // so the client re-uploads its current ones instead of failing.
+      const getPreferences = Effect.fn("ProfileService.getPreferences")(
+        function* (userId: string) {
+          const rows = yield* database
+            .execute((db) =>
+              db
+                .select({ preferences: profile.preferences })
+                .from(profile)
+                .where(eq(profile.userId, userId))
+                .limit(1)
+            )
+            .pipe(
+              Effect.catchTag("DatabaseError", () =>
+                Effect.fail(
+                  new ProfileOperationError({
+                    message: "Unable to load your preferences.",
+                  })
+                )
+              )
+            )
+          const stored = rows.at(0)?.preferences
+          if (stored == null) return null
+          return yield* Schema.decodeUnknown(UserPreferences)(stored).pipe(
+            Effect.orElseSucceed(() => null)
+          )
+        }
+      )
+
+      // A user without a profile row predates onboarding, so creating one
+      // here must not send them back through it.
+      const updatePreferences = Effect.fn("ProfileService.updatePreferences")(
+        function* (userId: string, preferences: UserPreferences) {
+          const encoded = yield* Schema.encode(UserPreferences)(
+            preferences
+          ).pipe(Effect.orDie)
+          yield* database
+            .execute((db) =>
+              db
+                .insert(profile)
+                .values({ userId, onboarded: true, preferences: encoded })
+                .onConflictDoUpdate({
+                  target: profile.userId,
+                  set: { preferences: encoded, updatedAt: new Date() },
+                })
+            )
+            .pipe(
+              Effect.catchTag("DatabaseError", () =>
+                Effect.fail(
+                  new ProfileOperationError({
+                    message: "Unable to save your preferences.",
+                  })
+                )
+              )
+            )
+        }
+      )
+
       const updateDescription = Effect.fn("ProfileService.updateDescription")(
         function* (userId: string, description: string | null) {
           yield* database
@@ -341,6 +400,8 @@ export class ProfileService extends Effect.Service<ProfileService>()(
         suggestUsernames,
         isUsernameAvailable,
         setOnboarded,
+        getPreferences,
+        updatePreferences,
         updateDescription,
         updatePrivacy,
         setBannerKey,

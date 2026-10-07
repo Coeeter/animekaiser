@@ -1,4 +1,4 @@
-import { boolean, pgTable, text, timestamp } from "drizzle-orm/pg-core"
+import { boolean, jsonb, pgTable, text, timestamp } from "drizzle-orm/pg-core"
 import { user } from "./auth"
 
 export const profile = pgTable("profile", {
@@ -12,6 +12,8 @@ export const profile = pgTable("profile", {
   shareActivity: boolean("share_activity").default(true).notNull(),
   shareList: boolean("share_list").default(true).notNull(),
   onboarded: boolean("onboarded").default(false).notNull(),
+  // Encoded domain UserPreferences; null until the user's first save.
+  preferences: jsonb("preferences"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at")
     .defaultNow()

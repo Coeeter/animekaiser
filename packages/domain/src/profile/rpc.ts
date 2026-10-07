@@ -10,6 +10,7 @@ import {
   PublicProfile,
   UsernameSuggestions,
 } from "./models"
+import { UserPreferences } from "./preferences"
 import { ProfileStats, PublicProfileStats } from "./stats"
 
 export class GetOwnProfile extends Rpc.make("GetOwnProfile", {
@@ -106,6 +107,17 @@ export class CompleteOnboarding extends Rpc.make("CompleteOnboarding", {
   error: ProfileOperationError,
 }) {}
 
+export class GetPreferences extends Rpc.make("GetPreferences", {
+  success: Schema.NullOr(UserPreferences),
+  error: ProfileOperationError,
+}) {}
+
+export class UpdatePreferences extends Rpc.make("UpdatePreferences", {
+  payload: { preferences: UserPreferences },
+  success: Schema.Void,
+  error: ProfileOperationError,
+}) {}
+
 export class DeleteAccount extends Rpc.make("DeleteAccount", {
   payload: { password: Schema.String },
   success: Schema.Void,
@@ -129,6 +141,8 @@ class AuthenticatedProfileRpcs extends RpcGroup.make(
   CheckUsername,
   BeginOnboarding,
   CompleteOnboarding,
+  GetPreferences,
+  UpdatePreferences,
   DeleteAccount
 ).middleware(Authentication) {}
 
