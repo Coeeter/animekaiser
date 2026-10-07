@@ -1,8 +1,8 @@
 import { Result, useAtomValue } from "@effect-atom/atom-react"
 import { createFileRoute, Navigate } from "@tanstack/react-router"
 import * as Schema from "effect/Schema"
-import { LoaderCircle } from "lucide-react"
 import { watchTargetAtom } from "../features/streaming/atoms"
+import { StreamPlayerPendingPage } from "../features/streaming/player/pending-page"
 
 const PlayMalId = Schema.NumberFromString.pipe(Schema.int(), Schema.positive())
 
@@ -41,9 +41,5 @@ function PlayRoute() {
     .onFailure(() => (
       <Navigate to="/series/$id" params={{ id: malId }} replace />
     ))
-    .orElse(() => (
-      <div className="grid min-h-[60vh] place-items-center text-muted-foreground">
-        <LoaderCircle className="size-8 animate-spin" />
-      </div>
-    ))
+    .orElse(() => <StreamPlayerPendingPage />)
 }
