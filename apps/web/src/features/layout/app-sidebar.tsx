@@ -40,6 +40,8 @@ import {
 import { sessionAtom } from "../auth/atoms"
 import { displayUsername, userInitials } from "../auth/user"
 import { settingsOpenAtom, settingsSectionAtom } from "../settings/atoms"
+import { shortcutsAtom, toggleSidebarShortcutAtom } from "../shortcuts/atoms"
+import { formatBinding } from "../shortcuts/shortcuts"
 import { MobileNav } from "./mobile-nav"
 import type { NavItem } from "./nav-links"
 import { mainLinks, personalLinks } from "./nav-links"
@@ -125,6 +127,7 @@ const isPlayerRoute = (pathname: string) =>
 export function AppSidebarProvider({ children }: { children: ReactNode }) {
   const pathname = useLocation({ select: (l) => l.pathname })
   const onPlayer = isPlayerRoute(pathname)
+  const toggleSidebarShortcut = useAtomValue(toggleSidebarShortcutAtom)
   const [preferredOpen, setPreferredOpen] = useState(true)
   const [openOnPlayerPage, setOpenOnPlayerPage] = useState<string | null>(null)
   const open = onPlayer ? openOnPlayerPage === pathname : preferredOpen
@@ -140,6 +143,7 @@ export function AppSidebarProvider({ children }: { children: ReactNode }) {
 
   return (
     <SidebarProvider
+      keyboardShortcut={toggleSidebarShortcut}
       open={open}
       onOpenChange={(next) =>
         onPlayer
@@ -156,6 +160,7 @@ export function AppSidebarProvider({ children }: { children: ReactNode }) {
 
 export function AppSidebar({ children }: { children: ReactNode }) {
   const pathname = useLocation({ select: (l) => l.pathname })
+  const searchBinding = useAtomValue(shortcutsAtom).search.at(0)
   const isWatchRoute = isPlayerRoute(pathname)
   const setSearchOpen = useAtomSet(searchOpenAtom)
   const setSettingsSection = useAtomSet(settingsSectionAtom)
@@ -202,9 +207,11 @@ export function AppSidebar({ children }: { children: ReactNode }) {
               Search anime
             </span>
             <span className="ml-auto hidden items-center gap-1 text-[10px] tracking-[0.2em] text-sidebar-foreground/50 uppercase group-data-[collapsible=icon]:hidden md:flex">
-              <span className="rounded-md border border-sidebar-border px-1.5 py-0.5">
-                ⌘K
-              </span>
+              {searchBinding ? (
+                <span className="rounded-md border border-sidebar-border px-1.5 py-0.5">
+                  {formatBinding(searchBinding)}
+                </span>
+              ) : null}
             </span>
           </button>
         </SidebarHeader>

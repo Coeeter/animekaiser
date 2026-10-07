@@ -1,5 +1,6 @@
 import type { LucideIcon } from "lucide-react"
 import {
+  Keyboard,
   Link2,
   Play,
   Settings2,
@@ -42,6 +43,11 @@ export const settingsSections: ReadonlyArray<SettingsSectionDef> = [
     title: "Playback",
     icon: Play,
     description: "Player defaults and subtitle appearance.",
+  },
+  {
+    title: "Shortcuts",
+    icon: Keyboard,
+    description: "Change the keyboard shortcuts for the app and the player.",
   },
   {
     title: "Integrations",
@@ -187,6 +193,27 @@ export const settingEntries: ReadonlyArray<SettingEntry> = [
     section: "Playback",
     title: "Auto skip outro",
     keywords: ["ending", "ed", "skip"],
+  },
+  {
+    id: "shortcuts.general",
+    section: "Shortcuts",
+    title: "General shortcuts",
+    keywords: ["keyboard", "keys", "hotkeys", "search", "sidebar", "cmd k"],
+  },
+  {
+    id: "shortcuts.player",
+    section: "Shortcuts",
+    title: "Player shortcuts",
+    keywords: [
+      "keyboard",
+      "keys",
+      "hotkeys",
+      "play",
+      "pause",
+      "seek",
+      "volume",
+      "fullscreen",
+    ],
   },
   {
     id: "integrations.syncOnFinish",

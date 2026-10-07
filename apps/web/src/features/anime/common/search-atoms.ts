@@ -1,4 +1,6 @@
 import { Atom } from "@effect-atom/atom-react"
+import { shortcutsAtom } from "../../shortcuts/atoms"
+import { isTypingTarget, matchesAction } from "../../shortcuts/shortcuts"
 
 export const searchOpenAtom = Atom.make(false)
 
@@ -57,23 +59,12 @@ export const clearRecentSearchesAtom = Atom.writable<
 )
 
 export const searchShortcutAtom = Atom.make((get) => {
+  const shortcuts = get(shortcutsAtom)
   const keydown = (event: KeyboardEvent) => {
-    const target = event.target
-    const editing =
-      target instanceof HTMLElement &&
-      (target.isContentEditable ||
-        ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName))
-
-    const commandK =
-      event.key.toLowerCase() === "k" && (event.metaKey || event.ctrlKey)
-    const slash =
-      event.key === "/" &&
-      !editing &&
-      !event.metaKey &&
-      !event.ctrlKey &&
-      !event.altKey
-
-    if (!commandK && !slash) return
+    if (!matchesAction(event, shortcuts, "search")) return
+    // Single-key bindings like "/" must not fire while typing.
+    const single = !(event.metaKey || event.ctrlKey)
+    if (single && isTypingTarget(event.target)) return
 
     event.preventDefault()
     get.set(searchOpenAtom, true)

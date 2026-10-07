@@ -7,6 +7,7 @@ export const SettingsSection = Schema.Literal(
   "Profile",
   "General",
   "Playback",
+  "Shortcuts",
   "Integrations",
   "Privacy & data"
 )
@@ -21,6 +22,7 @@ const sectionAliases: Record<string, SettingsSection> = {
   Appearance: "General",
   Site: "General",
   Player: "Playback",
+  Keyboard: "Shortcuts",
   Subtitles: "Playback",
   Sessions: "Account",
   Passkeys: "Account",

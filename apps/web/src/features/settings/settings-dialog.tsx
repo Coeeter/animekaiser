@@ -45,6 +45,7 @@ import {
   settingsSections,
 } from "./settings-registry"
 import { NoSettingsMatch } from "./settings-shared"
+import { ShortcutsPanel } from "./shortcuts-panel"
 
 function SectionContent({
   section,
@@ -64,6 +65,7 @@ function SectionContent({
   if (section === "Profile") return <ProfilePanel user={user} />
   if (section === "General") return <GeneralPanel />
   if (section === "Playback") return <PlaybackPanel />
+  if (section === "Shortcuts") return <ShortcutsPanel />
   if (section === "Integrations") return <IntegrationsPanel user={user} />
   return <PrivacyPanel />
 }

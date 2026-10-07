@@ -1,14 +1,12 @@
 import type { StreamEpisode } from "@animekaiser/domain"
+import { useAtomValue } from "@effect-atom/atom-react"
 import { useEffect, useRef } from "react"
-
-const isEditingKeyboardTarget = (target: EventTarget | null) => {
-  if (!(target instanceof HTMLElement)) return false
-  if (target.isContentEditable) return true
-  if (target instanceof HTMLInputElement) return target.type !== "range"
-  return (
-    target instanceof HTMLTextAreaElement || target instanceof HTMLSelectElement
-  )
-}
+import { shortcutsAtom } from "../../../shortcuts/atoms"
+import {
+  isTypingTarget,
+  matchesAction,
+  type ShortcutActionId,
+} from "../../../shortcuts/shortcuts"
 
 export function usePlayerKeyboard({
   togglePlayback,
@@ -35,6 +33,10 @@ export function usePlayerKeyboard({
   goNext: () => void
   previousEpisode: StreamEpisode | null
 }) {
+  const shortcuts = useAtomValue(shortcutsAtom)
+  const shortcutsRef = useRef(shortcuts)
+  shortcutsRef.current = shortcuts
+
   const handlersRef = useRef({
     togglePlayback,
     seekBy,
@@ -65,79 +67,35 @@ export function usePlayerKeyboard({
 
   useEffect(() => {
     const keydown = (event: KeyboardEvent) => {
-      if (
-        isEditingKeyboardTarget(event.target) ||
-        event.metaKey ||
-        event.ctrlKey ||
-        event.altKey
-      ) {
-        return
-      }
+      if (isTypingTarget(event.target)) return
 
       const h = handlersRef.current
+      const actions: ReadonlyArray<[ShortcutActionId, () => void, boolean]> = [
+        ["playPause", h.togglePlayback, true],
+        ["seekBack", () => h.seekBy(-10), true],
+        ["seekForward", () => h.seekBy(10), true],
+        ["volumeUp", () => h.adjustVolume(0.05), true],
+        ["volumeDown", () => h.adjustVolume(-0.05), true],
+        ["mute", h.toggleMute, true],
+        ["fullscreen", h.toggleFullscreen, true],
+        ["cycleCaptions", h.cycleCaptions, true],
+        ["miniPlayer", h.toggleMiniPlayer, false],
+        ["nextEpisode", h.goNext, false],
+        [
+          "previousEpisode",
+          () => h.navigateToEpisode(h.previousEpisode),
+          false,
+        ],
+      ]
+      const match = actions.find(([action]) =>
+        matchesAction(event, shortcutsRef.current, action)
+      )
+      if (!match) return
 
-      if (event.key === " " || event.key.toLowerCase() === "k") {
-        event.preventDefault()
-        h.togglePlayback()
-        h.revealControls()
-        return
-      }
-      if (event.key === "ArrowLeft" || event.key.toLowerCase() === "j") {
-        event.preventDefault()
-        h.seekBy(-10)
-        h.revealControls()
-        return
-      }
-      if (event.key === "ArrowRight" || event.key.toLowerCase() === "l") {
-        event.preventDefault()
-        h.seekBy(10)
-        h.revealControls()
-        return
-      }
-      if (event.key === "ArrowUp") {
-        event.preventDefault()
-        h.adjustVolume(0.05)
-        h.revealControls()
-        return
-      }
-      if (event.key === "ArrowDown") {
-        event.preventDefault()
-        h.adjustVolume(-0.05)
-        h.revealControls()
-        return
-      }
-      if (event.key.toLowerCase() === "m") {
-        event.preventDefault()
-        h.toggleMute()
-        h.revealControls()
-        return
-      }
-      if (event.key.toLowerCase() === "f") {
-        event.preventDefault()
-        h.toggleFullscreen()
-        h.revealControls()
-        return
-      }
-      if (event.key.toLowerCase() === "c") {
-        event.preventDefault()
-        h.cycleCaptions()
-        h.revealControls()
-        return
-      }
-      if (event.key.toLowerCase() === "i") {
-        event.preventDefault()
-        h.toggleMiniPlayer()
-        return
-      }
-      if (event.key.toLowerCase() === "n") {
-        event.preventDefault()
-        h.goNext()
-        return
-      }
-      if (event.key.toLowerCase() === "p") {
-        event.preventDefault()
-        h.navigateToEpisode(h.previousEpisode)
-      }
+      event.preventDefault()
+      const [, run, reveal] = match
+      run()
+      if (reveal) h.revealControls()
     }
     window.addEventListener("keydown", keydown)
     return () => window.removeEventListener("keydown", keydown)
