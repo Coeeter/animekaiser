@@ -1,8 +1,14 @@
-import type { StreamEpisode, StreamPlayback } from "@animekaiser/domain"
+import type {
+  AnimeItem,
+  StreamAudio,
+  StreamEpisode,
+  StreamPlayback,
+  StreamProviderId,
+} from "@animekaiser/domain"
 import { Badge } from "@animekaiser/ui/components/badge"
 import { Button } from "@animekaiser/ui/components/button"
 import { cn } from "@animekaiser/ui/lib/utils"
-import { useAtomValue } from "@effect-atom/atom-react"
+import { Result, useAtomValue } from "@effect-atom/atom-react"
 import { Link } from "@tanstack/react-router"
 import {
   ChevronRight,
@@ -17,7 +23,7 @@ import type { ReactNode } from "react"
 import { AnimeTitle } from "../../anime/common/anime-title"
 import { NextAiringNotice } from "../../anime/schedule/next-airing-notice"
 import { episodeSpoilerAtom } from "../../history/atoms"
-import { providerLabelAtom } from "../atoms"
+import { nextSeasonEpisodesAtom, providerLabelAtom } from "../atoms"
 import { EpisodeThumbnail } from "../episode-thumbnail"
 import {
   audioLabel,
@@ -49,6 +55,7 @@ export function PlayerMobilePanel({
 }) {
   const providerName = useAtomValue(providerLabelAtom(playback.provider))
   const displayTitle = episodeTitle(playback.episode)
+  const upcoming = upcomingEpisodes(episodes, playback.episode.id)
 
   return (
     <div
@@ -126,14 +133,24 @@ export function PlayerMobilePanel({
             </button>
           </div>
           <div className="flex flex-col gap-2">
-            {upcomingEpisodes(episodes, playback.episode.id).map((episode) => (
+            {upcoming.map((episode) => (
               <MobileEpisodeRow
                 key={episode.id}
-                playback={playback}
+                malId={playback.anime.malId}
+                provider={playback.provider}
+                audio={playback.audio}
+                currentEpisodeId={playback.episode.id}
                 episode={episode}
               />
             ))}
           </div>
+          {upcoming.length < upNextLength &&
+          playback.anime.status === "FINISHED" ? (
+            <NextSeasonUpNext
+              playback={playback}
+              count={upNextLength - upcoming.length + 1}
+            />
+          ) : null}
         </section>
       ) : null}
     </div>
@@ -148,7 +165,84 @@ const upcomingEpisodes = (
     (episode) => episode.id === currentEpisodeId
   )
   const start = currentIndex >= 0 ? currentIndex : 0
-  return episodes.slice(start, start + 6)
+  return episodes.slice(start, start + upNextLength)
+}
+
+const upNextLength = 6
+
+const upcomingLabel = (anime: AnimeItem) => {
+  const when = [
+    anime.season && `${anime.season[0]}${anime.season.slice(1).toLowerCase()}`,
+    anime.seasonYear,
+  ]
+    .filter(Boolean)
+    .join(" ")
+  return when ? `Upcoming · ${when}` : "Upcoming · date not announced"
+}
+
+// Near the end of a finished season, the rest of the list continues into the
+// next entry of the watch order so "Next" never leads somewhere unseen.
+function NextSeasonUpNext({
+  playback,
+  count,
+}: {
+  playback: StreamPlayback
+  count: number
+}) {
+  const next = Result.builder(
+    useAtomValue(
+      nextSeasonEpisodesAtom({
+        malId: playback.anime.malId,
+        provider: playback.provider,
+      })
+    )
+  )
+    .onSuccess((value) => value)
+    .orNull()
+
+  if (!next) return null
+
+  return (
+    <div className="flex flex-col gap-2">
+      <Link
+        to="/series/$id"
+        params={{ id: next.anime.malId }}
+        className="mt-1 flex items-center gap-3 rounded-2xl px-1 py-1 transition hover:bg-accent"
+      >
+        {next.anime.coverImage ? (
+          <img
+            src={next.anime.coverImage}
+            alt=""
+            className="aspect-2/3 w-8 shrink-0 rounded-md object-cover"
+          />
+        ) : null}
+        <span className="min-w-0 flex-1">
+          <span className="block text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">
+            Next in the story
+          </span>
+          <span className="block truncate text-sm font-semibold">
+            <AnimeTitle title={next.anime.title} />
+          </span>
+          {next.provider === null ? (
+            <span className="block text-xs text-muted-foreground">
+              {upcomingLabel(next.anime)}
+            </span>
+          ) : null}
+        </span>
+        <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
+      </Link>
+      {next.episodes.slice(0, count).map((episode) => (
+        <MobileEpisodeRow
+          key={episode.id}
+          malId={next.anime.malId}
+          provider={next.provider ?? playback.provider}
+          audio={playback.audio}
+          currentEpisodeId={null}
+          episode={episode}
+        />
+      ))}
+    </div>
+  )
 }
 
 function PanelRow({
@@ -198,21 +292,27 @@ function PanelRow({
 }
 
 function MobileEpisodeRow({
-  playback,
+  malId,
+  provider,
+  audio: preferred,
+  currentEpisodeId,
   episode,
 }: {
-  playback: StreamPlayback
+  malId: number
+  provider: StreamProviderId
+  audio: StreamAudio
+  currentEpisodeId: string | null
   episode: StreamEpisode
 }) {
-  const audio = episode.availableAudio.includes(playback.audio)
-    ? playback.audio
+  const audio = episode.availableAudio.includes(preferred)
+    ? preferred
     : preferredAudio(episode)
-  const isCurrent = episode.id === playback.episode.id
+  const isCurrent = episode.id === currentEpisodeId
   const title = episodeTitle(episode)
   const spoiler = useAtomValue(
     episodeSpoilerAtom({
-      malId: playback.anime.malId,
-      provider: playback.provider,
+      malId,
+      provider,
       number: episode.number,
     })
   )
@@ -271,8 +371,8 @@ function MobileEpisodeRow({
     <Link
       to="/watch/$malId/$provider/$episodeId"
       params={{
-        malId: playback.anime.malId,
-        provider: playback.provider,
+        malId,
+        provider,
         episodeId: episode.id,
       }}
       search={{ audio }}

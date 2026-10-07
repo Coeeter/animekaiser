@@ -1,6 +1,7 @@
 import type {
   AnimeItem,
   StreamAudio,
+  StreamEpisode,
   StreamProviderId,
 } from "@animekaiser/domain"
 import { Atom, Result } from "@effect-atom/atom-react"
@@ -153,3 +154,52 @@ const nextSeasonFamily = Atom.family(({ malId, provider }: NextSeasonKey) =>
 
 export const nextSeasonAtom = (key: NextSeasonKey) =>
   nextSeasonFamily(Data.struct(key))
+
+export type NextSeasonEpisodes = {
+  readonly anime: AnimeItem
+  readonly provider: StreamProviderId | null
+  readonly episodes: ReadonlyArray<StreamEpisode>
+}
+
+// The next released entry in the watch order with its episodes, from the
+// provider in use when it has them, otherwise from whichever provider does.
+const nextSeasonEpisodesFamily = Atom.family(
+  ({ malId, provider }: NextSeasonKey) =>
+    Atom.make((get) =>
+      Effect.gen(function* () {
+        const order = yield* get.result(watchOrderAtom(malId))
+        const index = order.entries.findIndex((entry) => entry.malId === malId)
+        const anime = index === -1 ? undefined : order.entries[index + 1]
+        if (!anime) return null
+        if (anime.status === "NOT_YET_RELEASED") {
+          return {
+            anime,
+            provider: null,
+            episodes: [],
+          } satisfies NextSeasonEpisodes
+        }
+        const withEpisodes = (requested?: StreamProviderId) =>
+          get.result(streamEpisodesAtom(anime.malId, requested)).pipe(
+            Effect.map(
+              (catalog) =>
+                catalog.providers.find(
+                  (entry) =>
+                    entry.status === "available" && entry.episodes.length > 0
+                ) ?? null
+            ),
+            Effect.orElseSucceed(() => null)
+          )
+        const found = (yield* withEpisodes(provider)) ?? (yield* withEpisodes())
+        return found
+          ? ({
+              anime,
+              provider: found.provider,
+              episodes: found.episodes,
+            } satisfies NextSeasonEpisodes)
+          : null
+      })
+    )
+)
+
+export const nextSeasonEpisodesAtom = (key: NextSeasonKey) =>
+  nextSeasonEpisodesFamily(Data.struct(key))
