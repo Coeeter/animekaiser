@@ -1,3 +1,26 @@
 @import "@animekaiser/ui/globals.css";
 
 @source "../**/*.{ts,tsx}";
+
+@theme {
+  --animate-drift-up: drift-up linear infinite;
+  --animate-drift-down: drift-down linear infinite;
+
+  @keyframes drift-up {
+    from {
+      transform: translateY(0);
+    }
+    to {
+      transform: translateY(-50%);
+    }
+  }
+
+  @keyframes drift-down {
+    from {
+      transform: translateY(-50%);
+    }
+    to {
+      transform: translateY(0);
+    }
+  }
+}
