@@ -26,7 +26,6 @@ import { errorMessage } from "../../utils/error"
 import { sessionAtom } from "../auth/atoms"
 import type { AppUser } from "../auth/user"
 import { AccountPanel } from "./account-panel"
-import { AppearancePanel } from "./appearance-panel"
 import type { SettingsSection } from "./atoms"
 import {
   oauthResultAtom,
@@ -34,9 +33,10 @@ import {
   settingsQueryAtom,
   settingsSectionAtom,
 } from "./atoms"
-import { HistoryPanel } from "./history-panel"
+import { GeneralPanel } from "./general-panel"
 import { IntegrationsPanel } from "./integrations-panel"
 import { PlaybackPanel } from "./playback-panel"
+import { PrivacyPanel } from "./privacy-panel"
 import { ProfilePanel } from "./profile-panel"
 import {
   matchesQuery,
@@ -63,10 +63,10 @@ function SectionContent({
       />
     )
   if (section === "Profile") return <ProfilePanel user={user} />
-  if (section === "Appearance") return <AppearancePanel />
+  if (section === "General") return <GeneralPanel />
   if (section === "Playback") return <PlaybackPanel />
   if (section === "Integrations") return <IntegrationsPanel user={user} />
-  return <HistoryPanel />
+  return <PrivacyPanel />
 }
 
 export function SettingsDialog() {

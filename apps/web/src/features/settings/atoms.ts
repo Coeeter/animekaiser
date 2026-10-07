@@ -5,18 +5,21 @@ import { toast } from "sonner"
 export const SettingsSection = Schema.Literal(
   "Account",
   "Profile",
-  "Appearance",
+  "General",
   "Playback",
   "Integrations",
-  "History"
+  "Privacy & data"
 )
 export type SettingsSection = typeof SettingsSection.Type
 
 export const settingsOpenAtom = Atom.make(false)
 
 const sectionAliases: Record<string, SettingsSection> = {
-  Privacy: "Profile",
-  Site: "Appearance",
+  Privacy: "Privacy & data",
+  History: "Privacy & data",
+  Data: "Privacy & data",
+  Appearance: "General",
+  Site: "General",
   Player: "Playback",
   Subtitles: "Playback",
   Sessions: "Account",

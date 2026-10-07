@@ -5,6 +5,7 @@ import {
 } from "@animekaiser/ui/components/avatar"
 import { Badge } from "@animekaiser/ui/components/badge"
 import { Button } from "@animekaiser/ui/components/button"
+import { Switch } from "@animekaiser/ui/components/switch"
 import {
   Result,
   useAtomRefresh,
@@ -25,8 +26,12 @@ import {
   integrationsReactivityKeys,
 } from "../integrations/atoms"
 import { libraryReactivityKeys, startLibraryImportAtom } from "../library/atoms"
+import {
+  playerPreferencesAtom,
+  updatePlayerPreferencesAtom,
+} from "../streaming/preferences"
 import { settingsOpenAtom } from "./atoms"
-import { AuthRequired, SettingCard } from "./settings-shared"
+import { AuthRequired, SettingCard, SettingHeading } from "./settings-shared"
 
 export function IntegrationsPanel({ user }: { user: AppUser | null }) {
   const setSettingsOpen = useAtomSet(settingsOpenAtom)
@@ -98,6 +103,7 @@ export function IntegrationsPanel({ user }: { user: AppUser | null }) {
 
   return (
     <div className="flex flex-col gap-4">
+      <SyncOnFinishSetting />
       {accounts.map((account) => (
         <SettingCard
           id={`integrations.${account.provider}`}
@@ -203,5 +209,27 @@ export function IntegrationsPanel({ user }: { user: AppUser | null }) {
         </Link>
       </Button>
     </div>
+  )
+}
+
+function SyncOnFinishSetting() {
+  const preferences = useAtomValue(playerPreferencesAtom)
+  const update = useAtomSet(updatePlayerPreferencesAtom)
+
+  return (
+    <SettingCard id="integrations.syncOnFinish" className="p-4">
+      <SettingHeading
+        title="Update your lists when you finish an episode"
+        description="Marks the episode as watched on MyAnimeList and AniList for every account linked below."
+        action={
+          <Switch
+            checked={preferences.syncLibraryOnFinish}
+            onCheckedChange={(checked) =>
+              update({ syncLibraryOnFinish: checked })
+            }
+          />
+        }
+      />
+    </SettingCard>
   )
 }

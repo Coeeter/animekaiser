@@ -1,5 +1,12 @@
 import type { LucideIcon } from "lucide-react"
-import { History, Link2, Palette, Play, Settings2, User } from "lucide-react"
+import {
+  Link2,
+  Play,
+  Settings2,
+  ShieldCheck,
+  SlidersHorizontal,
+  User,
+} from "lucide-react"
 import type { SettingsSection } from "./atoms"
 
 export type SettingEntry = {
@@ -27,8 +34,8 @@ export const settingsSections: ReadonlyArray<SettingsSectionDef> = [
     description: "Public profile, avatar, bio, and visibility.",
   },
   {
-    title: "Appearance",
-    icon: Palette,
+    title: "General",
+    icon: SlidersHorizontal,
     description: "Site-wide display preferences.",
   },
   {
@@ -42,9 +49,9 @@ export const settingsSections: ReadonlyArray<SettingsSectionDef> = [
     description: "MyAnimeList and AniList connections.",
   },
   {
-    title: "History",
-    icon: History,
-    description: "Watch history and resume positions.",
+    title: "Privacy & data",
+    icon: ShieldCheck,
+    description: "Your watch history and a copy of your list.",
   },
 ]
 
@@ -122,8 +129,8 @@ export const settingEntries: ReadonlyArray<SettingEntry> = [
     keywords: ["statistics", "activity", "anime list", "share"],
   },
   {
-    id: "appearance.titleLanguage",
-    section: "Appearance",
+    id: "general.titleLanguage",
+    section: "General",
     title: "Anime title language",
     keywords: ["romaji", "english", "naming"],
   },
@@ -188,10 +195,10 @@ export const settingEntries: ReadonlyArray<SettingEntry> = [
     keywords: ["ending", "ed", "skip"],
   },
   {
-    id: "playback.syncOnFinish",
-    section: "Playback",
-    title: "External list sync",
-    keywords: ["mal", "anilist", "sync", "progress"],
+    id: "integrations.syncOnFinish",
+    section: "Integrations",
+    title: "Update your lists when you finish an episode",
+    keywords: ["mal", "anilist", "sync", "progress", "external list"],
   },
   {
     id: "playback.subtitles",
@@ -212,14 +219,20 @@ export const settingEntries: ReadonlyArray<SettingEntry> = [
     keywords: ["anilist", "al", "connect", "import", "sync"],
   },
   {
-    id: "history.watch",
-    section: "History",
+    id: "privacy.export",
+    section: "Privacy & data",
+    title: "Export your list",
+    keywords: ["download", "backup", "xml", "json", "myanimelist", "anilist"],
+  },
+  {
+    id: "privacy.history",
+    section: "Privacy & data",
     title: "Watch history",
     keywords: ["episodes", "resume", "continue watching"],
   },
   {
-    id: "history.clear",
-    section: "History",
+    id: "privacy.clearHistory",
+    section: "Privacy & data",
     title: "Clear watch history",
     keywords: ["delete", "wipe", "reset"],
   },

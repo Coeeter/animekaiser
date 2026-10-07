@@ -25,7 +25,6 @@ type PlayerPreferenceKey =
   | "autoNext"
   | "autoSkipIntro"
   | "autoSkipOutro"
-  | "syncLibraryOnFinish"
   | "blurUnwatched"
   | "autoLandscape"
 
@@ -58,12 +57,6 @@ const preferenceRows: ReadonlyArray<{
     key: "autoSkipOutro",
     title: "Auto skip outro",
     description: "Skip ending segments automatically when timing data exists.",
-  },
-  {
-    id: "playback.syncOnFinish",
-    key: "syncLibraryOnFinish",
-    title: "External list sync",
-    description: "Update linked list providers after you finish an episode.",
   },
   {
     id: "playback.blurUnwatched",
