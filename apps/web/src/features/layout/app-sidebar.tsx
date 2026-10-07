@@ -181,7 +181,7 @@ export function AppSidebar({ children }: { children: ReactNode }) {
               to="/"
             >
               <img
-                className="size-8 shrink-0 rounded-xl"
+                className="size-8 shrink-0"
                 src="/logo.svg"
                 alt="AnimeKaiser"
               />
@@ -289,11 +289,7 @@ export function AppSidebar({ children }: { children: ReactNode }) {
           <header className="sticky top-0 z-40 border-b border-white/5 bg-background/70 backdrop-blur-xl md:hidden">
             <div className="flex h-14 items-center gap-2 px-3">
               <Link to="/" className="flex shrink-0 items-center gap-2">
-                <img
-                  className="size-8 rounded-xl"
-                  src="/logo.svg"
-                  alt="AnimeKaiser"
-                />
+                <img className="size-8" src="/logo.svg" alt="AnimeKaiser" />
                 <span className="font-heading text-sm font-semibold tracking-wide lowercase">
                   animekaiser
                 </span>

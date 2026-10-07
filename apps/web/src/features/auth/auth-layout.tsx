@@ -9,9 +9,7 @@ export function AuthLayout() {
             to="/"
             className="flex items-center gap-2 font-medium text-foreground"
           >
-            <div className="flex size-8 items-center justify-center rounded-md bg-primary text-primary-foreground">
-              <img src="/logo.svg" alt="AnimeKaiser" className="size-8" />
-            </div>
+            <img src="/logo.svg" alt="AnimeKaiser" className="size-8" />
             animekaiser
           </Link>
         </div>

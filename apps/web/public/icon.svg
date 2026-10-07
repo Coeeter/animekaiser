@@ -1,6 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
   <title>AnimeKaiser</title>
-  <g fill="#B21FC2" transform="skewX(-12) translate(54 0)">
+  <rect width="512" height="512" fill="#0f0b12"/>
+  <g fill="#B21FC2" transform="translate(102 102) scale(0.6) skewX(-12) translate(54 0)">
     <rect x="64" y="40" width="118" height="432" rx="10"/>
     <path d="M206 236 L336 40 L470 40 L318 262 Z"/>
     <path d="M232 292 L322 292 L470 472 L338 472 Z"/>

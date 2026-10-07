@@ -75,7 +75,7 @@ export function WelcomePage({
         to="/"
         className="flex items-center gap-2 font-medium text-foreground"
       >
-        <img src="/logo.svg" alt="AnimeKaiser" className="size-8 rounded-md" />
+        <img src="/logo.svg" alt="AnimeKaiser" className="size-8" />
         animekaiser
       </Link>
       <div className="flex w-full max-w-xl flex-col gap-6">

@@ -32,7 +32,7 @@ export function SiteFooter() {
         <div className="grid gap-10 md:grid-cols-[1.4fr_repeat(3,1fr)]">
           <div className="flex flex-col items-start gap-4">
             <Link to="/" className="flex items-center gap-2.5">
-              <img className="size-9 rounded-xl" src="/logo.svg" alt="" />
+              <img className="size-9" src="/logo.svg" alt="" />
               <span className="font-heading text-base font-semibold tracking-wide lowercase">
                 animekaiser
               </span>
