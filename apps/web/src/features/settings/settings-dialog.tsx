@@ -58,7 +58,6 @@ function SectionContent({
     return (
       <AccountPanel
         user={user}
-        sessionExpiresAt={session?.session.expiresAt ?? null}
         currentSessionToken={session?.session.token ?? null}
       />
     )

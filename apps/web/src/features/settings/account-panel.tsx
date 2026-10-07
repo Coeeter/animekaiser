@@ -15,8 +15,8 @@ import { PasswordInput } from "../../components/password-input"
 import { authClient, navigateAfterAuthChange } from "../../services/api-clients"
 import { errorMessage } from "../../utils/error"
 import type { AppUser } from "../auth/user"
-import { displayUsername } from "../auth/user"
 import { deleteAccountAtom } from "../profile/atoms"
+import { ChangeEmailSection } from "./change-email"
 import { PasskeysSection } from "./passkeys-panel"
 import { SessionsSection } from "./sessions-panel"
 import { AuthRequired, SettingCard, SettingHeading } from "./settings-shared"
@@ -33,11 +33,9 @@ type DeleteAccountValues = {
 
 export function AccountPanel({
   user,
-  sessionExpiresAt,
   currentSessionToken,
 }: {
   user: AppUser | null
-  sessionExpiresAt: Date | null
   currentSessionToken: string | null
 }) {
   const deleteKaiserAccount = useAtomSet(deleteAccountAtom, {
@@ -104,40 +102,7 @@ export function AccountPanel({
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="grid gap-4 xl:grid-cols-2">
-        <SettingCard id="account.identity">
-          <SettingHeading title="Identity" />
-          <dl className="mt-4 flex flex-col gap-3 text-sm">
-            <div>
-              <dt className="text-muted-foreground">Username</dt>
-              <dd className="mt-1 font-medium">@{displayUsername(user)}</dd>
-            </div>
-            <div>
-              <dt className="text-muted-foreground">Email</dt>
-              <dd className="mt-1 font-medium">{user.email}</dd>
-            </div>
-          </dl>
-        </SettingCard>
-        <SettingCard id="account.access">
-          <SettingHeading title="Access" />
-          <dl className="mt-4 flex flex-col gap-3 text-sm">
-            <div>
-              <dt className="text-muted-foreground">Last login method</dt>
-              <dd className="mt-1 font-medium">
-                {authClient.getLastUsedLoginMethod() ?? "Unknown"}
-              </dd>
-            </div>
-            <div>
-              <dt className="text-muted-foreground">Session expires</dt>
-              <dd className="mt-1 font-medium">
-                {sessionExpiresAt
-                  ? sessionExpiresAt.toLocaleString()
-                  : "Unknown"}
-              </dd>
-            </div>
-          </dl>
-        </SettingCard>
-      </div>
+      <ChangeEmailSection email={user.email} />
       <SettingCard id="account.password">
         <form
           className="flex flex-col gap-4"

@@ -26,7 +26,7 @@ export const settingsSections: ReadonlyArray<SettingsSectionDef> = [
   {
     title: "Account",
     icon: Settings2,
-    description: "Identity, password, sessions, and passkeys.",
+    description: "Email, password, sessions, and passkeys.",
   },
   {
     title: "Profile",
@@ -57,16 +57,10 @@ export const settingsSections: ReadonlyArray<SettingsSectionDef> = [
 
 export const settingEntries: ReadonlyArray<SettingEntry> = [
   {
-    id: "account.identity",
+    id: "account.email",
     section: "Account",
-    title: "Identity",
-    keywords: ["username", "email", "handle"],
-  },
-  {
-    id: "account.access",
-    section: "Account",
-    title: "Access",
-    keywords: ["login method", "session expires", "last used"],
+    title: "Email",
+    keywords: ["email", "change email", "address", "login"],
   },
   {
     id: "account.password",

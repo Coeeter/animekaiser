@@ -81,6 +81,9 @@ export const initAuth = (config: AuthConfig) =>
       }),
       emailOTP({
         disableSignUp: true,
+        // Both mailboxes must be confirmed: a code to the current address
+        // proves ownership, a code to the new one proves it is reachable.
+        changeEmail: { enabled: true, verifyCurrentEmail: true },
         async sendVerificationOTP({ email, otp, type }) {
           await config.mailer.sendEmailOtp({ email, otp, type })
           config.logger.info("[Auth] Email OTP sent.", { email, type })
