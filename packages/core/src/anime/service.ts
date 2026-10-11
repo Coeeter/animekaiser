@@ -20,6 +20,7 @@ import type { AnimeCatalogRequest } from "./anilist"
 import { AniListAnimeService } from "./anilist"
 import { AniZipData, AniZipService } from "./anizip"
 import { AnimeCache } from "./cache"
+import { catalogPageSchema } from "./catalog-page"
 import { JikanAnimeService } from "./jikan"
 import { MalAnimeService } from "./mal"
 import { ShikimoriFranchise, ShikimoriService } from "./shikimori"
@@ -358,6 +359,8 @@ export class AnimeService extends Effect.Service<AnimeService>()(
         const studio = input.studio?.trim()
         const key = cacheKey("anime:catalog:v2", request)
         const ttlSeconds = 12 * hour
+        const pageSchema = catalogPageSchema(request)
+        const validatePage = Schema.decodeUnknown(pageSchema)
         const unavailable = Effect.mapError(
           () =>
             new AnimeUnavailableError({
@@ -393,10 +396,10 @@ export class AnimeService extends Effect.Service<AnimeService>()(
             : jikan.getCatalog(request)
         return yield* cachedWithFallback(
           key,
-          AnimePage,
+          pageSchema,
           ttlSeconds,
-          aniList.getCatalog(request),
-          fallback
+          aniList.getCatalog(request).pipe(Effect.flatMap(validatePage)),
+          fallback.pipe(Effect.flatMap(validatePage))
         ).pipe(unavailable)
       })
 

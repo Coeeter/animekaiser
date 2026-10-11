@@ -106,18 +106,14 @@ const AniListMedia = Schema.Struct({
 type AniListMedia = typeof AniListMedia.Type
 
 export const AniListPageResponse = Schema.Struct({
-  data: Schema.NullOr(
-    Schema.Struct({
-      Page: Schema.NullOr(
-        Schema.Struct({
-          pageInfo: Schema.NullOr(
-            Schema.Struct({ hasNextPage: Schema.NullOr(Schema.Boolean) })
-          ),
-          media: Schema.NullOr(Schema.Array(Schema.NullOr(AniListMedia))),
-        })
+  data: Schema.Struct({
+    Page: Schema.Struct({
+      pageInfo: Schema.NullOr(
+        Schema.Struct({ hasNextPage: Schema.NullOr(Schema.Boolean) })
       ),
-    })
-  ),
+      media: Schema.Array(Schema.NullOr(AniListMedia)),
+    }),
+  }),
   errors: Schema.optional(Schema.Array(AniListGraphQlError)),
 })
 

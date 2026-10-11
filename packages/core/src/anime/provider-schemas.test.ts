@@ -111,3 +111,15 @@ test("keeps ani.zip numbered episodes and drops specials", () => {
     },
   ])
 })
+
+test("rejects missing AniList page data instead of treating it as no matches", () => {
+  for (const data of [
+    null,
+    { Page: null },
+    { Page: { pageInfo: null, media: null } },
+  ]) {
+    expect(() =>
+      Schema.decodeUnknownSync(AniListPageResponse)({ data })
+    ).toThrow()
+  }
+})
