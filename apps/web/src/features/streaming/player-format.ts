@@ -123,3 +123,19 @@ export const qualityLabel = (
     level.bitrate > 0 ? ` (${Math.round(level.bitrate / 1000)} kbps)` : ""
   return `${resolution}${bitrate}`
 }
+
+export const preferredQualityIndex = (
+  levels: ReadonlyArray<{ height: number }>,
+  preferredHeight: number | null
+): number => {
+  if (preferredHeight === null) return -1
+  const available = levels
+    .map((level, index) => ({ height: level.height, index }))
+    .filter((level) => level.height > 0)
+    .sort((left, right) => right.height - left.height)
+  return (
+    available.find((level) => level.height <= preferredHeight)?.index ??
+    available.at(-1)?.index ??
+    -1
+  )
+}

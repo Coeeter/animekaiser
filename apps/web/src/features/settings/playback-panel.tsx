@@ -1,3 +1,4 @@
+import { PreferredQuality } from "@animekaiser/domain"
 import {
   Select,
   SelectContent,
@@ -206,6 +207,43 @@ export function PlaybackPanel() {
           title="Preferred provider"
           description="Open episodes from this provider when it has the show."
           action={<ProviderSelect />}
+        />
+      </SettingCard>
+      <SettingCard id="playback.quality" className="p-4">
+        <SettingHeading
+          title="Preferred quality"
+          description="Start episodes at this resolution, or the closest lower quality available. If none is lower, use the lowest available quality. Auto adapts to your connection."
+          action={
+            <Select
+              value={String(preferences.preferredQuality ?? automatic)}
+              onValueChange={(value) =>
+                updatePreferences({
+                  preferredQuality:
+                    PreferredQuality.literals.find(
+                      (height) => String(height) === value
+                    ) ?? null,
+                })
+              }
+            >
+              <SelectTrigger className="w-40" aria-label="Preferred quality">
+                <SelectValue>
+                  {preferences.preferredQuality === null
+                    ? "Auto"
+                    : `${preferences.preferredQuality}p`}
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                <SelectGroup>
+                  <SelectItem value={automatic}>Auto</SelectItem>
+                  {PreferredQuality.literals.map((height) => (
+                    <SelectItem key={height} value={String(height)}>
+                      {height}p
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
+              </SelectContent>
+            </Select>
+          }
         />
       </SettingCard>
       <SettingCard id="playback.subtitleLanguage" className="p-4">

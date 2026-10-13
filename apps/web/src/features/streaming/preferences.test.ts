@@ -19,3 +19,13 @@ test("invalid player preferences fall back safely", () => {
     defaultPlayerPreferences
   )
 })
+
+test("preferred quality survives decoding alongside existing settings", () => {
+  expect(
+    readStoredPlayerPreferences('{"preferredQuality":1080,"autoplay":true}')
+  ).toEqual({
+    ...defaultPlayerPreferences,
+    preferredQuality: 1080,
+    autoplay: true,
+  })
+})

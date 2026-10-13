@@ -2,9 +2,31 @@ import { describe, expect, test } from "bun:test"
 import {
   formatTime,
   nextStreamServer,
+  preferredQualityIndex,
   watchAction,
   watchEpisodeNumber,
 } from "./player-format"
+
+describe("preferredQualityIndex", () => {
+  const levels = [{ height: 1080 }, { height: 360 }, { height: 720 }]
+
+  test("selects the preferred resolution regardless of manifest order", () => {
+    expect(preferredQualityIndex(levels, 1080)).toBe(0)
+    expect(preferredQualityIndex(levels, 720)).toBe(2)
+    expect(preferredQualityIndex(levels, 360)).toBe(1)
+  })
+
+  test("falls back below the preference, then to the lowest available", () => {
+    expect(preferredQualityIndex(levels, 480)).toBe(1)
+    expect(preferredQualityIndex([{ height: 720 }], 360)).toBe(0)
+  })
+
+  test("uses adaptive quality for Auto or unknown resolutions", () => {
+    expect(preferredQualityIndex(levels, null)).toBe(-1)
+    expect(preferredQualityIndex([], 1080)).toBe(-1)
+    expect(preferredQualityIndex([{ height: 0 }], 720)).toBe(-1)
+  })
+})
 
 describe("formatTime", () => {
   test("includes hours for long media", () => {

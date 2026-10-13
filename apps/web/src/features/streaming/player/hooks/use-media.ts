@@ -3,7 +3,8 @@ import type Hls from "hls.js"
 import type { SyntheticEvent } from "react"
 import { useEffect, useRef, useState } from "react"
 import { toast } from "sonner"
-import { qualityLabel } from "../../player-format"
+import { preferredQualityIndex, qualityLabel } from "../../player-format"
+import { playerPreferencesAtom } from "../../preferences"
 import {
   playerQualityAtom,
   playerQualityLevelsAtom,
@@ -31,6 +32,9 @@ export function usePlayerMedia({
   const onFatalErrorRef = useRef(onFatalError)
   onFatalErrorRef.current = onFatalError
   const quality = useAtomValue(playerQualityAtom)
+  const { preferredQuality } = useAtomValue(playerPreferencesAtom)
+  const preferredQualityRef = useRef(preferredQuality)
+  preferredQualityRef.current = preferredQuality
   const setQuality = useAtomSet(playerQualityAtom)
   const speed = useAtomValue(playerSpeedAtom)
   const setQualityLevels = useAtomSet(playerQualityLevelsAtom)
@@ -174,6 +178,12 @@ export function usePlayerMedia({
           hls.attachMedia(video)
           hls.on(HlsPlayer.Events.MANIFEST_PARSED, () => {
             if (disposed) return
+            const preferredIndex = preferredQualityIndex(
+              hls.levels,
+              preferredQualityRef.current
+            )
+            hls.currentLevel = preferredIndex
+            setQuality(String(preferredIndex))
             setQualityLevels(
               hls.levels.map((level, index) => ({
                 index,
@@ -236,6 +246,14 @@ export function usePlayerMedia({
     if (!video) return
     video.playbackRate = Number(speed)
   }, [speed])
+
+  useEffect(() => {
+    const hls = hlsRef.current
+    if (!hls || hls.levels.length === 0) return
+    const index = preferredQualityIndex(hls.levels, preferredQuality)
+    hls.currentLevel = index
+    setQuality(String(index))
+  }, [preferredQuality, setQuality])
 
   useEffect(() => {
     const hls = hlsRef.current

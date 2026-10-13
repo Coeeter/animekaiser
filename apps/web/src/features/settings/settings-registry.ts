@@ -153,6 +153,12 @@ export const settingEntries: ReadonlyArray<SettingEntry> = [
     keywords: ["server", "source", "provider"],
   },
   {
+    id: "playback.quality",
+    section: "Playback",
+    title: "Preferred quality",
+    keywords: ["resolution", "video", "auto", "360p", "480p", "720p", "1080p"],
+  },
+  {
     id: "playback.subtitleLanguage",
     section: "Playback",
     title: "Subtitle language",

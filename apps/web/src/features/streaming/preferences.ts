@@ -28,6 +28,7 @@ export const defaultPlayerPreferences: PlayerPreferences = {
   viewMode: "theater",
   preferredAudio: "sub",
   preferredProvider: null,
+  preferredQuality: null,
   subtitleLanguage: null,
   blurUnwatched: false,
   autoLandscape: false,

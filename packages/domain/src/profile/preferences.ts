@@ -6,6 +6,9 @@ export type VideoFit = typeof VideoFit.Type
 export const PlayerViewMode = Schema.Literal("theater", "immersive")
 export type PlayerViewMode = typeof PlayerViewMode.Type
 
+export const PreferredQuality = Schema.Literal(360, 480, 720, 1080)
+export type PreferredQuality = typeof PreferredQuality.Type
+
 export const subtitlePreferenceDefaults = {
   subtitleSizePercent: 100,
   subtitleColor: "#ffffff",
@@ -48,6 +51,9 @@ export const PlayerPreferences = Schema.Struct({
     default: () => "sub",
   }),
   preferredProvider: Schema.optionalWith(Schema.NullOr(Schema.String), {
+    default: () => null,
+  }),
+  preferredQuality: Schema.optionalWith(Schema.NullOr(PreferredQuality), {
     default: () => null,
   }),
   subtitleLanguage: Schema.optionalWith(Schema.NullOr(Schema.String), {
