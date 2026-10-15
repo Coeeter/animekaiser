@@ -6,7 +6,6 @@ import type {
 } from "@animekaiser/domain"
 import { Button } from "@animekaiser/ui/components/button"
 import { Textarea } from "@animekaiser/ui/components/textarea"
-import { cn } from "@animekaiser/ui/lib/utils"
 import {
   Result,
   useAtomRefresh,
@@ -32,6 +31,7 @@ import {
   shareToRoomAtom,
   stopAiAtom,
 } from "./atoms"
+import { AssistantMarkdown } from "./markdown"
 import { RecapPicker } from "./recap-picker"
 import { RecapView } from "./recap-view"
 import { RecommendationCardView } from "./recommendation-card"
@@ -388,8 +388,8 @@ function MessageView({
       </div>
     )
   return (
-    <div className={cn("flex flex-col gap-3")}>
-      <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+    <div className="flex flex-col gap-3">
+      <AssistantMarkdown>{message.content}</AssistantMarkdown>
       {message.cards.map((card) => (
         <RecommendationCardView
           key={card.anime.malId}
