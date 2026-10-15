@@ -16,11 +16,13 @@ export function usePlayerMedia({
   audioEnhancementPercent,
   failureKey,
   onFatalError,
+  followRoom = false,
 }: {
   sourceUrl: string
   audioEnhancementPercent: number
   failureKey: string
   onFatalError: () => boolean
+  followRoom?: boolean
 }) {
   const videoRef = useRef<HTMLVideoElement>(null)
   const hlsRef = useRef<Hls | null>(null)
@@ -243,9 +245,9 @@ export function usePlayerMedia({
 
   useEffect(() => {
     const video = videoRef.current
-    if (!video) return
+    if (!video || followRoom) return
     video.playbackRate = Number(speed)
-  }, [speed])
+  }, [speed, followRoom])
 
   useEffect(() => {
     const hls = hlsRef.current

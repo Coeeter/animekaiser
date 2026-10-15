@@ -18,11 +18,13 @@ export function ServerSheet({
   onOpenChange,
   portalContainer,
   playback,
+  onChoose,
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
   portalContainer: HTMLElement | null
   playback: StreamPlayback
+  onChoose?: (serverId: string | undefined) => void
 }) {
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -40,26 +42,13 @@ export function ServerSheet({
         <SheetBody className="flex flex-col gap-2">
           {playback.servers.map((server) => {
             const selected = server.id === playback.server.id
-            return (
-              <Link
-                key={server.id}
-                to="/watch/$malId/$provider/$episodeId"
-                params={{
-                  malId: playback.anime.malId,
-                  provider: playback.provider,
-                  episodeId: playback.episode.id,
-                }}
-                search={{
-                  audio: playback.audio,
-                  serverId: server.isDefault ? undefined : server.id,
-                }}
-                replace
-                className={cn(
-                  "flex min-h-16 items-center gap-3 rounded-xl border bg-card p-3 transition hover:border-primary/40 hover:bg-accent/60",
-                  selected && "border-primary/60 bg-accent"
-                )}
-                onClick={() => onOpenChange(false)}
-              >
+            const serverId = server.isDefault ? undefined : server.id
+            const className = cn(
+              "flex min-h-16 items-center gap-3 rounded-xl border bg-card p-3 text-left transition hover:border-primary/40 hover:bg-accent/60",
+              selected && "border-primary/60 bg-accent"
+            )
+            const content = (
+              <>
                 <span
                   className={cn(
                     "grid size-10 shrink-0 place-items-center rounded-xl border bg-background",
@@ -85,6 +74,40 @@ export function ServerSheet({
                     <Check data-icon="inline-start" /> Current
                   </Badge>
                 ) : null}
+              </>
+            )
+            if (onChoose)
+              return (
+                <button
+                  key={server.id}
+                  type="button"
+                  className={className}
+                  onClick={() => {
+                    onChoose(serverId)
+                    onOpenChange(false)
+                  }}
+                >
+                  {content}
+                </button>
+              )
+            return (
+              <Link
+                key={server.id}
+                to="/watch/$malId/$provider/$episodeId"
+                params={{
+                  malId: playback.anime.malId,
+                  provider: playback.provider,
+                  episodeId: playback.episode.id,
+                }}
+                search={{
+                  audio: playback.audio,
+                  serverId,
+                }}
+                replace
+                className={className}
+                onClick={() => onOpenChange(false)}
+              >
+                {content}
               </Link>
             )
           })}

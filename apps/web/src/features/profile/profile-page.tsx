@@ -43,6 +43,7 @@ import { errorMessage } from "../../utils/error"
 import { sessionAtom } from "../auth/atoms"
 import { displayUsername } from "../auth/user"
 import { settingsOpenAtom, settingsSectionAtom } from "../settings/atoms"
+import { ProfileFriendButton } from "../social/friend-button"
 import {
   ownProfileAtom,
   ownProfileStatsAtom,
@@ -207,6 +208,9 @@ function ProfileLayout({
                 </Link>
               </Button>
             </>
+          ) : null}
+          {!own && !viewingAsPublic && data.user.username ? (
+            <ProfileFriendButton username={data.user.username} />
           ) : null}
           {username !== "Unknown user" && data.profile.shareList ? (
             <Button asChild variant="outline" size="sm">
@@ -401,6 +405,7 @@ function ProfileUnavailable({
                 : "The username may have changed or the account no longer exists."}
             </EmptyDescription>
           </EmptyHeader>
+          {isPrivate ? <ProfileFriendButton username={username} /> : null}
         </Empty>
       </main>
     </>

@@ -17,6 +17,8 @@ import {
 import { SearchDialog } from "../anime/common/search-dialog"
 import { isProtectedRoute, sessionAtom } from "../auth/atoms"
 import { ownProfileAtom } from "../profile/atoms"
+import { AssistantSheet } from "../recommendations/assistant-sheet"
+import { RoomSessionHost } from "../rooms/room-host"
 import { preferencesSyncAtom } from "../settings/preferences-sync"
 import { SettingsDialog } from "../settings/settings-dialog"
 import { PlaybackSessionHost } from "../streaming/playback-session"
@@ -86,6 +88,8 @@ export function AppShell({ children }: { children: ReactNode }) {
         <SearchDialog />
         <SettingsDialog />
         <PlaybackSessionHost />
+        <RoomSessionHost />
+        <AssistantSheet />
         <RpcConnectionMonitor />
       </AppSidebarProvider>
     </>

@@ -25,6 +25,7 @@ import {
   History,
   Home,
   LogIn,
+  MessageSquareHeart,
   MonitorPlay,
   MoreHorizontal,
   RefreshCcw,
@@ -33,6 +34,8 @@ import {
   Shuffle,
   Sparkles,
   User,
+  UserRound,
+  Users,
 } from "lucide-react"
 import { useState } from "react"
 import { sessionAtom } from "../auth/atoms"
@@ -84,6 +87,27 @@ const moreLinks: ReadonlyArray<MoreLink> = [
     href: "/watch-history",
     icon: History,
     description: "Pick up where you left off",
+    requiresAuth: true,
+  },
+  {
+    title: "Rooms",
+    href: "/rooms",
+    icon: Users,
+    description: "Watch together with friends",
+    requiresAuth: true,
+  },
+  {
+    title: "Friends",
+    href: "/friends",
+    icon: UserRound,
+    description: "Requests and people you know",
+    requiresAuth: true,
+  },
+  {
+    title: "Recommendations",
+    href: "/recommendations",
+    icon: MessageSquareHeart,
+    description: "Find something to watch with AI",
     requiresAuth: true,
   },
   {

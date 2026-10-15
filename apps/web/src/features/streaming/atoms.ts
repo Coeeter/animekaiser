@@ -46,6 +46,20 @@ export const streamEpisodesAtom = (
     { timeToLive: "1 minute" }
   )
 
+// Opens on the requested provider, but when it is down or has no match the
+// server's "first provider with episodes" answer is used instead.
+export const episodeChoicesAtom = Atom.family(
+  (key: { readonly malId: number; readonly provider: StreamProviderId }) =>
+    Atom.make((get) => {
+      const requested = get(streamEpisodesAtom(key.malId, key.provider))
+      if (!Result.isSuccess(requested)) return requested
+      const entry = requested.value.providers.at(0)
+      if (entry?.status === "available" && entry.episodes.length > 0)
+        return requested
+      return get(streamEpisodesAtom(key.malId))
+    })
+)
+
 export const streamPlaybackAtom = (
   malId: number,
   provider: StreamProviderId,

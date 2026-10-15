@@ -35,6 +35,7 @@ import { DataError } from "../../../components/data-error"
 import { sessionAtom } from "../../auth/atoms"
 import { AddToLibraryDialog } from "../../library/add-to-library-dialog"
 import { libraryEntryAtom } from "../../library/atoms"
+import { WatchTogetherButton } from "../../rooms/watch-together"
 import { EpisodesPanel } from "../../streaming/episodes-panel"
 import { preferredProviderAtom } from "../../streaming/preferences"
 import { WatchNowButton } from "../../streaming/watch-now-button"
@@ -249,6 +250,7 @@ function SeriesDetail({
                   provider={episodeProvider}
                   className="w-fit"
                 />
+                <WatchTogetherButton anime={anime} provider={episodeProvider} />
                 {isAuthenticated ? (
                   <AddToLibraryDialog anime={anime} entry={libraryEntry} />
                 ) : (

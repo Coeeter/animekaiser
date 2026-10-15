@@ -35,6 +35,8 @@ import {
 } from "lucide-react"
 import type { ReactNode } from "react"
 import { useId, useState } from "react"
+import { toast } from "sonner"
+import { expectedRoomPosition, useRoomPlayer } from "../../rooms/room-player"
 import { audioLabel, speedOptions } from "../player-format"
 import {
   playerPreferencesAtom,
@@ -69,6 +71,7 @@ export function PlayerSettingsPopover({
   const preferences = useAtomValue(playerPreferencesAtom)
   const updatePreferences = useAtomSet(updatePlayerPreferencesAtom)
   const isMobile = useIsMobile()
+  const room = useRoomPlayer()
   const [view, setView] = useState<
     "main" | "quality" | "captions" | "speed" | "audio"
   >("main")
@@ -83,7 +86,21 @@ export function PlayerSettingsPopover({
     caption === "off"
       ? "Off"
       : (playback.tracks[Number(caption)]?.label ?? "Off")
-  const currentSpeed = speed === "1" ? "Normal" : `${speed}x`
+  const effectiveSpeed = room ? String(room.playback.rate) : speed
+  const currentSpeed = effectiveSpeed === "1" ? "Normal" : `${effectiveSpeed}x`
+
+  const chooseSpeed = (option: string) => {
+    if (!room) return setSpeed(option)
+    if (!room.canControl) {
+      toast.message("The host controls playback speed.")
+      return
+    }
+    room.command({
+      _tag: "Rate",
+      rate: Number(option),
+      positionSeconds: expectedRoomPosition(room.playback, room.clockOffset),
+    })
+  }
 
   const choose = (action: () => void) => {
     action()
@@ -228,8 +245,8 @@ export function PlayerSettingsPopover({
             <SettingsOption
               key={option}
               label={option === "1" ? "Normal" : `${option}x`}
-              selected={speed === option}
-              onClick={() => choose(() => setSpeed(option))}
+              selected={effectiveSpeed === option}
+              onClick={() => choose(() => chooseSpeed(option))}
             />
           ))}
         </SettingsOptionPage>
@@ -237,19 +254,36 @@ export function PlayerSettingsPopover({
 
       {view === "audio" ? (
         <SettingsOptionPage title="Audio" onBack={() => setView("main")}>
-          {playback.episode.availableAudio.map((audio) => (
-            <SettingsOption
-              key={audio}
-              label={audioLabel(audio)}
-              selected={audio === playback.audio}
-              watchRoute={{
-                malId: playback.anime.malId,
-                provider: playback.provider,
-                episodeId: playback.episode.id,
-                audio,
-              }}
-            />
-          ))}
+          {playback.episode.availableAudio.map((audio) =>
+            room ? (
+              <SettingsOption
+                key={audio}
+                label={audioLabel(audio)}
+                selected={audio === playback.audio}
+                onClick={() =>
+                  choose(() =>
+                    room.isHost
+                      ? room.selectEpisode(playback.episode, audio, {
+                          provider: playback.provider,
+                        })
+                      : toast.message("The host chooses the audio edition.")
+                  )
+                }
+              />
+            ) : (
+              <SettingsOption
+                key={audio}
+                label={audioLabel(audio)}
+                selected={audio === playback.audio}
+                watchRoute={{
+                  malId: playback.anime.malId,
+                  provider: playback.provider,
+                  episodeId: playback.episode.id,
+                  audio,
+                }}
+              />
+            )
+          )}
           <div className="my-2 h-px bg-white/10" />
           <SettingRange
             label="Audio enhancer"

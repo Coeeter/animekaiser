@@ -14,6 +14,7 @@ import {
 export function PlayerMiniControls({
   playback,
   serverId,
+  roomId,
   playing,
   loading,
   onTogglePlayback,
@@ -22,6 +23,7 @@ export function PlayerMiniControls({
 }: {
   playback: StreamPlayback
   serverId: string | undefined
+  roomId?: string
   playing: boolean
   loading: boolean
   onTogglePlayback: () => void
@@ -37,18 +39,25 @@ export function PlayerMiniControls({
           size="icon-sm"
           className="bg-black/45 text-white backdrop-blur-sm hover:bg-black/70 hover:text-white"
         >
-          <Link
-            to="/watch/$malId/$provider/$episodeId"
-            params={{
-              malId: playback.anime.malId,
-              provider: playback.provider,
-              episodeId: playback.episode.id,
-            }}
-            search={{ audio: playback.audio, serverId }}
-          >
-            <Maximize />
-            <span className="sr-only">Return to full player</span>
-          </Link>
+          {roomId ? (
+            <Link to="/rooms/$roomId" params={{ roomId }}>
+              <Maximize />
+              <span className="sr-only">Return to room</span>
+            </Link>
+          ) : (
+            <Link
+              to="/watch/$malId/$provider/$episodeId"
+              params={{
+                malId: playback.anime.malId,
+                provider: playback.provider,
+                episodeId: playback.episode.id,
+              }}
+              search={{ audio: playback.audio, serverId }}
+            >
+              <Maximize />
+              <span className="sr-only">Return to full player</span>
+            </Link>
+          )}
         </Button>
         <Button
           variant="ghost"

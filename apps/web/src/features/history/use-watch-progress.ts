@@ -22,11 +22,13 @@ export function useWatchProgress({
   currentTime,
   duration,
   playing,
+  enabled = true,
 }: {
   playback: StreamPlayback
   currentTime: number
   duration: number
   playing: boolean
+  enabled?: boolean
 }) {
   const record = useAtomSet(recordWatchProgressAtom, { mode: "promise" })
 
@@ -41,7 +43,12 @@ export function useWatchProgress({
   const send = useCallback(
     (positionSeconds: number, durationSeconds: number) => {
       const episode = positiveEpisode(playback)
-      if (episode === null || positionSeconds < minimumReportSeconds) return
+      if (
+        !enabled ||
+        episode === null ||
+        positionSeconds < minimumReportSeconds
+      )
+        return
 
       lastSentSecondRef.current = positionSeconds
 
@@ -66,7 +73,7 @@ export function useWatchProgress({
         reactivityKeys: [watchHistoryReactivityKeys.all],
       }).catch(() => undefined)
     },
-    [playback, record]
+    [enabled, playback, record]
   )
 
   const flush = useCallback(() => {

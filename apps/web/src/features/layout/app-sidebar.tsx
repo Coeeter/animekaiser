@@ -44,7 +44,7 @@ import { shortcutsAtom, toggleSidebarShortcutAtom } from "../shortcuts/atoms"
 import { formatBinding } from "../shortcuts/shortcuts"
 import { MobileNav } from "./mobile-nav"
 import type { NavItem } from "./nav-links"
-import { mainLinks, personalLinks } from "./nav-links"
+import { mainLinks, personalLinks, socialLinks } from "./nav-links"
 import { SiteFooter } from "./site-footer"
 
 function NavGroup({
@@ -119,7 +119,9 @@ function MobileSidebarCloser({ pathname }: { pathname: string }) {
 }
 
 const isPlayerRoute = (pathname: string) =>
-  pathname.startsWith("/watch/") || pathname.startsWith("/play/")
+  pathname.startsWith("/watch/") ||
+  pathname.startsWith("/play/") ||
+  pathname.startsWith("/rooms/")
 
 // The player always gets the icon rail; everywhere else uses the reader's own
 // choice, which the player never overwrites. Opening the sidebar on a player
@@ -218,11 +220,18 @@ export function AppSidebar({ children }: { children: ReactNode }) {
         <SidebarContent className="pb-4">
           <NavGroup label="Discover" items={mainLinks} pathname={pathname} />
           {user ? (
-            <NavGroup
-              label="Your library"
-              items={personalLinks}
-              pathname={pathname}
-            />
+            <>
+              <NavGroup
+                label="Your library"
+                items={personalLinks}
+                pathname={pathname}
+              />
+              <NavGroup
+                label="Social"
+                items={socialLinks}
+                pathname={pathname}
+              />
+            </>
           ) : null}
         </SidebarContent>
         <SidebarFooter className="border-t p-3">

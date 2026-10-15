@@ -18,6 +18,8 @@ import {
   VolumeX,
 } from "lucide-react"
 import { AnimeTitle } from "../../anime/common/anime-title"
+import { useRoomPlayer } from "../../rooms/room-player"
+import { PlayerWatchTogether } from "../../rooms/watch-together"
 import { providerLabelAtom } from "../atoms"
 import { episodeLabel, episodeTitle } from "../player-format"
 import {
@@ -66,6 +68,7 @@ export function PlayerDesktopControls({
   controlsVisible: boolean
   playerPortalContainer: HTMLElement | null
 }) {
+  const room = useRoomPlayer()
   const providerName = useAtomValue(providerLabelAtom(playback.provider))
   const preferences = useAtomValue(playerPreferencesAtom)
   const updatePreferences = useAtomSet(updatePlayerPreferencesAtom)
@@ -129,6 +132,13 @@ export function PlayerDesktopControls({
             {playback.server.name}
           </span>
         </Button>
+        {room ? null : (
+          <PlayerWatchTogether
+            playback={playback}
+            currentTime={currentTime}
+            className="text-white hover:bg-white/10 hover:text-white"
+          />
+        )}
       </div>
 
       <PlayerTimeline

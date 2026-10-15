@@ -12,10 +12,13 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthRouteImport } from './routes/_auth'
 import { Route as DiscoverRouteImport } from './routes/discover'
+import { Route as FriendsRouteImport } from './routes/friends'
 import { Route as LatestEpisodesRouteImport } from './routes/latest-episodes'
 import { Route as MyListRouteImport } from './routes/my-list'
 import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as RandomRouteImport } from './routes/random'
+import { Route as RecommendationsRouteImport } from './routes/recommendations'
+import { Route as RoomsRouteImport } from './routes/rooms'
 import { Route as ScheduleRouteImport } from './routes/schedule'
 import { Route as SearchRouteImport } from './routes/search'
 import { Route as SeriesRouteImport } from './routes/series'
@@ -28,6 +31,8 @@ import { Route as AuthLoginRouteImport } from './routes/_auth.login'
 import { Route as AuthRegisterRouteImport } from './routes/_auth.register'
 import { Route as ListUsernameRouteImport } from './routes/list.$username'
 import { Route as PlayMalIdRouteImport } from './routes/play.$malId'
+import { Route as RoomsIndexRouteImport } from './routes/rooms.index'
+import { Route as RoomsRoomIdRouteImport } from './routes/rooms.$roomId'
 import { Route as SeriesIndexRouteImport } from './routes/series.index'
 import { Route as SeriesIdRouteImport } from './routes/series.$id'
 import { Route as UUsernameRouteImport } from './routes/u.$username'
@@ -45,6 +50,11 @@ const AuthRoute = AuthRouteImport.update({
 const DiscoverRoute = DiscoverRouteImport.update({
   id: '/discover',
   path: '/discover',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const FriendsRoute = FriendsRouteImport.update({
+  id: '/friends',
+  path: '/friends',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LatestEpisodesRoute = LatestEpisodesRouteImport.update({
@@ -65,6 +75,16 @@ const ProfileRoute = ProfileRouteImport.update({
 const RandomRoute = RandomRouteImport.update({
   id: '/random',
   path: '/random',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RecommendationsRoute = RecommendationsRouteImport.update({
+  id: '/recommendations',
+  path: '/recommendations',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RoomsRoute = RoomsRouteImport.update({
+  id: '/rooms',
+  path: '/rooms',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ScheduleRoute = ScheduleRouteImport.update({
@@ -127,6 +147,16 @@ const PlayMalIdRoute = PlayMalIdRouteImport.update({
   path: '/play/$malId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const RoomsIndexRoute = RoomsIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => RoomsRoute,
+} as any)
+const RoomsRoomIdRoute = RoomsRoomIdRouteImport.update({
+  id: '/$roomId',
+  path: '/$roomId',
+  getParentRoute: () => RoomsRoute,
+} as any)
 const SeriesIndexRoute = SeriesIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -152,10 +182,13 @@ const WatchMalIdProviderEpisodeIdRoute =
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/discover': typeof DiscoverRoute
+  '/friends': typeof FriendsRoute
   '/latest-episodes': typeof LatestEpisodesRoute
   '/my-list': typeof MyListRoute
   '/profile': typeof ProfileRoute
   '/random': typeof RandomRoute
+  '/recommendations': typeof RecommendationsRoute
+  '/rooms': typeof RoomsRouteWithChildren
   '/schedule': typeof ScheduleRoute
   '/search': typeof SearchRoute
   '/series': typeof SeriesRouteWithChildren
@@ -168,18 +201,22 @@ export interface FileRoutesByFullPath {
   '/register': typeof AuthRegisterRoute
   '/list/$username': typeof ListUsernameRoute
   '/play/$malId': typeof PlayMalIdRoute
+  '/rooms/$roomId': typeof RoomsRoomIdRoute
   '/series/$id': typeof SeriesIdRoute
   '/u/$username': typeof UUsernameRoute
+  '/rooms/': typeof RoomsIndexRoute
   '/series/': typeof SeriesIndexRoute
   '/watch/$malId/$provider/$episodeId': typeof WatchMalIdProviderEpisodeIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/discover': typeof DiscoverRoute
+  '/friends': typeof FriendsRoute
   '/latest-episodes': typeof LatestEpisodesRoute
   '/my-list': typeof MyListRoute
   '/profile': typeof ProfileRoute
   '/random': typeof RandomRoute
+  '/recommendations': typeof RecommendationsRoute
   '/schedule': typeof ScheduleRoute
   '/search': typeof SearchRoute
   '/sync-activity': typeof SyncActivityRoute
@@ -191,8 +228,10 @@ export interface FileRoutesByTo {
   '/register': typeof AuthRegisterRoute
   '/list/$username': typeof ListUsernameRoute
   '/play/$malId': typeof PlayMalIdRoute
+  '/rooms/$roomId': typeof RoomsRoomIdRoute
   '/series/$id': typeof SeriesIdRoute
   '/u/$username': typeof UUsernameRoute
+  '/rooms': typeof RoomsIndexRoute
   '/series': typeof SeriesIndexRoute
   '/watch/$malId/$provider/$episodeId': typeof WatchMalIdProviderEpisodeIdRoute
 }
@@ -201,10 +240,13 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/_auth': typeof AuthRouteWithChildren
   '/discover': typeof DiscoverRoute
+  '/friends': typeof FriendsRoute
   '/latest-episodes': typeof LatestEpisodesRoute
   '/my-list': typeof MyListRoute
   '/profile': typeof ProfileRoute
   '/random': typeof RandomRoute
+  '/recommendations': typeof RecommendationsRoute
+  '/rooms': typeof RoomsRouteWithChildren
   '/schedule': typeof ScheduleRoute
   '/search': typeof SearchRoute
   '/series': typeof SeriesRouteWithChildren
@@ -217,8 +259,10 @@ export interface FileRoutesById {
   '/_auth/register': typeof AuthRegisterRoute
   '/list/$username': typeof ListUsernameRoute
   '/play/$malId': typeof PlayMalIdRoute
+  '/rooms/$roomId': typeof RoomsRoomIdRoute
   '/series/$id': typeof SeriesIdRoute
   '/u/$username': typeof UUsernameRoute
+  '/rooms/': typeof RoomsIndexRoute
   '/series/': typeof SeriesIndexRoute
   '/watch/$malId/$provider/$episodeId': typeof WatchMalIdProviderEpisodeIdRoute
 }
@@ -227,10 +271,13 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/discover'
+    | '/friends'
     | '/latest-episodes'
     | '/my-list'
     | '/profile'
     | '/random'
+    | '/recommendations'
+    | '/rooms'
     | '/schedule'
     | '/search'
     | '/series'
@@ -243,18 +290,22 @@ export interface FileRouteTypes {
     | '/register'
     | '/list/$username'
     | '/play/$malId'
+    | '/rooms/$roomId'
     | '/series/$id'
     | '/u/$username'
+    | '/rooms/'
     | '/series/'
     | '/watch/$malId/$provider/$episodeId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/discover'
+    | '/friends'
     | '/latest-episodes'
     | '/my-list'
     | '/profile'
     | '/random'
+    | '/recommendations'
     | '/schedule'
     | '/search'
     | '/sync-activity'
@@ -266,8 +317,10 @@ export interface FileRouteTypes {
     | '/register'
     | '/list/$username'
     | '/play/$malId'
+    | '/rooms/$roomId'
     | '/series/$id'
     | '/u/$username'
+    | '/rooms'
     | '/series'
     | '/watch/$malId/$provider/$episodeId'
   id:
@@ -275,10 +328,13 @@ export interface FileRouteTypes {
     | '/'
     | '/_auth'
     | '/discover'
+    | '/friends'
     | '/latest-episodes'
     | '/my-list'
     | '/profile'
     | '/random'
+    | '/recommendations'
+    | '/rooms'
     | '/schedule'
     | '/search'
     | '/series'
@@ -291,8 +347,10 @@ export interface FileRouteTypes {
     | '/_auth/register'
     | '/list/$username'
     | '/play/$malId'
+    | '/rooms/$roomId'
     | '/series/$id'
     | '/u/$username'
+    | '/rooms/'
     | '/series/'
     | '/watch/$malId/$provider/$episodeId'
   fileRoutesById: FileRoutesById
@@ -301,10 +359,13 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthRoute: typeof AuthRouteWithChildren
   DiscoverRoute: typeof DiscoverRoute
+  FriendsRoute: typeof FriendsRoute
   LatestEpisodesRoute: typeof LatestEpisodesRoute
   MyListRoute: typeof MyListRoute
   ProfileRoute: typeof ProfileRoute
   RandomRoute: typeof RandomRoute
+  RecommendationsRoute: typeof RecommendationsRoute
+  RoomsRoute: typeof RoomsRouteWithChildren
   ScheduleRoute: typeof ScheduleRoute
   SearchRoute: typeof SearchRoute
   SeriesRoute: typeof SeriesRouteWithChildren
@@ -341,6 +402,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DiscoverRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/friends': {
+      id: '/friends'
+      path: '/friends'
+      fullPath: '/friends'
+      preLoaderRoute: typeof FriendsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/latest-episodes': {
       id: '/latest-episodes'
       path: '/latest-episodes'
@@ -367,6 +435,20 @@ declare module '@tanstack/react-router' {
       path: '/random'
       fullPath: '/random'
       preLoaderRoute: typeof RandomRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/recommendations': {
+      id: '/recommendations'
+      path: '/recommendations'
+      fullPath: '/recommendations'
+      preLoaderRoute: typeof RecommendationsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/rooms': {
+      id: '/rooms'
+      path: '/rooms'
+      fullPath: '/rooms'
+      preLoaderRoute: typeof RoomsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/schedule': {
@@ -453,6 +535,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PlayMalIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/rooms/': {
+      id: '/rooms/'
+      path: '/'
+      fullPath: '/rooms/'
+      preLoaderRoute: typeof RoomsIndexRouteImport
+      parentRoute: typeof RoomsRoute
+    }
+    '/rooms/$roomId': {
+      id: '/rooms/$roomId'
+      path: '/$roomId'
+      fullPath: '/rooms/$roomId'
+      preLoaderRoute: typeof RoomsRoomIdRouteImport
+      parentRoute: typeof RoomsRoute
+    }
     '/series/': {
       id: '/series/'
       path: '/'
@@ -498,6 +594,18 @@ const AuthRouteChildren: AuthRouteChildren = {
 
 const AuthRouteWithChildren = AuthRoute._addFileChildren(AuthRouteChildren)
 
+interface RoomsRouteChildren {
+  RoomsRoomIdRoute: typeof RoomsRoomIdRoute
+  RoomsIndexRoute: typeof RoomsIndexRoute
+}
+
+const RoomsRouteChildren: RoomsRouteChildren = {
+  RoomsRoomIdRoute: RoomsRoomIdRoute,
+  RoomsIndexRoute: RoomsIndexRoute,
+}
+
+const RoomsRouteWithChildren = RoomsRoute._addFileChildren(RoomsRouteChildren)
+
 interface SeriesRouteChildren {
   SeriesIdRoute: typeof SeriesIdRoute
   SeriesIndexRoute: typeof SeriesIndexRoute
@@ -515,10 +623,13 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthRoute: AuthRouteWithChildren,
   DiscoverRoute: DiscoverRoute,
+  FriendsRoute: FriendsRoute,
   LatestEpisodesRoute: LatestEpisodesRoute,
   MyListRoute: MyListRoute,
   ProfileRoute: ProfileRoute,
   RandomRoute: RandomRoute,
+  RecommendationsRoute: RecommendationsRoute,
+  RoomsRoute: RoomsRouteWithChildren,
   ScheduleRoute: ScheduleRoute,
   SearchRoute: SearchRoute,
   SeriesRoute: SeriesRouteWithChildren,

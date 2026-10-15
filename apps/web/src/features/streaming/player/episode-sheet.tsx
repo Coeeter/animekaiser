@@ -37,6 +37,7 @@ import {
 import { cn } from "@animekaiser/ui/lib/utils"
 import { Result, useAtomValue } from "@effect-atom/atom-react"
 import { Link } from "@tanstack/react-router"
+import * as Data from "effect/Data"
 import {
   ArrowDownUp,
   ChevronLeft,
@@ -44,11 +45,16 @@ import {
   Play,
   Search,
 } from "lucide-react"
-import { useState } from "react"
+import { createContext, useContext, useState } from "react"
 import { AnimeTitle } from "../../anime/common/anime-title"
 import { NextAiringNotice } from "../../anime/schedule/next-airing-notice"
 import { episodeSpoilerAtom } from "../../history/atoms"
-import { streamEpisodesAtom, streamProvidersAtom } from "../atoms"
+import {
+  episodeChoicesAtom,
+  providerLabelAtom,
+  streamEpisodesAtom,
+  streamProvidersAtom,
+} from "../atoms"
 import { EpisodeThumbnail } from "../episode-thumbnail"
 import {
   audioLabel,
@@ -57,11 +63,21 @@ import {
   preferredAudio,
 } from "../player-format"
 
+export type EpisodeChoice = (choice: {
+  provider: StreamProviderId
+  episode: StreamEpisode
+  audio: StreamAudio
+}) => void
+
+const EpisodeChoiceContext = createContext<EpisodeChoice | null>(null)
+
 export function EpisodeSheet({
   open,
   onOpenChange,
   portalContainer,
   selection,
+  onChoose,
+  title = "Choose a stream",
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
@@ -72,10 +88,16 @@ export function EpisodeSheet({
     episodeId: string
     audio: StreamAudio
   }
+  onChoose?: EpisodeChoice
+  title?: string
 }) {
-  const [selectedProvider, setSelectedProvider] = useState(selection.provider)
+  const [picked, setPicked] = useState<StreamProviderId | null>(null)
   const result = useAtomValue(
-    streamEpisodesAtom(selection.malId, selectedProvider)
+    picked
+      ? streamEpisodesAtom(selection.malId, picked)
+      : episodeChoicesAtom(
+          Data.struct({ malId: selection.malId, provider: selection.provider })
+        )
   )
 
   const providerOptions = Result.getOrElse(
@@ -87,6 +109,9 @@ export function EpisodeSheet({
     .orNull()
 
   const provider = catalog?.providers.at(0) ?? null
+  const selectedProvider = picked ?? provider?.provider ?? selection.provider
+  const fellBack =
+    !picked && provider !== null && provider.provider !== selection.provider
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -96,7 +121,7 @@ export function EpisodeSheet({
         side="right"
       >
         <SheetHeader>
-          <SheetTitle>Choose a stream</SheetTitle>
+          <SheetTitle>{title}</SheetTitle>
           <SheetDescription>
             Switch providers and choose an episode of{" "}
             {catalog ? (
@@ -116,7 +141,7 @@ export function EpisodeSheet({
           <Select
             value={selectedProvider}
             onValueChange={(value) => {
-              setSelectedProvider(value as StreamProviderId)
+              setPicked(value as StreamProviderId)
             }}
           >
             <SelectTrigger className="mb-2 w-full">
@@ -132,14 +157,25 @@ export function EpisodeSheet({
               </SelectGroup>
             </SelectContent>
           </Select>
+          {fellBack ? (
+            <p
+              className="-mt-1 mb-1 text-xs text-muted-foreground"
+              role="status"
+            >
+              <ProviderLabel provider={selection.provider} /> isn't working
+              right now, so this shows the first provider with episodes.
+            </p>
+          ) : null}
           {provider ? (
-            <EpisodeSheetList
-              key={selectedProvider}
-              provider={provider}
-              selectedProvider={selectedProvider}
-              selection={selection}
-              onSelect={() => onOpenChange(false)}
-            />
+            <EpisodeChoiceContext.Provider value={onChoose ?? null}>
+              <EpisodeSheetList
+                key={selectedProvider}
+                provider={provider}
+                selectedProvider={selectedProvider}
+                selection={selection}
+                onSelect={() => onOpenChange(false)}
+              />
+            </EpisodeChoiceContext.Provider>
           ) : (
             <EpisodeSheetPending />
           )}
@@ -324,6 +360,7 @@ function EpisodeSheetRow({
   selectedProvider: StreamProviderId
   onSelect: () => void
 }) {
+  const choose = useContext(EpisodeChoiceContext)
   const audio = episodeAudioForPlayback(episode, selection.audio)
   const isCurrent =
     selectedProvider === selection.provider &&
@@ -401,6 +438,21 @@ function EpisodeSheetRow({
     )
   }
 
+  if (choose) {
+    return (
+      <button
+        type="button"
+        className={className}
+        onClick={() => {
+          choose({ provider: selectedProvider, episode, audio })
+          onSelect()
+        }}
+      >
+        {content}
+      </button>
+    )
+  }
+
   return (
     <Link
       to="/watch/$malId/$provider/$episodeId"
@@ -434,6 +486,7 @@ function EpisodeSheetNumberButton({
   selectedProvider: StreamProviderId
   onSelect: () => void
 }) {
+  const choose = useContext(EpisodeChoiceContext)
   const audio = episodeAudioForPlayback(episode, selection.audio)
   const isCurrent =
     selectedProvider === selection.provider &&
@@ -445,24 +498,37 @@ function EpisodeSheetNumberButton({
     isCurrent && "ring-2 ring-primary/40"
   )
   const trigger = audio ? (
-    <Button
-      asChild
-      variant={isCurrent ? "default" : "outline"}
-      className={className}
-    >
-      <Link
-        to="/watch/$malId/$provider/$episodeId"
-        params={{
-          malId: selection.malId,
-          provider: selectedProvider,
-          episodeId: episode.id,
+    choose ? (
+      <Button
+        variant={isCurrent ? "default" : "outline"}
+        className={className}
+        onClick={() => {
+          choose({ provider: selectedProvider, episode, audio })
+          onSelect()
         }}
-        search={{ audio }}
-        onClick={onSelect}
       >
         {episode.number}
-      </Link>
-    </Button>
+      </Button>
+    ) : (
+      <Button
+        asChild
+        variant={isCurrent ? "default" : "outline"}
+        className={className}
+      >
+        <Link
+          to="/watch/$malId/$provider/$episodeId"
+          params={{
+            malId: selection.malId,
+            provider: selectedProvider,
+            episodeId: episode.id,
+          }}
+          search={{ audio }}
+          onClick={onSelect}
+        >
+          {episode.number}
+        </Link>
+      </Button>
+    )
   ) : (
     <span>
       <Button variant="outline" className={className} disabled>
@@ -500,4 +566,8 @@ function EpisodeSheetPending() {
       ))}
     </>
   )
+}
+
+function ProviderLabel({ provider }: { provider: StreamProviderId }) {
+  return <>{useAtomValue(providerLabelAtom(provider))}</>
 }

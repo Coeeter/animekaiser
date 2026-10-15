@@ -10,9 +10,11 @@ const endOfEpisodeGuardSeconds = 30
 export function useResumePlayback({
   playback,
   videoRef,
+  enabled = true,
 }: {
   playback: StreamPlayback
   videoRef: RefObject<HTMLVideoElement | null>
+  enabled?: boolean
 }) {
   const episode = Math.max(1, Math.floor(playback.episode.number))
   const result = useAtomValue(
@@ -31,7 +33,7 @@ export function useResumePlayback({
   }, [episodeKey])
 
   useEffect(() => {
-    if (!entry || entry.status === "completed") return
+    if (!enabled || !entry || entry.status === "completed") return
     if (entry.positionSeconds < minimumResumeSeconds) return
     if (resumedKeyRef.current === episodeKey) return
 
@@ -71,5 +73,5 @@ export function useResumePlayback({
       video.removeEventListener("loadedmetadata", apply)
       video.removeEventListener("canplay", apply)
     }
-  }, [entry, episodeKey, videoRef])
+  }, [enabled, entry, episodeKey, videoRef])
 }

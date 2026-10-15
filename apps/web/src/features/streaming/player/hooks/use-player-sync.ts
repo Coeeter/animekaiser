@@ -67,5 +67,5 @@ export function usePlayerSync({
     onFinished()
   }
 
-  return { finishEpisode } as const
+  return { finishEpisode, syncLibraryProgress } as const
 }

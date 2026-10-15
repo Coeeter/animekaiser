@@ -23,6 +23,12 @@ import { DataError } from "../../../components/data-error"
 import { useResumePlayback } from "../../history/use-resume-playback"
 import { useWatchProgress } from "../../history/use-watch-progress"
 import { libraryEntryAtom } from "../../library/atoms"
+import { RoomPlayerOverlay } from "../../rooms/room-overlays"
+import {
+  useRoomPlayer,
+  useRoomSync,
+  useRoomViewing,
+} from "../../rooms/room-player"
 import {
   type NextSeason,
   nextSeasonAtom,
@@ -33,7 +39,11 @@ import {
   miniPlayerFrameAtom,
   setMiniPlayerFrameAtom,
 } from "../mini-player-frame"
-import { nextStreamServer, videoFitClass } from "../player-format"
+import {
+  nextStreamServer,
+  preferredAudio,
+  videoFitClass,
+} from "../player-format"
 import { playerPreferencesAtom } from "../preferences"
 import type { SubtitleCue } from "../subtitles"
 import { parseSubtitleVtt, subtitleHtmlAtTime } from "../subtitles"
@@ -105,6 +115,7 @@ export function StreamPlayerPage({
   const result = useAtomValue(atom)
   const refresh = useAtomRefresh(atom)
   const [recoveryEpisodesOpen, setRecoveryEpisodesOpen] = useState(false)
+  const room = useRoomPlayer()
 
   return Result.builder(result)
     .onInitialOrWaiting(() =>
@@ -121,28 +132,37 @@ export function StreamPlayerPage({
                 onRetry={refresh}
               />
               <div className="flex flex-wrap justify-center gap-2">
-                <Button asChild>
-                  <Link
-                    to="/watch/$malId/$provider/$episodeId"
-                    params={{
-                      malId: input.malId,
-                      provider: input.provider,
-                      episodeId: input.episodeId,
-                    }}
-                    search={{ audio: input.audio }}
-                    replace
-                  >
+                {room ? (
+                  <Button onClick={() => room.setServerId(undefined)}>
                     <Server data-icon="inline-start" />
                     Default server
-                  </Link>
-                </Button>
-                <Button
-                  variant="outline"
-                  onClick={() => setRecoveryEpisodesOpen(true)}
-                >
-                  <ListVideo data-icon="inline-start" />
-                  Change provider or episode
-                </Button>
+                  </Button>
+                ) : (
+                  <Button asChild>
+                    <Link
+                      to="/watch/$malId/$provider/$episodeId"
+                      params={{
+                        malId: input.malId,
+                        provider: input.provider,
+                        episodeId: input.episodeId,
+                      }}
+                      search={{ audio: input.audio }}
+                      replace
+                    >
+                      <Server data-icon="inline-start" />
+                      Default server
+                    </Link>
+                  </Button>
+                )}
+                {!room || room.isHost ? (
+                  <Button
+                    variant="outline"
+                    onClick={() => setRecoveryEpisodesOpen(true)}
+                  >
+                    <ListVideo data-icon="inline-start" />
+                    Change provider or episode
+                  </Button>
+                ) : null}
               </div>
             </div>
           </PlayerShell>
@@ -151,6 +171,12 @@ export function StreamPlayerPage({
             onOpenChange={setRecoveryEpisodesOpen}
             portalContainer={null}
             selection={input}
+            onChoose={
+              room
+                ? ({ provider, episode, audio }) =>
+                    room.selectEpisode(episode, audio, { provider })
+                : undefined
+            }
           />
         </>
       )
@@ -218,6 +244,8 @@ function StreamPlayer({
 
   const navigate = useNavigate()
   const playerRef = useRef<HTMLDivElement>(null)
+  const room = useRoomPlayer()
+  const [roomBlocked, setRoomBlocked] = useState(false)
 
   const preferences = useAtomValue(playerPreferencesAtom)
   const playerUi = useAtomValue(playerUiAtom)
@@ -244,6 +272,12 @@ function StreamPlayer({
   const setEpisodesOpen = (open: boolean) =>
     updatePlayerUi({ episodesOpen: open })
 
+  const openEpisodes = () => {
+    if (room && !room.isHost)
+      toast.message("The host chooses episodes in this room.")
+    else setEpisodesOpen(true)
+  }
+
   const setServersOpen = (open: boolean) =>
     updatePlayerUi({ serversOpen: open })
 
@@ -267,6 +301,10 @@ function StreamPlayer({
     )
     if (!nextServer) return false
     toast.message(`Trying ${nextServer.name}…`)
+    if (room) {
+      room.setServerId(nextServer.id)
+      return true
+    }
     void navigate({
       to: "/watch/$malId/$provider/$episodeId",
       params: {
@@ -285,6 +323,7 @@ function StreamPlayer({
     audioEnhancementPercent: preferences.audioEnhancementPercent,
     failureKey: `${playback.provider}:${playback.episode.id}:${playback.audio}:${playback.server.id}`,
     onFatalError: handleFatalPlaybackError,
+    followRoom: room !== null,
   })
 
   const { fullscreen, toggleFullscreen } = useFullscreen({
@@ -300,6 +339,7 @@ function StreamPlayer({
     isMobile,
     fullscreen,
     toggleFullscreen,
+    room,
   })
 
   const { flushWatchProgress } = useWatchProgress({
@@ -307,9 +347,82 @@ function StreamPlayer({
     currentTime: media.currentTime,
     duration: media.duration,
     playing: media.playing,
+    enabled: room === null,
   })
 
-  useResumePlayback({ playback, videoRef: media.videoRef })
+  useResumePlayback({
+    playback,
+    videoRef: media.videoRef,
+    enabled: room === null,
+  })
+
+  const { joinPlayback } = useRoomSync({
+    room,
+    videoRef: media.videoRef,
+    onBlocked: setRoomBlocked,
+  })
+
+  const blockedControl = () =>
+    toast.message(
+      room?.hostAway
+        ? "Playback is paused until the host returns."
+        : "The host controls playback."
+    )
+
+  const controls = room
+    ? {
+        togglePlayback: () => {
+          const video = media.videoRef.current
+          if (!video) return
+          if (!room.canControl) return blockedControl()
+          const positionSeconds = video.currentTime
+          if (room.playback.playing) {
+            video.pause()
+            room.command({ _tag: "Pause", positionSeconds })
+            return
+          }
+          void video.play().catch(() => undefined)
+          room.command({ _tag: "Play", positionSeconds })
+        },
+        seekTo: (value: string) => {
+          if (!room.canControl) return blockedControl()
+          media.seekTo(value)
+          room.command({ _tag: "Seek", positionSeconds: Number(value) })
+        },
+        seekBy: (seconds: number) => {
+          const video = media.videoRef.current
+          if (!video) return
+          if (!room.canControl) return blockedControl()
+          media.seekBy(seconds)
+          room.command({ _tag: "Seek", positionSeconds: video.currentTime })
+        },
+        skipTo: (seconds: number) => {
+          const video = media.videoRef.current
+          if (!video) return
+          if (!room.canControl) return blockedControl()
+          video.currentTime = seconds
+          room.command({ _tag: "Seek", positionSeconds: seconds })
+        },
+      }
+    : {
+        togglePlayback: media.togglePlayback,
+        seekTo: media.seekTo,
+        seekBy: media.seekBy,
+        skipTo: media.skipTo,
+      }
+
+  const roomPlaybackState = !room?.controller
+    ? "idle"
+    : roomBlocked
+      ? "blocked"
+      : media.buffering
+        ? "buffering"
+        : "ready"
+  const reportRoomStateRef = useRef(room?.reportState)
+  reportRoomStateRef.current = room?.reportState
+  useEffect(() => {
+    reportRoomStateRef.current?.(roomPlaybackState)
+  }, [roomPlaybackState])
 
   const { controlsVisible, controlsVisibleRef, hideControls, revealControls } =
     useControlsVisibility({
@@ -374,6 +487,7 @@ function StreamPlayer({
   // of the watch order; a gap in the provider's list mid-season does not.
   const finale =
     mode === "full" &&
+    room === null &&
     !nextEpisode &&
     playback.anime.status === "FINISHED" &&
     (playback.anime.episodes === null ||
@@ -412,7 +526,7 @@ function StreamPlayer({
       ? navigateToNextSeason
       : null
 
-  const { finishEpisode } = usePlayerSync({
+  const { finishEpisode, syncLibraryProgress } = usePlayerSync({
     playback,
     episodeKey,
     syncedEpisodeKey,
@@ -426,6 +540,22 @@ function StreamPlayer({
     },
   })
 
+  useRoomViewing({
+    room,
+    playback,
+    videoRef: media.videoRef,
+    onCompleted: () => void syncLibraryProgress(),
+  })
+
+  const handleEnded = () => {
+    if (!room) return finishEpisode()
+    if (!room.isHost || !preferences.autoNext || !nextEpisode) return
+    const audio = nextEpisode.availableAudio.includes(playback.audio)
+      ? playback.audio
+      : preferredAudio(nextEpisode)
+    if (audio) room.selectEpisode(nextEpisode, audio, { play: true })
+  }
+
   const cycleCaptions = () => {
     if (playback.tracks.length === 0) return
 
@@ -437,8 +567,8 @@ function StreamPlayer({
   }
 
   usePlayerKeyboard({
-    togglePlayback: media.togglePlayback,
-    seekBy: media.seekBy,
+    togglePlayback: controls.togglePlayback,
+    seekBy: controls.seekBy,
     adjustVolume: media.adjustVolume,
     toggleMute: media.toggleMute,
     toggleFullscreen,
@@ -479,7 +609,7 @@ function StreamPlayer({
   }, [selectedCaptionTrack])
 
   useEffect(() => {
-    if (!preferences.autoplay) return
+    if (!preferences.autoplay || room) return
     const video = media.videoRef.current
     if (!video) return
     const play = () => {
@@ -487,11 +617,12 @@ function StreamPlayer({
     }
     video.addEventListener("canplay", play, { once: true })
     return () => video.removeEventListener("canplay", play)
-  }, [media.videoRef, preferences.autoplay, sourceUrl])
+  }, [media.videoRef, preferences.autoplay, sourceUrl, room])
 
   useEffect(() => {
     if (
       !preferences.autoSkipIntro ||
+      (room && !room.isHost) ||
       !playback.intro ||
       media.currentTime < playback.intro.start ||
       media.currentTime > playback.intro.end
@@ -502,18 +633,20 @@ function StreamPlayer({
       playback.intro.end + 2,
       media.duration > 0 ? media.duration : playback.intro.end + 2
     )
-    media.skipTo(target)
+    controls.skipTo(target)
   }, [
     media.currentTime,
     media.duration,
-    media.skipTo,
+    controls.skipTo,
     playback.intro,
     preferences.autoSkipIntro,
+    room,
   ])
 
   useEffect(() => {
     if (
       !preferences.autoSkipOutro ||
+      (room && !room.isHost) ||
       !playback.outro ||
       media.currentTime < playback.outro.start ||
       media.currentTime > playback.outro.end
@@ -524,13 +657,14 @@ function StreamPlayer({
       playback.outro.end + 2,
       media.duration > 0 ? media.duration : playback.outro.end + 2
     )
-    media.skipTo(target)
+    controls.skipTo(target)
   }, [
     media.currentTime,
     media.duration,
-    media.skipTo,
+    controls.skipTo,
     playback.outro,
     preferences.autoSkipOutro,
+    room,
   ])
 
   const captureVideoPointer = (event: PointerEvent<HTMLVideoElement>) => {
@@ -561,7 +695,7 @@ function StreamPlayer({
     }
 
     revealControls()
-    media.togglePlayback()
+    controls.togglePlayback()
   }
 
   useLayoutEffect(() => {
@@ -593,7 +727,11 @@ function StreamPlayer({
       : "play"
   const playerPortalContainer = playerElement
   const theater =
-    mode === "full" && !fullscreen && preferences.viewMode === "theater"
+    mode === "full" &&
+    !fullscreen &&
+    room === null &&
+    preferences.viewMode === "theater"
+  const roomLayout = room !== null && mode === "full" && !fullscreen
 
   return (
     <PlayerShell
@@ -601,7 +739,7 @@ function StreamPlayer({
       variant={mode}
       sidebarState={sidebarState}
       className={cn(
-        theater && "md:flex-row md:overflow-y-auto",
+        (theater || roomLayout) && "md:flex-row md:overflow-y-auto",
         mode === "mini" && miniPlayerClass,
         mode === "full" && !controlsVisible && media.playing && "cursor-none"
       )}
@@ -614,7 +752,9 @@ function StreamPlayer({
         className={
           theater
             ? "contents md:flex md:min-w-0 md:flex-1 md:flex-col md:gap-4 md:p-4"
-            : "contents"
+            : roomLayout
+              ? "contents md:flex md:min-w-0 md:flex-1 md:flex-col"
+              : "contents"
         }
       >
         <main
@@ -627,7 +767,7 @@ function StreamPlayer({
                 : "min-h-0 flex-1",
             mode === "full" &&
               !fullscreen &&
-              (theater
+              (theater || roomLayout
                 ? "sticky top-0 z-20 md:relative md:z-auto"
                 : "sticky top-0 z-20 md:static")
           )}
@@ -645,8 +785,16 @@ function StreamPlayer({
             onPointerDown={captureVideoPointer}
             onClick={handleVideoClick}
             {...media.videoHandlers}
-            onEnded={finishEpisode}
+            onEnded={handleEnded}
           />
+
+          {room ? (
+            <RoomPlayerOverlay
+              room={room}
+              blocked={roomBlocked}
+              onJoinPlayback={joinPlayback}
+            />
+          ) : null}
 
           {mode === "full" ? (
             <PlayerCenterIndicator
@@ -678,14 +826,14 @@ function StreamPlayer({
                 segment={playback.intro}
                 currentTime={media.currentTime}
                 duration={media.duration}
-                onSkip={media.skipTo}
+                onSkip={controls.skipTo}
               />
               <PlayerSkipButton
                 kind="outro"
                 segment={playback.outro}
                 currentTime={media.currentTime}
                 duration={media.duration}
-                onSkip={media.skipTo}
+                onSkip={controls.skipTo}
               />
             </div>
           ) : null}
@@ -704,13 +852,13 @@ function StreamPlayer({
               currentTime={media.currentTime}
               duration={media.duration}
               bufferedEnd={media.bufferedEnd}
-              onSeek={media.seekTo}
+              onSeek={controls.seekTo}
               playing={media.playing}
               loading={mediaLoading}
               fullscreen={fullscreen}
-              onTogglePlayback={media.togglePlayback}
+              onTogglePlayback={controls.togglePlayback}
               onToggleFullscreen={toggleFullscreen}
-              onSeekBy={media.seekBy}
+              onSeekBy={controls.seekBy}
               controlsVisible={controlsVisible}
               playerPortalContainer={playerPortalContainer}
             />
@@ -722,17 +870,17 @@ function StreamPlayer({
               currentTime={media.currentTime}
               duration={media.duration}
               bufferedEnd={media.bufferedEnd}
-              onSeek={media.seekTo}
+              onSeek={controls.seekTo}
               playing={media.playing}
               loading={mediaLoading}
               muted={media.muted}
               volume={media.volume}
               fullscreen={fullscreen}
-              onTogglePlayback={media.togglePlayback}
+              onTogglePlayback={controls.togglePlayback}
               onToggleMute={media.toggleMute}
               onVolumeChange={media.setVideoVolume}
               onToggleFullscreen={toggleFullscreen}
-              onOpenEpisodes={() => setEpisodesOpen(true)}
+              onOpenEpisodes={openEpisodes}
               onOpenServers={() => setServersOpen(true)}
               controlsVisible={controlsVisible}
               playerPortalContainer={playerPortalContainer}
@@ -741,10 +889,11 @@ function StreamPlayer({
             <PlayerMiniControls
               playback={playback}
               serverId={input.serverId}
+              roomId={room?.roomId}
               playing={media.playing}
               loading={mediaLoading}
-              onTogglePlayback={media.togglePlayback}
-              onSeekBy={media.seekBy}
+              onTogglePlayback={controls.togglePlayback}
+              onSeekBy={controls.seekBy}
               onClose={onClose}
             />
           )}
@@ -762,10 +911,13 @@ function StreamPlayer({
         {theater ? <PlayerTheaterBar playback={playback} /> : null}
       </div>
 
-      {mode === "full" && !fullscreen ? (
+      {roomLayout ? room?.panel : null}
+
+      {mode === "full" && !fullscreen && !room ? (
         <PlayerMobilePanel
           rail={theater}
           playback={playback}
+          currentTime={media.currentTime}
           episodes={providerEpisodes}
           previousEpisode={previousEpisode}
           onNext={goNext}
@@ -789,6 +941,14 @@ function StreamPlayer({
               episodeId: playback.episode.id,
               audio: playback.audio,
             }}
+            onChoose={
+              room
+                ? (choice) =>
+                    room.selectEpisode(choice.episode, choice.audio, {
+                      provider: choice.provider,
+                    })
+                : undefined
+            }
           />
           <ServerSheet
             key={playback.server.id}
@@ -796,6 +956,7 @@ function StreamPlayer({
             onOpenChange={setServersOpen}
             portalContainer={playerPortalContainer}
             playback={playback}
+            onChoose={room ? room.setServerId : undefined}
           />
         </>
       ) : null}

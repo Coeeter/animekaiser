@@ -1,5 +1,7 @@
 import type { StreamEpisode, StreamPlayback } from "@animekaiser/domain"
 import { useNavigate } from "@tanstack/react-router"
+import { toast } from "sonner"
+import type { RoomPlayerController } from "../../../rooms/room-player"
 import { preferredAudio } from "../../player-format"
 
 export function useEpisodeNavigation({
@@ -9,6 +11,7 @@ export function useEpisodeNavigation({
   isMobile,
   fullscreen,
   toggleFullscreen,
+  room,
 }: {
   playback: StreamPlayback
   serverId: string | undefined
@@ -16,6 +19,7 @@ export function useEpisodeNavigation({
   isMobile: boolean
   fullscreen: boolean
   toggleFullscreen: () => void
+  room: RoomPlayerController | null
 }) {
   const navigate = useNavigate()
 
@@ -30,6 +34,12 @@ export function useEpisodeNavigation({
     const audio = audioForEpisode(episode)
     if (!audio) return
 
+    if (room) {
+      if (room.isHost) room.selectEpisode(episode, audio)
+      else toast.message("The host chooses episodes in this room.")
+      return
+    }
+
     void navigate({
       to: "/watch/$malId/$provider/$episodeId",
       params: {
@@ -43,6 +53,19 @@ export function useEpisodeNavigation({
 
   const toggleMiniPlayer = () => {
     if (isMobile) return
+
+    if (room) {
+      if (mode === "mini")
+        void navigate({ to: "/rooms/$roomId", params: { roomId: room.roomId } })
+      else {
+        if (fullscreen) toggleFullscreen()
+        void navigate({
+          to: "/series/$id",
+          params: { id: playback.anime.malId },
+        })
+      }
+      return
+    }
 
     if (mode === "mini") {
       void navigate({

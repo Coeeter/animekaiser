@@ -6,10 +6,13 @@ import {
   Compass,
   History,
   Home,
+  MessageSquareHeart,
   MonitorPlay,
   Shuffle,
   Sparkles,
   User,
+  UserRound,
+  Users,
 } from "lucide-react"
 
 export type NavItem = { title: string; href: string; icon: LucideIcon }
@@ -28,4 +31,14 @@ export const personalLinks: ReadonlyArray<NavItem> = [
   { title: "Watching", href: "/watching", icon: MonitorPlay },
   { title: "My List", href: "/my-list", icon: Bookmark },
   { title: "Watch History", href: "/watch-history", icon: History },
+  {
+    title: "Recommendations",
+    href: "/recommendations",
+    icon: MessageSquareHeart,
+  },
+]
+
+export const socialLinks: ReadonlyArray<NavItem> = [
+  { title: "Rooms", href: "/rooms", icon: Users },
+  { title: "Friends", href: "/friends", icon: UserRound },
 ]

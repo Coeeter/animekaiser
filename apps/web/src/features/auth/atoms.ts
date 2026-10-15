@@ -10,8 +10,11 @@ const sessionQueryAtom = KaiserRpcClient.query("GetCurrentSession", void 0, {
 export const sessionAtom = sessionQueryAtom.pipe(Atom.keepAlive)
 
 const protectedRoutes = new Set([
+  "/friends",
   "/my-list",
   "/profile",
+  "/recommendations",
+  "/rooms",
   "/sync-activity",
   "/watch-history",
   "/watching",

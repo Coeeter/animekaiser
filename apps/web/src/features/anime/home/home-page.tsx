@@ -4,6 +4,7 @@ import { DataError } from "../../../components/data-error"
 import { sessionAtom } from "../../auth/atoms"
 import { ContinueWatchingRow } from "../../history/continue-watching-row"
 import { PlanToWatchAiringRow } from "../../library/new-episodes-rows"
+import { HomeRoomsStrip } from "../../rooms/home-rooms"
 import { AnimeScrollRow } from "../common/anime-scroll-row"
 import { AiringTodayList } from "../schedule/airing-today"
 import { homeAtom } from "./atoms"
@@ -37,6 +38,7 @@ export function HomePage() {
 
         <div className="mx-auto flex w-full min-w-0 max-w-7xl flex-col gap-10 px-4 md:px-6">
           {isAuthenticated ? <ContinueWatchingRow /> : null}
+          {isAuthenticated ? <HomeRoomsStrip /> : null}
           {isAuthenticated ? <PlanToWatchAiringRow /> : null}
           <NewEpisodesRow />
 

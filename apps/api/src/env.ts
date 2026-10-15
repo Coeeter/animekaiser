@@ -56,6 +56,11 @@ export class Env extends Effect.Service<Env>()("@animekaiser/api/env", {
           "STREAMING_SECRET_HEADER"
         ).pipe(Config.withDefault("x-streaming-secret")),
       },
+      ai: {
+        openRouterApiKey: yield* Config.option(
+          Config.redacted("OPENROUTER_API_KEY")
+        ),
+      },
       externalList: {
         mal: {
           clientId: yield* Config.nonEmptyString("MAL_CLIENT_ID"),

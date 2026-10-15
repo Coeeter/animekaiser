@@ -1,5 +1,7 @@
+import type { NodePgQueryResultHKT } from "drizzle-orm/node-postgres"
 import { drizzle } from "drizzle-orm/node-postgres"
 import { migrate } from "drizzle-orm/node-postgres/migrator"
+import type { PgDatabase } from "drizzle-orm/pg-core"
 import * as Data from "effect/Data"
 import * as Effect from "effect/Effect"
 import * as Queue from "effect/Queue"
@@ -24,6 +26,8 @@ export const createPgPool = (
 export const createDrizzleClient = (pool: Pool) => drizzle(pool, { schema })
 
 export type KaiserDb = ReturnType<typeof createDrizzleClient>
+
+export type KaiserExecutor = PgDatabase<NodePgQueryResultHKT, typeof schema>
 
 export class DatabaseConnectionError extends Data.TaggedError(
   "DatabaseConnectionError"

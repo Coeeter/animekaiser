@@ -1,8 +1,20 @@
+import type { AnimeItem } from "@animekaiser/domain"
 import { Atom } from "@effect-atom/atom-react"
 import { shortcutsAtom } from "../../shortcuts/atoms"
 import { isTypingTarget, matchesAction } from "../../shortcuts/shortcuts"
 
 export const searchOpenAtom = Atom.make(false)
+
+// While set, search results are picked for the caller (for example a room
+// shortlist) instead of opening the series page.
+export type SearchPick = {
+  readonly title: string
+  readonly onPick: (anime: AnimeItem) => void
+}
+
+export const searchPickAtom = Atom.make<SearchPick | null>(null).pipe(
+  Atom.keepAlive
+)
 
 const recentSearchesKey = "animekaiser:recent-searches"
 const recentSearchesLimit = 6

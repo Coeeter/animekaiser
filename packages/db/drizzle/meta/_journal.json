@@ -134,6 +134,20 @@
       "when": 1791343126797,
       "tag": "0018_profile_preferences",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1791980986774,
+      "tag": "0019_rooms_and_friends",
+      "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1791996492649,
+      "tag": "0020_recommendations",
+      "breakpoints": true
     }
   ]
 }

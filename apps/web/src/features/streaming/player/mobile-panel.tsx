@@ -23,6 +23,7 @@ import type { ReactNode } from "react"
 import { AnimeTitle } from "../../anime/common/anime-title"
 import { NextAiringNotice } from "../../anime/schedule/next-airing-notice"
 import { episodeSpoilerAtom } from "../../history/atoms"
+import { PlayerWatchTogether } from "../../rooms/watch-together"
 import { nextSeasonEpisodesAtom, providerLabelAtom } from "../atoms"
 import { EpisodeThumbnail } from "../episode-thumbnail"
 import {
@@ -34,6 +35,7 @@ import {
 
 export function PlayerMobilePanel({
   playback,
+  currentTime,
   episodes,
   previousEpisode,
   onNext,
@@ -45,6 +47,7 @@ export function PlayerMobilePanel({
 }: {
   rail?: boolean
   playback: StreamPlayback
+  currentTime: number
   episodes: ReadonlyArray<StreamEpisode>
   previousEpisode: StreamEpisode | null
   onNext: (() => void) | null
@@ -95,6 +98,13 @@ export function PlayerMobilePanel({
           <SkipForward data-icon="inline-start" />
           <span className="truncate">{nextLabel}</span>
         </Button>
+        <PlayerWatchTogether
+          playback={playback}
+          currentTime={currentTime}
+          variant="outline"
+          size="lg"
+          className="col-span-2 md:hidden"
+        />
       </div>
 
       <div className="flex flex-col gap-2">

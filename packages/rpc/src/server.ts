@@ -11,6 +11,9 @@ import { IntegrationHandlersLive } from "./server/integrations"
 import { LibraryHandlersLive } from "./server/library"
 import { RpcRequestLogging, RpcRequestLoggingLive } from "./server/logging"
 import { ProfileHandlersLive } from "./server/profile"
+import { RecommendationHandlersLive } from "./server/recommendations"
+import { RoomAuthenticationLive, RoomHandlersLive } from "./server/rooms"
+import { SocialHandlersLive } from "./server/social"
 import { StreamingHandlersLive } from "./server/streaming"
 
 export { RpcServerConfig } from "./server/config"
@@ -21,6 +24,9 @@ const HandlersLive = Layer.mergeAll(
   IntegrationHandlersLive,
   LibraryHandlersLive,
   ProfileHandlersLive,
+  RecommendationHandlersLive,
+  RoomHandlersLive,
+  SocialHandlersLive,
   StreamingHandlersLive,
   WatchHistoryHandlersLive
 )
@@ -36,6 +42,7 @@ export const RpcLive = RpcServer.layerHttpRouter({
     Layer.mergeAll(
       HandlersLive,
       AuthenticationMiddlewareLive,
+      RoomAuthenticationLive,
       RpcRequestLoggingLive
     )
   ),

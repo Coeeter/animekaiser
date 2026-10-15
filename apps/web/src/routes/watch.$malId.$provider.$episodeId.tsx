@@ -3,10 +3,13 @@ import {
   StreamAudio as StreamAudioSchema,
   StreamProviderId,
 } from "@animekaiser/domain"
-import { useAtomMount } from "@effect-atom/atom-react"
+import { useAtomMount, useAtomValue } from "@effect-atom/atom-react"
 import { createFileRoute } from "@tanstack/react-router"
 import * as Schema from "effect/Schema"
+import { activeRoomIdAtom } from "../features/rooms/atoms"
+import { LeaveRoomForSolo } from "../features/rooms/leave-for-solo"
 import { mountPlaybackSessionAtom } from "../features/streaming/playback-session"
+import type { StreamPlaybackInput } from "../features/streaming/player/page"
 
 const defaultAudio: StreamAudio = "sub"
 
@@ -47,7 +50,12 @@ function WatchRoute() {
     serverId: search.serverId,
   }
 
-  useAtomMount(mountPlaybackSessionAtom(input))
+  const activeRoom = useAtomValue(activeRoomIdAtom)
+  if (activeRoom) return <LeaveRoomForSolo roomId={activeRoom} />
+  return <SoloPlayback input={input} />
+}
 
+function SoloPlayback({ input }: { input: StreamPlaybackInput }) {
+  useAtomMount(mountPlaybackSessionAtom(input))
   return null
 }

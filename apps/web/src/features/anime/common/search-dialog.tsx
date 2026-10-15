@@ -1,3 +1,4 @@
+import type { AnimeItem } from "@animekaiser/domain"
 import { Badge } from "@animekaiser/ui/components/badge"
 import {
   Command,
@@ -34,7 +35,7 @@ import {
 import { useState } from "react"
 import { useDebouncedText } from "../../../hooks/use-debounced-text"
 import { sessionAtom } from "../../auth/atoms"
-import { mainLinks, personalLinks } from "../../layout/nav-links"
+import { mainLinks, personalLinks, socialLinks } from "../../layout/nav-links"
 import { settingsOpenAtom, settingsSectionAtom } from "../../settings/atoms"
 import {
   playerPreferencesAtom,
@@ -48,6 +49,7 @@ import {
   recentSearchesAtom,
   rememberSearchAtom,
   searchOpenAtom,
+  searchPickAtom,
   searchShortcutAtom,
   suggestedGenres,
 } from "./search-atoms"
@@ -63,6 +65,7 @@ const searchResultLimit = 8
 
 export function SearchDialog() {
   const [open, setOpen] = useAtom(searchOpenAtom)
+  const [pick, setPick] = useAtom(searchPickAtom)
   const [query, setQuery] = useState("")
   const navigate = useNavigate()
   const rememberSearch = useAtomSet(rememberSearchAtom)
@@ -92,9 +95,12 @@ export function SearchDialog() {
       open={open}
       onOpenChange={(next) => {
         setOpen(next)
-        if (!next) setQuery("")
+        if (!next) {
+          setQuery("")
+          setPick(null)
+        }
       }}
-      title="Search anime"
+      title={pick?.title ?? "Search anime"}
       description="Search the anime catalog."
       className="sm:max-w-2xl"
     >
@@ -114,30 +120,40 @@ export function SearchDialog() {
                   onSelect={(title) => {
                     rememberSearch(title)
                     close()
+                    setPick(null)
                   }}
+                  onPick={pick?.onPick}
                 />
               ) : (
                 <SearchResultsPending />
               )}
-              <CommandSeparator />
-              <CommandGroup>
-                <CommandItem
-                  value="see-all-results"
-                  className="gap-2.5"
-                  onSelect={() => goToCatalog(trimmedQuery)}
-                >
-                  <ArrowRight />
-                  <span>
-                    See all results for{" "}
-                    <span className="font-semibold">{trimmedQuery}</span>
-                  </span>
-                </CommandItem>
-              </CommandGroup>
+              {pick ? null : (
+                <>
+                  <CommandSeparator />
+                  <CommandGroup>
+                    <CommandItem
+                      value="see-all-results"
+                      className="gap-2.5"
+                      onSelect={() => goToCatalog(trimmedQuery)}
+                    >
+                      <ArrowRight />
+                      <span>
+                        See all results for{" "}
+                        <span className="font-semibold">{trimmedQuery}</span>
+                      </span>
+                    </CommandItem>
+                  </CommandGroup>
+                </>
+              )}
             </>
+          ) : pick ? (
+            <CommandEmpty className="py-10">
+              Type a title to add it to the room.
+            </CommandEmpty>
           ) : (
             <SearchIdleState onSubmit={goToCatalog} onDone={close} />
           )}
-          {trimmedQuery.length > 0 ? (
+          {trimmedQuery.length > 0 && !pick ? (
             <PaletteCommands query={trimmedQuery} onDone={close} />
           ) : null}
         </CommandList>
@@ -176,9 +192,10 @@ function PaletteCommands({
   const needle = query.toLowerCase()
   const matches = (text: string) => text.toLowerCase().includes(needle)
 
-  const pages = [...mainLinks, ...(signedIn ? personalLinks : [])].filter(
-    (link) => matches(link.title)
-  )
+  const pages = [
+    ...mainLinks,
+    ...(signedIn ? [...personalLinks, ...socialLinks] : []),
+  ].filter((link) => matches(link.title))
 
   const actions: ReadonlyArray<PaletteAction> = [
     {
@@ -367,10 +384,12 @@ function SearchResults({
   query,
   stale,
   onSelect,
+  onPick,
 }: {
   query: string
   stale: boolean
   onSelect: (query: string) => void
+  onPick?: (anime: AnimeItem) => void
 }) {
   const navigate = useNavigate()
   const preference = useAtomValue(animeTitlePreferenceAtom)
@@ -411,10 +430,12 @@ function SearchResults({
                 className="gap-3 p-2"
                 onSelect={() => {
                   onSelect(title)
-                  void navigate({
-                    to: "/series/$id",
-                    params: { id: anime.malId },
-                  })
+                  if (onPick) onPick(anime)
+                  else
+                    void navigate({
+                      to: "/series/$id",
+                      params: { id: anime.malId },
+                    })
                 }}
               >
                 {anime.coverImage ? (
