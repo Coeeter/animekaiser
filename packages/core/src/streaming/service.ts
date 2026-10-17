@@ -85,7 +85,8 @@ export class StreamingService extends Effect.Service<StreamingService>()(
           )
 
       // The service resolves the provider's own id for an anime; persisting it
-      // lets later calls skip the title match entirely.
+      // lets later calls skip the title match entirely. It reports a title only
+      // when it actually matched, so a null must not erase the stored one.
       const saveMapping = (
         malId: number,
         provider: StreamProviderId,
@@ -104,7 +105,10 @@ export class StreamingService extends Effect.Service<StreamingService>()(
                       animeStreamProviderMapping.malId,
                       animeStreamProviderMapping.provider,
                     ],
-                    set: { providerAnimeId, matchedTitle },
+                    set:
+                      matchedTitle === null
+                        ? { providerAnimeId }
+                        : { providerAnimeId, matchedTitle },
                   })
               )
               .pipe(Effect.ignore)
@@ -214,7 +218,7 @@ export class StreamingService extends Effect.Service<StreamingService>()(
         const anime = yield* getAnime(malId)
         const resolved = (yield* resolveProvider(provider))?.id ?? provider
         const known = yield* readMapping(malId, resolved)
-        const playback = yield* streaming.getPlayback(
+        const { matchedTitle, ...playback } = yield* streaming.getPlayback(
           anime,
           resolved,
           episodeId,
@@ -222,7 +226,12 @@ export class StreamingService extends Effect.Service<StreamingService>()(
           serverId,
           known
         )
-        yield* saveMapping(malId, resolved, playback.providerAnimeId, null)
+        yield* saveMapping(
+          malId,
+          resolved,
+          playback.providerAnimeId,
+          matchedTitle
+        )
         const artwork = metadataByNumber(
           yield* animeService.getEpisodeMetadata(malId)
         )

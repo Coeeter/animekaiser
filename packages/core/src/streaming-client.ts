@@ -40,6 +40,9 @@ export class StreamingClient extends Context.Tag(
       audio: StreamAudio,
       serverId?: string,
       providerAnimeId?: string
-    ) => Effect.Effect<StreamPlayback, StreamPlaybackFailure>
+    ) => Effect.Effect<
+      StreamPlayback & { readonly matchedTitle: string | null },
+      StreamPlaybackFailure
+    >
   }
 >() {}

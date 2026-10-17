@@ -285,6 +285,7 @@ export const StreamingClientLive = Layer.scoped(
             anime,
             provider: playback.provider as StreamProviderId,
             providerAnimeId: playback.providerAnimeId,
+            matchedTitle: playback.matchedTitle,
             episode: playback.episode,
             audio: playback.audio,
             server: playback.server,
