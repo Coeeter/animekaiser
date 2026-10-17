@@ -37,8 +37,8 @@ typed RPC contract (`StreamingClient` in `apps/api/src/infra/streaming.ts`)
 and only ever stores the anime-to-provider mappings it hands back — never the
 stream data itself, and no provider is hardcoded. Bring your own
 implementation and point `STREAMING_SERVICE_URL` / `STREAMING_SECRET` at it.
-Without those set, streaming just shows as unavailable — nothing else
-breaks.
+Both are required; the API won't start without them. If the service is
+down or unreachable, streaming shows as unavailable and nothing else breaks.
 
 The web app has a player with subtitles, server and audio selection, seek
 thumbnails, skip intro/outro, and a theater mode that keeps the episode list
