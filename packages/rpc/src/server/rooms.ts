@@ -8,15 +8,13 @@ import {
   RoomAuthentication,
   RoomRpcs,
 } from "@animekaiser/domain"
-import * as Cookies from "@effect/platform/Cookies"
 import * as Effect from "effect/Effect"
+import * as Cookies from "effect/http/Cookies"
+import type * as Headers from "effect/http/Headers"
 import * as Layer from "effect/Layer"
 import * as Stream from "effect/Stream"
 
-const readSessionOrNull = (
-  auth: KaiserAuth,
-  headers: Readonly<Record<string, string>>
-) =>
+const readSessionOrNull = (auth: KaiserAuth, headers: Headers.Headers) =>
   Effect.tryPromise(() =>
     auth.api.getSession({ headers: new globalThis.Headers(headers) })
   ).pipe(Effect.orElseSucceed(() => undefined))
@@ -25,7 +23,7 @@ export const RoomAuthenticationLive = Layer.effect(
   RoomAuthentication,
   Effect.gen(function* () {
     const auth = yield* AuthServer
-    return RoomAuthentication.of(({ headers }) =>
+    return RoomAuthentication.of((effect, { headers }) =>
       Effect.gen(function* () {
         const session = yield* readSessionOrNull(auth, headers)
         const cookies = Cookies.parseHeader(headers.cookie ?? "")
@@ -34,7 +32,7 @@ export const RoomAuthenticationLive = Layer.effect(
           .map(([, value]) => value)
           .slice(0, 20)
         const userId = session?.user.id ?? null
-        return {
+        const actor: RoomActorShape = {
           user: session
             ? {
                 id: session.user.id,
@@ -55,7 +53,8 @@ export const RoomAuthenticationLive = Layer.effect(
                 )
               )
             : Effect.succeed(true),
-        } satisfies RoomActorShape
+        }
+        return yield* Effect.provideService(effect, RoomActor, actor)
       })
     )
   })

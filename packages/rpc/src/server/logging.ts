@@ -1,24 +1,23 @@
-import * as RpcMiddleware from "@effect/rpc/RpcMiddleware"
 import * as Cause from "effect/Cause"
 import * as Clock from "effect/Clock"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
+import * as RpcMiddleware from "effect/rpc/RpcMiddleware"
 
-export class RpcRequestLogging extends RpcMiddleware.Tag<RpcRequestLogging>()(
-  "@animekaiser/rpc/RpcRequestLogging",
-  { wrap: true }
+export class RpcRequestLogging extends RpcMiddleware.Service<RpcRequestLogging>()(
+  "@animekaiser/rpc/RpcRequestLogging"
 ) {}
 
 export const RpcRequestLoggingLive = Layer.succeed(
   RpcRequestLogging,
-  RpcRequestLogging.of(({ clientId, next, rpc }) =>
+  RpcRequestLogging.of((next, { client, rpc }) =>
     Effect.gen(function* () {
       const startedAt = yield* Clock.currentTimeMillis
 
       const fields = (status: "ok" | "error") =>
         Clock.currentTimeMillis.pipe(
           Effect.map((endedAt) => ({
-            clientId,
+            clientId: client.id,
             durationMs: endedAt - startedAt,
             rpc: rpc._tag,
             status,
@@ -35,7 +34,7 @@ export const RpcRequestLoggingLive = Layer.succeed(
             )
           )
         ),
-        Effect.tapErrorCause((cause) =>
+        Effect.tapCause((cause) =>
           fields("error").pipe(
             Effect.flatMap((annotations) =>
               Effect.logError("rpc.request", {

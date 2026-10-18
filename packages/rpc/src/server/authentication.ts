@@ -4,16 +4,16 @@ import {
   Authentication,
   AuthenticationRequiredError,
   AuthRpcs,
+  CurrentUser,
   OptionalAuthentication,
+  OptionalCurrentUser,
   SessionOperationError,
 } from "@animekaiser/domain"
 import * as Effect from "effect/Effect"
+import type * as Headers from "effect/http/Headers"
 import * as Layer from "effect/Layer"
 
-const readSession = (
-  auth: KaiserAuth,
-  headers: Readonly<Record<string, string>>
-) =>
+const readSession = (auth: KaiserAuth, headers: Headers.Headers) =>
   Effect.tryPromise({
     try: () =>
       auth.api.getSession({ headers: new globalThis.Headers(headers) }),
@@ -65,21 +65,19 @@ export const AuthenticationLive = Layer.effect(
   Authentication,
   Effect.gen(function* () {
     const auth = yield* AuthServer
-    return Authentication.of(({ headers }) =>
-      readSession(auth, headers).pipe(
-        Effect.flatMap((session) =>
-          session
-            ? Effect.succeed({
-                id: session.user.id,
-                image: session.user.image ?? null,
-              })
-            : Effect.fail(
-                new AuthenticationRequiredError({
-                  message: "Authentication is required.",
-                })
-              )
-        )
-      )
+    return Authentication.of((effect, { headers }) =>
+      Effect.gen(function* () {
+        const session = yield* readSession(auth, headers)
+        if (!session) {
+          return yield* new AuthenticationRequiredError({
+            message: "Authentication is required.",
+          })
+        }
+        return yield* Effect.provideService(effect, CurrentUser, {
+          id: session.user.id,
+          image: session.user.image ?? null,
+        })
+      })
     )
   })
 )
@@ -88,15 +86,16 @@ export const OptionalAuthenticationLive = Layer.effect(
   OptionalAuthentication,
   Effect.gen(function* () {
     const auth = yield* AuthServer
-    return OptionalAuthentication.of(({ headers }) =>
+    return OptionalAuthentication.of((effect, { headers }) =>
       readSession(auth, headers).pipe(
         Effect.map((session) =>
           session
             ? { id: session.user.id, image: session.user.image ?? null }
             : null
         ),
-        Effect.catchTag("AuthenticationRequiredError", () =>
-          Effect.succeed(null)
+        Effect.orElseSucceed(() => null),
+        Effect.flatMap((user) =>
+          Effect.provideService(effect, OptionalCurrentUser, user)
         )
       )
     )

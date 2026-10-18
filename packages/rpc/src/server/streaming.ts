@@ -1,15 +1,25 @@
 import { StreamingService } from "@animekaiser/core"
 import { StreamingRpcs } from "@animekaiser/domain"
+import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 
 export const StreamingHandlersLive = StreamingRpcs.toLayer(
-  StreamingRpcs.of({
-    ListStreamProviders: () => StreamingService.listProviders,
-    ListStreamEpisodes: ({ malId, provider }) =>
-      StreamingService.listEpisodes(malId, provider),
-    ListStreamAvailability: ({ malId }) =>
-      StreamingService.listAvailability(malId),
-    GetStreamPlayback: ({ malId, provider, episodeId, audio, serverId }) =>
-      StreamingService.getPlayback(malId, provider, episodeId, audio, serverId),
+  Effect.gen(function* () {
+    const streamingService = yield* StreamingService
+    return StreamingRpcs.of({
+      ListStreamProviders: () => streamingService.listProviders,
+      ListStreamEpisodes: ({ malId, provider }) =>
+        streamingService.listEpisodes(malId, provider),
+      ListStreamAvailability: ({ malId }) =>
+        streamingService.listAvailability(malId),
+      GetStreamPlayback: ({ malId, provider, episodeId, audio, serverId }) =>
+        streamingService.getPlayback(
+          malId,
+          provider,
+          episodeId,
+          audio,
+          serverId
+        ),
+    })
   })
-).pipe(Layer.provide(StreamingService.Default))
+).pipe(Layer.provide(StreamingService.layer))

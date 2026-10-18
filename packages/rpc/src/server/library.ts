@@ -19,25 +19,37 @@ import * as Stream from "effect/Stream"
 
 export const LibraryHandlersLive = LibraryRpcs.toLayer(
   Effect.gen(function* () {
+    const airingService = yield* AiringService
+    const externalListAccountsService = yield* ExternalListAccountsService
+    const libraryService = yield* LibraryService
+    const profileService = yield* ProfileService
     const imports = yield* LibraryImportService
     return LibraryRpcs.of({
       GetLibraryPage: (input) =>
         Effect.gen(function* () {
           const user = yield* CurrentUser
-          return yield* LibraryService.getPage(user.id, input).pipe(
-            Effect.catchTag("LibraryServiceError", (error) =>
-              Effect.fail(new LibraryOperationError({ message: error.message }))
+          return yield* libraryService
+            .getPage(user.id, input)
+            .pipe(
+              Effect.catchTag("LibraryServiceError", (error) =>
+                Effect.fail(
+                  new LibraryOperationError({ message: error.message })
+                )
+              )
             )
-          )
         }),
       GetPublicLibrary: ({ username, asPublic, ...input }) =>
         Effect.gen(function* () {
           const current = yield* OptionalCurrentUser
-          const record = yield* ProfileService.getPublicProfile(username).pipe(
-            Effect.catchTag("ProfileOperationError", (error) =>
-              Effect.fail(new LibraryOperationError({ message: error.message }))
+          const record = yield* profileService
+            .getPublicProfile(username)
+            .pipe(
+              Effect.catchTag("ProfileOperationError", (error) =>
+                Effect.fail(
+                  new LibraryOperationError({ message: error.message })
+                )
+              )
             )
-          )
 
           return yield* Option.match(record, {
             onNone: () => Effect.succeed({ type: "not_found" as const }),
@@ -48,7 +60,7 @@ export const LibraryHandlersLive = LibraryRpcs.toLayer(
 
               if (!visible) return Effect.succeed({ type: "private" as const })
 
-              return LibraryService.getPage(value.user.id, input).pipe(
+              return libraryService.getPage(value.user.id, input).pipe(
                 Effect.map((page) => ({
                   type: "public" as const,
                   username: value.user.username ?? username,
@@ -67,20 +79,28 @@ export const LibraryHandlersLive = LibraryRpcs.toLayer(
       GetLibraryEntry: ({ malId }) =>
         Effect.gen(function* () {
           const user = yield* CurrentUser
-          return yield* LibraryService.getEntry(user.id, malId).pipe(
-            Effect.catchTag("LibraryServiceError", (error) =>
-              Effect.fail(new LibraryOperationError({ message: error.message }))
+          return yield* libraryService
+            .getEntry(user.id, malId)
+            .pipe(
+              Effect.catchTag("LibraryServiceError", (error) =>
+                Effect.fail(
+                  new LibraryOperationError({ message: error.message })
+                )
+              )
             )
-          )
         }),
       ListLibraryEntries: ({ malIds }) =>
         Effect.gen(function* () {
           const user = yield* CurrentUser
-          return yield* LibraryService.listEntries(user.id, malIds).pipe(
-            Effect.catchTag("LibraryServiceError", (error) =>
-              Effect.fail(new LibraryOperationError({ message: error.message }))
+          return yield* libraryService
+            .listEntries(user.id, malIds)
+            .pipe(
+              Effect.catchTag("LibraryServiceError", (error) =>
+                Effect.fail(
+                  new LibraryOperationError({ message: error.message })
+                )
+              )
             )
-          )
         }),
       UpsertLibraryEntry: ({
         anime,
@@ -92,35 +112,39 @@ export const LibraryHandlersLive = LibraryRpcs.toLayer(
       }) =>
         Effect.gen(function* () {
           const user = yield* CurrentUser
-          const entry = yield* LibraryService.upsertEntry(
-            user.id,
-            anime,
-            {
-              status,
-              score,
-              progress,
-              notes,
-            },
-            syncExternal ?? true
-          ).pipe(
-            Effect.catchTag("LibraryServiceError", (error) =>
-              Effect.fail(new LibraryOperationError({ message: error.message }))
+          const entry = yield* libraryService
+            .upsertEntry(
+              user.id,
+              anime,
+              {
+                status,
+                score,
+                progress,
+                notes,
+              },
+              syncExternal ?? true
             )
-          )
+            .pipe(
+              Effect.catchTag("LibraryServiceError", (error) =>
+                Effect.fail(
+                  new LibraryOperationError({ message: error.message })
+                )
+              )
+            )
           if (!entry) {
             return yield* new LibraryOperationError({
               message: "Library entry was not saved.",
             })
           }
           if (["watching", "rewatching", "planning"].includes(status)) {
-            yield* AiringService.trackAnime(anime.malId).pipe(
-              Effect.catchAll((error) =>
+            yield* airingService.trackAnime(anime.malId).pipe(
+              Effect.catch((error) =>
                 Effect.logWarning("Airing tracking failed", {
                   malId: anime.malId,
                   message: error.message,
                 })
               ),
-              Effect.forkDaemon
+              Effect.forkDetach
             )
           }
           return entry
@@ -128,39 +152,42 @@ export const LibraryHandlersLive = LibraryRpcs.toLayer(
       RemoveLibraryEntry: ({ malId, providers }) =>
         Effect.gen(function* () {
           const user = yield* CurrentUser
-          return yield* LibraryService.removeEntry(
-            user.id,
-            malId,
-            providers
-          ).pipe(
-            Effect.catchTag("LibraryServiceError", (error) =>
-              Effect.fail(new LibraryOperationError({ message: error.message }))
+          return yield* libraryService
+            .removeEntry(user.id, malId, providers)
+            .pipe(
+              Effect.catchTag("LibraryServiceError", (error) =>
+                Effect.fail(
+                  new LibraryOperationError({ message: error.message })
+                )
+              )
             )
-          )
         }),
       ClearLibrary: () =>
         Effect.gen(function* () {
           const user = yield* CurrentUser
-          const removedCount = yield* LibraryService.clear(user.id).pipe(
-            Effect.catchTag("LibraryServiceError", (error) =>
-              Effect.fail(new LibraryOperationError({ message: error.message }))
+          const removedCount = yield* libraryService
+            .clear(user.id)
+            .pipe(
+              Effect.catchTag("LibraryServiceError", (error) =>
+                Effect.fail(
+                  new LibraryOperationError({ message: error.message })
+                )
+              )
             )
-          )
           return { removedCount }
         }),
       StartLibraryImport: ({ provider }) =>
         Effect.gen(function* () {
           const user = yield* CurrentUser
-          return yield* ExternalListAccountsService.startImport(
-            user.id,
-            provider
-          ).pipe(
-            Effect.catchTag("ExternalListAccountError", (error) =>
-              Effect.fail(
-                new ExternalListOperationError({ message: error.message })
+          return yield* externalListAccountsService
+            .startImport(user.id, provider)
+            .pipe(
+              Effect.catchTag("ExternalListAccountError", (error) =>
+                Effect.fail(
+                  new ExternalListOperationError({ message: error.message })
+                )
               )
             )
-          )
         }),
       WatchLibraryImport: ({ id }) =>
         Stream.unwrap(
@@ -179,24 +206,28 @@ export const LibraryHandlersLive = LibraryRpcs.toLayer(
       ListLibrarySyncEvents: (input) =>
         Effect.gen(function* () {
           const user = yield* CurrentUser
-          return yield* LibraryService.listSyncEvents(user.id, input).pipe(
-            Effect.catchTag("LibraryServiceError", (error) =>
-              Effect.fail(new LibraryOperationError({ message: error.message }))
+          return yield* libraryService
+            .listSyncEvents(user.id, input)
+            .pipe(
+              Effect.catchTag("LibraryServiceError", (error) =>
+                Effect.fail(
+                  new LibraryOperationError({ message: error.message })
+                )
+              )
             )
-          )
         }),
       RetryLibrarySyncEvents: ({ eventIds, target }) =>
         Effect.gen(function* () {
           const user = yield* CurrentUser
-          const queued = yield* LibraryService.retrySyncEvents(
-            user.id,
-            eventIds,
-            target
-          ).pipe(
-            Effect.catchTag("LibraryServiceError", (error) =>
-              Effect.fail(new LibraryOperationError({ message: error.message }))
+          const queued = yield* libraryService
+            .retrySyncEvents(user.id, eventIds, target)
+            .pipe(
+              Effect.catchTag("LibraryServiceError", (error) =>
+                Effect.fail(
+                  new LibraryOperationError({ message: error.message })
+                )
+              )
             )
-          )
           return {
             queued: queued.map((event) => ({
               id: event.id,
@@ -216,31 +247,39 @@ export const LibraryHandlersLive = LibraryRpcs.toLayer(
       ListLibraryNextSeasons: () =>
         Effect.gen(function* () {
           const user = yield* CurrentUser
-          return yield* AiringService.listNextSeasons(user.id).pipe(
-            Effect.catchTag("AiringServiceError", (error) =>
-              Effect.fail(new LibraryOperationError({ message: error.message }))
+          return yield* airingService
+            .listNextSeasons(user.id)
+            .pipe(
+              Effect.catchTag("AiringServiceError", (error) =>
+                Effect.fail(
+                  new LibraryOperationError({ message: error.message })
+                )
+              )
             )
-          )
         }),
       ListLibraryNewEpisodes: () =>
         Effect.gen(function* () {
           const user = yield* CurrentUser
-          return yield* AiringService.listNewEpisodes(user.id).pipe(
-            Effect.catchTag("AiringServiceError", (error) =>
-              Effect.fail(new LibraryOperationError({ message: error.message }))
+          return yield* airingService
+            .listNewEpisodes(user.id)
+            .pipe(
+              Effect.catchTag("AiringServiceError", (error) =>
+                Effect.fail(
+                  new LibraryOperationError({ message: error.message })
+                )
+              )
             )
-          )
         }),
     })
   })
 ).pipe(
   Layer.provide(
     Layer.mergeAll(
-      AiringService.Default,
-      ExternalListAccountsService.Default,
-      LibraryImportService.Default,
-      LibraryService.Default,
-      ProfileService.Default
+      AiringService.layer,
+      ExternalListAccountsService.layer,
+      LibraryImportService.layer,
+      LibraryService.layer,
+      ProfileService.layer
     )
   )
 )

@@ -4,25 +4,28 @@ import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 
 export const AnimeHandlersLive = AnimeRpcs.toLayer(
-  AnimeRpcs.of({
-    GetAnimeHome: () => AnimeService.getHome(),
-    ListAnimeCatalog: (input) => AnimeService.getCatalog(input),
-    ListAnimeDiscovery: ({ category, page, perPage }) =>
-      AnimeService.getDiscovery(category, page, perPage),
-    ListAnimeSchedule: ({ from, to, page, perPage }) =>
-      from >= to
-        ? Effect.fail(
-            new AnimeUnavailableError({ message: "Schedule range is invalid." })
-          )
-        : AnimeService.getSchedule(from, to, page, perPage),
-    ListLatestEpisodes: () => AiringService.listLatestEpisodes(),
-    GetRandomAnime: () => AnimeService.getRandom(),
-    GetAnimeDetail: ({ malId }) => AnimeService.getDetail(malId),
-    GetAnimeWatchOrder: ({ malId }) => AnimeService.getWatchOrder(malId),
-    ListAnimeRecommendations: ({ malId, page, perPage }) =>
-      AnimeService.getRecommendations(malId, page, perPage),
+  Effect.gen(function* () {
+    const airingService = yield* AiringService
+    const animeService = yield* AnimeService
+    return AnimeRpcs.of({
+      GetAnimeHome: () => animeService.getHome(),
+      ListAnimeCatalog: (input) => animeService.getCatalog(input),
+      ListAnimeDiscovery: ({ category, page, perPage }) =>
+        animeService.getDiscovery(category, page, perPage),
+      ListAnimeSchedule: ({ from, to, page, perPage }) =>
+        from >= to
+          ? Effect.fail(
+              new AnimeUnavailableError({
+                message: "Schedule range is invalid.",
+              })
+            )
+          : animeService.getSchedule(from, to, page, perPage),
+      ListLatestEpisodes: () => airingService.listLatestEpisodes(),
+      GetRandomAnime: () => animeService.getRandom(),
+      GetAnimeDetail: ({ malId }) => animeService.getDetail(malId),
+      GetAnimeWatchOrder: ({ malId }) => animeService.getWatchOrder(malId),
+      ListAnimeRecommendations: ({ malId, page, perPage }) =>
+        animeService.getRecommendations(malId, page, perPage),
+    })
   })
-).pipe(
-  Layer.provide(AnimeService.Default),
-  Layer.provide(AiringService.Default)
-)
+).pipe(Layer.provide(AnimeService.layer), Layer.provide(AiringService.layer))

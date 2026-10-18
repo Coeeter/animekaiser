@@ -12,72 +12,64 @@ const toOperationError = (error: { message: string }) =>
 
 export const WatchHistoryHandlersLive = WatchHistoryRpcs.toLayer(
   Effect.gen(function* () {
+    const watchHistoryService = yield* WatchHistoryService
     return WatchHistoryRpcs.of({
       RecordWatchProgress: (input) =>
         Effect.gen(function* () {
           const user = yield* CurrentUser
-          return yield* WatchHistoryService.record(user.id, input).pipe(
-            Effect.catchTag("WatchHistoryServiceError", toOperationError)
-          )
+          return yield* watchHistoryService
+            .record(user.id, input)
+            .pipe(Effect.catchTag("WatchHistoryServiceError", toOperationError))
         }),
       ListContinueWatching: ({ limit }) =>
         Effect.gen(function* () {
           const user = yield* CurrentUser
-          return yield* WatchHistoryService.listContinueWatching(
-            user.id,
-            limit
-          ).pipe(Effect.catchTag("WatchHistoryServiceError", toOperationError))
+          return yield* watchHistoryService
+            .listContinueWatching(user.id, limit)
+            .pipe(Effect.catchTag("WatchHistoryServiceError", toOperationError))
         }),
       ListWatchHistory: ({ page, perPage, query }) =>
         Effect.gen(function* () {
           const user = yield* CurrentUser
-          return yield* WatchHistoryService.listHistory(
-            user.id,
-            page,
-            perPage,
-            query
-          ).pipe(Effect.catchTag("WatchHistoryServiceError", toOperationError))
+          return yield* watchHistoryService
+            .listHistory(user.id, page, perPage, query)
+            .pipe(Effect.catchTag("WatchHistoryServiceError", toOperationError))
         }),
       ListWatchHistoryShows: ({ page, perPage, query }) =>
         Effect.gen(function* () {
           const user = yield* CurrentUser
-          return yield* WatchHistoryService.listHistoryShows(
-            user.id,
-            page,
-            perPage,
-            query
-          ).pipe(Effect.catchTag("WatchHistoryServiceError", toOperationError))
+          return yield* watchHistoryService
+            .listHistoryShows(user.id, page, perPage, query)
+            .pipe(Effect.catchTag("WatchHistoryServiceError", toOperationError))
         }),
       GetEpisodeWatchProgress: ({ malId, episode }) =>
         Effect.gen(function* () {
           const user = yield* CurrentUser
-          return yield* WatchHistoryService.getEpisode(
-            user.id,
-            malId,
-            episode
-          ).pipe(Effect.catchTag("WatchHistoryServiceError", toOperationError))
+          return yield* watchHistoryService
+            .getEpisode(user.id, malId, episode)
+            .pipe(Effect.catchTag("WatchHistoryServiceError", toOperationError))
         }),
       ListAnimeWatchProgress: ({ malId }) =>
         Effect.gen(function* () {
           const user = yield* CurrentUser
-          return yield* WatchHistoryService.listForAnime(user.id, malId).pipe(
-            Effect.catchTag("WatchHistoryServiceError", toOperationError)
-          )
+          return yield* watchHistoryService
+            .listForAnime(user.id, malId)
+            .pipe(Effect.catchTag("WatchHistoryServiceError", toOperationError))
         }),
       ClearWatchHistory: () =>
         Effect.gen(function* () {
           const user = yield* CurrentUser
-          return yield* WatchHistoryService.clearAll(user.id).pipe(
-            Effect.catchTag("WatchHistoryServiceError", toOperationError)
-          )
+          return yield* watchHistoryService
+            .clearAll(user.id)
+            .pipe(Effect.catchTag("WatchHistoryServiceError", toOperationError))
         }),
       ClearWatchHistoryEntry: ({ malId }) =>
         Effect.gen(function* () {
           const user = yield* CurrentUser
-          return yield* WatchHistoryService.clearForAnime(user.id, malId).pipe(
-            Effect.catchTag("WatchHistoryServiceError", toOperationError)
-          )
+          return yield* watchHistoryService
+            .clearForAnime(user.id, malId)
+            .pipe(Effect.catchTag("WatchHistoryServiceError", toOperationError))
         }),
     })
   })
-).pipe(Layer.provide(WatchHistoryService.Default))
+).pipe(Layer.provide(WatchHistoryService.layer))

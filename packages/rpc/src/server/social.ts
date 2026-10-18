@@ -21,4 +21,4 @@ export const SocialHandlersLive = SocialRpcs.toLayer(
         asUser((id) => social.remove(id, userId)),
     })
   })
-).pipe(Layer.provide(SocialService.Default))
+).pipe(Layer.provide(SocialService.layer))

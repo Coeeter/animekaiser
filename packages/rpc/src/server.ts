@@ -1,6 +1,6 @@
 import { KaiserRpcs } from "@animekaiser/domain"
-import { RpcSerialization, RpcServer } from "@effect/rpc"
 import * as Layer from "effect/Layer"
+import { RpcSerialization, RpcServer } from "effect/rpc"
 import { AnimeHandlersLive } from "./server/anime"
 import {
   AuthenticationMiddlewareLive,
@@ -33,7 +33,7 @@ const HandlersLive = Layer.mergeAll(
 
 const ServerRpcs = KaiserRpcs.middleware(RpcRequestLogging)
 
-export const RpcLive = RpcServer.layerHttpRouter({
+export const RpcLive = RpcServer.layerHttp({
   group: ServerRpcs,
   path: "/rpc",
   protocol: "websocket",

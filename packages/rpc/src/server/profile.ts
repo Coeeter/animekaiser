@@ -33,6 +33,9 @@ const profileView = (record: ProfileRecord, publicUrl: string) => ({
 
 export const ProfileHandlersLive = ProfileRpcs.toLayer(
   Effect.gen(function* () {
+    const profileMediaService = yield* ProfileMediaService
+    const profileService = yield* ProfileService
+    const profileStatsService = yield* ProfileStatsService
     const config = yield* RpcServerConfig
     const auth = yield* AuthServer
     const authHeaders = (headers: Readonly<Record<string, string>>) =>
@@ -43,14 +46,14 @@ export const ProfileHandlersLive = ProfileRpcs.toLayer(
         Effect.gen(function* () {
           const current = yield* CurrentUser
           return profileView(
-            yield* ProfileService.getOwnProfile(current.id),
+            yield* profileService.getOwnProfile(current.id),
             config.mediaPublicUrl
           )
         }),
       GetPublicProfile: ({ username, asPublic }) =>
         Effect.gen(function* () {
           const current = yield* OptionalCurrentUser
-          const result = yield* ProfileService.getPublicProfile(username)
+          const result = yield* profileService.getPublicProfile(username)
           return Option.match(result, {
             onNone: () => ({ type: "not_found" as const }),
             onSome: (record) => {
@@ -65,16 +68,20 @@ export const ProfileHandlersLive = ProfileRpcs.toLayer(
       GetOwnProfileStats: () =>
         Effect.gen(function* () {
           const current = yield* CurrentUser
-          return yield* ProfileStatsService.forUser(current.id).pipe(
-            Effect.catchTag("ProfileStatsServiceError", (error) =>
-              Effect.fail(new ProfileOperationError({ message: error.message }))
+          return yield* profileStatsService
+            .forUser(current.id)
+            .pipe(
+              Effect.catchTag("ProfileStatsServiceError", (error) =>
+                Effect.fail(
+                  new ProfileOperationError({ message: error.message })
+                )
+              )
             )
-          )
         }),
       GetPublicProfileStats: ({ username, asPublic }) =>
         Effect.gen(function* () {
           const current = yield* OptionalCurrentUser
-          const result = yield* ProfileService.getPublicProfile(username)
+          const result = yield* profileService.getPublicProfile(username)
 
           return yield* Option.match(result, {
             onNone: () => Effect.succeed(null),
@@ -88,7 +95,7 @@ export const ProfileHandlersLive = ProfileRpcs.toLayer(
               const shareActivity = isOwner || record.profile.shareActivity
               if (!shareStats && !shareActivity) return Effect.succeed(null)
 
-              return ProfileStatsService.forUser(record.user.id).pipe(
+              return profileStatsService.forUser(record.user.id).pipe(
                 Effect.map((stats) => ({
                   stats: shareStats
                     ? {
@@ -125,12 +132,12 @@ export const ProfileHandlersLive = ProfileRpcs.toLayer(
       GetPreferences: () =>
         Effect.gen(function* () {
           const current = yield* CurrentUser
-          return yield* ProfileService.getPreferences(current.id)
+          return yield* profileService.getPreferences(current.id)
         }),
       UpdatePreferences: ({ preferences }) =>
         Effect.gen(function* () {
           const current = yield* CurrentUser
-          yield* ProfileService.updatePreferences(current.id, preferences)
+          yield* profileService.updatePreferences(current.id, preferences)
         }),
       UpdateProfile: ({ description }) =>
         Effect.gen(function* () {
@@ -142,7 +149,7 @@ export const ProfileHandlersLive = ProfileRpcs.toLayer(
             })
           }
           return profileView(
-            yield* ProfileService.updateDescription(current.id, normalized),
+            yield* profileService.updateDescription(current.id, normalized),
             config.mediaPublicUrl
           )
         }),
@@ -150,14 +157,14 @@ export const ProfileHandlersLive = ProfileRpcs.toLayer(
         Effect.gen(function* () {
           const current = yield* CurrentUser
           return profileView(
-            yield* ProfileService.updatePrivacy(current.id, patch),
+            yield* profileService.updatePrivacy(current.id, patch),
             config.mediaPublicUrl
           )
         }),
       CreateProfileImageUpload: ({ kind, contentType, size }) =>
         Effect.gen(function* () {
           const current = yield* CurrentUser
-          return yield* ProfileMediaService.createUpload(
+          return yield* profileMediaService.createUpload(
             current.id,
             kind,
             contentType,
@@ -168,7 +175,7 @@ export const ProfileHandlersLive = ProfileRpcs.toLayer(
         Effect.gen(function* () {
           const current = yield* CurrentUser
           if (kind === "avatar") {
-            const publicUrl = yield* ProfileMediaService.verifyUpload(
+            const publicUrl = yield* profileMediaService.verifyUpload(
               current.id,
               kind,
               key
@@ -183,15 +190,15 @@ export const ProfileHandlersLive = ProfileRpcs.toLayer(
                 new ProfileOperationError({
                   message: "Unable to update profile picture.",
                 }),
-            }).pipe(Effect.tapError(() => ProfileMediaService.remove(key)))
-            yield* ProfileMediaService.keyFromUrl(current.image).pipe(
-              Effect.flatMap(ProfileMediaService.remove)
+            }).pipe(Effect.tapError(() => profileMediaService.remove(key)))
+            yield* profileMediaService.remove(
+              profileMediaService.keyFromUrl(current.image)
             )
           } else {
-            yield* ProfileMediaService.setBanner(current.id, key)
+            yield* profileMediaService.setBanner(current.id, key)
           }
           return profileView(
-            yield* ProfileService.getOwnProfile(current.id),
+            yield* profileService.getOwnProfile(current.id),
             config.mediaPublicUrl
           )
         }),
@@ -210,26 +217,26 @@ export const ProfileHandlersLive = ProfileRpcs.toLayer(
                   message: "Unable to remove profile picture.",
                 }),
             })
-            yield* ProfileMediaService.keyFromUrl(current.image).pipe(
-              Effect.flatMap(ProfileMediaService.remove)
+            yield* profileMediaService.remove(
+              profileMediaService.keyFromUrl(current.image)
             )
           } else {
-            yield* ProfileMediaService.removeBanner(current.id)
+            yield* profileMediaService.removeBanner(current.id)
           }
           return profileView(
-            yield* ProfileService.getOwnProfile(current.id),
+            yield* profileService.getOwnProfile(current.id),
             config.mediaPublicUrl
           )
         }),
       SuggestUsernames: () =>
         Effect.gen(function* () {
           const current = yield* CurrentUser
-          return yield* ProfileService.suggestUsernames(current.id)
+          return yield* profileService.suggestUsernames(current.id)
         }),
       CheckUsername: ({ username }) =>
         Effect.gen(function* () {
           const current = yield* CurrentUser
-          const available = yield* ProfileService.isUsernameAvailable(
+          const available = yield* profileService.isUsernameAvailable(
             current.id,
             username
           )
@@ -238,18 +245,18 @@ export const ProfileHandlersLive = ProfileRpcs.toLayer(
       BeginOnboarding: () =>
         Effect.gen(function* () {
           const current = yield* CurrentUser
-          yield* ProfileService.setOnboarded(current.id, false)
+          yield* profileService.setOnboarded(current.id, false)
           return profileView(
-            yield* ProfileService.getOwnProfile(current.id),
+            yield* profileService.getOwnProfile(current.id),
             config.mediaPublicUrl
           )
         }),
       CompleteOnboarding: () =>
         Effect.gen(function* () {
           const current = yield* CurrentUser
-          yield* ProfileService.setOnboarded(current.id, true)
+          yield* profileService.setOnboarded(current.id, true)
           return profileView(
-            yield* ProfileService.getOwnProfile(current.id),
+            yield* profileService.getOwnProfile(current.id),
             config.mediaPublicUrl
           )
         }),
@@ -261,7 +268,7 @@ export const ProfileHandlersLive = ProfileRpcs.toLayer(
             })
           }
           const user = yield* CurrentUser
-          const current = yield* ProfileService.getOwnProfile(user.id)
+          const current = yield* profileService.getOwnProfile(user.id)
           yield* Effect.tryPromise({
             try: () =>
               auth.api.deleteUser({
@@ -275,10 +282,10 @@ export const ProfileHandlersLive = ProfileRpcs.toLayer(
           })
           yield* Effect.all(
             [
-              ProfileMediaService.keyFromUrl(user.image).pipe(
-                Effect.flatMap(ProfileMediaService.remove)
+              profileMediaService.remove(
+                profileMediaService.keyFromUrl(user.image)
               ),
-              ProfileMediaService.remove(current.profile.bannerKey),
+              profileMediaService.remove(current.profile.bannerKey),
             ],
             { concurrency: 2 }
           ).pipe(
@@ -292,9 +299,9 @@ export const ProfileHandlersLive = ProfileRpcs.toLayer(
 ).pipe(
   Layer.provide(
     Layer.mergeAll(
-      ProfileMediaService.Default,
-      ProfileService.Default,
-      ProfileStatsService.Default
+      ProfileMediaService.layer,
+      ProfileService.layer,
+      ProfileStatsService.layer
     )
   )
 )
