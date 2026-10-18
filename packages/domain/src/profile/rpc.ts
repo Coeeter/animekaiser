@@ -50,7 +50,7 @@ export class CreateProfileImageUpload extends Rpc.make(
     payload: {
       kind: ProfileImageKind,
       contentType: ProfileImageContentType,
-      size: Schema.Number,
+      size: Schema.Finite,
     },
     success: ProfileImageUpload,
     error: ProfileOperationError,

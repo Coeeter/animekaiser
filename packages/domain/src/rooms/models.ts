@@ -33,7 +33,7 @@ export const RoomEpisodeSelection = Schema.Struct({
   anime: AnimeLibraryMetadata,
   provider: StreamProviderId,
   episodeId: Schema.NonEmptyString.check(Schema.isMaxLength(500)),
-  episodeNumber: Schema.Number.check(Schema.isGreaterThan(0)),
+  episodeNumber: Schema.Finite.check(Schema.isGreaterThan(0)),
   audio: StreamAudio,
 })
 export type RoomEpisodeSelection = typeof RoomEpisodeSelection.Type
@@ -48,9 +48,9 @@ export type RoomSelection = typeof RoomSelection.Type
 // (epoch ms); while playing it advances at `rate` from that anchor.
 export const RoomPlayback = Schema.Struct({
   playing: Schema.Boolean,
-  positionSeconds: Schema.Number.check(Schema.isGreaterThanOrEqualTo(0)),
-  positionAt: Schema.Number,
-  rate: Schema.Number.check(Schema.isBetween({ minimum: 0.25, maximum: 2 })),
+  positionSeconds: Schema.Finite.check(Schema.isGreaterThanOrEqualTo(0)),
+  positionAt: Schema.Finite,
+  rate: Schema.Finite.check(Schema.isBetween({ minimum: 0.25, maximum: 2 })),
 })
 export type RoomPlayback = typeof RoomPlayback.Type
 
@@ -74,7 +74,7 @@ export const RoomMember = Schema.Struct({
   isHost: Schema.Boolean,
   online: Schema.Boolean,
   playbackState: RoomPlaybackState,
-  guestExpiresAt: Schema.NullOr(Schema.Number),
+  guestExpiresAt: Schema.NullOr(Schema.Finite),
 })
 export type RoomMember = typeof RoomMember.Type
 
@@ -84,7 +84,7 @@ export const RoomPick = Schema.Struct({
   addedBy: Schema.NullOr(Schema.String),
   votes: Schema.Int.check(Schema.isGreaterThanOrEqualTo(0)),
   votedByYou: Schema.Boolean,
-  createdAt: Schema.Number,
+  createdAt: Schema.Finite,
 })
 export type RoomPick = typeof RoomPick.Type
 
@@ -96,7 +96,7 @@ export const RoomViewer = Schema.Struct({
   canAskAi: Schema.Boolean,
   shareTaste: Schema.Boolean,
   controller: Schema.Boolean,
-  guestExpiresAt: Schema.NullOr(Schema.Number),
+  guestExpiresAt: Schema.NullOr(Schema.Finite),
 })
 export type RoomViewer = typeof RoomViewer.Type
 
@@ -112,15 +112,15 @@ export const RoomState = Schema.Struct({
   revision: Schema.Int.check(Schema.isGreaterThanOrEqualTo(0)),
   hostName: Schema.NullOr(Schema.String),
   hostOnline: Schema.Boolean,
-  hostAwaySince: Schema.NullOr(Schema.Number),
+  hostAwaySince: Schema.NullOr(Schema.Finite),
   selection: Schema.NullOr(RoomSelection),
   playback: RoomPlayback,
   members: Schema.Array(RoomMember),
   picks: Schema.Array(RoomPick),
   you: RoomViewer,
-  closedAt: Schema.NullOr(Schema.Number),
+  closedAt: Schema.NullOr(Schema.Finite),
   aiPendingBy: Schema.NullOr(Schema.String),
-  serverTime: Schema.Number,
+  serverTime: Schema.Finite,
 })
 export type RoomState = typeof RoomState.Type
 
@@ -143,7 +143,7 @@ export const RoomMessage = Schema.Struct({
   body: Schema.String,
   data: Schema.NullOr(Schema.Unknown),
   deleted: Schema.Boolean,
-  createdAt: Schema.Number,
+  createdAt: Schema.Finite,
 })
 export type RoomMessage = typeof RoomMessage.Type
 
@@ -175,12 +175,12 @@ export const RoomSummary = Schema.Struct({
   status: RoomStatus,
   hostName: Schema.NullOr(Schema.String),
   anime: Schema.NullOr(AnimeLibraryMetadata),
-  episodeNumber: Schema.NullOr(Schema.Number),
+  episodeNumber: Schema.NullOr(Schema.Finite),
   onlineCount: Schema.Int.check(Schema.isGreaterThanOrEqualTo(0)),
   capacity: Schema.Int,
   isHost: Schema.Boolean,
   membership: Schema.Literals(["member", "invited", "none"]),
-  updatedAt: Schema.Number,
+  updatedAt: Schema.Finite,
 })
 export type RoomSummary = typeof RoomSummary.Type
 
@@ -217,7 +217,7 @@ export const RoomAdmission = Schema.Struct({
       access: RoomAccess,
       hostName: Schema.NullOr(Schema.String),
       anime: Schema.NullOr(AnimeLibraryMetadata),
-      episodeNumber: Schema.NullOr(Schema.Number),
+      episodeNumber: Schema.NullOr(Schema.Finite),
       onlineCount: Schema.Int.check(Schema.isGreaterThanOrEqualTo(0)),
       capacity: Schema.Int,
     })
@@ -227,17 +227,17 @@ export type RoomAdmission = typeof RoomAdmission.Type
 
 export const RoomPlaybackAction = Schema.Union([
   Schema.TaggedStruct("Play", {
-    positionSeconds: Schema.Number.check(Schema.isGreaterThanOrEqualTo(0)),
+    positionSeconds: Schema.Finite.check(Schema.isGreaterThanOrEqualTo(0)),
   }),
   Schema.TaggedStruct("Pause", {
-    positionSeconds: Schema.Number.check(Schema.isGreaterThanOrEqualTo(0)),
+    positionSeconds: Schema.Finite.check(Schema.isGreaterThanOrEqualTo(0)),
   }),
   Schema.TaggedStruct("Seek", {
-    positionSeconds: Schema.Number.check(Schema.isGreaterThanOrEqualTo(0)),
+    positionSeconds: Schema.Finite.check(Schema.isGreaterThanOrEqualTo(0)),
   }),
   Schema.TaggedStruct("Rate", {
-    positionSeconds: Schema.Number.check(Schema.isGreaterThanOrEqualTo(0)),
-    rate: Schema.Number.check(Schema.isBetween({ minimum: 0.25, maximum: 2 })),
+    positionSeconds: Schema.Finite.check(Schema.isGreaterThanOrEqualTo(0)),
+    rate: Schema.Finite.check(Schema.isBetween({ minimum: 0.25, maximum: 2 })),
   }),
 ])
 export type RoomPlaybackAction = typeof RoomPlaybackAction.Type
@@ -252,12 +252,12 @@ export type RoomAccessChangePreview = typeof RoomAccessChangePreview.Type
 
 export const RoomInviteLink = Schema.Struct({
   token: Schema.String,
-  expiresAt: Schema.Number,
+  expiresAt: Schema.Finite,
 })
 export type RoomInviteLink = typeof RoomInviteLink.Type
 
 export const RoomViewingResult = Schema.Struct({
-  coveredSeconds: Schema.Number.check(Schema.isGreaterThanOrEqualTo(0)),
+  coveredSeconds: Schema.Finite.check(Schema.isGreaterThanOrEqualTo(0)),
   completed: Schema.Boolean,
   newlyCompleted: Schema.Boolean,
 })

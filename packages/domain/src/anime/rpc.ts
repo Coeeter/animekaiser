@@ -39,10 +39,10 @@ export class ListAnimeCatalog extends Rpc.make("ListAnimeCatalog", {
     ),
     rating: Schema.optional(AnimeRating),
     minScore: Schema.optional(
-      Schema.Number.check(Schema.isBetween({ minimum: 0, maximum: 10 }))
+      Schema.Finite.check(Schema.isBetween({ minimum: 0, maximum: 10 }))
     ),
     maxScore: Schema.optional(
-      Schema.Number.check(Schema.isBetween({ minimum: 0, maximum: 10 }))
+      Schema.Finite.check(Schema.isBetween({ minimum: 0, maximum: 10 }))
     ),
     studio: Schema.optional(Schema.String.check(Schema.isMaxLength(120))),
   },

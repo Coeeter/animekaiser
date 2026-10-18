@@ -26,7 +26,7 @@ export type StreamServer = typeof StreamServer.Type
 
 export const StreamEpisode = Schema.Struct({
   id: Schema.NonEmptyString,
-  number: Schema.Number.check(Schema.isGreaterThan(0)),
+  number: Schema.Finite.check(Schema.isGreaterThan(0)),
   title: Schema.NonEmptyString,
   japaneseTitle: Schema.NullOr(Schema.String),
   availableAudio: Schema.Array(StreamAudio),
@@ -71,8 +71,8 @@ export const StreamTrack = Schema.Struct({
 export type StreamTrack = typeof StreamTrack.Type
 
 export const StreamSkipSegment = Schema.Struct({
-  start: Schema.Number.check(Schema.isGreaterThanOrEqualTo(0)),
-  end: Schema.Number.check(Schema.isGreaterThanOrEqualTo(0)),
+  start: Schema.Finite.check(Schema.isGreaterThanOrEqualTo(0)),
+  end: Schema.Finite.check(Schema.isGreaterThanOrEqualTo(0)),
 })
 export type StreamSkipSegment = typeof StreamSkipSegment.Type
 

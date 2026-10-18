@@ -62,7 +62,7 @@ export class CreateRoom extends Rpc.make("CreateRoom", {
     selection: Schema.NullOr(
       Schema.Struct({
         ...RoomEpisodeSelection.fields,
-        positionSeconds: Schema.Number.check(Schema.isGreaterThanOrEqualTo(0)),
+        positionSeconds: Schema.Finite.check(Schema.isGreaterThanOrEqualTo(0)),
       })
     ),
     roomId: RoomId,
@@ -114,18 +114,18 @@ export class RecordRoomViewing extends Rpc.make("RecordRoomViewing", {
     serverName: Schema.NullOr(Schema.String),
     episode: Schema.Int.check(Schema.isGreaterThan(0)),
     audio: Schema.Literals(["sub", "dub"]),
-    positionSeconds: Schema.Number.check(Schema.isGreaterThanOrEqualTo(0)),
+    positionSeconds: Schema.Finite.check(Schema.isGreaterThanOrEqualTo(0)),
     durationSeconds: Schema.NullOr(
-      Schema.Number.check(Schema.isGreaterThan(0))
+      Schema.Finite.check(Schema.isGreaterThan(0))
     ),
     segment: Schema.NullOr(
       Schema.Struct({
-        fromSeconds: Schema.Number.check(Schema.isGreaterThanOrEqualTo(0)),
-        toSeconds: Schema.Number.check(Schema.isGreaterThanOrEqualTo(0)),
+        fromSeconds: Schema.Finite.check(Schema.isGreaterThanOrEqualTo(0)),
+        toSeconds: Schema.Finite.check(Schema.isGreaterThanOrEqualTo(0)),
         elapsedMs: Schema.Int.check(
           Schema.isBetween({ minimum: 0, maximum: 120_000 })
         ),
-        rate: Schema.Number.check(
+        rate: Schema.Finite.check(
           Schema.isBetween({ minimum: 0.25, maximum: 2 })
         ),
       })
@@ -177,7 +177,7 @@ export class WatchRoom extends Rpc.make("WatchRoom", {
 }) {}
 
 export class GetRoomClock extends Rpc.make("GetRoomClock", {
-  success: Schema.Struct({ serverTime: Schema.Number }),
+  success: Schema.Struct({ serverTime: Schema.Finite }),
 }) {}
 
 export class ListRoomMessages extends Rpc.make("ListRoomMessages", {

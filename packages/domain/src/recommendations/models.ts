@@ -67,7 +67,7 @@ export const RecapResult = Schema.Struct({
   ),
   sources: Schema.Array(RecapSource),
   limitation: Schema.NullOr(Schema.String),
-  retrievedAt: Schema.Number,
+  retrievedAt: Schema.Finite,
 })
 export type RecapResult = typeof RecapResult.Type
 
@@ -89,7 +89,7 @@ export const RecommendationMessage = Schema.Struct({
   recap: Schema.NullOr(RecapResult),
   recapRequest: Schema.NullOr(RecapRequest),
   activity: Schema.NullOr(Schema.String),
-  createdAt: Schema.Number,
+  createdAt: Schema.Finite,
 })
 export type RecommendationMessage = typeof RecommendationMessage.Type
 
@@ -97,7 +97,7 @@ export const RecommendationThreadSummary = Schema.Struct({
   id: Schema.String,
   title: Schema.String,
   scope: Schema.Literals(["personal", "guest"]),
-  updatedAt: Schema.Number,
+  updatedAt: Schema.Finite,
 })
 export type RecommendationThreadSummary =
   typeof RecommendationThreadSummary.Type
@@ -114,7 +114,7 @@ export const AiAvailability = Schema.Struct({
   available: Schema.Boolean,
   reason: Schema.Literals(["ok", "not_configured", "budget", "daily_limit"]),
   remainingToday: Schema.Int.check(Schema.isGreaterThanOrEqualTo(0)),
-  resetsAt: Schema.NullOr(Schema.Number),
+  resetsAt: Schema.NullOr(Schema.Finite),
 })
 export type AiAvailability = typeof AiAvailability.Type
 
@@ -135,6 +135,6 @@ export class RecommendationOperationError extends Schema.TaggedError<Recommendat
   {
     reason: RecommendationErrorReason,
     message: Schema.String,
-    resetsAt: Schema.optional(Schema.Number),
+    resetsAt: Schema.optional(Schema.Finite),
   }
 ) {}

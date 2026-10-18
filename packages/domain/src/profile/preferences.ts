@@ -36,10 +36,10 @@ export const PlayerPreferences = Schema.Struct({
   syncLibraryOnFinish: Schema.Boolean.pipe(
     Schema.withDecodingDefaultType(Effect.succeed(true))
   ),
-  audioEnhancementPercent: Schema.Number.pipe(
+  audioEnhancementPercent: Schema.Finite.pipe(
     Schema.withDecodingDefaultType(Effect.succeed(100))
   ),
-  subtitleSizePercent: Schema.Number.pipe(
+  subtitleSizePercent: Schema.Finite.pipe(
     Schema.withDecodingDefaultType(
       Effect.succeed(subtitlePreferenceDefaults.subtitleSizePercent)
     )
@@ -54,7 +54,7 @@ export const PlayerPreferences = Schema.Struct({
       Effect.succeed(subtitlePreferenceDefaults.subtitleBackgroundColor)
     )
   ),
-  subtitleBackgroundOpacityPercent: Schema.Number.pipe(
+  subtitleBackgroundOpacityPercent: Schema.Finite.pipe(
     Schema.withDecodingDefaultType(
       Effect.succeed(
         subtitlePreferenceDefaults.subtitleBackgroundOpacityPercent
