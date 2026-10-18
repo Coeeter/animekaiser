@@ -1,4 +1,4 @@
-import { Rpc, RpcGroup } from "@effect/rpc"
+import { Rpc, RpcGroup } from "effect/rpc"
 import * as Schema from "effect/Schema"
 import { Authentication, OptionalAuthentication } from "../auth/rpc"
 import {

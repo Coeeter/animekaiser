@@ -1,49 +1,54 @@
 import * as Schema from "effect/Schema"
 
-export const MalId = Schema.Int.pipe(Schema.positive())
+export const MalId = Schema.Int.check(Schema.isGreaterThan(0))
 export type MalId = typeof MalId.Type
 
-export const AniListId = Schema.Int.pipe(Schema.positive())
+export const AniListId = Schema.Int.check(Schema.isGreaterThan(0))
 export type AniListId = typeof AniListId.Type
 
 export const AnimeTitle = Schema.Struct({
-  romaji: Schema.String.pipe(Schema.trimmed(), Schema.minLength(1)),
+  romaji: Schema.String.check(Schema.isTrimmed(), Schema.isMinLength(1)),
   english: Schema.NullOr(Schema.String),
 })
 export type AnimeTitle = typeof AnimeTitle.Type
 
-export const AnimeFormat = Schema.Literal(
+export const AnimeFormat = Schema.Literals([
   "TV",
   "MOVIE",
   "OVA",
   "ONA",
   "SPECIAL",
   "MUSIC",
-  "TV_SHORT"
-)
+  "TV_SHORT",
+])
 export type AnimeFormat = typeof AnimeFormat.Type
 
-export const AnimeReleaseStatus = Schema.Literal(
+export const AnimeReleaseStatus = Schema.Literals([
   "FINISHED",
   "RELEASING",
   "NOT_YET_RELEASED",
   "CANCELLED",
-  "HIATUS"
-)
+  "HIATUS",
+])
 export type AnimeReleaseStatus = typeof AnimeReleaseStatus.Type
 
-export const AnimeSeason = Schema.Literal("WINTER", "SPRING", "SUMMER", "FALL")
+export const AnimeSeason = Schema.Literals([
+  "WINTER",
+  "SPRING",
+  "SUMMER",
+  "FALL",
+])
 export type AnimeSeason = typeof AnimeSeason.Type
 
-export const AnimeScheduleDay = Schema.Literal(
+export const AnimeScheduleDay = Schema.Literals([
   "sunday",
   "monday",
   "tuesday",
   "wednesday",
   "thursday",
   "friday",
-  "saturday"
-)
+  "saturday",
+])
 export type AnimeScheduleDay = typeof AnimeScheduleDay.Type
 
 export const AnimeBroadcast = Schema.Struct({
@@ -54,8 +59,8 @@ export const AnimeBroadcast = Schema.Struct({
 })
 
 export const AnimeNextAiringEpisode = Schema.Struct({
-  episode: Schema.Int.pipe(Schema.positive()),
-  airingAt: Schema.Int.pipe(Schema.positive()),
+  episode: Schema.Int.check(Schema.isGreaterThan(0)),
+  airingAt: Schema.Int.check(Schema.isGreaterThan(0)),
 })
 
 const animeItemFields = {
@@ -64,16 +69,20 @@ const animeItemFields = {
   title: AnimeTitle,
   format: Schema.NullOr(AnimeFormat),
   status: Schema.NullOr(AnimeReleaseStatus),
-  episodes: Schema.NullOr(Schema.Int.pipe(Schema.positive())),
-  duration: Schema.NullOr(Schema.Int.pipe(Schema.positive())),
+  episodes: Schema.NullOr(Schema.Int.check(Schema.isGreaterThan(0))),
+  duration: Schema.NullOr(Schema.Int.check(Schema.isGreaterThan(0))),
   coverImage: Schema.NullOr(Schema.String),
   bannerImage: Schema.NullOr(Schema.String),
   genres: Schema.Array(Schema.String),
-  averageScore: Schema.NullOr(Schema.Int.pipe(Schema.between(0, 100))),
-  popularity: Schema.NullOr(Schema.NonNegativeInt),
-  trending: Schema.NullOr(Schema.NonNegativeInt),
+  averageScore: Schema.NullOr(
+    Schema.Int.check(Schema.isBetween({ minimum: 0, maximum: 100 }))
+  ),
+  popularity: Schema.NullOr(Schema.Int.check(Schema.isGreaterThanOrEqualTo(0))),
+  trending: Schema.NullOr(Schema.Int.check(Schema.isGreaterThanOrEqualTo(0))),
   season: Schema.NullOr(AnimeSeason),
-  seasonYear: Schema.NullOr(Schema.Int.pipe(Schema.between(1900, 2200))),
+  seasonYear: Schema.NullOr(
+    Schema.Int.check(Schema.isBetween({ minimum: 1900, maximum: 2200 }))
+  ),
   broadcast: Schema.NullOr(AnimeBroadcast),
   nextAiringEpisode: Schema.NullOr(AnimeNextAiringEpisode),
   isAdult: Schema.Boolean,
@@ -123,16 +132,16 @@ export type AnimeWatchOrder = typeof AnimeWatchOrder.Type
 
 export const AnimePage = Schema.Struct({
   items: Schema.Array(AnimeItem),
-  page: Schema.Int.pipe(Schema.positive()),
-  perPage: Schema.Int.pipe(Schema.positive()),
+  page: Schema.Int.check(Schema.isGreaterThan(0)),
+  perPage: Schema.Int.check(Schema.isGreaterThan(0)),
   hasNextPage: Schema.Boolean,
 })
 export type AnimePage = typeof AnimePage.Type
 
 export const LatestEpisode = Schema.Struct({
   anime: AnimeItem,
-  episode: Schema.Int.pipe(Schema.positive()),
-  airedAt: Schema.Int.pipe(Schema.positive()),
+  episode: Schema.Int.check(Schema.isGreaterThan(0)),
+  airedAt: Schema.Int.check(Schema.isGreaterThan(0)),
   image: Schema.NullOr(Schema.String),
 })
 export type LatestEpisode = typeof LatestEpisode.Type
@@ -153,7 +162,7 @@ export const AnimeHome = Schema.Struct({
 })
 export type AnimeHome = typeof AnimeHome.Type
 
-export const AnimeSort = Schema.Literal(
+export const AnimeSort = Schema.Literals([
   "relevance",
   "popularity",
   "score",
@@ -161,25 +170,25 @@ export const AnimeSort = Schema.Literal(
   "newest",
   "title",
   "episodes",
-  "favorites"
-)
+  "favorites",
+])
 export type AnimeSort = typeof AnimeSort.Type
 
-export const AnimeCatalogStatus = Schema.Literal(
+export const AnimeCatalogStatus = Schema.Literals([
   "airing",
   "complete",
-  "upcoming"
-)
+  "upcoming",
+])
 export type AnimeCatalogStatus = typeof AnimeCatalogStatus.Type
-export const AnimeRating = Schema.Literal("g", "pg", "pg13", "r17", "r")
+export const AnimeRating = Schema.Literals(["g", "pg", "pg13", "r17", "r"])
 export type AnimeRating = typeof AnimeRating.Type
-export const AnimeDiscoveryCategory = Schema.Literal(
+export const AnimeDiscoveryCategory = Schema.Literals([
   "trending",
   "seasonal",
   "popular",
   "topRated",
-  "upcoming"
-)
+  "upcoming",
+])
 export type AnimeDiscoveryCategory = typeof AnimeDiscoveryCategory.Type
 
 export class AnimeNotFoundError extends Schema.TaggedError<AnimeNotFoundError>()(

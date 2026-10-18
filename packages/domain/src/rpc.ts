@@ -1,4 +1,4 @@
-import { RpcGroup } from "@effect/rpc"
+import { RpcGroup } from "effect/rpc"
 import { AnimeRpcs } from "./anime/rpc"
 import { AuthRpcs } from "./auth/rpc"
 import { WatchHistoryRpcs } from "./history/rpc"

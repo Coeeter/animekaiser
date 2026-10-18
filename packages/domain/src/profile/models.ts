@@ -17,14 +17,14 @@ export const ProfileDetails = Schema.Struct({
 })
 export type ProfileDetails = typeof ProfileDetails.Type
 
-export const ProfileImageKind = Schema.Literal("avatar", "banner")
+export const ProfileImageKind = Schema.Literals(["avatar", "banner"])
 export type ProfileImageKind = typeof ProfileImageKind.Type
 
-export const ProfileImageContentType = Schema.Literal(
+export const ProfileImageContentType = Schema.Literals([
   "image/jpeg",
   "image/png",
-  "image/webp"
-)
+  "image/webp",
+])
 export type ProfileImageContentType = typeof ProfileImageContentType.Type
 
 export const ProfileImageUpload = Schema.Struct({
@@ -39,7 +39,7 @@ export const OwnProfile = Schema.Struct({
 })
 export type OwnProfile = typeof OwnProfile.Type
 
-export const PublicProfile = Schema.Union(
+export const PublicProfile = Schema.Union([
   Schema.Struct({ type: Schema.Literal("not_found") }),
   Schema.Struct({
     type: Schema.Literal("private"),
@@ -49,8 +49,8 @@ export const PublicProfile = Schema.Union(
     type: Schema.Literal("public"),
     user: ProfileUser,
     profile: ProfileDetails,
-  })
-)
+  }),
+])
 export type PublicProfile = typeof PublicProfile.Type
 
 export const UsernameSuggestions = Schema.Struct({

@@ -1,12 +1,12 @@
 import * as Schema from "effect/Schema"
 
-export const FriendRelation = Schema.Literal(
+export const FriendRelation = Schema.Literals([
   "none",
   "self",
   "friends",
   "outgoing",
-  "incoming"
-)
+  "incoming",
+])
 export type FriendRelation = typeof FriendRelation.Type
 
 export const SocialUser = Schema.Struct({
@@ -30,12 +30,12 @@ export const FriendsOverview = Schema.Struct({
 })
 export type FriendsOverview = typeof FriendsOverview.Type
 
-export const SocialErrorReason = Schema.Literal(
+export const SocialErrorReason = Schema.Literals([
   "not_found",
   "invalid",
   "rate_limited",
-  "unavailable"
-)
+  "unavailable",
+])
 
 export class SocialOperationError extends Schema.TaggedError<SocialOperationError>()(
   "SocialOperationError",

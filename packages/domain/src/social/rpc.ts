@@ -1,4 +1,4 @@
-import { Rpc, RpcGroup } from "@effect/rpc"
+import { Rpc, RpcGroup } from "effect/rpc"
 import * as Schema from "effect/Schema"
 import { Authentication } from "../auth/rpc"
 import {
@@ -8,10 +8,10 @@ import {
   SocialUserWithRelation,
 } from "./models"
 
-const UserId = Schema.String.pipe(Schema.minLength(1), Schema.maxLength(100))
+const UserId = Schema.NonEmptyString.check(Schema.isMaxLength(100))
 
 export class SearchUsers extends Rpc.make("SearchUsers", {
-  payload: { query: Schema.String.pipe(Schema.maxLength(100)) },
+  payload: { query: Schema.String.check(Schema.isMaxLength(100)) },
   success: Schema.Array(SocialUserWithRelation),
   error: SocialOperationError,
 }) {}
@@ -22,7 +22,7 @@ export class ListFriends extends Rpc.make("ListFriends", {
 }) {}
 
 export class GetFriendRelation extends Rpc.make("GetFriendRelation", {
-  payload: { username: Schema.String.pipe(Schema.maxLength(100)) },
+  payload: { username: Schema.String.check(Schema.isMaxLength(100)) },
   success: Schema.NullOr(
     Schema.Struct({ userId: Schema.String, relation: FriendRelation })
   ),

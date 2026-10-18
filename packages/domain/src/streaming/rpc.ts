@@ -1,4 +1,4 @@
-import { Rpc, RpcGroup } from "@effect/rpc"
+import { Rpc, RpcGroup } from "effect/rpc"
 import * as Schema from "effect/Schema"
 import { MalId } from "../anime/models"
 import {
@@ -14,12 +14,12 @@ import {
   StreamProviderUnavailableError,
 } from "./models"
 
-const streamingFailure = Schema.Union(
+const streamingFailure = Schema.Union([
   StreamingUnavailableError,
   StreamProviderNotFoundError,
   StreamProviderUnavailableError,
-  StreamEpisodeNotFoundError
-)
+  StreamEpisodeNotFoundError,
+])
 
 export class ListStreamProviders extends Rpc.make("ListStreamProviders", {
   success: Schema.Array(StreamProvider),
@@ -45,9 +45,9 @@ export class GetStreamPlayback extends Rpc.make("GetStreamPlayback", {
   payload: {
     malId: MalId,
     provider: StreamProviderId,
-    episodeId: Schema.String.pipe(Schema.minLength(1)),
+    episodeId: Schema.NonEmptyString,
     audio: StreamAudio,
-    serverId: Schema.optional(Schema.String.pipe(Schema.minLength(1))),
+    serverId: Schema.optional(Schema.NonEmptyString),
   },
   success: StreamPlayback,
   error: streamingFailure,

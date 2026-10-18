@@ -1,4 +1,4 @@
-import { Rpc, RpcGroup } from "@effect/rpc"
+import { Rpc, RpcGroup } from "effect/rpc"
 import * as Schema from "effect/Schema"
 import { MalId } from "../anime/models"
 import { Authentication, OptionalAuthentication } from "../auth/rpc"
@@ -26,10 +26,10 @@ import {
 export class GetLibraryPage extends Rpc.make("GetLibraryPage", {
   payload: {
     status: Schema.optional(LibraryStatus),
-    query: Schema.optional(Schema.String.pipe(Schema.maxLength(200))),
+    query: Schema.optional(Schema.String.check(Schema.isMaxLength(200))),
     sort: LibrarySort,
-    page: Schema.Int.pipe(Schema.positive()),
-    perPage: Schema.Int.pipe(Schema.between(1, 100)),
+    page: Schema.Int.check(Schema.isGreaterThan(0)),
+    perPage: Schema.Int.check(Schema.isBetween({ minimum: 1, maximum: 100 })),
   },
   success: LibraryPage,
   error: LibraryOperationError,
@@ -39,10 +39,10 @@ export class GetPublicLibrary extends Rpc.make("GetPublicLibrary", {
   payload: {
     username: Schema.String,
     status: Schema.optional(LibraryStatus),
-    query: Schema.optional(Schema.String.pipe(Schema.maxLength(200))),
+    query: Schema.optional(Schema.String.check(Schema.isMaxLength(200))),
     sort: LibrarySort,
-    page: Schema.Int.pipe(Schema.positive()),
-    perPage: Schema.Int.pipe(Schema.between(1, 100)),
+    page: Schema.Int.check(Schema.isGreaterThan(0)),
+    perPage: Schema.Int.check(Schema.isBetween({ minimum: 1, maximum: 100 })),
     asPublic: Schema.optional(Schema.Boolean),
   },
   success: PublicLibrary,
@@ -56,7 +56,7 @@ export class GetLibraryEntry extends Rpc.make("GetLibraryEntry", {
 }) {}
 
 export class ListLibraryEntries extends Rpc.make("ListLibraryEntries", {
-  payload: { malIds: Schema.Array(MalId).pipe(Schema.maxItems(50)) },
+  payload: { malIds: Schema.Array(MalId).check(Schema.isMaxLength(50)) },
   success: Schema.Array(LibraryEntry),
   error: LibraryOperationError,
 }) {}
@@ -65,9 +65,11 @@ export class UpsertLibraryEntry extends Rpc.make("UpsertLibraryEntry", {
   payload: {
     anime: AnimeLibraryMetadata,
     status: LibraryStatus,
-    score: Schema.NullOr(Schema.Int.pipe(Schema.between(0, 100))),
-    progress: Schema.NonNegativeInt,
-    notes: Schema.NullOr(Schema.String.pipe(Schema.maxLength(2000))),
+    score: Schema.NullOr(
+      Schema.Int.check(Schema.isBetween({ minimum: 0, maximum: 100 }))
+    ),
+    progress: Schema.Int.check(Schema.isGreaterThanOrEqualTo(0)),
+    notes: Schema.NullOr(Schema.String.check(Schema.isMaxLength(2000))),
     syncExternal: Schema.optional(Schema.Boolean),
   },
   success: LibraryEntry,
@@ -81,7 +83,9 @@ export class RemoveLibraryEntry extends Rpc.make("RemoveLibraryEntry", {
 }) {}
 
 export class ClearLibrary extends Rpc.make("ClearLibrary", {
-  success: Schema.Struct({ removedCount: Schema.NonNegativeInt }),
+  success: Schema.Struct({
+    removedCount: Schema.Int.check(Schema.isGreaterThanOrEqualTo(0)),
+  }),
   error: LibraryOperationError,
 }) {}
 
@@ -100,10 +104,16 @@ export class WatchLibraryImport extends Rpc.make("WatchLibraryImport", {
 
 export class ListLibrarySyncEvents extends Rpc.make("ListLibrarySyncEvents", {
   payload: {
-    page: Schema.Int.pipe(Schema.positive()),
-    perPage: Schema.Int.pipe(Schema.between(1, 100)),
+    page: Schema.Int.check(Schema.isGreaterThan(0)),
+    perPage: Schema.Int.check(Schema.isBetween({ minimum: 1, maximum: 100 })),
     status: Schema.optional(
-      Schema.Literal("pending", "running", "completed", "failed", "superseded")
+      Schema.Literals([
+        "pending",
+        "running",
+        "completed",
+        "failed",
+        "superseded",
+      ])
     ),
     provider: Schema.optional(ExternalListProvider),
   },
@@ -113,7 +123,7 @@ export class ListLibrarySyncEvents extends Rpc.make("ListLibrarySyncEvents", {
 
 export class RetryLibrarySyncEvents extends Rpc.make("RetryLibrarySyncEvents", {
   payload: {
-    eventIds: Schema.Array(Schema.String).pipe(Schema.minItems(1)),
+    eventIds: Schema.Array(Schema.String).check(Schema.isMinLength(1)),
     target: LibrarySyncRetryTarget,
   },
   success: LibrarySyncRetryResult,

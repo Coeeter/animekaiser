@@ -1,7 +1,7 @@
-import { Rpc, RpcGroup } from "@effect/rpc"
-import * as RpcMiddleware from "@effect/rpc/RpcMiddleware"
 import * as Context from "effect/Context"
 import type * as Effect from "effect/Effect"
+import { Rpc, RpcGroup } from "effect/rpc"
+import * as RpcMiddleware from "effect/rpc/RpcMiddleware"
 import * as Schema from "effect/Schema"
 import { Authentication } from "../auth/rpc"
 import { AnimeLibraryMetadata } from "../library/models"
@@ -37,19 +37,21 @@ export type RoomActorShape = {
 
 // Either a signed-in account, room-scoped guest credentials, or both while a
 // guest is upgrading. It never satisfies the account-only `CurrentUser`.
-export class RoomActor extends Context.Tag("@animekaiser/domain/RoomActor")<
-  RoomActor,
-  RoomActorShape
->() {}
-
-export class RoomAuthentication extends RpcMiddleware.Tag<RoomAuthentication>()(
-  "@animekaiser/domain/RoomAuthentication",
-  { provides: RoomActor }
+export class RoomActor extends Context.Service<RoomActor, RoomActorShape>()(
+  "@animekaiser/domain/RoomActor"
 ) {}
 
-const RequestId = Schema.String.pipe(Schema.minLength(8), Schema.maxLength(64))
-const ParticipantId = Schema.UUID
-const ConnectionId = Schema.UUID
+export class RoomAuthentication extends RpcMiddleware.Service<
+  RoomAuthentication,
+  { provides: RoomActor }
+>()("@animekaiser/domain/RoomAuthentication") {}
+
+const RequestId = Schema.String.check(
+  Schema.isMinLength(8),
+  Schema.isMaxLength(64)
+)
+const ParticipantId = Schema.String.check(Schema.isUUID())
+const ConnectionId = Schema.String.check(Schema.isUUID())
 
 export class CreateRoom extends Rpc.make("CreateRoom", {
   payload: {
@@ -60,7 +62,7 @@ export class CreateRoom extends Rpc.make("CreateRoom", {
     selection: Schema.NullOr(
       Schema.Struct({
         ...RoomEpisodeSelection.fields,
-        positionSeconds: Schema.NonNegative,
+        positionSeconds: Schema.Number.check(Schema.isGreaterThanOrEqualTo(0)),
       })
     ),
     roomId: RoomId,
@@ -78,7 +80,7 @@ export class ListRooms extends Rpc.make("ListRooms", {
 export class InviteToRoom extends Rpc.make("InviteToRoom", {
   payload: {
     roomId: RoomId,
-    userIds: Schema.Array(Schema.String).pipe(Schema.maxItems(20)),
+    userIds: Schema.Array(Schema.String).check(Schema.isMaxLength(20)),
   },
   success: Schema.Void,
   error: RoomOperationError,
@@ -110,16 +112,22 @@ export class RecordRoomViewing extends Rpc.make("RecordRoomViewing", {
     episodeId: Schema.String,
     serverId: Schema.NullOr(Schema.String),
     serverName: Schema.NullOr(Schema.String),
-    episode: Schema.Int.pipe(Schema.positive()),
-    audio: Schema.Literal("sub", "dub"),
-    positionSeconds: Schema.NonNegative,
-    durationSeconds: Schema.NullOr(Schema.Number.pipe(Schema.positive())),
+    episode: Schema.Int.check(Schema.isGreaterThan(0)),
+    audio: Schema.Literals(["sub", "dub"]),
+    positionSeconds: Schema.Number.check(Schema.isGreaterThanOrEqualTo(0)),
+    durationSeconds: Schema.NullOr(
+      Schema.Number.check(Schema.isGreaterThan(0))
+    ),
     segment: Schema.NullOr(
       Schema.Struct({
-        fromSeconds: Schema.NonNegative,
-        toSeconds: Schema.NonNegative,
-        elapsedMs: Schema.Int.pipe(Schema.between(0, 120_000)),
-        rate: Schema.Number.pipe(Schema.between(0.25, 2)),
+        fromSeconds: Schema.Number.check(Schema.isGreaterThanOrEqualTo(0)),
+        toSeconds: Schema.Number.check(Schema.isGreaterThanOrEqualTo(0)),
+        elapsedMs: Schema.Int.check(
+          Schema.isBetween({ minimum: 0, maximum: 120_000 })
+        ),
+        rate: Schema.Number.check(
+          Schema.isBetween({ minimum: 0.25, maximum: 2 })
+        ),
       })
     ),
   },
@@ -146,7 +154,7 @@ class AccountRoomRpcs extends RpcGroup.make(
 export class GetRoomAdmission extends Rpc.make("GetRoomAdmission", {
   payload: {
     roomId: RoomId,
-    inviteToken: Schema.optional(Schema.String.pipe(Schema.maxLength(200))),
+    inviteToken: Schema.optional(Schema.String.check(Schema.isMaxLength(200))),
   },
   success: RoomAdmission,
   error: RoomOperationError,
@@ -155,7 +163,7 @@ export class GetRoomAdmission extends Rpc.make("GetRoomAdmission", {
 export class JoinRoom extends Rpc.make("JoinRoom", {
   payload: {
     roomId: RoomId,
-    inviteToken: Schema.optional(Schema.String.pipe(Schema.maxLength(200))),
+    inviteToken: Schema.optional(Schema.String.check(Schema.isMaxLength(200))),
   },
   success: Schema.Void,
   error: RoomOperationError,
@@ -173,7 +181,10 @@ export class GetRoomClock extends Rpc.make("GetRoomClock", {
 }) {}
 
 export class ListRoomMessages extends Rpc.make("ListRoomMessages", {
-  payload: { roomId: RoomId, beforeSeq: Schema.Int.pipe(Schema.positive()) },
+  payload: {
+    roomId: RoomId,
+    beforeSeq: Schema.Int.check(Schema.isGreaterThan(0)),
+  },
   success: Schema.Struct({
     messages: Schema.Array(RoomMessage),
     hasEarlier: Schema.Boolean,
@@ -185,7 +196,7 @@ export class SendRoomMessage extends Rpc.make("SendRoomMessage", {
   payload: {
     roomId: RoomId,
     requestId: RequestId,
-    body: Schema.String.pipe(Schema.minLength(1), Schema.maxLength(1000)),
+    body: Schema.NonEmptyString.check(Schema.isMaxLength(1000)),
   },
   success: RoomMessage,
   error: RoomOperationError,
@@ -200,7 +211,7 @@ export class DeleteRoomMessage extends Rpc.make("DeleteRoomMessage", {
 export class CommandRoomPlayback extends Rpc.make("CommandRoomPlayback", {
   payload: {
     roomId: RoomId,
-    selectionRevision: Schema.NonNegativeInt,
+    selectionRevision: Schema.Int.check(Schema.isGreaterThanOrEqualTo(0)),
     action: RoomPlaybackAction,
   },
   success: Schema.Void,
@@ -298,13 +309,17 @@ export class AddRoomPick extends Rpc.make("AddRoomPick", {
 }) {}
 
 export class RemoveRoomPick extends Rpc.make("RemoveRoomPick", {
-  payload: { roomId: RoomId, pickId: Schema.UUID },
+  payload: { roomId: RoomId, pickId: Schema.String.check(Schema.isUUID()) },
   success: Schema.Void,
   error: RoomOperationError,
 }) {}
 
 export class ToggleRoomVote extends Rpc.make("ToggleRoomVote", {
-  payload: { roomId: RoomId, pickId: Schema.UUID, vote: Schema.Boolean },
+  payload: {
+    roomId: RoomId,
+    pickId: Schema.String.check(Schema.isUUID()),
+    vote: Schema.Boolean,
+  },
   success: Schema.Void,
   error: RoomOperationError,
 }) {}

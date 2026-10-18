@@ -19,21 +19,21 @@ export type RecommendationCard = typeof RecommendationCard.Type
 export const RecapRange = Schema.Struct({
   malId: MalId,
   title: Schema.String,
-  fromEpisode: Schema.Int.pipe(Schema.positive()),
-  toEpisode: Schema.Int.pipe(Schema.positive()),
+  fromEpisode: Schema.Int.check(Schema.isGreaterThan(0)),
+  toEpisode: Schema.Int.check(Schema.isGreaterThan(0)),
 })
 export type RecapRange = typeof RecapRange.Type
 
-export const RecapMode = Schema.Literal("quick", "episodes")
+export const RecapMode = Schema.Literals(["quick", "episodes"])
 export type RecapMode = typeof RecapMode.Type
 
 export const RecapRequest = Schema.Struct({
-  entries: Schema.Array(RecapRange).pipe(
-    Schema.minItems(1),
-    Schema.maxItems(6)
+  entries: Schema.Array(RecapRange).check(
+    Schema.isMinLength(1),
+    Schema.isMaxLength(6)
   ),
   mode: RecapMode,
-  excludes: Schema.String.pipe(Schema.maxLength(200)),
+  excludes: Schema.String.check(Schema.isMaxLength(200)),
 })
 export type RecapRequest = typeof RecapRequest.Type
 
@@ -71,18 +71,18 @@ export const RecapResult = Schema.Struct({
 })
 export type RecapResult = typeof RecapResult.Type
 
-export const RecommendationMessageStatus = Schema.Literal(
+export const RecommendationMessageStatus = Schema.Literals([
   "complete",
   "pending",
   "failed",
   "stopped",
-  "interrupted"
-)
+  "interrupted",
+])
 
 export const RecommendationMessage = Schema.Struct({
   id: Schema.String,
   seq: Schema.Int,
-  role: Schema.Literal("user", "assistant"),
+  role: Schema.Literals(["user", "assistant"]),
   status: RecommendationMessageStatus,
   content: Schema.String,
   cards: Schema.Array(RecommendationCard),
@@ -96,7 +96,7 @@ export type RecommendationMessage = typeof RecommendationMessage.Type
 export const RecommendationThreadSummary = Schema.Struct({
   id: Schema.String,
   title: Schema.String,
-  scope: Schema.Literal("personal", "guest"),
+  scope: Schema.Literals(["personal", "guest"]),
   updatedAt: Schema.Number,
 })
 export type RecommendationThreadSummary =
@@ -112,13 +112,13 @@ export type RecommendationThread = typeof RecommendationThread.Type
 
 export const AiAvailability = Schema.Struct({
   available: Schema.Boolean,
-  reason: Schema.Literal("ok", "not_configured", "budget", "daily_limit"),
-  remainingToday: Schema.NonNegativeInt,
+  reason: Schema.Literals(["ok", "not_configured", "budget", "daily_limit"]),
+  remainingToday: Schema.Int.check(Schema.isGreaterThanOrEqualTo(0)),
   resetsAt: Schema.NullOr(Schema.Number),
 })
 export type AiAvailability = typeof AiAvailability.Type
 
-export const RecommendationErrorReason = Schema.Literal(
+export const RecommendationErrorReason = Schema.Literals([
   "not_configured",
   "daily_limit",
   "room_limit",
@@ -127,8 +127,8 @@ export const RecommendationErrorReason = Schema.Literal(
   "not_found",
   "forbidden",
   "invalid",
-  "failed"
-)
+  "failed",
+])
 
 export class RecommendationOperationError extends Schema.TaggedError<RecommendationOperationError>()(
   "RecommendationOperationError",

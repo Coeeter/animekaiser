@@ -1,4 +1,4 @@
-import { Rpc, RpcGroup } from "@effect/rpc"
+import { Rpc, RpcGroup } from "effect/rpc"
 import * as Schema from "effect/Schema"
 import {
   AnimeCatalogStatus,
@@ -17,7 +17,7 @@ import {
   MalId,
 } from "./models"
 
-const animeFailure = Schema.Union(AnimeNotFoundError, AnimeUnavailableError)
+const animeFailure = Schema.Union([AnimeNotFoundError, AnimeUnavailableError])
 
 export class GetAnimeHome extends Rpc.make("GetAnimeHome", {
   success: AnimeHome,
@@ -27,18 +27,24 @@ export class GetAnimeHome extends Rpc.make("GetAnimeHome", {
 export class ListAnimeCatalog extends Rpc.make("ListAnimeCatalog", {
   payload: {
     query: Schema.optional(Schema.String),
-    page: Schema.Int.pipe(Schema.positive()),
-    perPage: Schema.Int.pipe(Schema.between(1, 50)),
+    page: Schema.Int.check(Schema.isGreaterThan(0)),
+    perPage: Schema.Int.check(Schema.isBetween({ minimum: 1, maximum: 50 })),
     sort: AnimeSort,
     status: Schema.optional(AnimeCatalogStatus),
     format: Schema.optional(AnimeFormat),
     genres: Schema.optional(Schema.Array(Schema.String)),
     season: Schema.optional(AnimeSeason),
-    seasonYear: Schema.optional(Schema.Int.pipe(Schema.between(1900, 2200))),
+    seasonYear: Schema.optional(
+      Schema.Int.check(Schema.isBetween({ minimum: 1900, maximum: 2200 }))
+    ),
     rating: Schema.optional(AnimeRating),
-    minScore: Schema.optional(Schema.Number.pipe(Schema.between(0, 10))),
-    maxScore: Schema.optional(Schema.Number.pipe(Schema.between(0, 10))),
-    studio: Schema.optional(Schema.String.pipe(Schema.maxLength(120))),
+    minScore: Schema.optional(
+      Schema.Number.check(Schema.isBetween({ minimum: 0, maximum: 10 }))
+    ),
+    maxScore: Schema.optional(
+      Schema.Number.check(Schema.isBetween({ minimum: 0, maximum: 10 }))
+    ),
+    studio: Schema.optional(Schema.String.check(Schema.isMaxLength(120))),
   },
   success: AnimePage,
   error: AnimeUnavailableError,
@@ -47,8 +53,8 @@ export class ListAnimeCatalog extends Rpc.make("ListAnimeCatalog", {
 export class ListAnimeDiscovery extends Rpc.make("ListAnimeDiscovery", {
   payload: {
     category: AnimeDiscoveryCategory,
-    page: Schema.Int.pipe(Schema.positive()),
-    perPage: Schema.Int.pipe(Schema.between(1, 50)),
+    page: Schema.Int.check(Schema.isGreaterThan(0)),
+    perPage: Schema.Int.check(Schema.isBetween({ minimum: 1, maximum: 50 })),
   },
   success: AnimePage,
   error: AnimeUnavailableError,
@@ -56,10 +62,10 @@ export class ListAnimeDiscovery extends Rpc.make("ListAnimeDiscovery", {
 
 export class ListAnimeSchedule extends Rpc.make("ListAnimeSchedule", {
   payload: {
-    from: Schema.Int.pipe(Schema.positive()),
-    to: Schema.Int.pipe(Schema.positive()),
-    page: Schema.Int.pipe(Schema.positive()),
-    perPage: Schema.Int.pipe(Schema.between(1, 50)),
+    from: Schema.Int.check(Schema.isGreaterThan(0)),
+    to: Schema.Int.check(Schema.isGreaterThan(0)),
+    page: Schema.Int.check(Schema.isGreaterThan(0)),
+    perPage: Schema.Int.check(Schema.isBetween({ minimum: 1, maximum: 50 })),
   },
   success: AnimePage,
   error: AnimeUnavailableError,
@@ -92,8 +98,8 @@ export class ListAnimeRecommendations extends Rpc.make(
   {
     payload: {
       malId: MalId,
-      page: Schema.Int.pipe(Schema.positive()),
-      perPage: Schema.Int.pipe(Schema.between(1, 50)),
+      page: Schema.Int.check(Schema.isGreaterThan(0)),
+      perPage: Schema.Int.check(Schema.isBetween({ minimum: 1, maximum: 50 })),
     },
     success: AnimePage,
     error: animeFailure,

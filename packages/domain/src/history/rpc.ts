@@ -1,4 +1,4 @@
-import { Rpc, RpcGroup } from "@effect/rpc"
+import { Rpc, RpcGroup } from "effect/rpc"
 import * as Schema from "effect/Schema"
 import { MalId } from "../anime/models"
 import { Authentication } from "../auth/rpc"
@@ -15,29 +15,31 @@ export class RecordWatchProgress extends Rpc.make("RecordWatchProgress", {
   payload: {
     anime: AnimeLibraryMetadata,
     provider: StreamProviderId,
-    episodeId: Schema.String.pipe(Schema.minLength(1)),
+    episodeId: Schema.NonEmptyString,
     serverId: Schema.NullOr(Schema.String),
     serverName: Schema.NullOr(Schema.String),
-    episode: Schema.Int.pipe(Schema.positive()),
+    episode: Schema.Int.check(Schema.isGreaterThan(0)),
     audio: StreamAudio,
-    positionSeconds: Schema.NonNegativeInt,
-    durationSeconds: Schema.NullOr(Schema.Int.pipe(Schema.positive())),
+    positionSeconds: Schema.Int.check(Schema.isGreaterThanOrEqualTo(0)),
+    durationSeconds: Schema.NullOr(Schema.Int.check(Schema.isGreaterThan(0))),
   },
   success: WatchHistoryEntry,
   error: WatchHistoryOperationError,
 }) {}
 
 export class ListContinueWatching extends Rpc.make("ListContinueWatching", {
-  payload: { limit: Schema.Int.pipe(Schema.between(1, 50)) },
+  payload: {
+    limit: Schema.Int.check(Schema.isBetween({ minimum: 1, maximum: 50 })),
+  },
   success: Schema.Array(ContinueWatchingItem),
   error: WatchHistoryOperationError,
 }) {}
 
 export class ListWatchHistory extends Rpc.make("ListWatchHistory", {
   payload: {
-    page: Schema.Int.pipe(Schema.positive()),
-    perPage: Schema.Int.pipe(Schema.between(1, 100)),
-    query: Schema.optional(Schema.String.pipe(Schema.maxLength(200))),
+    page: Schema.Int.check(Schema.isGreaterThan(0)),
+    perPage: Schema.Int.check(Schema.isBetween({ minimum: 1, maximum: 100 })),
+    query: Schema.optional(Schema.String.check(Schema.isMaxLength(200))),
   },
   success: Schema.Struct({
     items: Schema.Array(ContinueWatchingItem),
@@ -48,9 +50,9 @@ export class ListWatchHistory extends Rpc.make("ListWatchHistory", {
 
 export class ListWatchHistoryShows extends Rpc.make("ListWatchHistoryShows", {
   payload: {
-    page: Schema.Int.pipe(Schema.positive()),
-    perPage: Schema.Int.pipe(Schema.between(1, 50)),
-    query: Schema.optional(Schema.String.pipe(Schema.maxLength(200))),
+    page: Schema.Int.check(Schema.isGreaterThan(0)),
+    perPage: Schema.Int.check(Schema.isBetween({ minimum: 1, maximum: 50 })),
+    query: Schema.optional(Schema.String.check(Schema.isMaxLength(200))),
   },
   success: Schema.Struct({
     items: Schema.Array(WatchHistoryShow),
@@ -64,7 +66,7 @@ export class GetEpisodeWatchProgress extends Rpc.make(
   {
     payload: {
       malId: MalId,
-      episode: Schema.Int.pipe(Schema.positive()),
+      episode: Schema.Int.check(Schema.isGreaterThan(0)),
     },
     success: Schema.NullOr(WatchHistoryEntry),
     error: WatchHistoryOperationError,

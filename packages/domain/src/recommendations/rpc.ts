@@ -1,4 +1,4 @@
-import { Rpc, RpcGroup } from "@effect/rpc"
+import { Rpc, RpcGroup } from "effect/rpc"
 import * as Schema from "effect/Schema"
 import { MalId } from "../anime/models"
 import { Authentication } from "../auth/rpc"
@@ -12,9 +12,12 @@ import {
   RecommendationThreadSummary,
 } from "./models"
 
-const ThreadId = Schema.UUID
-const RequestId = Schema.String.pipe(Schema.minLength(8), Schema.maxLength(64))
-const Content = Schema.String.pipe(Schema.minLength(1), Schema.maxLength(2000))
+const ThreadId = Schema.String.check(Schema.isUUID())
+const RequestId = Schema.String.check(
+  Schema.isMinLength(8),
+  Schema.isMaxLength(64)
+)
+const Content = Schema.NonEmptyString.check(Schema.isMaxLength(2000))
 
 export class ListRecommendationThreads extends Rpc.make(
   "ListRecommendationThreads",
@@ -31,8 +34,8 @@ export class GetAiPreferences extends Rpc.make("GetAiPreferences", {
 
 export class SaveAiPreferences extends Rpc.make("SaveAiPreferences", {
   payload: {
-    notes: Schema.Array(Schema.String.pipe(Schema.maxLength(200))).pipe(
-      Schema.maxItems(20)
+    notes: Schema.Array(Schema.String.check(Schema.isMaxLength(200))).check(
+      Schema.isMaxLength(20)
     ),
   },
   success: Schema.Void,
@@ -44,7 +47,7 @@ export class RenameRecommendationThread extends Rpc.make(
   {
     payload: {
       threadId: ThreadId,
-      title: Schema.String.pipe(Schema.minLength(1), Schema.maxLength(80)),
+      title: Schema.NonEmptyString.check(Schema.isMaxLength(80)),
     },
     success: Schema.Void,
     error: RecommendationOperationError,

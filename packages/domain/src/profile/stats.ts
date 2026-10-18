@@ -3,14 +3,14 @@ import { MalId } from "../anime/models"
 import { LibraryStatus } from "../library/models"
 
 export const ScoreBucket = Schema.Struct({
-  score: Schema.Int.pipe(Schema.between(1, 10)),
-  count: Schema.NonNegativeInt,
+  score: Schema.Int.check(Schema.isBetween({ minimum: 1, maximum: 10 })),
+  count: Schema.Int.check(Schema.isGreaterThanOrEqualTo(0)),
 })
 export type ScoreBucket = typeof ScoreBucket.Type
 
 export const ActivityDay = Schema.Struct({
   date: Schema.String,
-  episodes: Schema.NonNegativeInt,
+  episodes: Schema.Int.check(Schema.isGreaterThanOrEqualTo(0)),
 })
 export type ActivityDay = typeof ActivityDay.Type
 
@@ -18,25 +18,30 @@ export const TopRatedTitle = Schema.Struct({
   malId: MalId,
   title: Schema.String,
   coverImage: Schema.NullOr(Schema.String),
-  score: Schema.Int.pipe(Schema.between(0, 100)),
+  score: Schema.Int.check(Schema.isBetween({ minimum: 0, maximum: 100 })),
 })
 export type TopRatedTitle = typeof TopRatedTitle.Type
 
 export const ProfileStats = Schema.Struct({
-  totalTitles: Schema.NonNegativeInt,
-  byStatus: Schema.Record({ key: LibraryStatus, value: Schema.NonNegativeInt }),
-  meanScore: Schema.NullOr(Schema.Int.pipe(Schema.between(0, 100))),
-  scoredCount: Schema.NonNegativeInt,
+  totalTitles: Schema.Int.check(Schema.isGreaterThanOrEqualTo(0)),
+  byStatus: Schema.Record(
+    LibraryStatus,
+    Schema.Int.check(Schema.isGreaterThanOrEqualTo(0))
+  ),
+  meanScore: Schema.NullOr(
+    Schema.Int.check(Schema.isBetween({ minimum: 0, maximum: 100 }))
+  ),
+  scoredCount: Schema.Int.check(Schema.isGreaterThanOrEqualTo(0)),
   scoreDistribution: Schema.Array(ScoreBucket),
 
-  episodesWatched: Schema.NonNegativeInt,
-  estimatedMinutes: Schema.NonNegativeInt,
-  trackedMinutes: Schema.NonNegativeInt,
+  episodesWatched: Schema.Int.check(Schema.isGreaterThanOrEqualTo(0)),
+  estimatedMinutes: Schema.Int.check(Schema.isGreaterThanOrEqualTo(0)),
+  trackedMinutes: Schema.Int.check(Schema.isGreaterThanOrEqualTo(0)),
 
-  episodesPlayed: Schema.NonNegativeInt,
-  titlesStarted: Schema.NonNegativeInt,
-  currentStreakDays: Schema.NonNegativeInt,
-  longestStreakDays: Schema.NonNegativeInt,
+  episodesPlayed: Schema.Int.check(Schema.isGreaterThanOrEqualTo(0)),
+  titlesStarted: Schema.Int.check(Schema.isGreaterThanOrEqualTo(0)),
+  currentStreakDays: Schema.Int.check(Schema.isGreaterThanOrEqualTo(0)),
+  longestStreakDays: Schema.Int.check(Schema.isGreaterThanOrEqualTo(0)),
   activity: Schema.Array(ActivityDay),
 
   topRated: Schema.Array(TopRatedTitle),

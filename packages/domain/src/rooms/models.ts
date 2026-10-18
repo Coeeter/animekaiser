@@ -2,45 +2,45 @@ import * as Schema from "effect/Schema"
 import { AnimeLibraryMetadata } from "../library/models"
 import { StreamAudio, StreamProviderId } from "../streaming/models"
 
-export const RoomId = Schema.UUID
+export const RoomId = Schema.String.check(Schema.isUUID())
 export type RoomId = typeof RoomId.Type
 
 export const RoomCapacity = 20
 
-export const RoomAccess = Schema.Literal("public", "friends", "invite")
+export const RoomAccess = Schema.Literals(["public", "friends", "invite"])
 export type RoomAccess = typeof RoomAccess.Type
 
-export const RoomPlaybackControl = Schema.Literal("host", "everyone")
+export const RoomPlaybackControl = Schema.Literals(["host", "everyone"])
 export type RoomPlaybackControl = typeof RoomPlaybackControl.Type
 
-export const RoomAiAccess = Schema.Literal("off", "host", "everyone")
+export const RoomAiAccess = Schema.Literals(["off", "host", "everyone"])
 export type RoomAiAccess = typeof RoomAiAccess.Type
 
-export const RoomName = Schema.String.pipe(
-  Schema.trimmed(),
-  Schema.minLength(1),
-  Schema.maxLength(60)
+export const RoomName = Schema.String.check(
+  Schema.isTrimmed(),
+  Schema.isMinLength(1),
+  Schema.isMaxLength(60)
 )
 
-export const GuestDisplayName = Schema.String.pipe(
-  Schema.trimmed(),
-  Schema.minLength(1),
-  Schema.maxLength(32),
-  Schema.pattern(/^[^\p{C}<>]+$/u)
+export const GuestDisplayName = Schema.String.check(
+  Schema.isTrimmed(),
+  Schema.isMinLength(1),
+  Schema.isMaxLength(32),
+  Schema.isPattern(/^[^\p{C}<>]+$/u)
 )
 
 export const RoomEpisodeSelection = Schema.Struct({
   anime: AnimeLibraryMetadata,
   provider: StreamProviderId,
-  episodeId: Schema.String.pipe(Schema.minLength(1), Schema.maxLength(500)),
-  episodeNumber: Schema.Number.pipe(Schema.positive()),
+  episodeId: Schema.NonEmptyString.check(Schema.isMaxLength(500)),
+  episodeNumber: Schema.Number.check(Schema.isGreaterThan(0)),
   audio: StreamAudio,
 })
 export type RoomEpisodeSelection = typeof RoomEpisodeSelection.Type
 
 export const RoomSelection = Schema.Struct({
   ...RoomEpisodeSelection.fields,
-  revision: Schema.NonNegativeInt,
+  revision: Schema.Int.check(Schema.isGreaterThanOrEqualTo(0)),
 })
 export type RoomSelection = typeof RoomSelection.Type
 
@@ -48,22 +48,22 @@ export type RoomSelection = typeof RoomSelection.Type
 // (epoch ms); while playing it advances at `rate` from that anchor.
 export const RoomPlayback = Schema.Struct({
   playing: Schema.Boolean,
-  positionSeconds: Schema.Number.pipe(Schema.nonNegative()),
+  positionSeconds: Schema.Number.check(Schema.isGreaterThanOrEqualTo(0)),
   positionAt: Schema.Number,
-  rate: Schema.Number.pipe(Schema.between(0.25, 2)),
+  rate: Schema.Number.check(Schema.isBetween({ minimum: 0.25, maximum: 2 })),
 })
 export type RoomPlayback = typeof RoomPlayback.Type
 
-export const RoomPlaybackState = Schema.Literal(
+export const RoomPlaybackState = Schema.Literals([
   "idle",
   "ready",
   "buffering",
   "blocked",
-  "error"
-)
+  "error",
+])
 export type RoomPlaybackState = typeof RoomPlaybackState.Type
 
-export const RoomParticipantKind = Schema.Literal("account", "guest")
+export const RoomParticipantKind = Schema.Literals(["account", "guest"])
 
 export const RoomMember = Schema.Struct({
   id: Schema.String,
@@ -82,7 +82,7 @@ export const RoomPick = Schema.Struct({
   id: Schema.String,
   anime: AnimeLibraryMetadata,
   addedBy: Schema.NullOr(Schema.String),
-  votes: Schema.NonNegativeInt,
+  votes: Schema.Int.check(Schema.isGreaterThanOrEqualTo(0)),
   votedByYou: Schema.Boolean,
   createdAt: Schema.Number,
 })
@@ -100,7 +100,7 @@ export const RoomViewer = Schema.Struct({
 })
 export type RoomViewer = typeof RoomViewer.Type
 
-export const RoomStatus = Schema.Literal("open", "closed")
+export const RoomStatus = Schema.Literals(["open", "closed"])
 
 export const RoomState = Schema.Struct({
   id: RoomId,
@@ -109,7 +109,7 @@ export const RoomState = Schema.Struct({
   playbackControl: RoomPlaybackControl,
   aiAccess: RoomAiAccess,
   status: RoomStatus,
-  revision: Schema.NonNegativeInt,
+  revision: Schema.Int.check(Schema.isGreaterThanOrEqualTo(0)),
   hostName: Schema.NullOr(Schema.String),
   hostOnline: Schema.Boolean,
   hostAwaySince: Schema.NullOr(Schema.Number),
@@ -124,21 +124,21 @@ export const RoomState = Schema.Struct({
 })
 export type RoomState = typeof RoomState.Type
 
-export const RoomMessageKind = Schema.Literal(
+export const RoomMessageKind = Schema.Literals([
   "text",
   "system",
   "ai",
   "recommendation",
-  "recap"
-)
+  "recap",
+])
 export type RoomMessageKind = typeof RoomMessageKind.Type
 
 export const RoomMessage = Schema.Struct({
   id: Schema.String,
-  seq: Schema.NonNegativeInt,
+  seq: Schema.Int.check(Schema.isGreaterThanOrEqualTo(0)),
   participantId: Schema.NullOr(Schema.String),
   authorName: Schema.String,
-  authorKind: Schema.Literal("account", "guest", "deleted", "system", "ai"),
+  authorKind: Schema.Literals(["account", "guest", "deleted", "system", "ai"]),
   kind: RoomMessageKind,
   body: Schema.String,
   data: Schema.NullOr(Schema.Unknown),
@@ -147,25 +147,25 @@ export const RoomMessage = Schema.Struct({
 })
 export type RoomMessage = typeof RoomMessage.Type
 
-export const RoomEndReason = Schema.Literal(
+export const RoomEndReason = Schema.Literals([
   "removed",
   "banned",
   "left",
   "deleted",
   "expired",
   "access",
-  "signed_out"
-)
+  "signed_out",
+])
 export type RoomEndReason = typeof RoomEndReason.Type
 
-export const RoomEvent = Schema.Union(
+export const RoomEvent = Schema.Union([
   Schema.TaggedStruct("State", { state: RoomState }),
   Schema.TaggedStruct("Messages", {
     messages: Schema.Array(RoomMessage),
     hasEarlier: Schema.Boolean,
   }),
-  Schema.TaggedStruct("Ended", { reason: RoomEndReason })
-)
+  Schema.TaggedStruct("Ended", { reason: RoomEndReason }),
+])
 export type RoomEvent = typeof RoomEvent.Type
 
 export const RoomSummary = Schema.Struct({
@@ -176,23 +176,23 @@ export const RoomSummary = Schema.Struct({
   hostName: Schema.NullOr(Schema.String),
   anime: Schema.NullOr(AnimeLibraryMetadata),
   episodeNumber: Schema.NullOr(Schema.Number),
-  onlineCount: Schema.NonNegativeInt,
+  onlineCount: Schema.Int.check(Schema.isGreaterThanOrEqualTo(0)),
   capacity: Schema.Int,
   isHost: Schema.Boolean,
-  membership: Schema.Literal("member", "invited", "none"),
+  membership: Schema.Literals(["member", "invited", "none"]),
   updatedAt: Schema.Number,
 })
 export type RoomSummary = typeof RoomSummary.Type
 
-export const RoomListTab = Schema.Literal(
+export const RoomListTab = Schema.Literals([
   "mine",
   "friends",
   "invitations",
-  "public"
-)
+  "public",
+])
 export type RoomListTab = typeof RoomListTab.Type
 
-export const RoomAdmissionStatus = Schema.Literal(
+export const RoomAdmissionStatus = Schema.Literals([
   "member",
   "joinable",
   "sign_in_required",
@@ -201,8 +201,8 @@ export const RoomAdmissionStatus = Schema.Literal(
   "full",
   "banned",
   "closed",
-  "unavailable"
-)
+  "unavailable",
+])
 export type RoomAdmissionStatus = typeof RoomAdmissionStatus.Type
 
 // Unauthorized visitors only learn that the room is unavailable; room details
@@ -218,22 +218,28 @@ export const RoomAdmission = Schema.Struct({
       hostName: Schema.NullOr(Schema.String),
       anime: Schema.NullOr(AnimeLibraryMetadata),
       episodeNumber: Schema.NullOr(Schema.Number),
-      onlineCount: Schema.NonNegativeInt,
+      onlineCount: Schema.Int.check(Schema.isGreaterThanOrEqualTo(0)),
       capacity: Schema.Int,
     })
   ),
 })
 export type RoomAdmission = typeof RoomAdmission.Type
 
-export const RoomPlaybackAction = Schema.Union(
-  Schema.TaggedStruct("Play", { positionSeconds: Schema.NonNegative }),
-  Schema.TaggedStruct("Pause", { positionSeconds: Schema.NonNegative }),
-  Schema.TaggedStruct("Seek", { positionSeconds: Schema.NonNegative }),
+export const RoomPlaybackAction = Schema.Union([
+  Schema.TaggedStruct("Play", {
+    positionSeconds: Schema.Number.check(Schema.isGreaterThanOrEqualTo(0)),
+  }),
+  Schema.TaggedStruct("Pause", {
+    positionSeconds: Schema.Number.check(Schema.isGreaterThanOrEqualTo(0)),
+  }),
+  Schema.TaggedStruct("Seek", {
+    positionSeconds: Schema.Number.check(Schema.isGreaterThanOrEqualTo(0)),
+  }),
   Schema.TaggedStruct("Rate", {
-    positionSeconds: Schema.NonNegative,
-    rate: Schema.Number.pipe(Schema.between(0.25, 2)),
-  })
-)
+    positionSeconds: Schema.Number.check(Schema.isGreaterThanOrEqualTo(0)),
+    rate: Schema.Number.check(Schema.isBetween({ minimum: 0.25, maximum: 2 })),
+  }),
+])
 export type RoomPlaybackAction = typeof RoomPlaybackAction.Type
 
 export const RoomAccessChangePreview = Schema.Struct({
@@ -251,13 +257,13 @@ export const RoomInviteLink = Schema.Struct({
 export type RoomInviteLink = typeof RoomInviteLink.Type
 
 export const RoomViewingResult = Schema.Struct({
-  coveredSeconds: Schema.NonNegative,
+  coveredSeconds: Schema.Number.check(Schema.isGreaterThanOrEqualTo(0)),
   completed: Schema.Boolean,
   newlyCompleted: Schema.Boolean,
 })
 export type RoomViewingResult = typeof RoomViewingResult.Type
 
-export const RoomErrorReason = Schema.Literal(
+export const RoomErrorReason = Schema.Literals([
   "unavailable",
   "sign_in_required",
   "not_member",
@@ -273,8 +279,8 @@ export const RoomErrorReason = Schema.Literal(
   "invalid",
   "rate_limited",
   "host_must_transfer",
-  "failed"
-)
+  "failed",
+])
 export type RoomErrorReason = typeof RoomErrorReason.Type
 
 export class RoomOperationError extends Schema.TaggedError<RoomOperationError>()(

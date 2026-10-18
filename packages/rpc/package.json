@@ -13,9 +13,7 @@
     "@animekaiser/auth": "workspace:*",
     "@animekaiser/core": "workspace:*",
     "@animekaiser/domain": "workspace:*",
-    "@effect/platform": "^0.96.1",
-    "@effect/rpc": "^0.75.1",
-    "effect": "^3.21.3"
+    "effect": "4.0.2"
   },
   "devDependencies": {
     "@types/node": "^25.9.2",

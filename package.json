@@ -19,10 +19,14 @@
     "test:e2e:install": "playwright install chromium",
     "typecheck": "turbo typecheck"
   },
+  "overrides": {
+    "@effect/platform-node-shared": "4.0.2"
+  },
   "devDependencies": {
     "@biomejs/biome": "^2.5.3",
     "@effect/tsgo": "^0.21.0",
     "@playwright/test": "^1.61.1",
+    "effect": "4.0.2",
     "turbo": "^2.9.15",
     "typescript": "^7.0.2"
   },
