@@ -18,7 +18,7 @@
 
 ## Implementation Rules
 
-- Keep Redis out of `packages/db`. Define storage behavior in `core` and wire the shared `ioredis` key-value adapter in `apps/api`.
+- Keep Redis out of `packages/db`. Define storage behavior in `core` and wire the Redis-backed key-value adapter (Effect `Redis` on `BunRedis`) in `apps/api`.
 - Use Postgres as the durable job queue. The API process may run the worker loop initially.
 - Client applications must not import `core`; shared client contracts belong in `domain` and `rpc/client`.
 - Define services with `Context.Service` and attach their layers as static `layer` members. Use a bare `Context.Service` (no `make`) for seams implemented by another package.

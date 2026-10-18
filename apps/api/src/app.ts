@@ -1,8 +1,8 @@
 import { fileURLToPath } from "node:url"
 import { RecommendationService, RoomService } from "@animekaiser/core"
 import { RpcLive } from "@animekaiser/rpc/server"
-import * as HttpLayerRouter from "@effect/platform/HttpLayerRouter"
-import * as HttpMiddleware from "@effect/platform/HttpMiddleware"
+import * as HttpMiddleware from "effect/http/HttpMiddleware"
+import * as HttpRouter from "effect/http/HttpRouter"
 import * as Layer from "effect/Layer"
 import { BetterAuthLive, ExternalListOAuthConfigLive } from "./auth"
 import { Env } from "./env"
@@ -35,7 +35,7 @@ const migrationsFolder = fileURLToPath(
   new URL("../../../packages/db/drizzle", import.meta.url)
 )
 
-export const ApiLive = HttpLayerRouter.serve(RoutesLive, {
+export const ApiLive = HttpRouter.serve(RoutesLive, {
   middleware: HttpMiddleware.logger,
 }).pipe(
   Layer.merge(DatabaseListenerLive),
@@ -48,13 +48,13 @@ export const ApiLive = HttpLayerRouter.serve(RoutesLive, {
   Layer.provideMerge(RpcServerConfigLive),
   Layer.provideMerge(ExternalListOAuthConfigLive),
   Layer.provideMerge(BetterAuthLive),
-  Layer.provide(RecommendationService.Default),
+  Layer.provide(RecommendationService.layer),
   Layer.provide(OpenRouterLive),
-  Layer.provide(RoomService.Default),
+  Layer.provide(RoomService.layer),
   Layer.provide(StreamingClientLive),
   Layer.provide(MalApiConfigLive),
   Layer.provide(RedisKeyValueStoreLive),
   Layer.provide(makeDatabaseLive(migrationsFolder)),
   Layer.provide(HttpServerLive),
-  Layer.provide(Env.Default)
+  Layer.provide(Env.layer)
 )

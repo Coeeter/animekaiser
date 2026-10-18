@@ -4,10 +4,10 @@ import * as Layer from "effect/Layer"
 import { Env } from "../env"
 
 export function makeDatabaseLive(migrationsFolder: string) {
-  return Layer.unwrapEffect(
+  return Layer.unwrap(
     Env.pipe(
       Effect.map((env) =>
-        Database.Default({
+        Database.layer({
           url: env.database.url,
           ssl: env.server.env === "prod",
           migrationsFolder,
@@ -20,6 +20,6 @@ export function makeDatabaseLive(migrationsFolder: string) {
 export const DatabaseListenerLive = Layer.effectDiscard(
   Effect.gen(function* () {
     const database = yield* Database
-    yield* database.setupConnectionListeners
+    return yield* database.awaitConnectionError
   })
 )

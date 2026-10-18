@@ -1,58 +1,51 @@
 import { KeyValueStore, KeyValueStoreError } from "@animekaiser/core"
+import * as BunRedis from "@effect/platform-bun/BunRedis"
 import * as Data from "effect/Data"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
-import Redis from "ioredis"
+import * as Redis from "effect/persistence/Redis"
 import { Env } from "../env"
 
 export class RedisConnectionError extends Data.TaggedError(
   "RedisConnectionError"
 )<{ cause: unknown }> {}
 
-export class RedisClient extends Effect.Service<RedisClient>()(
-  "@animekaiser/api/RedisClient",
-  {
-    scoped: Effect.gen(function* () {
-      const env = yield* Env
-      const client = yield* Effect.acquireRelease(
-        Effect.sync(
-          () =>
-            new Redis(env.redis.url, {
-              lazyConnect: true,
-              maxRetriesPerRequest: 1,
-            })
-        ),
-        (redis) => Effect.promise(() => redis.quit()).pipe(Effect.orDie)
-      )
-      yield* Effect.tryPromise({
-        try: () => client.connect(),
-        catch: (cause) => new RedisConnectionError({ cause }),
-      })
-      return client
-    }),
-  }
-) {}
+// Without the offline queue, commands fail at once while Redis is down instead
+// of waiting for a reconnect. Bun connects lazily, so the connection is opened
+// explicitly at startup, where a failure stops the API.
+const clientOptions = {
+  enableOfflineQueue: false,
+  connectionTimeout: 3_000,
+}
 
-export const RedisKeyValueStoreLive = Layer.effect(
+const RedisKeyValueStore = Layer.effect(
   KeyValueStore,
   Effect.gen(function* () {
-    const redis = yield* RedisClient
+    const bunRedis = yield* BunRedis.BunRedis
+    yield* bunRedis
+      .use((client) => client.connect())
+      .pipe(
+        Effect.timeout("5 seconds"),
+        Effect.mapError((cause) => new RedisConnectionError({ cause }))
+      )
+    const redis = yield* Redis.Redis
+    const command = <A>(name: string, ...args: ReadonlyArray<string>) =>
+      redis
+        .send<A>(name, ...args)
+        .pipe(Effect.mapError((cause) => new KeyValueStoreError({ cause })))
     return KeyValueStore.of({
-      get: (key) =>
-        Effect.tryPromise({
-          try: () => redis.get(key),
-          catch: (cause) => new KeyValueStoreError({ cause }),
-        }),
-      getDelete: (key) =>
-        Effect.tryPromise({
-          try: () => redis.getdel(key),
-          catch: (cause) => new KeyValueStoreError({ cause }),
-        }),
+      get: (key) => command<string | null>("GET", key),
+      getDelete: (key) => command<string | null>("GETDEL", key),
       set: (key, value, ttlSeconds) =>
-        Effect.tryPromise({
-          try: () => redis.set(key, value, "EX", ttlSeconds),
-          catch: (cause) => new KeyValueStoreError({ cause }),
-        }).pipe(Effect.asVoid),
+        Effect.asVoid(command("SET", key, value, "EX", String(ttlSeconds))),
     })
   })
-).pipe(Layer.provide(RedisClient.Default))
+)
+
+export const RedisKeyValueStoreLive = Layer.unwrap(
+  Effect.map(Env, (env) =>
+    RedisKeyValueStore.pipe(
+      Layer.provide(BunRedis.layer({ url: env.redis.url, ...clientOptions }))
+    )
+  )
+)

@@ -1,13 +1,13 @@
-import * as HttpLayerRouter from "@effect/platform/HttpLayerRouter"
 import * as BunHttpServer from "@effect/platform-bun/BunHttpServer"
 import * as Effect from "effect/Effect"
+import * as HttpRouter from "effect/http/HttpRouter"
 import * as Layer from "effect/Layer"
 import { Env } from "../env"
 
-export const CorsLive = Layer.unwrapEffect(
+export const CorsLive = Layer.unwrap(
   Env.pipe(
     Effect.map((env) =>
-      HttpLayerRouter.cors({
+      HttpRouter.cors({
         allowedOrigins: [env.app.url],
         allowedMethods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
         allowedHeaders: [
@@ -28,6 +28,6 @@ export const CorsLive = Layer.unwrapEffect(
   )
 )
 
-export const HttpServerLive = Layer.unwrapEffect(
+export const HttpServerLive = Layer.unwrap(
   Env.pipe(Effect.map((env) => BunHttpServer.layer({ port: env.server.port })))
 )

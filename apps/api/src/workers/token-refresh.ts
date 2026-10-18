@@ -1,24 +1,20 @@
-import {
-  ExternalListAccountsService,
-  ExternalListTokenRefreshProgram,
-} from "@animekaiser/core"
-import * as Duration from "effect/Duration"
+import { ExternalListAccountsService } from "@animekaiser/core"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
+import * as Schedule from "effect/Schedule"
 
-const refreshLoop = Effect.gen(function* () {
-  yield* Effect.logInfo("[External List Token Refresh] Worker started.")
-  return yield* ExternalListTokenRefreshProgram().pipe(
-    Effect.catchAll((error) =>
-      Effect.logError("[External List Token Refresh] Worker tick failed.", {
-        error,
-      })
-    ),
-    Effect.zipRight(Effect.sleep(Duration.minutes(5))),
-    Effect.forever
-  )
-})
-
-export const ExternalListTokenRefreshWorkerLive = Layer.scopedDiscard(
-  Effect.forkScoped(refreshLoop)
-).pipe(Layer.provide(ExternalListAccountsService.Default))
+export const ExternalListTokenRefreshWorkerLive = Layer.effectDiscard(
+  Effect.gen(function* () {
+    const accounts = yield* ExternalListAccountsService
+    yield* Effect.logInfo("[External List Token Refresh] Worker started.")
+    yield* accounts.refreshDueTokens().pipe(
+      Effect.catch((error) =>
+        Effect.logError("[External List Token Refresh] Worker tick failed.", {
+          error,
+        })
+      ),
+      Effect.repeat(Schedule.spaced("5 minutes")),
+      Effect.forkScoped
+    )
+  })
+).pipe(Layer.provide(ExternalListAccountsService.layer))

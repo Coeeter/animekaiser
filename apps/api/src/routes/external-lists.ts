@@ -1,14 +1,16 @@
 import {
-  ExternalListAccountError,
+  type ExternalListAccountError,
   ExternalListAccountsService,
 } from "@animekaiser/core"
-import { AuthenticationRequiredError } from "@animekaiser/domain"
-import * as HttpLayerRouter from "@effect/platform/HttpLayerRouter"
-import * as HttpRouter from "@effect/platform/HttpRouter"
-import * as HttpServerRequest from "@effect/platform/HttpServerRequest"
-import * as HttpServerResponse from "@effect/platform/HttpServerResponse"
+import type { AuthenticationRequiredError } from "@animekaiser/domain"
 import * as Data from "effect/Data"
 import * as Effect from "effect/Effect"
+import * as HttpRouter from "effect/http/HttpRouter"
+import * as HttpServerRequest from "effect/http/HttpServerRequest"
+import * as HttpServerResponse from "effect/http/HttpServerResponse"
+import * as Layer from "effect/Layer"
+import * as Option from "effect/Option"
+import * as Schema from "effect/Schema"
 import { BetterAuth, requireCurrentUser } from "../auth"
 import { Env } from "../env"
 
@@ -19,132 +21,87 @@ class ExternalListRouteError extends Data.TaggedError(
   message: string
 }> {}
 
-export const handleExternalListError = (
-  error:
-    | AuthenticationRequiredError
-    | ExternalListRouteError
-    | ExternalListAccountError
-): Effect.Effect<HttpServerResponse.HttpServerResponse> => {
-  if (error instanceof AuthenticationRequiredError) {
-    return Effect.succeed(
-      HttpServerResponse.text(error.message, { status: 401 })
-    )
-  }
-  if (error instanceof ExternalListRouteError) {
-    return Effect.succeed(
-      HttpServerResponse.text(error.message, { status: error.status })
-    )
-  }
-  if (error instanceof ExternalListAccountError) {
-    return Effect.succeed(
-      HttpServerResponse.text(error.message, { status: error.status })
-    )
-  }
-  return Effect.succeed(
-    HttpServerResponse.text("External list OAuth failed", { status: 500 })
-  )
-}
+const errorResponse = (error: { readonly message: string }, status: number) =>
+  Effect.succeed(HttpServerResponse.text(error.message, { status }))
 
-const getQueryParam = (
-  request: HttpServerRequest.HttpServerRequest,
-  key: string
-) => new URL(request.url, "http://localhost").searchParams.get(key) ?? undefined
+const handleExternalListError = Effect.catchTags({
+  AuthenticationRequiredError: (error: AuthenticationRequiredError) =>
+    errorResponse(error, 401),
+  ExternalListRouteError: (error: ExternalListRouteError) =>
+    errorResponse(error, error.status),
+  ExternalListAccountError: (error: ExternalListAccountError) =>
+    errorResponse(error, error.status),
+})
 
-const requireQueryParam = (
-  request: HttpServerRequest.HttpServerRequest,
-  key: string
-) => {
-  const value = getQueryParam(request, key)
-  return value
-    ? Effect.succeed(value)
-    : Effect.fail(
-        new ExternalListRouteError({
-          status: 400,
-          message: `Missing ${key}`,
-        })
-      )
-}
+const invalidRequest = (message: string) =>
+  new ExternalListRouteError({ status: 400, message })
 
-const requireProvider = Effect.gen(function* () {
-  const { params } = yield* HttpRouter.RouteContext
-  if (params.provider === "mal") return "mal" as const
-  if (params.provider === "anilist") return "anilist" as const
-  return yield* new ExternalListRouteError({
-    status: 400,
-    message: "Unsupported external list provider",
-  })
+const ProviderParams = Schema.Struct({
+  provider: Schema.Literals(["mal", "anilist"]),
+})
+
+const requireProvider = HttpRouter.schemaPathParams(ProviderParams).pipe(
+  Effect.map(({ provider }) => provider),
+  Effect.mapError(() => invalidRequest("Unsupported external list provider"))
+)
+
+const CallbackParams = Schema.Struct({
+  code: Schema.NonEmptyString,
+  state: Schema.NonEmptyString,
+})
+
+const LinkParams = Schema.Struct({
+  callbackURL: Schema.optional(Schema.String),
 })
 
 export const safeCallbackUrl = (value: string, appURL: string) => {
-  try {
-    const callbackURL = new URL(value, appURL)
-    return callbackURL.origin === new URL(appURL).origin
-      ? callbackURL.toString()
-      : null
-  } catch {
-    return null
-  }
+  if (!URL.canParse(value, appURL)) return null
+  const callbackURL = new URL(value, appURL)
+  return callbackURL.origin === new URL(appURL).origin
+    ? callbackURL.toString()
+    : null
 }
 
-const getSafeCallbackURL = (
-  request: HttpServerRequest.HttpServerRequest,
-  appURL: string
-) =>
-  Effect.try({
-    try: () => {
-      const callbackURL = safeCallbackUrl(
-        getQueryParam(request, "callbackURL") ?? appURL,
-        appURL
-      )
-      if (!callbackURL) throw new Error()
-      return callbackURL
-    },
-    catch: () =>
-      new ExternalListRouteError({
-        status: 400,
-        message: "Invalid callbackURL",
-      }),
-  })
-
-const linkHandler = Effect.gen(function* () {
-  const provider = yield* requireProvider
-  const request = yield* HttpServerRequest.HttpServerRequest
-  const auth = yield* BetterAuth
-  const user = yield* requireCurrentUser(auth)
-  const env = yield* Env
-  const callbackURL = yield* getSafeCallbackURL(request, env.app.url)
-  const url = yield* ExternalListAccountsService.createLinkUrl(provider, {
-    userId: user.id,
-    callbackURL,
-  })
-  return HttpServerResponse.redirect(url)
-}).pipe(
-  Effect.catchAll(handleExternalListError),
-  Effect.provide(ExternalListAccountsService.Default)
-)
-
-const callbackHandler = Effect.gen(function* () {
-  const provider = yield* requireProvider
-  const request = yield* HttpServerRequest.HttpServerRequest
-  const code = yield* requireQueryParam(request, "code")
-  const state = yield* requireQueryParam(request, "state")
-
-  const auth = yield* BetterAuth
-  const user = yield* requireCurrentUser(auth)
-  const callbackURL = yield* ExternalListAccountsService.handleCallback(
-    provider,
-    { userId: user.id, code, state }
-  )
-
-  return HttpServerResponse.redirect(callbackURL)
-}).pipe(
-  Effect.catchAll(handleExternalListError),
-  Effect.provide(ExternalListAccountsService.Default)
-)
-
-export const ExternalListAccountsRoutesLive = HttpLayerRouter.use((router) =>
+export const ExternalListAccountsRoutesLive = HttpRouter.use((router) =>
   Effect.gen(function* () {
+    const accounts = yield* ExternalListAccountsService
+    const auth = yield* BetterAuth
+    const env = yield* Env
+
+    const linkHandler = Effect.gen(function* () {
+      const provider = yield* requireProvider
+      const user = yield* requireCurrentUser(auth)
+      const { callbackURL } = yield* HttpServerRequest.schemaSearchParams(
+        LinkParams
+      ).pipe(Effect.mapError(() => invalidRequest("Invalid callbackURL")))
+      const safeURL = yield* Effect.fromOption(
+        Option.fromNullishOr(
+          safeCallbackUrl(callbackURL ?? env.app.url, env.app.url)
+        ),
+        () => invalidRequest("Invalid callbackURL")
+      )
+      const url = yield* accounts.createLinkUrl(provider, {
+        userId: user.id,
+        callbackURL: safeURL,
+      })
+      return HttpServerResponse.redirect(url)
+    }).pipe(handleExternalListError)
+
+    const callbackHandler = Effect.gen(function* () {
+      const provider = yield* requireProvider
+      const { code, state } = yield* HttpServerRequest.schemaSearchParams(
+        CallbackParams
+      ).pipe(Effect.mapError(() => invalidRequest("Missing code or state")))
+      const user = yield* requireCurrentUser(auth)
+      const callbackURL = yield* accounts.handleCallback(provider, {
+        userId: user.id,
+        code,
+        state,
+      })
+      return HttpServerResponse.redirect(callbackURL)
+    }).pipe(handleExternalListError)
+
     yield* router.add("GET", "/api/link/:provider", linkHandler)
     yield* router.add("GET", "/api/link/:provider/callback", callbackHandler)
   })
-)
+).pipe(Layer.provide(ExternalListAccountsService.layer))

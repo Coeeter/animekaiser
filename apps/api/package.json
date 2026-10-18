@@ -17,7 +17,6 @@
     "@animekaiser/rpc": "workspace:*",
     "@effect/platform-bun": "4.0.2",
     "effect": "4.0.2",
-    "ioredis": "^5.8.2",
     "resend": "^6.12.4"
   },
   "devDependencies": {

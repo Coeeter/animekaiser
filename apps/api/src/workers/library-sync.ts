@@ -5,34 +5,32 @@ import {
 import { Database } from "@animekaiser/db"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
-import * as Queue from "effect/Queue"
 import * as Schedule from "effect/Schedule"
+import * as Stream from "effect/Stream"
 
-const drain = LibrarySyncService.processNextEvent().pipe(
-  Effect.repeat({ while: (worked) => worked }),
-  Effect.asVoid
-)
-
-const syncLoop = Effect.scoped(
+export const LibrarySyncWorkerLive = Layer.effectDiscard(
   Effect.gen(function* () {
     const database = yield* Database
-    const events = yield* database.listen(LIBRARY_SYNC_EVENT_CHANNEL)
-    yield* LibrarySyncService.recoverRunningEvents()
-    yield* drain
-    return yield* Queue.take(events).pipe(
-      Effect.flatMap((event) =>
-        event._tag === "Error" ? Effect.fail(event.error) : drain
+    const sync = yield* LibrarySyncService
+    const drain = sync
+      .processNextEvent()
+      .pipe(Effect.repeat({ while: (worked) => worked }), Effect.asVoid)
+
+    yield* Effect.scoped(
+      Effect.gen(function* () {
+        const notifications = yield* database.listen(LIBRARY_SYNC_EVENT_CHANNEL)
+        yield* sync.recoverRunningEvents()
+        yield* drain
+        return yield* Stream.fromQueue(notifications).pipe(
+          Stream.runForEach(() => drain)
+        )
+      })
+    ).pipe(
+      Effect.tapError((error) =>
+        Effect.logError("Library sync worker reconnecting.", { error })
       ),
-      Effect.forever
+      Effect.retry(Schedule.spaced("1 second")),
+      Effect.forkScoped
     )
   })
-).pipe(
-  Effect.tapError((error) =>
-    Effect.logError("Library sync worker reconnecting.", { error })
-  ),
-  Effect.retry(Schedule.spaced("1 second"))
-)
-
-export const LibrarySyncWorkerLive = Layer.scopedDiscard(
-  Effect.forkScoped(syncLoop)
-).pipe(Layer.provide(LibrarySyncService.Default))
+).pipe(Layer.provide(LibrarySyncService.layer))

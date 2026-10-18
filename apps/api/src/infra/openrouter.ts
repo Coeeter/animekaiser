@@ -7,10 +7,12 @@ import {
   AiProviderError,
 } from "@animekaiser/core"
 import { AiModelId } from "@animekaiser/domain"
-import * as FetchHttpClient from "@effect/platform/FetchHttpClient"
-import * as HttpClient from "@effect/platform/HttpClient"
-import * as HttpClientRequest from "@effect/platform/HttpClientRequest"
 import * as Effect from "effect/Effect"
+import * as Sse from "effect/encoding/Sse"
+import * as Filter from "effect/Filter"
+import * as FetchHttpClient from "effect/http/FetchHttpClient"
+import * as HttpClient from "effect/http/HttpClient"
+import * as HttpClientRequest from "effect/http/HttpClientRequest"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import * as Schema from "effect/Schema"
@@ -32,7 +34,7 @@ const Annotation = Schema.Struct({
   title: Schema.optional(Schema.NullOr(Schema.String)),
 })
 
-const OutputItem = Schema.Union(
+const OutputItem = Schema.Union([
   Schema.Struct({
     type: Schema.Literal("function_call"),
     call_id: Schema.String,
@@ -58,8 +60,8 @@ const OutputItem = Schema.Union(
         annotations: Schema.optional(Schema.Array(Annotation)),
       })
     ),
-  })
-)
+  }),
+])
 const decodeOutputItem = Schema.decodeUnknownOption(OutputItem)
 
 const ResponseBody = Schema.Struct({
@@ -68,9 +70,9 @@ const ResponseBody = Schema.Struct({
   output: Schema.Array(Schema.Unknown),
   usage: Schema.optional(
     Schema.NullOr(
-      Schema.Struct(
-        { cost: Schema.optional(Schema.NullOr(Schema.Number)) },
-        Schema.Record({ key: Schema.String, value: Schema.Unknown })
+      Schema.StructWithRest(
+        Schema.Struct({ cost: Schema.optional(Schema.NullOr(Schema.Finite)) }),
+        [Schema.Record(Schema.String, Schema.Unknown)]
       )
     )
   ),
@@ -79,7 +81,7 @@ const ResponseBody = Schema.Struct({
   ),
 })
 
-const StreamEvent = Schema.parseJson(
+const StreamEvent = Schema.fromJsonString(
   Schema.Struct({
     type: Schema.String,
     delta: Schema.optional(Schema.Unknown),
@@ -94,7 +96,6 @@ const StreamEvent = Schema.parseJson(
   })
 )
 const decodeStreamEvent = Schema.decodeUnknownOption(StreamEvent)
-type StreamEvent = typeof StreamEvent.Type
 
 const terminalEvents = new Set([
   "response.completed",
@@ -103,28 +104,13 @@ const terminalEvents = new Set([
   "error",
 ])
 
-const noLines: ReadonlyArray<string> = []
-
-// An SSE event may span several `data:` lines and ends at a blank line.
-export const sseData = <E>(lines: Stream.Stream<string, E>) =>
-  lines.pipe(
-    Stream.concat(Stream.make("")),
-    Stream.mapAccum(
-      noLines,
-      (data, line): readonly [ReadonlyArray<string>, Option.Option<string>] => {
-        if (line === "")
-          return [
-            noLines,
-            data.length > 0 ? Option.some(data.join("\n")) : Option.none(),
-          ]
-        if (!line.startsWith("data:")) return [data, Option.none()]
-        return [
-          [...data, line.slice(line.startsWith("data: ") ? 6 : 5)],
-          Option.none(),
-        ]
-      }
-    ),
-    Stream.filterMap((data) => data)
+// The decoder drops a final event that lacks its closing blank line, which
+// would lose the terminal response event if the upstream omits it.
+export const sseData = <E>(text: Stream.Stream<string, E>) =>
+  text.pipe(
+    Stream.concat(Stream.make("\n\n")),
+    Stream.pipeThroughChannel(Sse.decode()),
+    Stream.map((event) => event.data)
   )
 
 const toFunctionTool = (entry: AgentTool) => {
@@ -174,18 +160,16 @@ export const OpenRouterLive = Layer.effect(
       }) => Effect.Effect<void>
     ) =>
       Effect.gen(function* () {
-        const response = yield* client
-          .execute(
-            HttpClientRequest.post(responsesUrl).pipe(
-              HttpClientRequest.bearerToken(key.value),
-              HttpClientRequest.setHeaders({
-                "x-title": "AnimeKaiser",
-                "http-referer": env.app.url,
-              }),
-              HttpClientRequest.bodyUnsafeJson({ ...body, stream: true })
-            )
-          )
-          .pipe(Effect.mapError((error) => failWith(error.message)))
+        const response = yield* HttpClientRequest.post(responsesUrl).pipe(
+          HttpClientRequest.bearerToken(key.value),
+          HttpClientRequest.setHeaders({
+            "x-title": "AnimeKaiser",
+            "http-referer": env.app.url,
+          }),
+          HttpClientRequest.bodyJson({ ...body, stream: true }),
+          Effect.flatMap(client.execute),
+          Effect.mapError((error) => failWith(error.message))
+        )
         if (response.status >= 400) {
           const detail = yield* response.text.pipe(
             Effect.orElseSucceed(() => "")
@@ -194,19 +178,24 @@ export const OpenRouterLive = Layer.effect(
             `OpenRouter returned ${response.status}: ${detail.slice(0, 300)}`
           )
         }
-        const seen: { terminal?: StreamEvent } = {}
-        yield* sseData(
-          response.stream.pipe(Stream.decodeText(), Stream.splitLines)
+        const last = yield* sseData(
+          response.stream.pipe(Stream.decodeText())
         ).pipe(
-          Stream.filterMap(decodeStreamEvent),
+          Stream.filterMap(Filter.fromPredicateOption(decodeStreamEvent)),
           Stream.takeUntil((event) => terminalEvents.has(event.type)),
-          Stream.runForEach((event) => {
-            if (terminalEvents.has(event.type)) seen.terminal = event
-            return onEvent(event)
-          }),
-          Effect.mapError((error) => failWith(error.message))
+          Stream.tap(onEvent),
+          Stream.runLast,
+          Effect.mapError((error) =>
+            failWith(
+              error._tag === "Retry"
+                ? "The stream asked to reconnect."
+                : error.message
+            )
+          )
         )
-        const terminal = seen.terminal
+        const terminal = Option.getOrUndefined(
+          Option.filter(last, (event) => terminalEvents.has(event.type))
+        )
         if (!terminal) return yield* failWith("The stream ended early.")
         if (terminal.type === "error" || !terminal.response)
           return yield* failWith(terminal.message ?? "The stream failed.")
@@ -380,9 +369,9 @@ export const OpenRouterLive = Layer.effect(
             if (finished || last) return result(answer)
           }
         }).pipe(
-          Effect.timeoutFail({
+          Effect.timeoutOrElse({
             duration: "120 seconds",
-            onTimeout: () => failWith("Timed out."),
+            orElse: () => Effect.fail(failWith("Timed out.")),
           })
         ),
     }

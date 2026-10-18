@@ -430,7 +430,3 @@ export class ExternalListAccountsService extends Context.Service<ExternalListAcc
     Layer.provide([FetchHttpClient.layer, ExternalListOAuthStateStore.layer])
   )
 }
-
-export const ExternalListTokenRefreshProgram = ExternalListAccountsService.use(
-  (accounts) => accounts.refreshDueTokens()
-)

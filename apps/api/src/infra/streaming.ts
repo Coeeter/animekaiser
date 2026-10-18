@@ -1,27 +1,24 @@
 import type { StreamPlaybackFailure } from "@animekaiser/core"
 import { StreamingClient } from "@animekaiser/core"
-import type {
-  AnimeDetail,
-  StreamProvider,
-  StreamProviderId,
-} from "@animekaiser/domain"
+import type { AnimeDetail, StreamProvider } from "@animekaiser/domain"
 import {
   StreamEpisodeNotFoundError,
   StreamingUnavailableError,
+  StreamProviderId,
   StreamProviderNotFoundError,
   StreamProviderUnavailableError,
 } from "@animekaiser/domain"
-import * as FetchHttpClient from "@effect/platform/FetchHttpClient"
-import * as HttpClient from "@effect/platform/HttpClient"
-import * as HttpClientRequest from "@effect/platform/HttpClientRequest"
-import { Rpc, RpcClient, RpcGroup, RpcSerialization } from "@effect/rpc"
 import * as Effect from "effect/Effect"
+import * as FetchHttpClient from "effect/http/FetchHttpClient"
+import * as HttpClient from "effect/http/HttpClient"
+import * as HttpClientRequest from "effect/http/HttpClientRequest"
 import * as Layer from "effect/Layer"
 import * as Redacted from "effect/Redacted"
+import { Rpc, RpcClient, RpcGroup, RpcSerialization } from "effect/rpc"
 import * as Schema from "effect/Schema"
 import { Env } from "../env"
 
-const StreamAudio = Schema.Literal("sub", "dub")
+const StreamAudio = Schema.Literals(["sub", "dub"])
 
 const StreamAnime = Schema.Struct({
   malId: Schema.Int,
@@ -50,12 +47,12 @@ const StreamEpisode = Schema.Struct({
   japaneseTitle: Schema.NullOr(Schema.String),
   availableAudio: Schema.Array(StreamAudio),
   updatedAt: Schema.NullOr(Schema.String),
-  image: Schema.optionalWith(Schema.NullOr(Schema.String), {
-    default: () => null,
-  }),
-  description: Schema.optionalWith(Schema.NullOr(Schema.String), {
-    default: () => null,
-  }),
+  image: Schema.NullOr(Schema.String).pipe(
+    Schema.withDecodingDefaultType(Effect.succeed(null))
+  ),
+  description: Schema.NullOr(Schema.String).pipe(
+    Schema.withDecodingDefaultType(Effect.succeed(null))
+  ),
 })
 
 const StreamTrack = Schema.Struct({
@@ -71,21 +68,21 @@ const StreamSkipSegment = Schema.Struct({
 })
 
 const RemoteProvider = Schema.Struct({
-  id: Schema.String,
+  id: StreamProviderId,
   label: Schema.String,
 })
 
 const RemoteProviderEpisodes = Schema.Struct({
-  provider: Schema.String,
+  provider: StreamProviderId,
   providerAnimeId: Schema.NullOr(Schema.String),
   matchedTitle: Schema.NullOr(Schema.String),
-  status: Schema.Literal("available", "unmatched", "unavailable"),
+  status: Schema.Literals(["available", "unmatched", "unavailable"]),
   message: Schema.NullOr(Schema.String),
   episodes: Schema.Array(StreamEpisode),
 })
 
 const RemotePlayback = Schema.Struct({
-  provider: Schema.String,
+  provider: StreamProviderId,
   providerAnimeId: Schema.String,
   matchedTitle: Schema.NullOr(Schema.String),
   episode: StreamEpisode,
@@ -100,19 +97,18 @@ const RemotePlayback = Schema.Struct({
   outro: Schema.NullOr(StreamSkipSegment),
   proxiedSourceUrl: Schema.String,
   proxiedTracks: Schema.Array(StreamTrack),
-  proxiedThumbnails: Schema.optionalWith(
-    Schema.Array(Schema.Struct({ file: Schema.String })),
-    { default: () => [] }
+  proxiedThumbnails: Schema.Array(Schema.Struct({ file: Schema.String })).pipe(
+    Schema.withDecodingDefaultType(Effect.succeed([]))
   ),
   proxyExpiresAt: Schema.Int,
 })
 
-const remoteFailure = Schema.Union(
+const remoteFailure = Schema.Union([
   StreamingUnavailableError,
   StreamProviderNotFoundError,
   StreamProviderUnavailableError,
-  StreamEpisodeNotFoundError
-)
+  StreamEpisodeNotFoundError,
+])
 
 class ListStreamProviders extends Rpc.make("ListStreamProviders", {
   success: Schema.Array(RemoteProvider),
@@ -176,7 +172,7 @@ const neutralEpisodes = (
         : `${label} is currently unavailable.`,
 })
 
-export const StreamingClientLive = Layer.scoped(
+export const StreamingClientLive = Layer.effect(
   StreamingClient,
   Effect.gen(function* () {
     const client = yield* RpcClient.make(StreamingRpcs)
@@ -187,12 +183,12 @@ export const StreamingClientLive = Layer.scoped(
           (providers) =>
             new Map(providers.map((provider) => [provider.id, provider.label]))
         ),
-        Effect.catchAll(() => Effect.succeed(new Map<string, string>()))
+        Effect.orElseSucceed(() => new Map<StreamProviderId, string>())
       ),
       "1 hour"
     )
 
-    const labelFor = (provider: string) =>
+    const labelFor = (provider: StreamProviderId) =>
       labels.pipe(Effect.map((map) => map.get(provider) ?? "This provider"))
 
     return {
@@ -200,7 +196,7 @@ export const StreamingClientLive = Layer.scoped(
         Effect.map(
           (providers): ReadonlyArray<StreamProvider> =>
             providers.map((provider) => ({
-              id: provider.id as StreamProviderId,
+              id: provider.id,
               label: provider.label,
             }))
         ),
@@ -229,7 +225,7 @@ export const StreamingClientLive = Layer.scoped(
             )
           return {
             ...neutralEpisodes(episodes, label),
-            provider: episodes.provider as StreamProviderId,
+            provider: episodes.provider,
             label,
           }
         }),
@@ -283,7 +279,7 @@ export const StreamingClientLive = Layer.scoped(
 
           return {
             anime,
-            provider: playback.provider as StreamProviderId,
+            provider: playback.provider,
             providerAnimeId: playback.providerAnimeId,
             matchedTitle: playback.matchedTitle,
             episode: playback.episode,
@@ -302,7 +298,7 @@ export const StreamingClientLive = Layer.scoped(
   })
 ).pipe(
   Layer.provide(
-    Layer.unwrapEffect(
+    Layer.unwrap(
       Effect.gen(function* () {
         const env = yield* Env
         const authed = Layer.effect(
@@ -325,5 +321,5 @@ export const StreamingClientLive = Layer.scoped(
       })
     )
   ),
-  Layer.provide(Env.Default)
+  Layer.provide(Env.layer)
 )

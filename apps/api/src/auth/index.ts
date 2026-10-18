@@ -1,17 +1,17 @@
-import type { KaiserAuth } from "@animekaiser/auth/server"
+import type { AuthLogger, KaiserAuth } from "@animekaiser/auth/server"
 import { AuthServer, initAuth } from "@animekaiser/auth/server"
 import { ExternalListOAuthConfig } from "@animekaiser/core"
 import { Database } from "@animekaiser/db"
 import { AuthenticationRequiredError } from "@animekaiser/domain"
-import * as HttpServerRequest from "@effect/platform/HttpServerRequest"
 import * as Effect from "effect/Effect"
+import * as HttpServerRequest from "effect/http/HttpServerRequest"
 import * as Layer from "effect/Layer"
 import * as Redacted from "effect/Redacted"
 import { Env } from "../env"
 import { createResendAuthMailer } from "./mailer"
 
 type BetterAuthRuntime = KaiserAuth
-type EnvShape = Effect.Effect.Success<typeof Env>
+type EnvShape = Effect.Success<typeof Env>
 
 const providerConfig = (
   config: EnvShape["externalList"]["mal" | "aniList"],
@@ -42,9 +42,13 @@ export const getCurrentSession = Effect.fn("getCurrentSession")(function* (
         })
     )
   )
-  return yield* Effect.promise(() =>
-    auth.api.getSession({ headers: webRequest.headers })
-  )
+  return yield* Effect.tryPromise({
+    try: () => auth.api.getSession({ headers: webRequest.headers }),
+    catch: () =>
+      new AuthenticationRequiredError({
+        message: "Authentication request could not be read.",
+      }),
+  })
 })
 
 export const requireCurrentUser = Effect.fn("requireCurrentUser")(function* (
@@ -69,7 +73,14 @@ export const BetterAuthLive = Layer.effect(
       apiKey: resendApiKey,
       from: env.auth.email.from,
     })
-    const db = database.withClient((client) => client)
+    const db = database.client
+    const context = yield* Effect.context<never>()
+    const log =
+      (write: (message: string) => Effect.Effect<void>): AuthLogger["info"] =>
+      (message, meta) =>
+        Effect.runForkWith(context)(
+          write(message).pipe(Effect.annotateLogs(meta ?? {}))
+        )
 
     return initAuth({
       appName: "Kaiser",
@@ -80,9 +91,9 @@ export const BetterAuthLive = Layer.effect(
       trustedOrigins: [env.app.url],
       db,
       logger: {
-        info: console.info,
-        warn: console.warn,
-        error: console.error,
+        info: log(Effect.logInfo),
+        warn: log(Effect.logWarning),
+        error: log(Effect.logError),
       },
       mailer,
       useSecureCookies: env.server.env === "prod",

@@ -7,23 +7,21 @@ import { ApiLive } from "./app"
 import { reportFatalCause } from "./infra/alerts"
 
 Layer.launch(ApiLive).pipe(
-  Effect.tapErrorCause(Effect.logError),
+  Effect.tapCause(Effect.logError),
   Effect.retry({
     while: (error) => error._tag === "DatabaseConnectionError",
     schedule: Schedule.exponential("1 second", 2).pipe(
-      Schedule.modifyDelay(Duration.min("8 seconds")),
+      Schedule.modifyDelay(({ duration }) =>
+        Effect.succeed(Duration.min(duration, Duration.seconds(8)))
+      ),
       Schedule.jittered,
-      Schedule.repetitions,
-      Schedule.modifyDelayEffect((count, delay) =>
-        Effect.as(
-          Effect.logError(
-            `[Server Crashed]: Retrying in ${Duration.format(delay)} (attempt #${count + 1})`
-          ),
-          delay
-        )
+      Schedule.modifyDelay(({ attempt, duration }) =>
+        Effect.logError(
+          `[Server Crashed]: Retrying in ${Duration.format(duration)} (attempt #${attempt})`
+        ).pipe(Effect.as(duration))
       )
     ),
   }),
-  Effect.tapErrorCause(reportFatalCause),
+  Effect.tapCause(reportFatalCause),
   BunRuntime.runMain()
 )
