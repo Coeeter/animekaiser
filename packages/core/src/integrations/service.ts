@@ -1,11 +1,12 @@
 import { Database, externalListAccount, job } from "@animekaiser/db"
-import * as FetchHttpClient from "@effect/platform/FetchHttpClient"
-import * as HttpClient from "@effect/platform/HttpClient"
 import { and, eq, sql } from "drizzle-orm"
 import * as Context from "effect/Context"
 import * as Data from "effect/Data"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
+import * as FetchHttpClient from "effect/http/FetchHttpClient"
+import * as HttpClient from "effect/http/HttpClient"
+import * as Layer from "effect/Layer"
 import { LIBRARY_IMPORT_JOB_CHANNEL } from "../library/import"
 import {
   findExternalListAccountsDueForTokenRefresh,
@@ -26,15 +27,13 @@ import {
 const PROFILE_SYNC_INTERVAL_MS = 15 * 60 * 1000
 const PROFILE_SYNC_TIMEOUT = Duration.seconds(15)
 
-export class ExternalListOAuthConfig extends Context.Tag(
-  "@animekaiser/core/ExternalListOAuthConfig"
-)<
+export class ExternalListOAuthConfig extends Context.Service<
   ExternalListOAuthConfig,
   {
     mal: ProviderOAuthConfig
     aniList: ProviderOAuthConfig
   }
->() {}
+>()("@animekaiser/core/ExternalListOAuthConfig") {}
 
 export class ExternalListAccountError extends Data.TaggedError(
   "ExternalListAccountError"
@@ -44,12 +43,10 @@ export class ExternalListAccountError extends Data.TaggedError(
   cause?: unknown
 }> {}
 
-export class ExternalListAccountsService extends Effect.Service<ExternalListAccountsService>()(
+export class ExternalListAccountsService extends Context.Service<ExternalListAccountsService>()(
   "@animekaiser/core/ExternalListAccountsService",
   {
-    accessors: true,
-    dependencies: [FetchHttpClient.layer, ExternalListOAuthStateStore.Default],
-    effect: Effect.gen(function* () {
+    make: Effect.gen(function* () {
       const database = yield* Database
       const config = yield* ExternalListOAuthConfig
       const http = yield* HttpClient.HttpClient
@@ -137,26 +134,27 @@ export class ExternalListAccountsService extends Effect.Service<ExternalListAcco
       const syncProfile = (account: StoredAccount) =>
         syncExternalListAccountProfile(database, account).pipe(
           Effect.provideService(HttpClient.HttpClient, http),
-          Effect.timeoutFail({
+          Effect.timeoutOrElse({
             duration: PROFILE_SYNC_TIMEOUT,
-            onTimeout: () =>
-              new ExternalListOAuthError({
-                provider: account.provider,
-                message: "[External List] Profile sync timed out.",
-              }),
+            orElse: () =>
+              Effect.fail(
+                new ExternalListOAuthError({
+                  provider: account.provider,
+                  message: "[External List] Profile sync timed out.",
+                })
+              ),
           }),
-          Effect.catchAll((error) =>
+          Effect.tapError((error) =>
             Effect.logWarning(
               "[External List] Failed to sync provider profile.",
               { accountId: account.id, provider: account.provider, error }
-            ).pipe(
-              // Stamp the attempt so a failing provider backs off for the full
-              // interval instead of being retried on every load.
-              Effect.zipRight(
-                markExternalListAccountProfileSynced(database, account.id).pipe(
-                  Effect.ignore
-                )
-              )
+            )
+          ),
+          // Stamp the attempt so a failing provider backs off for the full
+          // interval instead of being retried on every load.
+          Effect.catch(() =>
+            markExternalListAccountProfileSynced(database, account.id).pipe(
+              Effect.ignore
             )
           ),
           Effect.ensuring(Effect.sync(() => syncingProfiles.delete(account.id)))
@@ -179,7 +177,7 @@ export class ExternalListAccountsService extends Effect.Service<ExternalListAcco
 
           for (const account of stale) syncingProfiles.add(account.id)
 
-          return Effect.forkDaemon(
+          return Effect.forkDetach(
             Effect.forEach(stale, syncProfile, { concurrency: "unbounded" })
           ).pipe(Effect.asVoid)
         })
@@ -402,7 +400,7 @@ export class ExternalListAccountsService extends Effect.Service<ExternalListAcco
                   { accountId: account.id, provider: account.provider }
                 )
               ),
-              Effect.catchAll((error) =>
+              Effect.catch((error) =>
                 Effect.logError(
                   "[External List Token Refresh] Token refresh failed.",
                   { accountId: account.id, provider: account.provider, error }
@@ -424,7 +422,15 @@ export class ExternalListAccountsService extends Effect.Service<ExternalListAcco
       }
     }),
   }
-) {}
+) {
+  static readonly layer = Layer.effect(
+    ExternalListAccountsService,
+    ExternalListAccountsService.make
+  ).pipe(
+    Layer.provide([FetchHttpClient.layer, ExternalListOAuthStateStore.layer])
+  )
+}
 
-export const ExternalListTokenRefreshProgram =
-  ExternalListAccountsService.refreshDueTokens
+export const ExternalListTokenRefreshProgram = ExternalListAccountsService.use(
+  (accounts) => accounts.refreshDueTokens()
+)

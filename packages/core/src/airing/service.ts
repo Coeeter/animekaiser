@@ -25,7 +25,9 @@ import {
   sql,
 } from "drizzle-orm"
 import * as Chunk from "effect/Chunk"
+import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
+import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import * as Schema from "effect/Schema"
 import type { AniListAiringStatus, EpisodeMetadata } from "../anime"
@@ -201,17 +203,10 @@ export const resolveLatestAiredAt = (input: {
   )
 }
 
-export class AiringService extends Effect.Service<AiringService>()(
+export class AiringService extends Context.Service<AiringService>()(
   "@animekaiser/core/AiringService",
   {
-    accessors: true,
-    dependencies: [
-      AnimeService.Default,
-      AniListAnimeService.Default,
-      AnimeCache.Default,
-      StreamingService.Default,
-    ],
-    effect: Effect.gen(function* () {
+    make: Effect.gen(function* () {
       const database = yield* Database
       const animeService = yield* AnimeService
       const aniList = yield* AniListAnimeService
@@ -704,4 +699,13 @@ export class AiringService extends Effect.Service<AiringService>()(
       }
     }),
   }
-) {}
+) {
+  static readonly layer = Layer.effect(AiringService, AiringService.make).pipe(
+    Layer.provide([
+      AnimeService.layer,
+      AniListAnimeService.layer,
+      AnimeCache.layer,
+      StreamingService.layer,
+    ])
+  )
+}

@@ -1,10 +1,13 @@
 import type { AnimeDetail, AnimeItem, AnimePage } from "@animekaiser/domain"
-import * as FetchHttpClient from "@effect/platform/FetchHttpClient"
-import * as HttpClient from "@effect/platform/HttpClient"
-import * as HttpClientRequest from "@effect/platform/HttpClientRequest"
-import * as HttpClientResponse from "@effect/platform/HttpClientResponse"
+import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
+import * as FetchHttpClient from "effect/http/FetchHttpClient"
+import * as HttpClient from "effect/http/HttpClient"
+import * as HttpClientRequest from "effect/http/HttpClientRequest"
+import * as HttpClientResponse from "effect/http/HttpClientResponse"
+import * as Layer from "effect/Layer"
 import * as Schema from "effect/Schema"
+import { withoutTracePropagation } from "../http"
 import type { AnimeCatalogRequest } from "./anilist"
 
 export class JikanRequestError extends Schema.TaggedError<JikanRequestError>()(
@@ -17,7 +20,7 @@ const NullableNumber = Schema.NullOr(Schema.Number)
 const JikanNamed = Schema.Struct({ name: Schema.String })
 
 const JikanAnime = Schema.Struct({
-  mal_id: Schema.Int.pipe(Schema.positive()),
+  mal_id: Schema.Int.check(Schema.isGreaterThan(0)),
   title: Schema.String,
   title_english: NullableString,
   title_synonyms: Schema.optional(Schema.Array(Schema.String)),
@@ -65,7 +68,7 @@ const JikanAnime = Schema.Struct({
         relation: Schema.String,
         entry: Schema.Array(
           Schema.Struct({
-            mal_id: Schema.Int.pipe(Schema.positive()),
+            mal_id: Schema.Int.check(Schema.isGreaterThan(0)),
             type: Schema.String,
             name: Schema.String,
           })
@@ -185,7 +188,7 @@ const jikanOrder = (sort: AnimeCatalogRequest["sort"]) => {
 const JikanProducerResponse = Schema.Struct({
   data: Schema.Array(
     Schema.Struct({
-      mal_id: Schema.Int.pipe(Schema.positive()),
+      mal_id: Schema.Int.check(Schema.isGreaterThan(0)),
       titles: Schema.Array(Schema.Struct({ title: Schema.String })),
     })
   ),
@@ -207,17 +210,13 @@ const queryUrl = (
   return url.toString()
 }
 
-export class JikanAnimeService extends Effect.Service<JikanAnimeService>()(
+export class JikanAnimeService extends Context.Service<JikanAnimeService>()(
   "@animekaiser/core/JikanAnimeService",
   {
-    accessors: true,
-    dependencies: [FetchHttpClient.layer],
-    effect: Effect.gen(function* () {
-      const http = (yield* HttpClient.HttpClient).pipe(
-        HttpClient.withTracerPropagation(false)
-      )
+    make: Effect.gen(function* () {
+      const http = (yield* HttpClient.HttpClient).pipe(withoutTracePropagation)
       const get = <TValue, TEncoded>(
-        schema: Schema.Schema<TValue, TEncoded>,
+        schema: Schema.Codec<TValue, TEncoded>,
         url: string
       ) =>
         http.execute(HttpClientRequest.get(url)).pipe(
@@ -394,4 +393,9 @@ export class JikanAnimeService extends Effect.Service<JikanAnimeService>()(
       }
     }),
   }
-) {}
+) {
+  static readonly layer = Layer.effect(
+    JikanAnimeService,
+    JikanAnimeService.make
+  ).pipe(Layer.provide(FetchHttpClient.layer))
+}

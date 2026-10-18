@@ -1,9 +1,11 @@
-import * as HttpBody from "@effect/platform/HttpBody"
-import * as HttpClient from "@effect/platform/HttpClient"
-import * as HttpClientRequest from "@effect/platform/HttpClientRequest"
-import * as HttpClientResponse from "@effect/platform/HttpClientResponse"
+import * as Context from "effect/Context"
 import * as Data from "effect/Data"
 import * as Effect from "effect/Effect"
+import * as HttpBody from "effect/http/HttpBody"
+import * as HttpClient from "effect/http/HttpClient"
+import * as HttpClientRequest from "effect/http/HttpClientRequest"
+import * as HttpClientResponse from "effect/http/HttpClientResponse"
+import * as Layer from "effect/Layer"
 import * as Schema from "effect/Schema"
 import { KeyValueStore } from "../key-value-store"
 
@@ -71,19 +73,18 @@ export class ExternalListOAuthStateStoreError extends Data.TaggedError(
   "ExternalListOAuthStateStoreError"
 )<{ cause: unknown }> {}
 
-export class ExternalListOAuthStateStore extends Effect.Service<ExternalListOAuthStateStore>()(
+export class ExternalListOAuthStateStore extends Context.Service<ExternalListOAuthStateStore>()(
   "@animekaiser/core/ExternalListOAuthStateStore",
   {
-    accessors: true,
-    effect: Effect.gen(function* () {
+    make: Effect.gen(function* () {
       const storage = yield* KeyValueStore
       const key = (id: string) => `oauth-state:${id}`
       return {
         create: (state: ExternalListOAuthState) =>
           Effect.gen(function* () {
             const id = crypto.randomUUID()
-            const value = yield* Schema.encode(
-              Schema.parseJson(ExternalListOAuthState)
+            const value = yield* Schema.encodeEffect(
+              Schema.fromJsonString(ExternalListOAuthState)
             )(state)
             yield* storage.set(key(id), value, 600)
             return id
@@ -102,8 +103,8 @@ export class ExternalListOAuthStateStore extends Effect.Service<ExternalListOAut
                 ? Effect.sync(
                     (): ExternalListOAuthState | undefined => undefined
                   )
-                : Schema.decodeUnknown(
-                    Schema.parseJson(ExternalListOAuthState)
+                : Schema.decodeUnknownEffect(
+                    Schema.fromJsonString(ExternalListOAuthState)
                   )(value).pipe(
                     Effect.mapError(
                       (cause) => new ExternalListOAuthStateStoreError({ cause })
@@ -114,7 +115,12 @@ export class ExternalListOAuthStateStore extends Effect.Service<ExternalListOAut
       }
     }),
   }
-) {}
+) {
+  static readonly layer = Layer.effect(
+    ExternalListOAuthStateStore,
+    ExternalListOAuthStateStore.make
+  )
+}
 
 export class ExternalListOAuthError extends Data.TaggedError(
   "ExternalListOAuthError"
@@ -313,59 +319,63 @@ export const exchangeAniListAuthorizationCode = (
     code: string
   }
 ) =>
-  HttpClient.execute(
-    HttpClientRequest.post(aniListTokenUrl, {
-      headers: {
-        Accept: "application/json",
-        "Content-Type": "application/json",
-      },
-      body: HttpBody.unsafeJson({
+  HttpClientRequest.post(aniListTokenUrl, {
+    headers: {
+      Accept: "application/json",
+    },
+  })
+    .pipe(
+      HttpClientRequest.bodyJson({
         grant_type: "authorization_code",
         client_id: config.clientId,
         client_secret: config.clientSecret,
         redirect_uri: config.redirectURI,
         code: params.code,
       }),
-    })
-  ).pipe(
-    Effect.flatMap(HttpClientResponse.filterStatusOk),
-    Effect.flatMap(HttpClientResponse.schemaBodyJson(AniListTokenResponse)),
-    Effect.mapError(
-      (cause) =>
-        new ExternalListOAuthError({
-          provider: "anilist",
-          message:
-            "[External List] Failed to exchange AniList authorization code.",
-          cause,
-        })
+      Effect.flatMap(HttpClient.execute)
     )
-  )
-
-export const fetchAniListUser = (accessToken: string) =>
-  Effect.gen(function* () {
-    const body = yield* HttpClient.execute(
-      HttpClientRequest.post(aniListGraphqlUrl, {
-        headers: {
-          Accept: "application/json",
-          Authorization: `Bearer ${accessToken}`,
-          "Content-Type": "application/json",
-        },
-        body: HttpBody.unsafeJson({
-          query: "query Viewer { Viewer { id name avatar { large } } }",
-        }),
-      })
-    ).pipe(
+    .pipe(
       Effect.flatMap(HttpClientResponse.filterStatusOk),
-      Effect.flatMap(HttpClientResponse.schemaBodyJson(AniListViewerResponse)),
+      Effect.flatMap(HttpClientResponse.schemaBodyJson(AniListTokenResponse)),
       Effect.mapError(
         (cause) =>
           new ExternalListOAuthError({
             provider: "anilist",
-            message: "[External List] Failed to fetch AniList user.",
+            message:
+              "[External List] Failed to exchange AniList authorization code.",
             cause,
           })
       )
     )
+
+export const fetchAniListUser = (accessToken: string) =>
+  Effect.gen(function* () {
+    const body = yield* HttpClientRequest.post(aniListGraphqlUrl, {
+      headers: {
+        Accept: "application/json",
+        Authorization: `Bearer ${accessToken}`,
+      },
+    })
+      .pipe(
+        HttpClientRequest.bodyJson({
+          query: "query Viewer { Viewer { id name avatar { large } } }",
+        }),
+        Effect.flatMap(HttpClient.execute)
+      )
+      .pipe(
+        Effect.flatMap(HttpClientResponse.filterStatusOk),
+        Effect.flatMap(
+          HttpClientResponse.schemaBodyJson(AniListViewerResponse)
+        ),
+        Effect.mapError(
+          (cause) =>
+            new ExternalListOAuthError({
+              provider: "anilist",
+              message: "[External List] Failed to fetch AniList user.",
+              cause,
+            })
+        )
+      )
     return body.data.Viewer
   })
 
@@ -409,28 +419,29 @@ export const refreshAniListAccessToken = (
   config: Pick<ProviderOAuthConfig, "clientId" | "clientSecret">,
   refreshToken: string
 ) =>
-  HttpClient.execute(
-    HttpClientRequest.post(aniListTokenUrl, {
-      headers: {
-        Accept: "application/json",
-        "Content-Type": "application/json",
-      },
-      body: HttpBody.unsafeJson({
+  HttpClientRequest.post(aniListTokenUrl, {
+    headers: {
+      Accept: "application/json",
+    },
+  })
+    .pipe(
+      HttpClientRequest.bodyJson({
         grant_type: "refresh_token",
         client_id: config.clientId,
         client_secret: config.clientSecret,
         refresh_token: refreshToken,
       }),
-    })
-  ).pipe(
-    Effect.flatMap(HttpClientResponse.filterStatusOk),
-    Effect.flatMap(HttpClientResponse.schemaBodyJson(AniListTokenResponse)),
-    Effect.mapError(
-      (cause) =>
-        new ExternalListOAuthError({
-          provider: "anilist",
-          message: "[External List] Failed to refresh AniList access token.",
-          cause,
-        })
+      Effect.flatMap(HttpClient.execute)
     )
-  )
+    .pipe(
+      Effect.flatMap(HttpClientResponse.filterStatusOk),
+      Effect.flatMap(HttpClientResponse.schemaBodyJson(AniListTokenResponse)),
+      Effect.mapError(
+        (cause) =>
+          new ExternalListOAuthError({
+            provider: "anilist",
+            message: "[External List] Failed to refresh AniList access token.",
+            cause,
+          })
+      )
+    )

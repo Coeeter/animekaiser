@@ -1,8 +1,9 @@
 import { Database } from "@animekaiser/db"
 import { sql } from "drizzle-orm"
+import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
+import * as Layer from "effect/Layer"
 import * as PubSub from "effect/PubSub"
-import * as Queue from "effect/Queue"
 import * as Schedule from "effect/Schedule"
 import * as Stream from "effect/Stream"
 
@@ -16,28 +17,26 @@ const everyRoom = "*"
 export const notifyRoom = (roomId: string) =>
   sql`select pg_notify(${ROOM_EVENTS_CHANNEL}, ${roomId})`
 
-export class RoomEvents extends Effect.Service<RoomEvents>()(
+export class RoomEvents extends Context.Service<RoomEvents>()(
   "@animekaiser/core/RoomEvents",
   {
-    scoped: Effect.gen(function* () {
+    make: Effect.gen(function* () {
       const database = yield* Database
       const hub = yield* PubSub.sliding<string>(1024)
 
       const listen = Effect.scoped(
         Effect.gen(function* () {
-          const events = yield* database.listen(ROOM_EVENTS_CHANNEL)
+          const notifications = yield* database.listen(ROOM_EVENTS_CHANNEL)
           // Anything missed while LISTEN was down is reconciled by reloading.
           yield* PubSub.publish(hub, everyRoom)
-          while (true) {
-            const event = yield* Queue.take(events)
-            if (event._tag === "Error") return yield* event.error
-            yield* PubSub.publish(hub, event.payload)
-          }
+          return yield* Stream.fromQueue(notifications).pipe(
+            Stream.runForEach((roomId) => PubSub.publish(hub, roomId))
+          )
         })
       )
 
       yield* listen.pipe(
-        Effect.tapErrorCause((cause) =>
+        Effect.tapCause((cause) =>
           Effect.logWarning("[Rooms] LISTEN failed; reconnecting", cause)
         ),
         Effect.retry(Schedule.spaced("2 seconds")),
@@ -46,8 +45,8 @@ export class RoomEvents extends Effect.Service<RoomEvents>()(
 
       const subscribe = (roomId: string) =>
         PubSub.subscribe(hub).pipe(
-          Effect.map((dequeue) =>
-            Stream.fromQueue(dequeue).pipe(
+          Effect.map((subscription) =>
+            Stream.fromSubscription(subscription).pipe(
               Stream.filter(
                 (payload) => payload === roomId || payload === everyRoom
               ),
@@ -59,4 +58,6 @@ export class RoomEvents extends Effect.Service<RoomEvents>()(
       return { subscribe }
     }),
   }
-) {}
+) {
+  static readonly layer = Layer.effect(RoomEvents, RoomEvents.make)
+}

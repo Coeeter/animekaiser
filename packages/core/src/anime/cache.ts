@@ -1,5 +1,7 @@
+import * as Context from "effect/Context"
 import * as Data from "effect/Data"
 import * as Effect from "effect/Effect"
+import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import * as Schema from "effect/Schema"
 import { KeyValueStore } from "../key-value-store"
@@ -9,15 +11,15 @@ export class AnimeCacheError extends Data.TaggedError("AnimeCacheError")<{
   cause?: unknown
 }> {}
 
-export class AnimeCache extends Effect.Service<AnimeCache>()(
+export class AnimeCache extends Context.Service<AnimeCache>()(
   "@animekaiser/core/AnimeCache",
   {
-    effect: Effect.gen(function* () {
+    make: Effect.gen(function* () {
       const storage = yield* KeyValueStore
       return {
         get: <TValue, TEncoded>(
           key: string,
-          schema: Schema.Schema<TValue, TEncoded>
+          schema: Schema.Codec<TValue, TEncoded>
         ) =>
           storage.get(key).pipe(
             Effect.mapError(
@@ -29,7 +31,9 @@ export class AnimeCache extends Effect.Service<AnimeCache>()(
             ),
             Effect.flatMap((value) => {
               if (value === null) return Effect.succeed(Option.none<TValue>())
-              return Schema.decodeUnknown(Schema.parseJson(schema))(value).pipe(
+              return Schema.decodeUnknownEffect(Schema.fromJsonString(schema))(
+                value
+              ).pipe(
                 Effect.map(Option.some),
                 Effect.mapError(
                   (cause) =>
@@ -43,22 +47,20 @@ export class AnimeCache extends Effect.Service<AnimeCache>()(
           ),
         set: <TValue, TEncoded>(
           key: string,
-          schema: Schema.Schema<TValue, TEncoded>,
+          schema: Schema.Codec<TValue, TEncoded>,
           value: TValue,
           ttlSeconds: number
         ) =>
-          Schema.encode(Schema.parseJson(schema))(value).pipe(
+          Schema.encodeEffect(Schema.fromJsonString(schema))(value).pipe(
             Effect.flatMap((encoded) => storage.set(key, encoded, ttlSeconds)),
-            Effect.mapError((cause) =>
-              cause instanceof AnimeCacheError
-                ? cause
-                : new AnimeCacheError({
-                    message: "Cache write failed.",
-                    cause,
-                  })
+            Effect.mapError(
+              (cause) =>
+                new AnimeCacheError({ message: "Cache write failed.", cause })
             )
           ),
       }
     }),
   }
-) {}
+) {
+  static readonly layer = Layer.effect(AnimeCache, AnimeCache.make)
+}

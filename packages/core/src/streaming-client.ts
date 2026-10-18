@@ -19,9 +19,7 @@ export type StreamPlaybackFailure =
   | StreamProviderUnavailableError
   | StreamEpisodeNotFoundError
 
-export class StreamingClient extends Context.Tag(
-  "@animekaiser/core/StreamingClient"
-)<
+export class StreamingClient extends Context.Service<
   StreamingClient,
   {
     listProviders: Effect.Effect<
@@ -45,4 +43,4 @@ export class StreamingClient extends Context.Tag(
       StreamPlaybackFailure
     >
   }
->() {}
+>()("@animekaiser/core/StreamingClient") {}

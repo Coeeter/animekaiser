@@ -10,7 +10,7 @@ import * as Effect from "effect/Effect"
 import * as Option from "effect/Option"
 import * as Schema from "effect/Schema"
 import type { AnimeService } from "../anime"
-import { type AgentTool, agentTool } from "./provider"
+import { type AgentTool, agentTool, EmptyParameters } from "./provider"
 import { filterCandidates } from "./rules"
 
 export type LibraryStatus =
@@ -107,12 +107,12 @@ const compact = (anime: AnimeItem, library?: ReadonlyMap<number, string>) => ({
   inLibrary: library?.get(anime.malId) ?? null,
 })
 
-const MalId = Schema.Int.pipe(Schema.positive()).annotations({
+const MalId = Schema.Int.check(Schema.isGreaterThan(0)).annotate({
   description: "MyAnimeList id returned by a catalogue tool",
 })
 
 export const catalogTools = (input: {
-  readonly anime: AnimeService
+  readonly anime: AnimeService["Service"]
   readonly state: RunState
   readonly library: ReadonlyMap<number, string>
 }): ReadonlyArray<AgentTool> => {
@@ -129,10 +129,10 @@ export const catalogTools = (input: {
       description:
         "Search AnimeKaiser's anime catalogue by title or keywords and/or filters. Returns up to 15 anime. Use this before recommending anything. maxEpisodes, format, and excludeGenres also apply to every pick you show afterwards.",
       parameters: Schema.Struct({
-        query: Schema.optional(Schema.String).annotations({
+        query: Schema.optional(Schema.String).annotate({
           description: "Title or keywords. Omit to browse by filters only.",
         }),
-        genres: Schema.optional(Schema.Array(Schema.String)).annotations({
+        genres: Schema.optional(Schema.Array(Schema.String)).annotate({
           description: "AniList genres, e.g. Comedy, Slice of Life, Mystery",
         }),
         excludeGenres: Schema.optional(Schema.Array(Schema.String)),
@@ -233,7 +233,7 @@ export const catalogTools = (input: {
         picks: Schema.Array(
           Schema.Struct({
             malId: MalId,
-            reason: Schema.String.annotations({
+            reason: Schema.String.annotate({
               description:
                 "One or two sentences, premise-level only, no spoilers",
             }),
@@ -300,7 +300,7 @@ const researchTopics = {
 // public catalogue data, so nothing the model knows about the viewer can
 // reach a search query.
 export const researchTool = (input: {
-  readonly anime: AnimeService
+  readonly anime: AnimeService["Service"]
   readonly state: RunState
   readonly research: (question: string) => Effect.Effect<
     {
@@ -322,7 +322,7 @@ export const researchTool = (input: {
       "Look up current public facts the catalogue lacks for one anime: airing schedule, announced sequels or seasons, or official news.",
     parameters: Schema.Struct({
       malId: MalId,
-      topic: Schema.Literal("airing", "sequels", "news"),
+      topic: Schema.Literals(["airing", "sequels", "news"]),
     }),
     execute: ({ malId, topic }) => {
       if (state.researchesLeft <= 0)
@@ -376,7 +376,13 @@ export const libraryTool = (
       "The user's own anime list with status, their score out of 10, and episodes watched. Use it to learn their taste and to avoid suggesting what they've already seen.",
     parameters: Schema.Struct({
       status: Schema.optional(
-        Schema.Literal("watching", "completed", "planning", "paused", "dropped")
+        Schema.Literals([
+          "watching",
+          "completed",
+          "planning",
+          "paused",
+          "dropped",
+        ])
       ),
     }),
     execute: ({ status }) =>
@@ -400,15 +406,7 @@ export const groupTasteTool = (summary: string) =>
     activity: "Checking the room's taste…",
     description:
       "An anonymous summary of what room members who opted in like. Never attribute it to a person.",
-    // An empty struct otherwise becomes "any non-null value", which the
-    // provider rejects as a tool schema.
-    parameters: Schema.Struct({}).annotations({
-      jsonSchema: {
-        type: "object",
-        properties: {},
-        additionalProperties: false,
-      },
-    }),
+    parameters: EmptyParameters,
     execute: () =>
       Effect.succeed({
         summary: summary || "Nobody in the room shared their taste.",
@@ -441,13 +439,13 @@ export const submitRecapTool = (state: RunState) =>
     parameters: Schema.Struct({
       sections: Schema.Array(
         Schema.Struct({
-          label: Schema.String.annotations({
+          label: Schema.String.annotate({
             description: "e.g. 'Episodes 1–3' or 'Episode 4'",
           }),
           malId: MalId,
           fromEpisode: Schema.Int,
           toEpisode: Schema.Int,
-          summary: Schema.String.annotations({
+          summary: Schema.String.annotate({
             description: "Verified events only, paraphrased",
           }),
           interpretation: Schema.NullOr(Schema.String),

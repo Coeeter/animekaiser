@@ -15,7 +15,9 @@ import type {
   LibrarySyncRetryTarget,
 } from "@animekaiser/domain"
 import { and, asc, count, desc, eq, inArray, sql } from "drizzle-orm"
+import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
+import * as Layer from "effect/Layer"
 import * as Schema from "effect/Schema"
 
 export const LIBRARY_SYNC_EVENT_CHANNEL = "library_sync_events"
@@ -99,11 +101,10 @@ const listOrder = (sort: LibrarySort) => {
   return [desc(userLibraryEntry.updatedAt), tiebreak]
 }
 
-export class LibraryService extends Effect.Service<LibraryService>()(
+export class LibraryService extends Context.Service<LibraryService>()(
   "@animekaiser/core/LibraryService",
   {
-    accessors: true,
-    effect: Effect.gen(function* () {
+    make: Effect.gen(function* () {
       const database = yield* Database
 
       const linkedProviders = Effect.fn("LibraryService.linkedProviders")(
@@ -658,4 +659,6 @@ export class LibraryService extends Effect.Service<LibraryService>()(
       }
     }),
   }
-) {}
+) {
+  static readonly layer = Layer.effect(LibraryService, LibraryService.make)
+}

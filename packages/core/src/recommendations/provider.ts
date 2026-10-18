@@ -1,6 +1,6 @@
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
-import * as JSONSchema from "effect/JSONSchema"
+import type * as JsonSchema from "effect/JsonSchema"
 import * as Schema from "effect/Schema"
 
 export type AiMessage = {
@@ -14,41 +14,59 @@ export type AgentTool = {
   readonly name: string
   readonly description: string
   readonly activity: string
-  readonly inputSchema: JSONSchema.JsonSchema7Root
+  readonly inputSchema: JsonSchema.JsonSchema
   readonly strict: boolean
   readonly call: (
     args: string
   ) => Effect.Effect<{ readonly ok: boolean; readonly output: unknown }>
 }
 
+export const EmptyParameters = Schema.Struct({})
+
+// The generated schema for an empty struct accepts any non-null value, which
+// providers reject as tool parameters.
+const emptyParametersJsonSchema: JsonSchema.JsonSchema = {
+  type: "object",
+  properties: {},
+  additionalProperties: false,
+}
+
+const toInputSchema = (parameters: Schema.Top): JsonSchema.JsonSchema => {
+  if (parameters === EmptyParameters) return emptyParametersJsonSchema
+  const document = Schema.toJsonSchemaDocument(parameters, {
+    onExcessProperty: "error",
+  })
+  return Object.keys(document.definitions).length === 0
+    ? document.schema
+    : { ...document.schema, $defs: document.definitions }
+}
+
 export const agentTool = <A, I>(tool: {
   readonly name: string
   readonly description: string
   readonly activity: string
-  readonly parameters: Schema.Schema<A, I, never>
+  readonly parameters: Schema.Codec<A, I>
   // Makes the provider enforce the schema. Every field must be required
   // (nullable instead of optional) for it to be accepted.
   readonly strict?: boolean
   readonly execute: (input: A) => Effect.Effect<unknown>
 }): AgentTool => {
-  const decode = Schema.decodeUnknown(Schema.parseJson(tool.parameters))
+  // Optional fields become nullable in the JSON codec, which is the shape
+  // the generated JSON Schema advertises to the model.
+  const decode = Schema.decodeUnknownEffect(
+    Schema.fromJsonString(Schema.toCodecJson(tool.parameters))
+  )
   return {
     name: tool.name,
     description: tool.description,
     activity: tool.activity,
-    // Strict mode rejects the `$ref`s refinements like Int produce, so strict
-    // tools describe only the encoded shape; decoding still checks them.
-    inputSchema: tool.strict
-      ? JSONSchema.make(Schema.encodedSchema(tool.parameters), {
-          target: "jsonSchema2020-12",
-        })
-      : JSONSchema.make(tool.parameters, { target: "jsonSchema2020-12" }),
+    inputSchema: toInputSchema(tool.parameters),
     strict: tool.strict ?? false,
     call: (args) =>
       decode(args).pipe(
         Effect.flatMap(tool.execute),
         Effect.map((output) => ({ ok: true, output })),
-        Effect.catchTag("ParseError", (error) =>
+        Effect.catchTag("SchemaError", (error) =>
           Effect.logWarning(
             `[AI] Invalid input for ${tool.name}`,
             error.message,
@@ -102,7 +120,7 @@ export class AiProviderError extends Schema.TaggedError<AiProviderError>()(
 
 // Implemented by the API composition root. `run` is absent when no
 // credential is configured, which disables AI without blocking startup.
-export class AiProvider extends Context.Tag("@animekaiser/core/AiProvider")<
+export class AiProvider extends Context.Service<
   AiProvider,
   {
     readonly model: string
@@ -110,4 +128,4 @@ export class AiProvider extends Context.Tag("@animekaiser/core/AiProvider")<
       | ((request: AgentRequest) => Effect.Effect<AgentResult, AiProviderError>)
       | null
   }
->() {}
+>()("@animekaiser/core/AiProvider") {}

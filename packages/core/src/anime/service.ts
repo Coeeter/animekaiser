@@ -10,11 +10,14 @@ import {
   LatestEpisode,
 } from "@animekaiser/domain"
 import { eq } from "drizzle-orm"
-import * as Chunk from "effect/Chunk"
+import * as Arr from "effect/Array"
+import * as Clock from "effect/Clock"
+import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Fiber from "effect/Fiber"
+import * as FiberMap from "effect/FiberMap"
+import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
-import * as Runtime from "effect/Runtime"
 import * as Schema from "effect/Schema"
 import type { AnimeCatalogRequest } from "./anilist"
 import { AniListAnimeService } from "./anilist"
@@ -41,7 +44,7 @@ const fallbackTtlSeconds = 5 * 60
 const retentionSeconds = (ttlSeconds: number) =>
   Math.max(ttlSeconds * 4, 7 * day)
 
-const Cached = <TValue, TEncoded>(schema: Schema.Schema<TValue, TEncoded>) =>
+const Cached = <TValue, TEncoded>(schema: Schema.Codec<TValue, TEncoded>) =>
   Schema.Struct({ value: schema, freshUntil: Schema.Number })
 type Cached<TValue> = { readonly value: TValue; readonly freshUntil: number }
 
@@ -114,19 +117,10 @@ const HomeLists = Schema.Struct({
   upcoming: Schema.Array(AnimeItem),
 })
 
-export class AnimeService extends Effect.Service<AnimeService>()(
+export class AnimeService extends Context.Service<AnimeService>()(
   "@animekaiser/core/AnimeService",
   {
-    accessors: true,
-    dependencies: [
-      AniListAnimeService.Default,
-      AniZipService.Default,
-      AnimeCache.Default,
-      JikanAnimeService.Default,
-      MalAnimeService.Default,
-      ShikimoriService.Default,
-    ],
-    effect: Effect.gen(function* () {
+    make: Effect.gen(function* () {
       const cache = yield* AnimeCache
       const database = yield* Database
       const aniList = yield* AniListAnimeService
@@ -135,48 +129,50 @@ export class AnimeService extends Effect.Service<AnimeService>()(
       const aniZip = yield* AniZipService
       const shikimori = yield* ShikimoriService
 
-      const runtime = yield* Effect.runtime<never>()
-      const inFlight = new Map<string, Fiber.RuntimeFiber<unknown, unknown>>()
+      const inFlight = yield* FiberMap.make<string>()
+      const forkLoad = yield* FiberMap.runtime(inFlight)()
 
-      // Concurrent misses on one key share a single load. The load runs
-      // detached so a disconnecting caller cannot cancel it for the others.
+      // Concurrent misses on one key share a single load. The load is owned by
+      // the service rather than the caller, so a disconnecting caller cannot
+      // cancel it for the others.
       const singleFlight = <TValue, TError>(
         key: string,
         load: Effect.Effect<TValue, TError>
       ) =>
         Effect.suspend(() => {
-          const existing = inFlight.get(key) as
-            | Fiber.RuntimeFiber<TValue, TError>
-            | undefined
-          if (existing) return Fiber.join(existing)
-          const fiber = Runtime.runFork(runtime)(
-            load.pipe(Effect.ensuring(Effect.sync(() => inFlight.delete(key))))
+          const existing = FiberMap.getUnsafe(inFlight, key)
+          return Fiber.join(
+            Option.isSome(existing)
+              ? (existing.value as Fiber.Fiber<TValue, TError>)
+              : forkLoad(key, load)
           )
-          if (fiber.unsafePoll() === null) inFlight.set(key, fiber)
-          return Fiber.join(fiber)
         })
 
       type Loaded<TValue> = { value: TValue; ttlSeconds: number }
 
       const storeCached = <TValue, TEncoded>(
         key: string,
-        schema: Schema.Schema<TValue, TEncoded>,
+        schema: Schema.Codec<TValue, TEncoded>,
         entry: Cached<TValue>,
         durable?: Durable<TValue>
       ) =>
-        Effect.all(
-          [
-            cache
-              .set(
-                key,
-                Cached(schema),
-                entry,
-                retentionSeconds((entry.freshUntil - Date.now()) / 1000)
-              )
-              .pipe(Effect.catchTag("AnimeCacheError", () => Effect.void)),
-            durable ? durable.write(entry) : Effect.void,
-          ],
-          { discard: true }
+        Clock.currentTimeMillis.pipe(
+          Effect.flatMap((now) =>
+            Effect.all(
+              [
+                cache
+                  .set(
+                    key,
+                    Cached(schema),
+                    entry,
+                    retentionSeconds((entry.freshUntil - now) / 1000)
+                  )
+                  .pipe(Effect.catchTag("AnimeCacheError", () => Effect.void)),
+                durable ? durable.write(entry) : Effect.void,
+              ],
+              { discard: true }
+            )
+          )
         )
 
       // Values stay readable well past their freshness: a stale hit is served
@@ -186,7 +182,7 @@ export class AnimeService extends Effect.Service<AnimeService>()(
       // store, when given, sits under Redis and survives it being emptied.
       const cachedFor = <TValue, TEncoded, TError, TFallbackError = never>(
         key: string,
-        schema: Schema.Schema<TValue, TEncoded>,
+        schema: Schema.Codec<TValue, TEncoded>,
         load: Effect.Effect<Loaded<TValue>, TError>,
         fallback?: Effect.Effect<Loaded<TValue>, TFallbackError>,
         durable?: Durable<TValue>
@@ -196,12 +192,12 @@ export class AnimeService extends Effect.Service<AnimeService>()(
           TError | TFallbackError
         > = fallback
           ? load.pipe(
-              Effect.catchAll((error) =>
+              Effect.catch((error) =>
                 Effect.logWarning("Serving fallback data", {
                   key,
                   error,
                 }).pipe(
-                  Effect.zipRight(fallback),
+                  Effect.andThen(fallback),
                   Effect.map((loaded) => ({
                     ...loaded,
                     ttlSeconds: Math.min(loaded.ttlSeconds, fallbackTtlSeconds),
@@ -218,32 +214,36 @@ export class AnimeService extends Effect.Service<AnimeService>()(
             key,
             loading.pipe(
               Effect.tap(({ value, ttlSeconds }) =>
-                storeCached(
-                  key,
-                  schema,
-                  { value, freshUntil: Date.now() + ttlSeconds * 1000 },
-                  durable
+                Clock.currentTimeMillis.pipe(
+                  Effect.flatMap((now) =>
+                    storeCached(
+                      key,
+                      schema,
+                      { value, freshUntil: now + ttlSeconds * 1000 },
+                      durable
+                    )
+                  )
                 )
               ),
               Effect.map(({ value }) => value)
             )
           )
 
-        const serve = ({
+        const serve = Effect.fnUntraced(function* ({
           value,
           freshUntil,
-        }: Cached<TValue>): Effect.Effect<TValue> => {
-          if (freshUntil > Date.now()) return Effect.succeed(value)
-          const refresh = loadAndStore(
+        }: Cached<TValue>) {
+          if (freshUntil > (yield* Clock.currentTimeMillis)) return value
+          yield* loadAndStore(
             load.pipe(
               Effect.orElseSucceed(() => ({
                 value,
                 ttlSeconds: fallbackTtlSeconds,
               }))
             )
-          )
-          return Effect.forkDaemon(refresh).pipe(Effect.as(value))
-        }
+          ).pipe(Effect.ignore, Effect.forkDetach)
+          return value
+        })
 
         const fromDurable = durable
           ? durable.read.pipe(
@@ -282,7 +282,7 @@ export class AnimeService extends Effect.Service<AnimeService>()(
           .pipe(
             Effect.flatMap(([row]) =>
               row
-                ? Schema.decodeUnknown(AnimeDetail)(row.detail).pipe(
+                ? Schema.decodeUnknownEffect(AnimeDetail)(row.detail).pipe(
                     Effect.map((detail) =>
                       Option.some({
                         value: detail,
@@ -297,7 +297,7 @@ export class AnimeService extends Effect.Service<AnimeService>()(
         write: ({ value, freshUntil }) =>
           value === null
             ? Effect.void
-            : Schema.encode(AnimeDetail)(value).pipe(
+            : Schema.encodeEffect(AnimeDetail)(value).pipe(
                 Effect.flatMap((detail) =>
                   database.execute((db) =>
                     db
@@ -325,7 +325,7 @@ export class AnimeService extends Effect.Service<AnimeService>()(
 
       const cached = <TValue, TEncoded, TError>(
         key: string,
-        schema: Schema.Schema<TValue, TEncoded>,
+        schema: Schema.Codec<TValue, TEncoded>,
         ttlSeconds: number,
         load: Effect.Effect<TValue, TError>
       ) =>
@@ -337,7 +337,7 @@ export class AnimeService extends Effect.Service<AnimeService>()(
 
       const cachedWithFallback = <TValue, TEncoded, TError, TFallbackError>(
         key: string,
-        schema: Schema.Schema<TValue, TEncoded>,
+        schema: Schema.Codec<TValue, TEncoded>,
         ttlSeconds: number,
         primary: Effect.Effect<TValue, TError>,
         fallback: Effect.Effect<TValue, TFallbackError>
@@ -360,7 +360,7 @@ export class AnimeService extends Effect.Service<AnimeService>()(
         const key = cacheKey("anime:catalog:v2", request)
         const ttlSeconds = 12 * hour
         const pageSchema = catalogPageSchema(request)
-        const validatePage = Schema.decodeUnknown(pageSchema)
+        const validatePage = Schema.decodeUnknownEffect(pageSchema)
         const unavailable = Effect.mapError(
           () =>
             new AnimeUnavailableError({
@@ -531,29 +531,30 @@ export class AnimeService extends Effect.Service<AnimeService>()(
             { concurrency: 10 }
           )
           yield* Effect.forEach(
-            Chunk.toReadonlyArray(
-              Chunk.chunksOf(Chunk.fromIterable(missing), 50)
-            ),
+            Arr.chunksOf(missing, 50),
             (batch) =>
-              aniList.getDetails(Chunk.toReadonlyArray(batch)).pipe(
+              aniList.getDetails(batch).pipe(
                 Effect.flatMap((details) =>
                   Effect.forEach(
                     details,
                     (detail) =>
-                      storeCached(
-                        `anime:detail:v2:${detail.malId}`,
-                        NullableAnimeDetail,
-                        {
-                          value: detail,
-                          freshUntil:
-                            Date.now() + detailTtlSeconds(detail) * 1000,
-                        },
-                        detailRecord(detail.malId)
+                      Clock.currentTimeMillis.pipe(
+                        Effect.flatMap((now) =>
+                          storeCached(
+                            `anime:detail:v2:${detail.malId}`,
+                            NullableAnimeDetail,
+                            {
+                              value: detail,
+                              freshUntil: now + detailTtlSeconds(detail) * 1000,
+                            },
+                            detailRecord(detail.malId)
+                          )
+                        )
                       ),
                     { discard: true }
                   )
                 ),
-                Effect.catchAll((error) =>
+                Effect.catch((error) =>
                   Effect.logWarning("Detail prefetch failed", { error })
                 )
               ),
@@ -571,9 +572,8 @@ export class AnimeService extends Effect.Service<AnimeService>()(
         )
 
       const getItems = (malIds: ReadonlyArray<number>) =>
-        Effect.forEach(
-          Chunk.toReadonlyArray(Chunk.chunksOf(Chunk.fromIterable(malIds), 50)),
-          (batch) => aniList.getItems(Chunk.toReadonlyArray(batch))
+        Effect.forEach(Arr.chunksOf(malIds, 50), (batch) =>
+          aniList.getItems(batch)
         ).pipe(Effect.map((batches) => batches.flat()))
 
       // One franchise graph from Shikimori plus one batched AniList lookup,
@@ -727,8 +727,9 @@ export class AnimeService extends Effect.Service<AnimeService>()(
       const getLatestEpisodes = Effect.fn("AnimeService.getLatestEpisodes")(
         function* () {
           const to =
-            Math.floor(Date.now() / 1000 / latestBucketSeconds) *
-            latestBucketSeconds
+            Math.floor(
+              (yield* Clock.currentTimeMillis) / 1000 / latestBucketSeconds
+            ) * latestBucketSeconds
           const from = to - latestWindowSeconds
           return yield* cached(
             `anime:latest:v1:${to}`,
@@ -806,4 +807,15 @@ export class AnimeService extends Effect.Service<AnimeService>()(
       }
     }),
   }
-) {}
+) {
+  static readonly layer = Layer.effect(AnimeService, AnimeService.make).pipe(
+    Layer.provide([
+      AniListAnimeService.layer,
+      AniZipService.layer,
+      AnimeCache.layer,
+      JikanAnimeService.layer,
+      MalAnimeService.layer,
+      ShikimoriService.layer,
+    ])
+  )
+}

@@ -4,14 +4,17 @@ import {
   librarySyncEvent,
   userLibraryEntry,
 } from "@animekaiser/db"
-import * as FetchHttpClient from "@effect/platform/FetchHttpClient"
-import * as HttpClient from "@effect/platform/HttpClient"
-import * as HttpClientRequest from "@effect/platform/HttpClientRequest"
-import * as HttpClientResponse from "@effect/platform/HttpClientResponse"
 import { and, asc, eq, sql } from "drizzle-orm"
+import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
+import * as FetchHttpClient from "effect/http/FetchHttpClient"
+import * as HttpClient from "effect/http/HttpClient"
+import * as HttpClientRequest from "effect/http/HttpClientRequest"
+import * as HttpClientResponse from "effect/http/HttpClientResponse"
+import * as Layer from "effect/Layer"
 import * as Schema from "effect/Schema"
 import { logAniListRateLimit } from "../anime/anilist"
+import { withoutTracePropagation } from "../http"
 
 export class LibrarySyncError extends Schema.TaggedError<LibrarySyncError>()(
   "LibrarySyncError",
@@ -32,9 +35,9 @@ const AniListMediaResponse = Schema.Struct({
     Schema.Struct({
       Media: Schema.NullOr(
         Schema.Struct({
-          id: Schema.Int.pipe(Schema.positive()),
+          id: Schema.Int.check(Schema.isGreaterThan(0)),
           mediaListEntry: Schema.NullOr(
-            Schema.Struct({ id: Schema.Int.pipe(Schema.positive()) })
+            Schema.Struct({ id: Schema.Int.check(Schema.isGreaterThan(0)) })
           ),
         })
       ),
@@ -47,7 +50,7 @@ const AniListSaveResponse = Schema.Struct({
   data: Schema.NullOr(
     Schema.Struct({
       SaveMediaListEntry: Schema.NullOr(
-        Schema.Struct({ id: Schema.Int.pipe(Schema.positive()) })
+        Schema.Struct({ id: Schema.Int.check(Schema.isGreaterThan(0)) })
       ),
     })
   ),
@@ -124,16 +127,12 @@ export const aniListSaveMutation = (
   }
 }
 
-export class LibrarySyncService extends Effect.Service<LibrarySyncService>()(
+export class LibrarySyncService extends Context.Service<LibrarySyncService>()(
   "@animekaiser/core/LibrarySyncService",
   {
-    accessors: true,
-    dependencies: [FetchHttpClient.layer],
-    effect: Effect.gen(function* () {
+    make: Effect.gen(function* () {
       const database = yield* Database
-      const http = (yield* HttpClient.HttpClient).pipe(
-        HttpClient.withTracerPropagation(false)
-      )
+      const http = (yield* HttpClient.HttpClient).pipe(withoutTracePropagation)
 
       const execute = (
         request: HttpClientRequest.HttpClientRequest,
@@ -175,29 +174,35 @@ export class LibrarySyncService extends Effect.Service<LibrarySyncService>()(
         )
 
       const aniListGraphQl = <TValue, TEncoded>(
-        schema: Schema.Schema<TValue, TEncoded>,
+        schema: Schema.Codec<TValue, TEncoded>,
         accessToken: string,
         query: string,
         variables: object
       ) =>
-        execute(
-          HttpClientRequest.post("https://graphql.anilist.co", {
-            headers: {
-              authorization: `Bearer ${accessToken}`,
-              "content-type": "application/json",
-            },
-          }).pipe(HttpClientRequest.bodyUnsafeJson({ query, variables })),
-          "anilist"
-        ).pipe(
-          Effect.flatMap(HttpClientResponse.schemaBodyJson(schema)),
-          Effect.mapError((cause) =>
-            cause instanceof LibrarySyncError
-              ? cause
-              : new LibrarySyncError({
-                  message: "AniList returned an invalid response.",
-                  authenticationRejected: false,
-                  cause,
-                })
+        HttpClientRequest.post("https://graphql.anilist.co", {
+          headers: { authorization: `Bearer ${accessToken}` },
+        }).pipe(
+          HttpClientRequest.bodyJson({ query, variables }),
+          Effect.mapError(
+            (cause) =>
+              new LibrarySyncError({
+                message: "AniList request could not be encoded.",
+                authenticationRejected: false,
+                cause,
+              })
+          ),
+          Effect.flatMap((request) => execute(request, "anilist")),
+          Effect.flatMap((response) =>
+            HttpClientResponse.schemaBodyJson(schema)(response).pipe(
+              Effect.mapError(
+                (cause) =>
+                  new LibrarySyncError({
+                    message: "AniList returned an invalid response.",
+                    authenticationRejected: false,
+                    cause,
+                  })
+              )
+            )
           )
         )
 
@@ -279,7 +284,7 @@ export class LibrarySyncService extends Effect.Service<LibrarySyncService>()(
         const url = `https://api.myanimelist.net/v2/anime/${event.malId}/my_list_status`
         if (event.action === "delete") {
           yield* execute(
-            HttpClientRequest.del(url, {
+            HttpClientRequest.delete(url, {
               headers: { authorization: `Bearer ${accessToken}` },
             }),
             "mal"
@@ -430,4 +435,9 @@ export class LibrarySyncService extends Effect.Service<LibrarySyncService>()(
       return { recoverRunningEvents, processNextEvent }
     }),
   }
-) {}
+) {
+  static readonly layer = Layer.effect(
+    LibrarySyncService,
+    LibrarySyncService.make
+  ).pipe(Layer.provide(FetchHttpClient.layer))
+}

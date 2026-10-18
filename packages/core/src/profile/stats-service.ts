@@ -13,7 +13,9 @@ import type {
   TopRatedTitle,
 } from "@animekaiser/domain"
 import { and, desc, eq, isNotNull, sql } from "drizzle-orm"
+import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
+import * as Layer from "effect/Layer"
 import * as Schema from "effect/Schema"
 
 export class ProfileStatsServiceError extends Schema.TaggedError<ProfileStatsServiceError>()(
@@ -65,11 +67,10 @@ export const calculateStreaks = (
 export const scoreBucket = (score: number) =>
   Math.min(10, Math.max(1, Math.round(score / 10)))
 
-export class ProfileStatsService extends Effect.Service<ProfileStatsService>()(
+export class ProfileStatsService extends Context.Service<ProfileStatsService>()(
   "@animekaiser/core/ProfileStatsService",
   {
-    accessors: true,
-    effect: Effect.gen(function* () {
+    make: Effect.gen(function* () {
       const database = yield* Database
 
       const failWith = (message: string) => (cause: unknown) =>
@@ -268,4 +269,9 @@ export class ProfileStatsService extends Effect.Service<ProfileStatsService>()(
       return { forUser }
     }),
   }
-) {}
+) {
+  static readonly layer = Layer.effect(
+    ProfileStatsService,
+    ProfileStatsService.make
+  )
+}

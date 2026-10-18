@@ -10,6 +10,7 @@ import {
   recommendationThread,
   room,
   roomParticipant,
+  thrownBy,
   userLibraryEntry,
 } from "@animekaiser/db"
 import type {
@@ -27,10 +28,12 @@ import {
 } from "@animekaiser/domain"
 import { and, asc, desc, eq, inArray, sql } from "drizzle-orm"
 import * as Cause from "effect/Cause"
+import * as Context from "effect/Context"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
 import * as Fiber from "effect/Fiber"
+import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import * as Schema from "effect/Schema"
 import { AnimeService } from "../anime"
@@ -157,33 +160,29 @@ type Job = {
   amount: number
 }
 
-export class RecommendationService extends Effect.Service<RecommendationService>()(
+export class RecommendationService extends Context.Service<RecommendationService>()(
   "@animekaiser/core/RecommendationService",
   {
-    dependencies: [RoomService.Default, AnimeService.Default],
-    effect: Effect.gen(function* () {
+    make: Effect.gen(function* () {
       const database = yield* Database
       const provider = yield* AiProvider
       const animeService = yield* AnimeService
       const rooms = yield* RoomService
-      const running = new Map<string, Fiber.RuntimeFiber<void, never>>()
+      const running = new Map<string, Fiber.Fiber<void, never>>()
 
       const run = <T>(fn: (db: KaiserDb) => Promise<T>) =>
-        database
-          .execute(fn)
-          .pipe(
-            Effect.catchAll((error) =>
-              error.cause instanceof RecommendationOperationError
-                ? Effect.fail(error.cause)
-                : Effect.logError("[AI] Database operation failed", error).pipe(
-                    Effect.zipRight(
-                      Effect.fail(
-                        fail("failed", "Something went wrong. Try again.")
-                      )
-                    )
-                  )
-            )
+        database.execute(fn).pipe(
+          Effect.catchFilter(
+            thrownBy(Schema.is(RecommendationOperationError)),
+            Effect.fail
+          ),
+          Effect.tapErrorTag("DatabaseError", (error) =>
+            Effect.logError("[AI] Database operation failed", error)
+          ),
+          Effect.catchTag("DatabaseError", () =>
+            Effect.fail(fail("failed", "Something went wrong. Try again."))
           )
+        )
       const transact = <T>(fn: (tx: KaiserExecutor) => Promise<T>) =>
         run((db) => db.transaction((tx) => fn(tx)))
 
@@ -1069,12 +1068,12 @@ export class RecommendationService extends Effect.Service<RecommendationService>
               ? { status: "stopped", error: revokedMessage }
               : { status: "completed", outcome: value.outcome },
           onFailure: (cause): Result =>
-            Cause.isInterruptedOnly(cause)
+            Cause.hasInterruptsOnly(cause)
               ? { status: "stopped", error: "Stopped." }
               : {
                   status: "failed",
                   error:
-                    Option.getOrNull(Cause.failureOption(cause))?.message ??
+                    Option.getOrNull(Cause.findErrorOption(cause))?.message ??
                     "Something went wrong. Try again.",
                 },
         })
@@ -1100,10 +1099,10 @@ export class RecommendationService extends Effect.Service<RecommendationService>
             work.pipe(Effect.map((outcome) => ({ outcome }))),
             permissionLoop.pipe(Effect.map((revoked) => ({ revoked })))
           ).pipe(
-            Effect.timeoutFail({
+            Effect.timeoutOrElse({
               duration: Duration.seconds(150),
-              onTimeout: () =>
-                fail("failed", "The AI took too long to answer."),
+              orElse: () =>
+                Effect.fail(fail("failed", "The AI took too long to answer.")),
             })
           )
           // Settlement runs as an exit finalizer so stopping (interruption)
@@ -1112,14 +1111,14 @@ export class RecommendationService extends Effect.Service<RecommendationService>
           // work would otherwise inherit, leaving it impossible to stop.
           const fiber = yield* Effect.interruptible(guarded).pipe(
             Effect.onExit((exit) =>
-              (Exit.isFailure(exit) && !Cause.isInterruptedOnly(exit.cause)
+              (Exit.isFailure(exit) && !Cause.hasInterruptsOnly(exit.cause)
                 ? Effect.logWarning("[AI] Generation failed", exit.cause)
                 : Effect.void
               ).pipe(
-                Effect.zipRight(finish(job, resultOf(exit), publication)),
-                Effect.catchAllCause((cause) =>
+                Effect.andThen(finish(job, resultOf(exit), publication)),
+                Effect.catchCause((cause) =>
                   Effect.logWarning("[AI] Publishing failed", cause).pipe(
-                    Effect.zipRight(
+                    Effect.andThen(
                       finish(job, {
                         status: "failed",
                         error: "Something went wrong. Try again.",
@@ -1134,7 +1133,7 @@ export class RecommendationService extends Effect.Service<RecommendationService>
             Effect.ensuring(
               Effect.sync(() => running.delete(job.generationId))
             ),
-            Effect.forkDaemon
+            Effect.forkDetach
           )
           running.set(job.generationId, fiber)
         })
@@ -1743,4 +1742,9 @@ export class RecommendationService extends Effect.Service<RecommendationService>
       }
     }),
   }
-) {}
+) {
+  static readonly layer = Layer.effect(
+    RecommendationService,
+    RecommendationService.make
+  ).pipe(Layer.provide([RoomService.layer, AnimeService.layer]))
+}

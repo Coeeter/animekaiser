@@ -5,16 +5,19 @@ import {
   job,
   userLibraryEntry,
 } from "@animekaiser/db"
-import * as FetchHttpClient from "@effect/platform/FetchHttpClient"
-import * as HttpClient from "@effect/platform/HttpClient"
-import * as HttpClientRequest from "@effect/platform/HttpClientRequest"
-import * as HttpClientResponse from "@effect/platform/HttpClientResponse"
 import { and, asc, eq, sql } from "drizzle-orm"
+import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
-import * as Either from "effect/Either"
+import * as FetchHttpClient from "effect/http/FetchHttpClient"
+import * as HttpClient from "effect/http/HttpClient"
+import * as HttpClientRequest from "effect/http/HttpClientRequest"
+import * as HttpClientResponse from "effect/http/HttpClientResponse"
+import * as Layer from "effect/Layer"
+import * as Result from "effect/Result"
 import * as Schema from "effect/Schema"
 import * as Stream from "effect/Stream"
 import { logAniListRateLimit } from "../anime/anilist"
+import { withoutTracePropagation } from "../http"
 
 export const LIBRARY_IMPORT_JOB_CHANNEL = "library_import_jobs"
 export const LIBRARY_IMPORT_JOB_UPDATE_CHANNEL = "library_import_job_updates"
@@ -62,22 +65,22 @@ export class LibraryImportError extends Schema.TaggedError<LibraryImportError>()
   { message: Schema.String }
 ) {}
 
-const PositiveInt = Schema.Int.pipe(Schema.positive())
-const MalStatus = Schema.Literal(
+const PositiveInt = Schema.Int.check(Schema.isGreaterThan(0))
+const MalStatus = Schema.Literals([
   "watching",
   "completed",
   "on_hold",
   "dropped",
-  "plan_to_watch"
-)
-const AniListStatus = Schema.Literal(
+  "plan_to_watch",
+])
+const AniListStatus = Schema.Literals([
   "CURRENT",
   "PLANNING",
   "COMPLETED",
   "DROPPED",
   "PAUSED",
-  "REPEATING"
-)
+  "REPEATING",
+])
 
 const MalImportEntry = Schema.Struct({
   node: Schema.Struct({
@@ -95,7 +98,9 @@ const MalImportEntry = Schema.Struct({
         large: Schema.optional(Schema.String),
       })
     ),
-    num_episodes: Schema.optional(Schema.NonNegativeInt),
+    num_episodes: Schema.optional(
+      Schema.Int.check(Schema.isGreaterThanOrEqualTo(0))
+    ),
     genres: Schema.optional(
       Schema.Array(Schema.Struct({ name: Schema.String }))
     ),
@@ -105,8 +110,8 @@ const MalImportEntry = Schema.Struct({
   }),
   list_status: Schema.Struct({
     status: MalStatus,
-    score: Schema.Int.pipe(Schema.between(0, 10)),
-    num_episodes_watched: Schema.NonNegativeInt,
+    score: Schema.Int.check(Schema.isBetween({ minimum: 0, maximum: 10 })),
+    num_episodes_watched: Schema.Int.check(Schema.isGreaterThanOrEqualTo(0)),
     is_rewatching: Schema.Boolean,
     comments: Schema.optional(Schema.String),
     updated_at: Schema.optional(Schema.String),
@@ -131,15 +136,17 @@ const MalImportPage = Schema.Struct({
   }),
 })
 
-const decodeMalEntry = Schema.decodeUnknownEither(MalImportEntry)
+const decodeMalEntry = Schema.decodeUnknownResult(MalImportEntry)
 
 const malImportPageSize = 100
 
 const AniListImportEntry = Schema.Struct({
   id: PositiveInt,
   status: Schema.NullOr(AniListStatus),
-  score: Schema.NullOr(Schema.Number.pipe(Schema.between(0, 100))),
-  progress: Schema.NullOr(Schema.NonNegativeInt),
+  score: Schema.NullOr(
+    Schema.Number.check(Schema.isBetween({ minimum: 0, maximum: 100 }))
+  ),
+  progress: Schema.NullOr(Schema.Int.check(Schema.isGreaterThanOrEqualTo(0))),
   notes: Schema.NullOr(Schema.String),
   updatedAt: Schema.optional(Schema.NullOr(Schema.Number)),
   createdAt: Schema.optional(Schema.NullOr(Schema.Number)),
@@ -314,16 +321,12 @@ export const sameEntry = (
   left.notes === right.notes &&
   left.aniListEntryId === right.aniListEntryId
 
-export class LibraryImportService extends Effect.Service<LibraryImportService>()(
+export class LibraryImportService extends Context.Service<LibraryImportService>()(
   "@animekaiser/core/LibraryImportService",
   {
-    accessors: true,
-    dependencies: [FetchHttpClient.layer],
-    effect: Effect.gen(function* () {
+    make: Effect.gen(function* () {
       const database = yield* Database
-      const http = (yield* HttpClient.HttpClient).pipe(
-        HttpClient.withTracerPropagation(false)
-      )
+      const http = (yield* HttpClient.HttpClient).pipe(withoutTracePropagation)
 
       const fetchMalEntries = Effect.fn("LibraryImportService.fetchMalEntries")(
         function* (accessToken: string) {
@@ -366,15 +369,15 @@ export class LibraryImportService extends Effect.Service<LibraryImportService>()
 
             for (const item of response.data) {
               const decoded = decodeMalEntry(item)
-              if (Either.isLeft(decoded)) {
+              if (Result.isFailure(decoded)) {
                 skippedCount += 1
                 yield* Effect.logWarning("Skipped unparseable MAL entry", {
-                  reason: String(decoded.left),
+                  reason: String(decoded.failure),
                 })
                 continue
               }
 
-              const normalized = normalizeMalImportEntry(decoded.right)
+              const normalized = normalizeMalImportEntry(decoded.success)
               if (seen.has(normalized.malId)) continue
               seen.add(normalized.malId)
               entries.push(normalized)
@@ -403,13 +406,11 @@ export class LibraryImportService extends Effect.Service<LibraryImportService>()
           })
         }
 
-        const request = HttpClientRequest.post("https://graphql.anilist.co", {
-          headers: {
-            authorization: `Bearer ${accessToken}`,
-            "content-type": "application/json",
-          },
-        }).pipe(
-          HttpClientRequest.bodyUnsafeJson({
+        const request = yield* HttpClientRequest.post(
+          "https://graphql.anilist.co",
+          { headers: { authorization: `Bearer ${accessToken}` } }
+        ).pipe(
+          HttpClientRequest.bodyJson({
             query: aniListImportQuery,
             variables: { userId },
           })
@@ -486,49 +487,33 @@ export class LibraryImportService extends Effect.Service<LibraryImportService>()
       })
 
       const watchJob = (userId: string, id: string) =>
-        Stream.unwrapScoped(
+        Stream.unwrap(
           Effect.gen(function* () {
             const events = yield* database.listen(
               LIBRARY_IMPORT_JOB_UPDATE_CHANNEL
             )
-            const initial = Stream.fromEffect(
-              getJob(userId, id).pipe(
-                Effect.flatMap((value) =>
-                  value
-                    ? Effect.succeed(value)
-                    : Effect.fail(
-                        new LibraryImportError({
-                          message: "Import job was not found.",
-                        })
-                      )
-                )
+            const loadJob = getJob(userId, id).pipe(
+              Effect.flatMap((value) =>
+                value
+                  ? Effect.succeed(value)
+                  : Effect.fail(
+                      new LibraryImportError({
+                        message: "Import job was not found.",
+                      })
+                    )
               )
             )
             const updates = Stream.fromQueue(events).pipe(
-              Stream.filter(
-                (event) => event._tag === "Error" || event.payload === id
+              Stream.mapError(
+                () =>
+                  new LibraryImportError({
+                    message: "Import status connection failed.",
+                  })
               ),
-              Stream.mapEffect((event) =>
-                event._tag === "Error"
-                  ? Effect.fail(
-                      new LibraryImportError({
-                        message: "Import status connection failed.",
-                      })
-                    )
-                  : getJob(userId, id).pipe(
-                      Effect.flatMap((value) =>
-                        value
-                          ? Effect.succeed(value)
-                          : Effect.fail(
-                              new LibraryImportError({
-                                message: "Import job was not found.",
-                              })
-                            )
-                      )
-                    )
-              )
+              Stream.filter((payload) => payload === id),
+              Stream.mapEffect(() => loadJob)
             )
-            return Stream.concat(initial, updates).pipe(
+            return Stream.concat(Stream.fromEffect(loadJob), updates).pipe(
               Stream.takeUntil(
                 (value) =>
                   value.status === "completed" || value.status === "failed"
@@ -738,7 +723,7 @@ export class LibraryImportService extends Effect.Service<LibraryImportService>()
                 })
               )
             ),
-            Effect.catchAll((error) =>
+            Effect.catch((error) =>
               database
                 .execute((db) =>
                   db.transaction(async (tx) => {
@@ -760,7 +745,7 @@ export class LibraryImportService extends Effect.Service<LibraryImportService>()
                   })
                 )
                 .pipe(
-                  Effect.zipRight(
+                  Effect.andThen(
                     Effect.logError("Library import failed", { error })
                   )
                 )
@@ -773,4 +758,9 @@ export class LibraryImportService extends Effect.Service<LibraryImportService>()
       return { recoverRunningJobs, processNextJob, getJob, watchJob }
     }),
   }
-) {}
+) {
+  static readonly layer = Layer.effect(
+    LibraryImportService,
+    LibraryImportService.make
+  ).pipe(Layer.provide(FetchHttpClient.layer))
+}

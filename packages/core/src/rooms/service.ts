@@ -12,6 +12,7 @@ import {
   roomParticipant,
   roomPick,
   roomVote,
+  thrownBy,
   user,
   watchCoverage,
   watchHistory,
@@ -50,7 +51,12 @@ import {
   or,
   sql,
 } from "drizzle-orm"
+import * as Clock from "effect/Clock"
+import * as Context from "effect/Context"
+import * as DateTime from "effect/DateTime"
 import * as Effect from "effect/Effect"
+import * as Layer from "effect/Layer"
+import * as Schema from "effect/Schema"
 import * as Stream from "effect/Stream"
 import {
   type AdmissionFacts,
@@ -715,35 +721,28 @@ const toSummary = (row: SummaryRow, userId: string): RoomSummary => ({
   updatedAt: row.room.updatedAt.getTime(),
 })
 
-export class RoomService extends Effect.Service<RoomService>()(
+export class RoomService extends Context.Service<RoomService>()(
   "@animekaiser/core/RoomService",
   {
-    dependencies: [RoomEvents.Default],
-    effect: Effect.gen(function* () {
+    make: Effect.gen(function* () {
       const database = yield* Database
       const events = yield* RoomEvents
       const runtimeId = crypto.randomUUID()
       const live = new Set<string>()
 
       const run = <T>(fn: (db: KaiserDb) => Promise<T>) =>
-        database
-          .execute(fn)
-          .pipe(
-            Effect.catchAll((error) =>
-              error.cause instanceof RoomOperationError
-                ? Effect.fail(error.cause)
-                : Effect.logError(
-                    "[Rooms] Database operation failed",
-                    error
-                  ).pipe(
-                    Effect.zipRight(
-                      Effect.fail(
-                        fail("failed", "Something went wrong. Try again.")
-                      )
-                    )
-                  )
-            )
+        database.execute(fn).pipe(
+          Effect.catchFilter(
+            thrownBy(Schema.is(RoomOperationError)),
+            Effect.fail
+          ),
+          Effect.tapErrorTag("DatabaseError", (error) =>
+            Effect.logError("[Rooms] Database operation failed", error)
+          ),
+          Effect.catchTag("DatabaseError", () =>
+            Effect.fail(fail("failed", "Something went wrong. Try again."))
           )
+        )
 
       const transact = <T>(fn: (tx: KaiserExecutor) => Promise<T>) =>
         run((db) => db.transaction((tx) => fn(tx)))
@@ -759,7 +758,7 @@ export class RoomService extends Effect.Service<RoomService>()(
           selection: (RoomEpisodeSelection & { positionSeconds: number }) | null
         }
       ) {
-        const now = Date.now()
+        const now = yield* Clock.currentTimeMillis
         return yield* transact(async (tx) => {
           const [existing] = await tx
             .select({ hostUserId: room.hostUserId })
@@ -818,7 +817,7 @@ export class RoomService extends Effect.Service<RoomService>()(
         userId: string,
         tab: RoomListTab
       ) {
-        const now = Date.now()
+        const now = yield* Clock.currentTimeMillis
         return yield* run(async (db) => {
           const base = summaryRows(db, userId, now)
           const rows = await (async () => {
@@ -889,7 +888,7 @@ export class RoomService extends Effect.Service<RoomService>()(
         roomId: string,
         inviteToken: string | undefined
       ) {
-        const now = Date.now()
+        const now = yield* Clock.currentTimeMillis
         return yield* run(async (db): Promise<RoomAdmission> => {
           const context = await loadViewer(db, actor, roomId, now, {
             inviteToken,
@@ -951,7 +950,7 @@ export class RoomService extends Effect.Service<RoomService>()(
         roomId: string,
         inviteToken: string | undefined
       ) {
-        const now = Date.now()
+        const now = yield* Clock.currentTimeMillis
         const account = actor.user
         if (!account)
           return yield* fail("sign_in_required", "Sign in to join this room.")
@@ -1008,7 +1007,7 @@ export class RoomService extends Effect.Service<RoomService>()(
         inviteToken: string,
         displayName: string
       ) {
-        const now = Date.now()
+        const now = yield* Clock.currentTimeMillis
         const token = createOpaqueToken()
         const expiresAt = new Date(now + guestSessionMs)
         yield* transact(async (tx) => {
@@ -1055,6 +1054,7 @@ export class RoomService extends Effect.Service<RoomService>()(
         const account = actor.user
         if (!account)
           return yield* fail("sign_in_required", "Sign in to keep this room.")
+        const admittedAt = DateTime.toDateUtc(yield* DateTime.now)
         yield* transact(async (tx) => {
           // Room before thread, matching AI publication's lock order.
           await tx
@@ -1097,7 +1097,7 @@ export class RoomService extends Effect.Service<RoomService>()(
             if (existing.state !== "admitted" && existing.state !== "banned")
               await tx
                 .update(roomParticipant)
-                .set({ state: "admitted", admittedAt: new Date() })
+                .set({ state: "admitted", admittedAt })
                 .where(eq(roomParticipant.id, existing.id))
           } else {
             await tx
@@ -1125,31 +1125,42 @@ export class RoomService extends Effect.Service<RoomService>()(
       })
 
       const disconnect = (streamId: string) =>
-        transact(async (tx) => {
-          const [connection] = await tx
-            .delete(roomConnection)
-            .where(eq(roomConnection.id, streamId))
-            .returning()
-          if (!connection) return
-          if (connection.controller) {
-            const remaining = await tx
-              .select({ id: roomConnection.id, tabId: roomConnection.tabId })
-              .from(roomConnection)
-              .where(eq(roomConnection.participantId, connection.participantId))
-              .orderBy(asc(roomConnection.connectedAt))
-            const sameTab = remaining.some(
-              (row) => row.tabId === connection.tabId
-            )
-            const next = remaining[0]
-            if (!sameTab && next)
-              await tx
-                .update(roomConnection)
-                .set({ controller: true })
-                .where(eq(roomConnection.tabId, next.tabId))
-          }
-          await markHostAwayIfGone(tx, [connection.roomId], new Date())
-          await tx.execute(notifyRoom(connection.roomId))
-        }).pipe(Effect.ensuring(Effect.sync(() => live.delete(streamId))))
+        DateTime.now.pipe(
+          Effect.map(DateTime.toDateUtc),
+          Effect.flatMap((now) =>
+            transact(async (tx) => {
+              const [connection] = await tx
+                .delete(roomConnection)
+                .where(eq(roomConnection.id, streamId))
+                .returning()
+              if (!connection) return
+              if (connection.controller) {
+                const remaining = await tx
+                  .select({
+                    id: roomConnection.id,
+                    tabId: roomConnection.tabId,
+                  })
+                  .from(roomConnection)
+                  .where(
+                    eq(roomConnection.participantId, connection.participantId)
+                  )
+                  .orderBy(asc(roomConnection.connectedAt))
+                const sameTab = remaining.some(
+                  (row) => row.tabId === connection.tabId
+                )
+                const next = remaining[0]
+                if (!sameTab && next)
+                  await tx
+                    .update(roomConnection)
+                    .set({ controller: true })
+                    .where(eq(roomConnection.tabId, next.tabId))
+              }
+              await markHostAwayIfGone(tx, [connection.roomId], now)
+              await tx.execute(notifyRoom(connection.roomId))
+            })
+          ),
+          Effect.ensuring(Effect.sync(() => live.delete(streamId)))
+        )
 
       const markHostAwayIfGone = (
         ex: KaiserExecutor,
@@ -1169,16 +1180,22 @@ export class RoomService extends Effect.Service<RoomService>()(
                 )`)
 
       const watch = (actor: Actor, roomId: string, connectionId: string) =>
-        Stream.unwrapScoped(
+        Stream.unwrap(
           Effect.gen(function* () {
             const signals = yield* events.subscribe(roomId)
             const streamId = crypto.randomUUID()
+            const connectedAt = yield* Clock.currentTimeMillis
             yield* transact(async (tx) => {
-              const now = Date.now()
-              const context = await requireMember(tx, actor, roomId, now, {
-                lock: true,
-              })
-              const online = await onlineParticipants(tx, roomId, now)
+              const context = await requireMember(
+                tx,
+                actor,
+                roomId,
+                connectedAt,
+                {
+                  lock: true,
+                }
+              )
+              const online = await onlineParticipants(tx, roomId, connectedAt)
               online.delete(context.participant.id)
               if (online.size >= RoomCapacity)
                 throw fail("full", "This room is full.")
@@ -1203,12 +1220,12 @@ export class RoomService extends Effect.Service<RoomService>()(
               })
               await tx
                 .update(roomParticipant)
-                .set({ lastSeenAt: new Date(now) })
+                .set({ lastSeenAt: new Date(connectedAt) })
                 .where(eq(roomParticipant.id, context.participant.id))
               await tx
                 .update(room)
                 .set({
-                  lastConnectedAt: new Date(now),
+                  lastConnectedAt: new Date(connectedAt),
                   ...(context.isHost ? { hostAwaySince: null } : {}),
                 })
                 .where(eq(room.id, roomId))
@@ -1233,7 +1250,7 @@ export class RoomService extends Effect.Service<RoomService>()(
               RoomOperationError
             > =>
               Effect.gen(function* () {
-                const now = Date.now()
+                const now = yield* Clock.currentTimeMillis
                 let sessionCheckedAt = acc.sessionCheckedAt
                 if (actor.user && now - sessionCheckedAt > 60_000) {
                   if (!(yield* actor.sessionActive))
@@ -1298,7 +1315,7 @@ export class RoomService extends Effect.Service<RoomService>()(
                     {
                       lastSeq,
                       lastState: fingerprint,
-                      lastReloadAt: now,
+                      lastReloadAt: connectedAt,
                       sessionCheckedAt,
                     },
                     output,
@@ -1315,15 +1332,14 @@ export class RoomService extends Effect.Service<RoomService>()(
 
             return triggers.pipe(
               Stream.mapAccumEffect(
-                {
+                (): Accumulator => ({
                   lastSeq: null,
                   lastState: null,
-                  lastReloadAt: Date.now(),
-                  sessionCheckedAt: Date.now(),
-                } as Accumulator,
+                  lastReloadAt: connectedAt,
+                  sessionCheckedAt: connectedAt,
+                }),
                 (acc) => reload(acc)
               ),
-              Stream.flattenIterables,
               Stream.takeUntil((event) => event._tag === "Ended")
             )
           })
@@ -1334,7 +1350,7 @@ export class RoomService extends Effect.Service<RoomService>()(
         roomId: string,
         beforeSeq: number
       ) {
-        const now = Date.now()
+        const now = yield* Clock.currentTimeMillis
         return yield* run(async (db) => {
           await requireMember(db, actor, roomId, now)
           return latestMessages(db, roomId, beforeSeq)
@@ -1347,7 +1363,7 @@ export class RoomService extends Effect.Service<RoomService>()(
         requestId: string,
         body: string
       ) {
-        const now = Date.now()
+        const now = yield* Clock.currentTimeMillis
         const text = body.trim()
         if (text.length === 0)
           return yield* fail("invalid", "Write a message first.")
@@ -1388,7 +1404,7 @@ export class RoomService extends Effect.Service<RoomService>()(
         roomId: string,
         messageId: string
       ) {
-        const now = Date.now()
+        const now = yield* Clock.currentTimeMillis
         yield* transact(async (tx) => {
           const context = await requireMember(tx, actor, roomId, now, {
             open: true,
@@ -1419,7 +1435,7 @@ export class RoomService extends Effect.Service<RoomService>()(
         selectionRevision: number,
         action: RoomPlaybackAction
       ) {
-        const now = Date.now()
+        const now = yield* Clock.currentTimeMillis
         yield* transact(async (tx) => {
           const context = await requireMember(tx, actor, roomId, now, {
             lock: true,
@@ -1490,7 +1506,7 @@ export class RoomService extends Effect.Service<RoomService>()(
         selection: RoomEpisodeSelection | null,
         play = false
       ) {
-        const now = Date.now()
+        const now = yield* Clock.currentTimeMillis
         yield* transact(async (tx) => {
           await requireHost(tx, actor, roomId, now)
           if (selection) await upsertAnime(tx, selection.anime)
@@ -1529,7 +1545,7 @@ export class RoomService extends Effect.Service<RoomService>()(
         roomId: string,
         connectionId: string
       ) {
-        const now = Date.now()
+        const now = yield* Clock.currentTimeMillis
         yield* transact(async (tx) => {
           const context = await requireMember(tx, actor, roomId, now)
           const [connection] = await tx
@@ -1560,7 +1576,7 @@ export class RoomService extends Effect.Service<RoomService>()(
           connectionId: string,
           state: RoomPlaybackState
         ) {
-          const now = Date.now()
+          const now = yield* Clock.currentTimeMillis
           yield* transact(async (tx) => {
             const context = await requireMember(tx, actor, roomId, now)
             const updated = await tx
@@ -1617,7 +1633,7 @@ export class RoomService extends Effect.Service<RoomService>()(
 
       const previewAccessChange = Effect.fn("RoomService.previewAccessChange")(
         function* (actor: Actor, roomId: string, access: RoomAccess) {
-          const now = Date.now()
+          const now = yield* Clock.currentTimeMillis
           return yield* run(async (db) => {
             const context = await requireHost(db, actor, roomId, now, {
               lock: false,
@@ -1641,7 +1657,7 @@ export class RoomService extends Effect.Service<RoomService>()(
           aiAccess?: RoomAiAccess
         }
       ) {
-        const now = Date.now()
+        const now = yield* Clock.currentTimeMillis
         yield* transact(async (tx) => {
           const context = await requireHost(tx, actor, roomId, now)
           if (input.access && input.access !== context.room.access) {
@@ -1705,7 +1721,7 @@ export class RoomService extends Effect.Service<RoomService>()(
 
       const createInviteLink = Effect.fn("RoomService.createInviteLink")(
         function* (actor: Actor, roomId: string) {
-          const now = Date.now()
+          const now = yield* Clock.currentTimeMillis
           const token = createOpaqueToken()
           const expiresAt = new Date(now + inviteLinkMs)
           yield* transact(async (tx) => {
@@ -1738,7 +1754,7 @@ export class RoomService extends Effect.Service<RoomService>()(
 
       const revokeInviteLinks = Effect.fn("RoomService.revokeInviteLinks")(
         function* (actor: Actor, roomId: string) {
-          const now = Date.now()
+          const now = yield* Clock.currentTimeMillis
           yield* transact(async (tx) => {
             await requireHost(tx, actor, roomId, now)
             await tx
@@ -1759,7 +1775,7 @@ export class RoomService extends Effect.Service<RoomService>()(
         roomId: string,
         userIds: ReadonlyArray<string>
       ) {
-        const now = Date.now()
+        const now = yield* Clock.currentTimeMillis
         yield* transact(async (tx) => {
           const context = await requireHost(tx, actor, roomId, now)
           const hostId = context.room.hostUserId
@@ -1812,7 +1828,7 @@ export class RoomService extends Effect.Service<RoomService>()(
           participantId: string,
           ban: boolean
         ) {
-          const now = Date.now()
+          const now = yield* Clock.currentTimeMillis
           yield* transact(async (tx) => {
             const context = await requireHost(tx, actor, roomId, now)
             const [target] = await tx
@@ -1850,7 +1866,7 @@ export class RoomService extends Effect.Service<RoomService>()(
         roomId: string,
         participantId: string
       ) {
-        const now = Date.now()
+        const now = yield* Clock.currentTimeMillis
         yield* transact(async (tx) => {
           const context = await requireHost(tx, actor, roomId, now)
           const [target] = await tx
@@ -1900,7 +1916,7 @@ export class RoomService extends Effect.Service<RoomService>()(
         actor: Actor,
         roomId: string
       ) {
-        const now = Date.now()
+        const now = yield* Clock.currentTimeMillis
         yield* transact(async (tx) => {
           const context = await requireMember(tx, actor, roomId, now, {
             lock: true,
@@ -1933,7 +1949,7 @@ export class RoomService extends Effect.Service<RoomService>()(
         roomId: string,
         remove: boolean
       ) {
-        const now = Date.now()
+        const now = yield* Clock.currentTimeMillis
         yield* transact(async (tx) => {
           const context = await requireMember(tx, actor, roomId, now, {
             lock: true,
@@ -1984,7 +2000,7 @@ export class RoomService extends Effect.Service<RoomService>()(
         roomId: string,
         anime: AnimeLibraryMetadata
       ) {
-        const now = Date.now()
+        const now = yield* Clock.currentTimeMillis
         yield* transact(async (tx) => {
           const context = await requireMember(tx, actor, roomId, now, {
             open: true,
@@ -2021,7 +2037,7 @@ export class RoomService extends Effect.Service<RoomService>()(
         roomId: string,
         pickId: string
       ) {
-        const now = Date.now()
+        const now = yield* Clock.currentTimeMillis
         yield* transact(async (tx) => {
           await requireHost(tx, actor, roomId, now, { lock: false })
           await tx
@@ -2037,7 +2053,7 @@ export class RoomService extends Effect.Service<RoomService>()(
         pickId: string,
         value: boolean
       ) {
-        const now = Date.now()
+        const now = yield* Clock.currentTimeMillis
         yield* transact(async (tx) => {
           const context = await requireMember(tx, actor, roomId, now, {
             open: true,
@@ -2107,7 +2123,7 @@ export class RoomService extends Effect.Service<RoomService>()(
           } | null
         }
       ) {
-        const now = Date.now()
+        const now = yield* Clock.currentTimeMillis
         return yield* transact(async (tx) => {
           const [membership] = await tx
             .select({ room })
@@ -2243,7 +2259,7 @@ export class RoomService extends Effect.Service<RoomService>()(
         function* () {
           const ids = [...live.keys()]
           if (ids.length === 0) return
-          const now = new Date()
+          const now = DateTime.toDateUtc(yield* DateTime.now)
           yield* transact(async (tx) => {
             const rows = await tx
               .update(roomConnection)
@@ -2264,7 +2280,7 @@ export class RoomService extends Effect.Service<RoomService>()(
         sql`${room.positionSeconds} + greatest(0, extract(epoch from (${at} - ${room.positionAt}))) * ${room.rate}`
 
       const sweep = Effect.fn("RoomService.sweep")(function* () {
-        const now = new Date()
+        const now = DateTime.toDateUtc(yield* DateTime.now)
         const touched = new Set<string>()
         yield* transact(async (tx) => {
           const stale = await tx
@@ -2349,6 +2365,7 @@ export class RoomService extends Effect.Service<RoomService>()(
       // instead of advancing across the outage.
       const recoverAfterRestart = Effect.fn("RoomService.recoverAfterRestart")(
         function* () {
+          const now = DateTime.toDateUtc(yield* DateTime.now)
           yield* transact(async (tx) => {
             await tx
               .delete(roomConnection)
@@ -2360,13 +2377,13 @@ export class RoomService extends Effect.Service<RoomService>()(
                 positionSeconds: pausedAt(
                   sql`least(${room.lastConnectedAt}, now())`
                 ),
-                positionAt: new Date(),
+                positionAt: now,
                 ...bumpRevision,
               })
               .where(and(eq(room.status, "open"), eq(room.playing, true)))
             await tx
               .update(room)
-              .set({ hostAwaySince: new Date() })
+              .set({ hostAwaySince: now })
               .where(and(eq(room.status, "open"), isNull(room.hostAwaySince)))
           })
         }
@@ -2414,4 +2431,8 @@ export class RoomService extends Effect.Service<RoomService>()(
       }
     }),
   }
-) {}
+) {
+  static readonly layer = Layer.effect(RoomService, RoomService.make).pipe(
+    Layer.provide(RoomEvents.layer)
+  )
+}

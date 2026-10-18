@@ -1,8 +1,8 @@
 import type { DatabaseService } from "@animekaiser/db"
 import { externalListAccount } from "@animekaiser/db"
-import type * as HttpClient from "@effect/platform/HttpClient"
 import { and, eq, lte } from "drizzle-orm"
 import * as Effect from "effect/Effect"
+import type * as HttpClient from "effect/http/HttpClient"
 import type { ExternalListProvider, ProviderOAuthConfig } from "./oauth"
 import {
   ExternalListOAuthError,

@@ -5,6 +5,7 @@ import type {
 import { ProfileOperationError } from "@animekaiser/domain"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
+import * as Layer from "effect/Layer"
 import { ProfileService } from "./service"
 
 const maxImageSize = 5 * 1024 * 1024
@@ -33,17 +34,17 @@ export type ProfileMediaStorageShape = {
   keyFromUrl: (url: string | null | undefined) => string | null
 }
 
-export class ProfileMediaStorage extends Context.Tag(
-  "@animekaiser/core/ProfileMediaStorage"
-)<ProfileMediaStorage, ProfileMediaStorageShape>() {}
+export class ProfileMediaStorage extends Context.Service<
+  ProfileMediaStorage,
+  ProfileMediaStorageShape
+>()("@animekaiser/core/ProfileMediaStorage") {}
 
-export class ProfileMediaService extends Effect.Service<ProfileMediaService>()(
+export class ProfileMediaService extends Context.Service<ProfileMediaService>()(
   "@animekaiser/core/ProfileMediaService",
   {
-    accessors: true,
-    dependencies: [ProfileService.Default],
-    effect: Effect.gen(function* () {
+    make: Effect.gen(function* () {
       const storage = yield* ProfileMediaStorage
+      const profiles = yield* ProfileService
 
       const createUpload = Effect.fn("ProfileMediaService.createUpload")(
         function* (
@@ -84,17 +85,17 @@ export class ProfileMediaService extends Effect.Service<ProfileMediaService>()(
         userId: string,
         key: string
       ) {
-        const current = yield* ProfileService.getOwnProfile(userId)
+        const current = yield* profiles.getOwnProfile(userId)
         const publicUrl = yield* verifyUpload(userId, "banner", key)
-        yield* ProfileService.setBannerKey(userId, key)
+        yield* profiles.setBannerKey(userId, key)
         yield* storage.remove(current.profile.bannerKey)
         return publicUrl
       })
 
       const removeBanner = Effect.fn("ProfileMediaService.removeBanner")(
         function* (userId: string) {
-          const current = yield* ProfileService.getOwnProfile(userId)
-          yield* ProfileService.setBannerKey(userId, null)
+          const current = yield* profiles.getOwnProfile(userId)
+          yield* profiles.setBannerKey(userId, null)
           yield* storage.remove(current.profile.bannerKey)
         }
       )
@@ -109,4 +110,9 @@ export class ProfileMediaService extends Effect.Service<ProfileMediaService>()(
       }
     }),
   }
-) {}
+) {
+  static readonly layer = Layer.effect(
+    ProfileMediaService,
+    ProfileMediaService.make
+  ).pipe(Layer.provide(ProfileService.layer))
+}

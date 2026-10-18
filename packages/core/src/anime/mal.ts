@@ -4,20 +4,23 @@ import type {
   AnimeItem,
   AnimePage,
 } from "@animekaiser/domain"
-import * as FetchHttpClient from "@effect/platform/FetchHttpClient"
-import * as HttpClient from "@effect/platform/HttpClient"
-import * as HttpClientError from "@effect/platform/HttpClientError"
-import * as HttpClientRequest from "@effect/platform/HttpClientRequest"
-import * as HttpClientResponse from "@effect/platform/HttpClientResponse"
 import * as Context from "effect/Context"
+import * as DateTime from "effect/DateTime"
 import * as Effect from "effect/Effect"
-import * as RateLimiter from "effect/RateLimiter"
+import * as FetchHttpClient from "effect/http/FetchHttpClient"
+import * as HttpClient from "effect/http/HttpClient"
+import * as HttpClientError from "effect/http/HttpClientError"
+import * as HttpClientRequest from "effect/http/HttpClientRequest"
+import * as HttpClientResponse from "effect/http/HttpClientResponse"
+import * as Layer from "effect/Layer"
 import * as Schema from "effect/Schema"
+import { withoutTracePropagation } from "../http"
+import { makeThrottle, throttleStoreLayer } from "../throttle"
 
-export class MalApiConfig extends Context.Tag("@animekaiser/core/MalApiConfig")<
+export class MalApiConfig extends Context.Service<
   MalApiConfig,
   { readonly clientId: string }
->() {}
+>()("@animekaiser/core/MalApiConfig") {}
 
 export class MalRequestError extends Schema.TaggedError<MalRequestError>()(
   "MalRequestError",
@@ -224,31 +227,26 @@ const currentSeason = (now: Date) => {
 
 // MAL's official API, keyed by our own ids. It backs AniList up for data
 // both have; it has no trending, banners or per-episode air times.
-export class MalAnimeService extends Effect.Service<MalAnimeService>()(
+export class MalAnimeService extends Context.Service<MalAnimeService>()(
   "@animekaiser/core/MalAnimeService",
   {
-    accessors: true,
-    dependencies: [FetchHttpClient.layer],
-    scoped: Effect.gen(function* () {
+    make: Effect.gen(function* () {
       const { clientId } = yield* MalApiConfig
-      const http = (yield* HttpClient.HttpClient).pipe(
-        HttpClient.withTracerPropagation(false)
-      )
+      const http = (yield* HttpClient.HttpClient).pipe(withoutTracePropagation)
       // MAL doesn't publish a limit; stay well under what clients report.
-      const limit = yield* RateLimiter.make({
-        limit: 2,
-        interval: "1 second",
-      })
+      const throttle = yield* makeThrottle([
+        { key: "mal", limit: 2, window: "1 second" },
+      ])
 
       const get = <TValue, TEncoded>(
-        schema: Schema.Schema<TValue, TEncoded>,
+        schema: Schema.Codec<TValue, TEncoded>,
         path: string,
         params: Record<string, string>
       ) => {
         const url = new URL(`https://api.myanimelist.net/v2/${path}`)
         for (const [key, value] of Object.entries(params))
           url.searchParams.set(key, value)
-        return limit(
+        return throttle(
           http.execute(
             HttpClientRequest.get(url.toString(), {
               headers: { "x-mal-client-id": clientId },
@@ -281,8 +279,7 @@ export class MalAnimeService extends Effect.Service<MalAnimeService>()(
           Effect.catchIf(
             (error) =>
               HttpClientError.isHttpClientError(error.cause) &&
-              error.cause._tag === "ResponseError" &&
-              error.cause.response.status === 404,
+              error.cause.response?.status === 404,
             () => Effect.succeed(null)
           )
         )
@@ -333,7 +330,7 @@ export class MalAnimeService extends Effect.Service<MalAnimeService>()(
         pageNumber: number,
         perPage: number
       ) {
-        const now = new Date()
+        const now = DateTime.toDateUtc(yield* DateTime.now)
         const offset = String((pageNumber - 1) * perPage)
         const response =
           category === "seasonal"
@@ -384,4 +381,9 @@ export class MalAnimeService extends Effect.Service<MalAnimeService>()(
       return { getDetail, getRecommendations, getDiscovery, search }
     }),
   }
-) {}
+) {
+  static readonly layer = Layer.effect(
+    MalAnimeService,
+    MalAnimeService.make
+  ).pipe(Layer.provide([FetchHttpClient.layer, throttleStoreLayer]))
+}

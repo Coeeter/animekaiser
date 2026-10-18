@@ -1,5 +1,5 @@
 import type { KaiserExecutor } from "@animekaiser/db"
-import { Database, friendship, profile, user } from "@animekaiser/db"
+import { Database, friendship, profile, thrownBy, user } from "@animekaiser/db"
 import type {
   FriendRelation,
   SocialUser,
@@ -7,7 +7,10 @@ import type {
 } from "@animekaiser/domain"
 import { SocialOperationError } from "@animekaiser/domain"
 import { and, eq, gt, inArray, like, ne, or, sql } from "drizzle-orm"
+import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
+import * as Layer from "effect/Layer"
+import * as Schema from "effect/Schema"
 
 type FriendshipRow = typeof friendship.$inferSelect
 
@@ -67,29 +70,27 @@ const findRow = async (ex: KaiserExecutor, left: string, right: string) => {
   return row ?? null
 }
 
-export class SocialService extends Effect.Service<SocialService>()(
+export class SocialService extends Context.Service<SocialService>()(
   "@animekaiser/core/SocialService",
   {
-    effect: Effect.gen(function* () {
+    make: Effect.gen(function* () {
       const database = yield* Database
 
       const transact = <T>(fn: (tx: KaiserExecutor) => Promise<T>) =>
         database
           .execute((db) => db.transaction((tx) => fn(tx)))
           .pipe(
-            Effect.catchAll((error) =>
-              error.cause instanceof SocialOperationError
-                ? Effect.fail(error.cause)
-                : Effect.logError(
-                    "[Social] Database operation failed",
-                    error
-                  ).pipe(
-                    Effect.zipRight(
-                      Effect.fail(
-                        fail("unavailable", "Something went wrong. Try again.")
-                      )
-                    )
-                  )
+            Effect.catchFilter(
+              thrownBy(Schema.is(SocialOperationError)),
+              Effect.fail
+            ),
+            Effect.tapErrorTag("DatabaseError", (error) =>
+              Effect.logError("[Social] Database operation failed", error)
+            ),
+            Effect.catchTag("DatabaseError", () =>
+              Effect.fail(
+                fail("unavailable", "Something went wrong. Try again.")
+              )
             )
           )
 
@@ -340,4 +341,6 @@ export class SocialService extends Effect.Service<SocialService>()(
       return { search, overview, relation, sendRequest, respond, remove }
     }),
   }
-) {}
+) {
+  static readonly layer = Layer.effect(SocialService, SocialService.make)
+}

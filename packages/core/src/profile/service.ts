@@ -1,7 +1,9 @@
 import { Database, profile, user } from "@animekaiser/db"
 import { ProfileOperationError, UserPreferences } from "@animekaiser/domain"
 import { eq, inArray } from "drizzle-orm"
+import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
+import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import * as Schema from "effect/Schema"
 import { usernameCandidates, usernameFromEmail } from "./username"
@@ -38,11 +40,10 @@ const emptyProfile = {
   onboarded: true,
 } as const
 
-export class ProfileService extends Effect.Service<ProfileService>()(
+export class ProfileService extends Context.Service<ProfileService>()(
   "@animekaiser/core/ProfileService",
   {
-    accessors: true,
-    effect: Effect.gen(function* () {
+    make: Effect.gen(function* () {
       const database = yield* Database
 
       const loadByUserId = Effect.fn("ProfileService.loadByUserId")(function* (
@@ -67,7 +68,7 @@ export class ProfileService extends Effect.Service<ProfileService>()(
             )
           )
 
-        return Option.fromNullable(rows[0])
+        return Option.fromNullishOr(rows[0])
       })
 
       const loadByUsername = Effect.fn("ProfileService.loadByUsername")(
@@ -91,7 +92,7 @@ export class ProfileService extends Effect.Service<ProfileService>()(
               )
             )
 
-          return Option.fromNullable(rows[0])
+          return Option.fromNullishOr(rows[0])
         }
       )
 
@@ -263,9 +264,9 @@ export class ProfileService extends Effect.Service<ProfileService>()(
             )
           const stored = rows.at(0)?.preferences
           if (stored == null) return null
-          return yield* Schema.decodeUnknown(UserPreferences)(stored).pipe(
-            Effect.orElseSucceed(() => null)
-          )
+          return yield* Schema.decodeUnknownEffect(UserPreferences)(
+            stored
+          ).pipe(Effect.orElseSucceed(() => null))
         }
       )
 
@@ -273,7 +274,7 @@ export class ProfileService extends Effect.Service<ProfileService>()(
       // here must not send them back through it.
       const updatePreferences = Effect.fn("ProfileService.updatePreferences")(
         function* (userId: string, preferences: UserPreferences) {
-          const encoded = yield* Schema.encode(UserPreferences)(
+          const encoded = yield* Schema.encodeEffect(UserPreferences)(
             preferences
           ).pipe(Effect.orDie)
           yield* database
@@ -408,4 +409,6 @@ export class ProfileService extends Effect.Service<ProfileService>()(
       }
     }),
   }
-) {}
+) {
+  static readonly layer = Layer.effect(ProfileService, ProfileService.make)
+}

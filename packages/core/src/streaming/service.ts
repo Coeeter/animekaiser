@@ -10,7 +10,9 @@ import type {
 } from "@animekaiser/domain"
 import { StreamingUnavailableError } from "@animekaiser/domain"
 import { and, eq } from "drizzle-orm"
+import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
+import * as Layer from "effect/Layer"
 import type { EpisodeMetadata } from "../anime"
 import { AnimeService } from "../anime"
 import { StreamingClient } from "../streaming-client"
@@ -41,12 +43,10 @@ const withMetadata = (
 const metadataByNumber = (episodes: ReadonlyArray<EpisodeMetadata>) =>
   new Map(episodes.map((item) => [item.number, item]))
 
-export class StreamingService extends Effect.Service<StreamingService>()(
+export class StreamingService extends Context.Service<StreamingService>()(
   "@animekaiser/core/StreamingService",
   {
-    accessors: true,
-    dependencies: [AnimeService.Default],
-    effect: Effect.gen(function* () {
+    make: Effect.gen(function* () {
       const animeService = yield* AnimeService
       const streaming = yield* StreamingClient
       const database = yield* Database
@@ -129,7 +129,7 @@ export class StreamingService extends Effect.Service<StreamingService>()(
           )
           return episodes
         }).pipe(
-          Effect.catchAll((error) =>
+          Effect.catch((error) =>
             Effect.succeed({
               provider,
               label: entryLabel,
@@ -275,4 +275,9 @@ export class StreamingService extends Effect.Service<StreamingService>()(
       }
     }),
   }
-) {}
+) {
+  static readonly layer = Layer.effect(
+    StreamingService,
+    StreamingService.make
+  ).pipe(Layer.provide(AnimeService.layer))
+}

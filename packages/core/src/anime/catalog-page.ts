@@ -18,9 +18,12 @@ export const catalogPageSchema = (request: AnimeCatalogRequest) => {
 
   // The complete catalog cannot be empty. Treat this as a provider failure,
   // including when reading old cache entries, while preserving real no-matches.
-  return AnimePage.pipe(
-    Schema.filter((page) => !unfilteredFirstPage || page.items.length > 0, {
-      message: () => "The unfiltered anime catalog returned no titles.",
-    })
+  return AnimePage.check(
+    Schema.makeFilter(
+      (page) =>
+        !unfilteredFirstPage ||
+        page.items.length > 0 ||
+        "The unfiltered anime catalog returned no titles."
+    )
   )
 }

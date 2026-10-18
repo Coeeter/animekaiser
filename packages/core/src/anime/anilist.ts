@@ -13,13 +13,20 @@ import {
   AnimeDetail as AnimeDetailSchema,
   AnimePage as AnimePageSchema,
 } from "@animekaiser/domain"
-import * as FetchHttpClient from "@effect/platform/FetchHttpClient"
-import * as HttpClient from "@effect/platform/HttpClient"
-import * as HttpClientRequest from "@effect/platform/HttpClientRequest"
-import * as HttpClientResponse from "@effect/platform/HttpClientResponse"
+import * as Clock from "effect/Clock"
+import * as Context from "effect/Context"
+import * as DateTime from "effect/DateTime"
 import * as Effect from "effect/Effect"
-import * as RateLimiter from "effect/RateLimiter"
+import * as FetchHttpClient from "effect/http/FetchHttpClient"
+import * as HttpClient from "effect/http/HttpClient"
+import * as HttpClientRequest from "effect/http/HttpClientRequest"
+import * as HttpClientResponse from "effect/http/HttpClientResponse"
+import * as Layer from "effect/Layer"
+import * as Ref from "effect/Ref"
 import * as Schema from "effect/Schema"
+import * as Semaphore from "effect/Semaphore"
+import { withoutTracePropagation } from "../http"
+import { makeThrottle, throttleStoreLayer } from "../throttle"
 
 export class AniListRequestError extends Schema.TaggedError<AniListRequestError>()(
   "AniListRequestError",
@@ -37,7 +44,7 @@ export const logAniListRateLimit =
         })
       : Effect.void
 
-const PositiveInt = Schema.Int.pipe(Schema.positive())
+const PositiveInt = Schema.Int.check(Schema.isGreaterThan(0))
 const NullableString = Schema.NullOr(Schema.String)
 const NullableInt = Schema.NullOr(Schema.Int)
 
@@ -62,15 +69,15 @@ const AniListNextEpisode = Schema.Struct({
   airingAt: PositiveInt,
 })
 
-const AniListMediaStatus = Schema.Literal(
+const AniListMediaStatus = Schema.Literals([
   "FINISHED",
   "RELEASING",
   "NOT_YET_RELEASED",
   "CANCELLED",
-  "HIATUS"
-)
+  "HIATUS",
+])
 
-const AniListMediaFormat = Schema.Literal(
+const AniListMediaFormat = Schema.Literals([
   "TV",
   "TV_SHORT",
   "MOVIE",
@@ -80,13 +87,13 @@ const AniListMediaFormat = Schema.Literal(
   "MUSIC",
   "MANGA",
   "NOVEL",
-  "ONE_SHOT"
-)
+  "ONE_SHOT",
+])
 
 const AniListMedia = Schema.Struct({
   id: PositiveInt,
   idMal: Schema.NullOr(PositiveInt),
-  type: Schema.optional(Schema.NullOr(Schema.Literal("ANIME", "MANGA"))),
+  type: Schema.optional(Schema.NullOr(Schema.Literals(["ANIME", "MANGA"]))),
   title: Schema.NullOr(AniListTitle),
   format: Schema.NullOr(AniListMediaFormat),
   status: Schema.NullOr(AniListMediaStatus),
@@ -98,7 +105,9 @@ const AniListMedia = Schema.Struct({
   averageScore: NullableInt,
   popularity: NullableInt,
   trending: NullableInt,
-  season: Schema.NullOr(Schema.Literal("WINTER", "SPRING", "SUMMER", "FALL")),
+  season: Schema.NullOr(
+    Schema.Literals(["WINTER", "SPRING", "SUMMER", "FALL"])
+  ),
   seasonYear: NullableInt,
   nextAiringEpisode: Schema.NullOr(AniListNextEpisode),
   isAdult: Schema.NullOr(Schema.Boolean),
@@ -602,7 +611,7 @@ const decodeDetail = (media: typeof AniListDetailMedia.Type) => {
       link ? [{ site: link.site, url: link.url, type: link.type }] : []
     ),
   }
-  return Schema.decode(AnimeDetailSchema)(detail).pipe(
+  return Schema.decodeEffect(AnimeDetailSchema)(detail).pipe(
     Effect.mapError(
       (cause) =>
         new AniListRequestError({
@@ -660,83 +669,71 @@ export type AnimeCatalogRequest = {
   studio?: string
 }
 
-export class AniListAnimeService extends Effect.Service<AniListAnimeService>()(
+export class AniListAnimeService extends Context.Service<AniListAnimeService>()(
   "@animekaiser/core/AniListAnimeService",
   {
-    accessors: true,
-    dependencies: [FetchHttpClient.layer],
-    scoped: Effect.gen(function* () {
-      const http = (yield* HttpClient.HttpClient).pipe(
-        HttpClient.withTracerPropagation(false)
-      )
+    make: Effect.gen(function* () {
+      const http = (yield* HttpClient.HttpClient).pipe(withoutTracePropagation)
 
       // AniList limits per IP: 30 req/min while it is "degraded" (its
       // X-RateLimit-Remaining header still reports the normal 90), plus an
       // undocumented burst limiter. Every catalog request goes through one
       // queue that stays under both.
-      const perMinute = yield* RateLimiter.make({
-        limit: 25,
-        interval: "1 minute",
-      })
-      const spacing = yield* RateLimiter.make({
-        limit: 1,
-        interval: "400 millis",
-      })
-      const inFlight = yield* Effect.makeSemaphore(2)
-      const throttle = <A, E>(effect: Effect.Effect<A, E>) =>
-        perMinute(spacing(inFlight.withPermits(1)(effect)))
-
-      let blockedUntil = 0
+      const throttle = yield* makeThrottle([
+        { key: "anilist:minute", limit: 25, window: "1 minute" },
+        { key: "anilist:spacing", limit: 1, window: "400 millis" },
+      ])
+      const inFlight = yield* Semaphore.make(2)
+      const blockedUntil = yield* Ref.make(0)
 
       const trackRateLimit = (
         response: HttpClientResponse.HttpClientResponse
       ) =>
-        Effect.sync(() => {
+        Effect.gen(function* () {
           if (response.status !== 429) return
+          const now = yield* Clock.currentTimeMillis
           const reset = Number(response.headers["x-ratelimit-reset"])
           const retryAfter = Number(response.headers["retry-after"])
-          blockedUntil = Number.isFinite(reset)
-            ? reset * 1000
-            : Date.now() +
-              (Number.isFinite(retryAfter) ? retryAfter : 60) * 1000
+          yield* Ref.set(
+            blockedUntil,
+            Number.isFinite(reset)
+              ? reset * 1000
+              : now + (Number.isFinite(retryAfter) ? retryAfter : 60) * 1000
+          )
         })
 
-      const request = <TValue, TEncoded>(
-        schema: Schema.Schema<TValue, TEncoded>,
+      const request = Effect.fnUntraced(function* <TValue, TEncoded>(
+        schema: Schema.Codec<TValue, TEncoded>,
         query: string,
         variables: object
-      ) =>
-        Effect.suspend(() =>
-          Date.now() < blockedUntil
-            ? Effect.fail(
-                new AniListRequestError({
-                  message: "AniList is rate limiting us.",
-                })
+      ) {
+        if ((yield* Clock.currentTimeMillis) < (yield* Ref.get(blockedUntil))) {
+          return yield* new AniListRequestError({
+            message: "AniList is rate limiting us.",
+          })
+        }
+        return yield* HttpClientRequest.post("https://graphql.anilist.co").pipe(
+          HttpClientRequest.bodyJson({ query, variables }),
+          Effect.flatMap((graphqlRequest) =>
+            throttle(
+              inFlight.withPermits(1)(
+                http.execute(graphqlRequest).pipe(Effect.timeout("15 seconds"))
               )
-            : throttle(
-                http
-                  .execute(
-                    HttpClientRequest.post("https://graphql.anilist.co", {
-                      headers: { "content-type": "application/json" },
-                    }).pipe(
-                      HttpClientRequest.bodyUnsafeJson({ query, variables })
-                    )
-                  )
-                  .pipe(Effect.timeout("15 seconds"))
-              ).pipe(
-                Effect.tap(trackRateLimit),
-                Effect.tap(logAniListRateLimit("catalog")),
-                Effect.flatMap(HttpClientResponse.filterStatusOk),
-                Effect.flatMap(HttpClientResponse.schemaBodyJson(schema)),
-                Effect.mapError(
-                  (cause) =>
-                    new AniListRequestError({
-                      message: "AniList request failed.",
-                      cause,
-                    })
-                )
-              )
+            )
+          ),
+          Effect.tap(trackRateLimit),
+          Effect.tap(logAniListRateLimit("catalog")),
+          Effect.flatMap(HttpClientResponse.filterStatusOk),
+          Effect.flatMap(HttpClientResponse.schemaBodyJson(schema)),
+          Effect.mapError(
+            (cause) =>
+              new AniListRequestError({
+                message: "AniList request failed.",
+                cause,
+              })
+          )
         )
+      })
 
       const getCatalog = Effect.fn("AniListAnimeService.getCatalog")(function* (
         input: AnimeCatalogRequest
@@ -806,7 +803,7 @@ export class AniListAnimeService extends Effect.Service<AniListAnimeService>()(
           page: number,
           perPage: number
         ) {
-          const now = new Date()
+          const now = DateTime.toDateUtc(yield* DateTime.now)
           const season = currentSeason(now)
           const requestInput: AnimeCatalogRequest = {
             page,
@@ -881,7 +878,7 @@ export class AniListAnimeService extends Effect.Service<AniListAnimeService>()(
           })
         }
         const recommendations = response.data?.Media?.recommendations
-        return yield* Schema.decode(AnimePageSchema)(
+        return yield* Schema.decodeEffect(AnimePageSchema)(
           pageFromMedia(
             (recommendations?.nodes ?? []).map(
               (node) => node?.mediaRecommendation ?? null
@@ -929,7 +926,7 @@ export class AniListAnimeService extends Effect.Service<AniListAnimeService>()(
       )
 
       const getHome = Effect.fn("AniListAnimeService.getHome")(function* () {
-        const now = new Date()
+        const now = DateTime.toDateUtc(yield* DateTime.now)
         const response = yield* request(AniListHomeResponse, homeQuery, {
           season: currentSeason(now),
           seasonYear: now.getUTCFullYear(),
@@ -1035,4 +1032,9 @@ export class AniListAnimeService extends Effect.Service<AniListAnimeService>()(
       }
     }),
   }
-) {}
+) {
+  static readonly layer = Layer.effect(
+    AniListAnimeService,
+    AniListAnimeService.make
+  ).pipe(Layer.provide([FetchHttpClient.layer, throttleStoreLayer]))
+}

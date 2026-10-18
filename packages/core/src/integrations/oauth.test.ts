@@ -22,7 +22,7 @@ test("stores OAuth state under the returned id and consumes it once", async () =
         }),
     })
   )
-  const live = ExternalListOAuthStateStore.Default.pipe(Layer.provide(storage))
+  const live = ExternalListOAuthStateStore.layer.pipe(Layer.provide(storage))
   const state = {
     callbackURL: "https://kaiser.test/settings",
     codeVerifier: "verifier",

@@ -14,7 +14,9 @@ import type {
   WatchHistoryStatus,
 } from "@animekaiser/domain"
 import { and, desc, eq, gte, inArray, max, sql } from "drizzle-orm"
+import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
+import * as Layer from "effect/Layer"
 import * as Schema from "effect/Schema"
 import { AnimeService } from "../anime"
 
@@ -79,12 +81,10 @@ const toEntry = (row: HistoryRow) => ({
   updatedAt: row.updatedAt,
 })
 
-export class WatchHistoryService extends Effect.Service<WatchHistoryService>()(
+export class WatchHistoryService extends Context.Service<WatchHistoryService>()(
   "@animekaiser/core/WatchHistoryService",
   {
-    accessors: true,
-    dependencies: [AnimeService.Default],
-    effect: Effect.gen(function* () {
+    make: Effect.gen(function* () {
       const database = yield* Database
       const animeService = yield* AnimeService
 
@@ -542,4 +542,9 @@ export class WatchHistoryService extends Effect.Service<WatchHistoryService>()(
       }
     }),
   }
-) {}
+) {
+  static readonly layer = Layer.effect(
+    WatchHistoryService,
+    WatchHistoryService.make
+  ).pipe(Layer.provide(AnimeService.layer))
+}

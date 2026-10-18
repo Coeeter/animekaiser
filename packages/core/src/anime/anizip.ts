@@ -1,9 +1,12 @@
-import * as FetchHttpClient from "@effect/platform/FetchHttpClient"
-import * as HttpClient from "@effect/platform/HttpClient"
-import * as HttpClientRequest from "@effect/platform/HttpClientRequest"
-import * as HttpClientResponse from "@effect/platform/HttpClientResponse"
+import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
+import * as FetchHttpClient from "effect/http/FetchHttpClient"
+import * as HttpClient from "effect/http/HttpClient"
+import * as HttpClientRequest from "effect/http/HttpClientRequest"
+import * as HttpClientResponse from "effect/http/HttpClientResponse"
+import * as Layer from "effect/Layer"
 import * as Schema from "effect/Schema"
+import { withoutTracePropagation } from "../http"
 
 export class AniZipRequestError extends Schema.TaggedError<AniZipRequestError>()(
   "AniZipRequestError",
@@ -11,7 +14,7 @@ export class AniZipRequestError extends Schema.TaggedError<AniZipRequestError>()
 ) {}
 
 export const EpisodeMetadata = Schema.Struct({
-  number: Schema.Int.pipe(Schema.positive()),
+  number: Schema.Int.check(Schema.isGreaterThan(0)),
   title: Schema.NullOr(Schema.String),
   overview: Schema.NullOr(Schema.String),
   image: Schema.NullOr(Schema.String),
@@ -21,9 +24,7 @@ export type EpisodeMetadata = typeof EpisodeMetadata.Type
 
 const AniZipEpisode = Schema.Struct({
   title: Schema.optional(
-    Schema.NullOr(
-      Schema.Record({ key: Schema.String, value: Schema.NullOr(Schema.String) })
-    )
+    Schema.NullOr(Schema.Record(Schema.String, Schema.NullOr(Schema.String)))
   ),
   overview: Schema.optional(Schema.NullOr(Schema.String)),
   image: Schema.optional(Schema.NullOr(Schema.String)),
@@ -44,7 +45,7 @@ export type AniZipData = typeof AniZipData.Type
 const AniZipMappings = Schema.Struct({
   images: Schema.optional(Schema.NullOr(Schema.Array(AniZipImage))),
   episodes: Schema.optional(
-    Schema.NullOr(Schema.Record({ key: Schema.String, value: AniZipEpisode }))
+    Schema.NullOr(Schema.Record(Schema.String, AniZipEpisode))
   ),
 })
 
@@ -83,15 +84,11 @@ export const aniZipData = (
   fanart: imageOf(mappings, "Fanart"),
 })
 
-export class AniZipService extends Effect.Service<AniZipService>()(
+export class AniZipService extends Context.Service<AniZipService>()(
   "@animekaiser/core/AniZipService",
   {
-    accessors: true,
-    dependencies: [FetchHttpClient.layer],
-    effect: Effect.gen(function* () {
-      const http = (yield* HttpClient.HttpClient).pipe(
-        HttpClient.withTracerPropagation(false)
-      )
+    make: Effect.gen(function* () {
+      const http = (yield* HttpClient.HttpClient).pipe(withoutTracePropagation)
 
       const getData = Effect.fn("AniZipService.getData")(function* (
         malId: number
@@ -120,4 +117,8 @@ export class AniZipService extends Effect.Service<AniZipService>()(
       return { getData }
     }),
   }
-) {}
+) {
+  static readonly layer = Layer.effect(AniZipService, AniZipService.make).pipe(
+    Layer.provide(FetchHttpClient.layer)
+  )
+}

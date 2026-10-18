@@ -6,8 +6,11 @@ import * as Cause from "effect/Cause"
 import * as Context from "effect/Context"
 import * as Data from "effect/Data"
 import * as Effect from "effect/Effect"
+import * as Filter from "effect/Filter"
 import * as Layer from "effect/Layer"
+import type * as Predicate from "effect/Predicate"
 import * as Queue from "effect/Queue"
+import * as Result from "effect/Result"
 import type { Notification } from "pg"
 import { escapeIdentifier, DatabaseError as PgDatabaseError, Pool } from "pg"
 import * as schema from "./schema"
@@ -61,6 +64,15 @@ export class DatabaseMigrationError extends Data.TaggedError(
 )<{
   cause: unknown
 }> {}
+
+// Domain errors thrown inside a query callback reach the caller as a
+// DatabaseError cause; this filter moves them back into the error channel.
+export const thrownBy = <E>(
+  refinement: Predicate.Refinement<unknown, E>
+): Filter.Filter<DatabaseError, E, DatabaseError> =>
+  Filter.make((error) =>
+    refinement(error.cause) ? Result.succeed(error.cause) : Result.fail(error)
+  )
 
 const toDatabaseError = (cause: unknown) => {
   if (cause instanceof PgDatabaseError) {
