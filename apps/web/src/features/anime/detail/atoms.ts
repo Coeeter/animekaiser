@@ -1,6 +1,6 @@
 import type { AnimeItem, LibraryEntry } from "@animekaiser/domain"
-import { Atom } from "@effect-atom/atom-react"
 import * as Effect from "effect/Effect"
+import * as Atom from "effect/reactivity/Atom"
 import { KaiserRpcClient } from "../../../services/api-clients"
 import { sessionAtom } from "../../auth/atoms"
 import { libraryEntriesAtom } from "../../library/atoms"

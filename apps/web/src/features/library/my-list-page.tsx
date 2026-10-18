@@ -45,13 +45,13 @@ import { Skeleton } from "@animekaiser/ui/components/skeleton"
 import { Tabs, TabsList, TabsTrigger } from "@animekaiser/ui/components/tabs"
 import { cn } from "@animekaiser/ui/lib/utils"
 import {
-  Result,
   useAtom,
   useAtomRefresh,
   useAtomSet,
   useAtomValue,
-} from "@effect-atom/atom-react"
+} from "@effect/atom-react"
 import { Link, useNavigate } from "@tanstack/react-router"
+import * as AsyncResult from "effect/reactivity/AsyncResult"
 import * as Schema from "effect/Schema"
 import {
   ArrowDownWideNarrow,
@@ -118,7 +118,7 @@ export function MyListPage({ search }: { search: MyListSearch }) {
   const page = useLastSuccess(result)
   const stale = isStaleResult(result, page)
 
-  const failure = Result.builder(result)
+  const failure = AsyncResult.builder(result)
     .onFailure(() => <DataError onRetry={refresh} />)
     .orNull()
 
@@ -572,7 +572,7 @@ function ImportWatcher({ id, stop }: { id: string; stop: () => void }) {
   const invalidateLibrary = useAtomSet(invalidateLibraryAtom)
 
   useEffect(() => {
-    Result.builder(result)
+    AsyncResult.builder(result)
       .onSuccess((value, state) => {
         if (state.waiting) return
 

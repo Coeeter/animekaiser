@@ -1,7 +1,7 @@
 import type { StreamPlayback } from "@animekaiser/domain"
 import { Button } from "@animekaiser/ui/components/button"
 import { cn } from "@animekaiser/ui/lib/utils"
-import { useAtomSet, useAtomValue } from "@effect-atom/atom-react"
+import { useAtomSet, useAtomValue } from "@effect/atom-react"
 import { Check, Maximize2 } from "lucide-react"
 import { NextAiringNotice } from "../../anime/schedule/next-airing-notice"
 import { episodeLabel, episodeTitle } from "../player-format"

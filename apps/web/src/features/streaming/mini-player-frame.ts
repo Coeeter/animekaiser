@@ -1,5 +1,5 @@
-import { Atom } from "@effect-atom/atom-react"
 import * as Option from "effect/Option"
+import * as Atom from "effect/reactivity/Atom"
 import * as Schema from "effect/Schema"
 
 export const MiniPlayerFrame = Schema.Struct({
@@ -15,7 +15,7 @@ export const miniPlayerMinHeight = 144
 
 export const miniPlayerFrameStorageKey = "kaiser-mini-player-frame"
 
-const StoredMiniPlayerFrame = Schema.parseJson(MiniPlayerFrame)
+const StoredMiniPlayerFrame = Schema.fromJsonString(MiniPlayerFrame)
 const decodeStoredMiniPlayerFrameOption = Schema.decodeUnknownOption(
   StoredMiniPlayerFrame
 )

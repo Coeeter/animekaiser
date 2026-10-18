@@ -1,10 +1,14 @@
-import { Result, useAtomValue } from "@effect-atom/atom-react"
+import { useAtomValue } from "@effect/atom-react"
 import { createFileRoute, Navigate } from "@tanstack/react-router"
+import * as AsyncResult from "effect/reactivity/AsyncResult"
 import * as Schema from "effect/Schema"
 import { watchTargetAtom } from "../features/streaming/atoms"
 import { StreamPlayerPendingPage } from "../features/streaming/player/pending-page"
 
-const PlayMalId = Schema.NumberFromString.pipe(Schema.int(), Schema.positive())
+const PlayMalId = Schema.NumberFromString.check(
+  Schema.isInt(),
+  Schema.isGreaterThan(0)
+)
 
 // Cards only know the anime; the provider episode to play is resolved here so
 // rows do not fetch every show's episode list up front.
@@ -21,7 +25,7 @@ function PlayRoute() {
   const { malId } = Route.useParams()
   const result = useAtomValue(watchTargetAtom({ malId }))
 
-  return Result.builder(result)
+  return AsyncResult.builder(result)
     .onSuccess((target) =>
       target ? (
         <Navigate

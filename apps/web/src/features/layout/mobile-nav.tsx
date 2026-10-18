@@ -14,8 +14,9 @@ import {
   SheetTitle,
 } from "@animekaiser/ui/components/sheet"
 import { cn } from "@animekaiser/ui/lib/utils"
-import { Result, useAtomSet, useAtomValue } from "@effect-atom/atom-react"
+import { useAtomSet, useAtomValue } from "@effect/atom-react"
 import { Link, useLocation } from "@tanstack/react-router"
+import * as AsyncResult from "effect/reactivity/AsyncResult"
 import type { LucideIcon } from "lucide-react"
 import {
   Bookmark,
@@ -243,7 +244,7 @@ function MobileMoreSheet({
   const setSettingsSection = useAtomSet(settingsSectionAtom)
   const setSettingsOpen = useAtomSet(settingsOpenAtom)
 
-  const user = Result.builder(sessionResult)
+  const user = AsyncResult.builder(sessionResult)
     .onSuccess((session) => session?.user ?? null)
     .orNull()
 

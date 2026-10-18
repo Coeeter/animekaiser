@@ -6,7 +6,7 @@ import {
   FieldLabel,
 } from "@animekaiser/ui/components/field"
 import { Spinner } from "@animekaiser/ui/components/spinner"
-import { useAtomSet } from "@effect-atom/atom-react"
+import { useAtomSet } from "@effect/atom-react"
 import { useForm } from "@tanstack/react-form"
 import { Trash2 } from "lucide-react"
 import { useState } from "react"

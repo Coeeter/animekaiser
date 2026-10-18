@@ -1,4 +1,4 @@
-import { useAtomSet, useAtomValue } from "@effect-atom/atom-react"
+import { useAtomSet, useAtomValue } from "@effect/atom-react"
 import type Hls from "hls.js"
 import type { SyntheticEvent } from "react"
 import { useEffect, useRef, useState } from "react"

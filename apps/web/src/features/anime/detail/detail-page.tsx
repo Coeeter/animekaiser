@@ -25,8 +25,9 @@ import {
   TabsTrigger,
 } from "@animekaiser/ui/components/tabs"
 import { cn } from "@animekaiser/ui/lib/utils"
-import { Result, useAtomRefresh, useAtomValue } from "@effect-atom/atom-react"
+import { useAtomRefresh, useAtomValue } from "@effect/atom-react"
 import { Link } from "@tanstack/react-router"
+import * as AsyncResult from "effect/reactivity/AsyncResult"
 import * as Schema from "effect/Schema"
 import { ExternalLink, PlayCircle, Star, ZoomIn } from "lucide-react"
 import type { ReactNode } from "react"
@@ -46,12 +47,12 @@ import { NextAiringNotice } from "../schedule/next-airing-notice"
 import { detailAtom, recommendationsAtom } from "./atoms"
 import { WatchOrderStrip } from "./watch-order-strip"
 
-export const AnimeDetailTab = Schema.Literal(
+export const AnimeDetailTab = Schema.Literals([
   "episodes",
   "relations",
   "recommendations",
-  "details"
-)
+  "details",
+])
 export type AnimeDetailTab = typeof AnimeDetailTab.Type
 
 const decodeAnimeDetailTab = Schema.decodeUnknownSync(AnimeDetailTab)
@@ -108,15 +109,15 @@ export function AnimeDetailPage({
   const sessionResult = useAtomValue(sessionAtom)
   const libraryEntryResult = useAtomValue(libraryEntryAtom(id))
 
-  const isAuthenticated = Result.builder(sessionResult)
+  const isAuthenticated = AsyncResult.builder(sessionResult)
     .onSuccess((session) => session !== null)
     .orElse(() => false)
 
-  const libraryEntry = Result.builder(libraryEntryResult)
+  const libraryEntry = AsyncResult.builder(libraryEntryResult)
     .onSuccess((entry) => entry)
     .orNull()
 
-  return Result.builder(result)
+  return AsyncResult.builder(result)
     .onInitialOrWaiting(() => <AnimeDetailPendingPage />)
     .onFailure(() => (
       <div className="mx-auto w-full max-w-7xl p-4 md:p-6">
@@ -173,7 +174,7 @@ function SeriesDetail({
   const hasYoutubeTrailer = anime.trailer?.site.toLowerCase() === "youtube"
   const bannerSrc = anime.bannerImage ?? anime.coverImage
 
-  const recommendationsState = Result.builder(recommendationsResult)
+  const recommendationsState = AsyncResult.builder(recommendationsResult)
     .onInitialOrWaiting(() => ({ items: null, loading: true, failed: false }))
     .onFailure(() => ({ items: null, loading: false, failed: true }))
     .onSuccess((value) => ({

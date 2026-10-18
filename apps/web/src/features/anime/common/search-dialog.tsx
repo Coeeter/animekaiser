@@ -13,13 +13,13 @@ import {
 import { Skeleton } from "@animekaiser/ui/components/skeleton"
 import { cn } from "@animekaiser/ui/lib/utils"
 import {
-  Result,
   useAtom,
   useAtomMount,
   useAtomSet,
   useAtomValue,
-} from "@effect-atom/atom-react"
+} from "@effect/atom-react"
 import { useNavigate } from "@tanstack/react-router"
+import * as AsyncResult from "effect/reactivity/AsyncResult"
 import type { LucideIcon } from "lucide-react"
 import {
   ArrowRight,
@@ -178,7 +178,7 @@ function PaletteCommands({
   onDone: () => void
 }) {
   const navigate = useNavigate()
-  const signedIn = Result.builder(useAtomValue(sessionAtom))
+  const signedIn = AsyncResult.builder(useAtomValue(sessionAtom))
     .onSuccess((session) => session !== null)
     .orElse(() => false)
   const [titlePreference, setTitlePreference] = useAtom(
@@ -288,7 +288,7 @@ function SearchIdleState({
   const recents = useAtomValue(recentSearchesAtom)
   const clearRecents = useAtomSet(clearRecentSearchesAtom)
   const preference = useAtomValue(animeTitlePreferenceAtom)
-  const trending = Result.builder(useAtomValue(homeAtom))
+  const trending = AsyncResult.builder(useAtomValue(homeAtom))
     .onSuccess((home) => home.trending.slice(0, 6))
     .orElse(() => [])
 
@@ -398,7 +398,7 @@ function SearchResults({
     catalogAtom({ q: query, page: 1, sort: "relevance" }, searchResultLimit)
   )
 
-  return Result.builder(result)
+  return AsyncResult.builder(result)
     .onInitialOrWaiting(() => <SearchResultsPending />)
     .onFailure(() => (
       <CommandEmpty className="py-10">

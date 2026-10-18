@@ -13,15 +13,15 @@ import {
 import { Switch } from "@animekaiser/ui/components/switch"
 import { Textarea } from "@animekaiser/ui/components/textarea"
 import {
-  Result,
   useAtom,
   useAtomRefresh,
   useAtomSet,
   useAtomValue,
-} from "@effect-atom/atom-react"
+} from "@effect/atom-react"
 import { useForm } from "@tanstack/react-form"
 import { useRouter } from "@tanstack/react-router"
 import * as Option from "effect/Option"
+import * as AsyncResult from "effect/reactivity/AsyncResult"
 import * as Schema from "effect/Schema"
 import { UserRound } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
@@ -63,7 +63,7 @@ export function ProfilePanel({ user }: { user: AppUser | null }) {
   const refreshProfile = useAtomRefresh(ownProfileAtom)
   const refreshSession = useAtomRefresh(sessionAtom)
 
-  const profile = Result.builder(profileResult)
+  const profile = AsyncResult.builder(profileResult)
     .onSuccess((value) => value)
     .orNull()
 
@@ -105,7 +105,7 @@ export function ProfilePanel({ user }: { user: AppUser | null }) {
 
   if (!user) return <AuthRequired />
 
-  const profileError = Result.builder(profileResult)
+  const profileError = AsyncResult.builder(profileResult)
     .onFailure(() => <DataError onRetry={refreshProfile} />)
     .orNull()
 

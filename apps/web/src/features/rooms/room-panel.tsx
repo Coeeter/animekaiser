@@ -15,7 +15,7 @@ import {
   TabsTrigger,
 } from "@animekaiser/ui/components/tabs"
 import { cn } from "@animekaiser/ui/lib/utils"
-import { useAtomValue } from "@effect-atom/atom-react"
+import { useAtomValue } from "@effect/atom-react"
 import { Link } from "@tanstack/react-router"
 import {
   DoorOpen,

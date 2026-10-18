@@ -6,11 +6,13 @@ import type {
 import { Button } from "@animekaiser/ui/components/button"
 import { useIsMobile } from "@animekaiser/ui/hooks/use-mobile"
 import { cn } from "@animekaiser/ui/lib/utils"
-import { Atom, Result, useAtomSet, useAtomValue } from "@effect-atom/atom-react"
+import { useAtomSet, useAtomValue } from "@effect/atom-react"
 import { Link, useLocation } from "@tanstack/react-router"
 import * as Cause from "effect/Cause"
 import * as Exit from "effect/Exit"
 import * as Option from "effect/Option"
+import * as AsyncResult from "effect/reactivity/AsyncResult"
+import * as Atom from "effect/reactivity/Atom"
 import { Users } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
 import { toast } from "sonner"
@@ -58,7 +60,7 @@ export const animeMetadataOf = (
 
 export const roomErrorOf = (exit: Exit.Exit<unknown, unknown>) => {
   if (!Exit.isFailure(exit)) return null
-  const failure = Cause.failureOption(exit.cause)
+  const failure = Cause.findErrorOption(exit.cause)
   if (Option.isNone(failure)) return null
   const error = failure.value as Partial<RoomOperationError>
   return error._tag === "RoomOperationError"
@@ -83,8 +85,8 @@ export const roomPlayerHiddenAtom = Atom.family((_roomId: string) =>
 
 const hostGraceMs = 30_000
 
-export const liveOf = (result: Result.Result<RoomLive>) =>
-  Result.isSuccess(result) ? result.value : null
+export const liveOf = <E,>(result: AsyncResult.AsyncResult<RoomLive, E>) =>
+  AsyncResult.isSuccess(result) ? result.value : null
 
 export function RoomSessionHost() {
   const roomId = useAtomValue(activeRoomIdAtom)
@@ -95,11 +97,11 @@ export function RoomSessionHost() {
 function ActiveRoom({ roomId }: { roomId: string }) {
   const live = liveOf(useAtomValue(roomLiveAtom(roomId)))
   const rpcStatus = useAtomValue(rpcConnectionStatusAtom)
-  const clockOffset = Result.getOrElse(
+  const clockOffset = AsyncResult.getOrElse(
     useAtomValue(roomClockOffsetAtom),
     () => 0
   )
-  const session = Result.getOrElse(useAtomValue(sessionAtom), () => null)
+  const session = AsyncResult.getOrElse(useAtomValue(sessionAtom), () => null)
   const connectionId = useAtomValue(roomConnectionIdAtom(roomId))
   const setActiveRoom = useAtomSet(activeRoomIdAtom)
   const setEndedRooms = useAtomSet(endedRoomsAtom)

@@ -6,7 +6,8 @@ import {
   ToggleGroup,
   ToggleGroupItem,
 } from "@animekaiser/ui/components/toggle-group"
-import { Result, useAtomValue } from "@effect-atom/atom-react"
+import { useAtomValue } from "@effect/atom-react"
+import * as AsyncResult from "effect/reactivity/AsyncResult"
 import { Loader2 } from "lucide-react"
 import { useState } from "react"
 import { getAnimeTitle } from "../anime/common/title"
@@ -28,7 +29,7 @@ export function RecapPicker({
   onConfirm: (request: RecapRequest, description: string) => void
 }) {
   const result = useAtomValue(watchOrderAtom(malId))
-  return Result.builder(result)
+  return AsyncResult.builder(result)
     .onInitialOrWaiting(() => (
       <Loader2 className="size-5 animate-spin text-muted-foreground" />
     ))

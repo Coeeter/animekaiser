@@ -5,8 +5,9 @@ import type {
   StreamProviderId,
 } from "@animekaiser/domain"
 import { Button } from "@animekaiser/ui/components/button"
-import { Result, useAtomValue } from "@effect-atom/atom-react"
+import { useAtomValue } from "@effect/atom-react"
 import { Link } from "@tanstack/react-router"
+import * as AsyncResult from "effect/reactivity/AsyncResult"
 import { Users } from "lucide-react"
 import type { ComponentProps } from "react"
 import { useState } from "react"
@@ -25,7 +26,7 @@ type ButtonProps = Pick<
 >
 
 function useSignedIn() {
-  return Result.getOrElse(useAtomValue(sessionAtom), () => null) !== null
+  return AsyncResult.getOrElse(useAtomValue(sessionAtom), () => null) !== null
 }
 
 export function WatchTogetherButton({
@@ -38,7 +39,7 @@ export function WatchTogetherButton({
 }) {
   const signedIn = useSignedIn()
   const preferred = useAtomValue(preferredProviderAtom)
-  const providers = Result.getOrElse(
+  const providers = AsyncResult.getOrElse(
     useAtomValue(streamProvidersAtom),
     () => []
   )

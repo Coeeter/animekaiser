@@ -15,14 +15,10 @@ import {
   TabsList,
   TabsTrigger,
 } from "@animekaiser/ui/components/tabs"
-import {
-  Result,
-  useAtomRefresh,
-  useAtomSet,
-  useAtomValue,
-} from "@effect-atom/atom-react"
+import { useAtomRefresh, useAtomSet, useAtomValue } from "@effect/atom-react"
 import { Link, useNavigate } from "@tanstack/react-router"
 import * as Exit from "effect/Exit"
+import * as AsyncResult from "effect/reactivity/AsyncResult"
 import { Loader2, Plus, Users } from "lucide-react"
 import { useState } from "react"
 import { DataError } from "../../components/data-error"
@@ -70,7 +66,7 @@ const tabs: ReadonlyArray<{
 
 export function RoomsPage() {
   const [createOpen, setCreateOpen] = useState(false)
-  const session = Result.getOrElse(useAtomValue(sessionAtom), () => null)
+  const session = AsyncResult.getOrElse(useAtomValue(sessionAtom), () => null)
   const name = session ? `${displayUsername(session.user)}'s room` : "Our room"
 
   return (
@@ -113,7 +109,7 @@ export function RoomsPage() {
 function RoomList({ tab, empty }: { tab: RoomListTab; empty: string }) {
   const result = useAtomValue(roomListAtom(tab))
   const refresh = useAtomRefresh(roomListAtom(tab))
-  return Result.builder(result)
+  return AsyncResult.builder(result)
     .onInitialOrWaiting(() => (
       <div className="grid gap-3 sm:grid-cols-2">
         {Array.from({ length: 4 }).map((_, index) => (

@@ -1,7 +1,7 @@
 import type { KeyBinding } from "@animekaiser/domain"
 import { Button } from "@animekaiser/ui/components/button"
 import { cn } from "@animekaiser/ui/lib/utils"
-import { useAtomSet, useAtomValue } from "@effect-atom/atom-react"
+import { useAtomSet, useAtomValue } from "@effect/atom-react"
 import { RotateCcw } from "lucide-react"
 import { useEffect, useState } from "react"
 import { toast } from "sonner"

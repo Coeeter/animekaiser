@@ -27,8 +27,9 @@ import {
   TooltipTrigger,
 } from "@animekaiser/ui/components/tooltip"
 import { cn } from "@animekaiser/ui/lib/utils"
-import { Result, useAtomSet, useAtomValue } from "@effect-atom/atom-react"
+import { useAtomSet, useAtomValue } from "@effect/atom-react"
 import { Link, useLocation } from "@tanstack/react-router"
+import * as AsyncResult from "effect/reactivity/AsyncResult"
 import { LogIn, Search, Settings } from "lucide-react"
 import type { ReactNode } from "react"
 import { useEffect, useState } from "react"
@@ -169,7 +170,7 @@ export function AppSidebar({ children }: { children: ReactNode }) {
   const setSettingsOpen = useAtomSet(settingsOpenAtom)
   const sessionResult = useAtomValue(sessionAtom)
 
-  const user = Result.builder(sessionResult)
+  const user = AsyncResult.builder(sessionResult)
     .onSuccess((session) => session?.user ?? null)
     .orNull()
 

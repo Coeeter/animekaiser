@@ -1,5 +1,6 @@
 import type { StreamPlayback } from "@animekaiser/domain"
-import { Result, useAtomValue } from "@effect-atom/atom-react"
+import { useAtomValue } from "@effect/atom-react"
+import * as AsyncResult from "effect/reactivity/AsyncResult"
 import type { PointerEvent } from "react"
 import { useEffect, useState } from "react"
 import { formatTime } from "../player-format"
@@ -172,7 +173,7 @@ export function PlayerTimeline({
   const hoverSegment = segmentAtTime(timelineSegments, hoverTime)
   const hoverSegmentLabel = timelineSegmentLabel(hoverSegment)
   const hoverPreviewPercent = Math.min(Math.max(hoverPercent, 4), 96)
-  const thumbnailCues = Result.getOrElse(
+  const thumbnailCues = AsyncResult.getOrElse(
     useAtomValue(thumbnailCuesAtom(playback.thumbnails)),
     (): ReadonlyArray<ThumbnailCue> => []
   )

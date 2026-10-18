@@ -1,5 +1,5 @@
 import { Button } from "@animekaiser/ui/components/button"
-import { useAtomSet, useAtomValue } from "@effect-atom/atom-react"
+import { useAtomSet, useAtomValue } from "@effect/atom-react"
 import { Link, useRouter } from "@tanstack/react-router"
 import * as Exit from "effect/Exit"
 import { Users } from "lucide-react"

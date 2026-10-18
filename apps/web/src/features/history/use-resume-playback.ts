@@ -1,5 +1,6 @@
 import type { StreamPlayback } from "@animekaiser/domain"
-import { Result, useAtomValue } from "@effect-atom/atom-react"
+import { useAtomValue } from "@effect/atom-react"
+import * as AsyncResult from "effect/reactivity/AsyncResult"
 import type { RefObject } from "react"
 import { useEffect, useRef } from "react"
 import { episodeWatchProgressAtom } from "./atoms"
@@ -21,7 +22,7 @@ export function useResumePlayback({
     episodeWatchProgressAtom(playback.anime.malId, episode)
   )
 
-  const entry = Result.builder(result)
+  const entry = AsyncResult.builder(result)
     .onSuccess((value) => value)
     .orNull()
 

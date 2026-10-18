@@ -1,5 +1,5 @@
 import type { AnimeTitle as AnimeTitleValue } from "@animekaiser/domain"
-import { useAtomValue } from "@effect-atom/atom-react"
+import { useAtomValue } from "@effect/atom-react"
 import type { ReactNode } from "react"
 import {
   animeTitlePreferenceAtom,

@@ -7,8 +7,9 @@ import {
   TabsList,
   TabsTrigger,
 } from "@animekaiser/ui/components/tabs"
-import { Result, useAtomRefresh, useAtomValue } from "@effect-atom/atom-react"
+import { useAtomRefresh, useAtomValue } from "@effect/atom-react"
 import { Link } from "@tanstack/react-router"
+import * as AsyncResult from "effect/reactivity/AsyncResult"
 import { ArrowRight, ChevronLeft, ChevronRight, Sparkles } from "lucide-react"
 import type { ReactNode } from "react"
 import { DataError } from "../../../components/data-error"
@@ -134,7 +135,7 @@ function DiscoverResults({ search }: { search: DiscoverSearch }) {
   const result = useAtomValue(atom)
   const refresh = useAtomRefresh(atom)
 
-  return Result.builder(result)
+  return AsyncResult.builder(result)
     .onInitialOrWaiting(() => <DiscoverResultsPending />)
     .onFailure(() => <DataError onRetry={refresh} />)
     .onSuccess((data) => (

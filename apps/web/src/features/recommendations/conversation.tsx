@@ -6,16 +6,12 @@ import type {
 } from "@animekaiser/domain"
 import { Button } from "@animekaiser/ui/components/button"
 import { Textarea } from "@animekaiser/ui/components/textarea"
-import {
-  Result,
-  useAtomRefresh,
-  useAtomSet,
-  useAtomValue,
-} from "@effect-atom/atom-react"
+import { useAtomRefresh, useAtomSet, useAtomValue } from "@effect/atom-react"
 import { Link } from "@tanstack/react-router"
 import * as Cause from "effect/Cause"
 import * as Exit from "effect/Exit"
 import * as Option from "effect/Option"
+import * as AsyncResult from "effect/reactivity/AsyncResult"
 import { Loader2, Lock, SendHorizontal, Share2, Square } from "lucide-react"
 import type { ReactNode } from "react"
 import { useEffect, useState } from "react"
@@ -38,7 +34,7 @@ import { RecommendationCardView } from "./recommendation-card"
 
 export const aiErrorOf = (exit: Exit.Exit<unknown, unknown>) => {
   if (Exit.isSuccess(exit)) return null
-  const failure = Cause.failureOption(exit.cause)
+  const failure = Cause.findErrorOption(exit.cause)
   return Option.isSome(failure) &&
     (failure.value as { _tag?: string })._tag === "RecommendationOperationError"
     ? (failure.value as RecommendationOperationError)
@@ -86,7 +82,7 @@ export function Conversation({
   scopeLabel?: string
   header?: ReactNode
 }) {
-  const availability = Result.getOrElse(
+  const availability = AsyncResult.getOrElse(
     useAtomValue(aiAvailabilityAtom(roomId ?? "")),
     () => null
   )
@@ -282,9 +278,9 @@ function ThreadMessages({
   const refresh = useAtomRefresh(aiThreadAtom(threadId))
   const stop = useAtomSet(stopAiAtom, { mode: "promiseExit" })
   const share = useAtomSet(shareToRoomAtom, { mode: "promiseExit" })
-  const session = Result.getOrElse(useAtomValue(sessionAtom), () => null)
+  const session = AsyncResult.getOrElse(useAtomValue(sessionAtom), () => null)
   const activeRoom = useAtomValue(activeRoomIdAtom)
-  const thread = Result.isSuccess(result) ? result.value : null
+  const thread = AsyncResult.isSuccess(result) ? result.value : null
   const busy = thread?.busy ?? false
 
   useEffect(() => {
@@ -294,7 +290,7 @@ function ThreadMessages({
   }, [busy, refresh])
 
   if (!thread)
-    return Result.isFailure(result) ? (
+    return AsyncResult.isFailure(result) ? (
       <p className="text-sm text-muted-foreground">
         This conversation couldn't be loaded.
       </p>

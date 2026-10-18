@@ -15,13 +15,9 @@ import {
 } from "@animekaiser/ui/components/empty"
 import { Skeleton } from "@animekaiser/ui/components/skeleton"
 import { cn } from "@animekaiser/ui/lib/utils"
-import {
-  Result,
-  useAtomRefresh,
-  useAtomSet,
-  useAtomValue,
-} from "@effect-atom/atom-react"
+import { useAtomRefresh, useAtomSet, useAtomValue } from "@effect/atom-react"
 import { Link, useNavigate } from "@tanstack/react-router"
+import * as AsyncResult from "effect/reactivity/AsyncResult"
 import {
   CheckCircle2,
   ChevronLeft,
@@ -113,7 +109,7 @@ export function WatchHistoryPage({ search }: { search: WatchHistorySearch }) {
   const page = useLastSuccess(result)
   const stale = isStaleResult(result, page)
 
-  const failure = Result.builder(result)
+  const failure = AsyncResult.builder(result)
     .onFailure(() => <DataError onRetry={refresh} />)
     .orNull()
 

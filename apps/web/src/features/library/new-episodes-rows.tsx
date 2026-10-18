@@ -1,8 +1,9 @@
 import type { LibraryNewEpisode, LibraryNextSeason } from "@animekaiser/domain"
 import { Badge } from "@animekaiser/ui/components/badge"
 import { cn } from "@animekaiser/ui/lib/utils"
-import { Result, useAtomValue } from "@effect-atom/atom-react"
+import { useAtomValue } from "@effect/atom-react"
 import { Link } from "@tanstack/react-router"
+import * as AsyncResult from "effect/reactivity/AsyncResult"
 import { Play } from "lucide-react"
 import { MediaRow } from "../anime/common/anime-scroll-row"
 import { AnimeTitle } from "../anime/common/anime-title"
@@ -47,7 +48,7 @@ const summary = (item: LibraryNewEpisode) => {
 export function PlanToWatchAiringRow() {
   const result = useAtomValue(planningNewEpisodesAtom)
 
-  return Result.builder(result)
+  return AsyncResult.builder(result)
     .onSuccess((items) =>
       items.length === 0 ? null : (
         <MediaRow

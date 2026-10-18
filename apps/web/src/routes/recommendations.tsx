@@ -3,9 +3,9 @@ import * as Schema from "effect/Schema"
 import { RecommendationsPage } from "../features/recommendations/recommendations-page"
 
 const Search = Schema.Struct({
-  thread: Schema.optional(Schema.UUID),
+  thread: Schema.optional(Schema.String.check(Schema.isUUID())),
   seed: Schema.optional(
-    Schema.NumberFromString.pipe(Schema.int(), Schema.positive())
+    Schema.NumberFromString.check(Schema.isInt(), Schema.isGreaterThan(0))
   ),
 })
 

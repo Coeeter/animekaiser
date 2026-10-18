@@ -1,7 +1,7 @@
 import type { RecommendationCard as Card } from "@animekaiser/domain"
 import { Badge } from "@animekaiser/ui/components/badge"
 import { Button } from "@animekaiser/ui/components/button"
-import { useAtomSet } from "@effect-atom/atom-react"
+import { useAtomSet } from "@effect/atom-react"
 import { Link } from "@tanstack/react-router"
 import { BookmarkPlus, Info, Send } from "lucide-react"
 import { toast } from "sonner"

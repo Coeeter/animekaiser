@@ -9,8 +9,9 @@ import {
 import { Skeleton } from "@animekaiser/ui/components/skeleton"
 import { useIsMobile } from "@animekaiser/ui/hooks/use-mobile"
 import { cn } from "@animekaiser/ui/lib/utils"
-import { Result, useAtomValue } from "@effect-atom/atom-react"
+import { useAtomValue } from "@effect/atom-react"
 import { Link } from "@tanstack/react-router"
+import * as AsyncResult from "effect/reactivity/AsyncResult"
 import { CalendarDays, Clock3, Info, Play, Star, Tv } from "lucide-react"
 import type { ComponentPropsWithoutRef, ReactNode } from "react"
 import { forwardRef } from "react"
@@ -260,7 +261,7 @@ export function CardActions({
 function AnimeCardSynopsis({ malId }: { malId: number }) {
   const result = useAtomValue(detailAtom(malId))
 
-  return Result.builder(result)
+  return AsyncResult.builder(result)
     .onInitialOrWaiting(() => (
       <div className="flex flex-col gap-1.5">
         <Skeleton className="h-3 w-full" />

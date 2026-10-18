@@ -1,8 +1,9 @@
 import type { LatestEpisode } from "@animekaiser/domain"
 import { Skeleton } from "@animekaiser/ui/components/skeleton"
 import { cn } from "@animekaiser/ui/lib/utils"
-import { Result, useAtomRefresh, useAtomValue } from "@effect-atom/atom-react"
+import { useAtomRefresh, useAtomValue } from "@effect/atom-react"
 import { Link } from "@tanstack/react-router"
+import * as AsyncResult from "effect/reactivity/AsyncResult"
 import { Clapperboard } from "lucide-react"
 import { DataError } from "../../../components/data-error"
 import { PageHero } from "../../../components/page-hero"
@@ -32,7 +33,7 @@ export function LatestEpisodesPage() {
         title="Latest episodes"
         description="Episodes that aired in the last three days, newest first."
       />
-      {Result.builder(result)
+      {AsyncResult.builder(result)
         .onInitialOrWaiting(() => <LatestEpisodesPending />)
         .onFailure(() => <DataError onRetry={refresh} />)
         .onSuccess((items) =>

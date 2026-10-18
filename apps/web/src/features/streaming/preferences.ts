@@ -5,8 +5,8 @@ import {
   subtitlePreferenceDefaults,
   VideoFit,
 } from "@animekaiser/domain"
-import { Atom } from "@effect-atom/atom-react"
 import * as Option from "effect/Option"
+import * as Atom from "effect/reactivity/Atom"
 import * as Schema from "effect/Schema"
 
 export {
@@ -36,7 +36,7 @@ export const defaultPlayerPreferences: PlayerPreferences = {
 
 export const playerPreferencesStorageKey = "kaiser-player-preferences"
 
-const StoredPlayerPreferences = Schema.parseJson(PlayerPreferences)
+const StoredPlayerPreferences = Schema.fromJsonString(PlayerPreferences)
 const decodeStoredPlayerPreferencesOption = Schema.decodeUnknownOption(
   StoredPlayerPreferences
 )

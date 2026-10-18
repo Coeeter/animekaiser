@@ -3,14 +3,10 @@ import { GuestDisplayName } from "@animekaiser/domain"
 import { Button } from "@animekaiser/ui/components/button"
 import { Input } from "@animekaiser/ui/components/input"
 import { Label } from "@animekaiser/ui/components/label"
-import {
-  Result,
-  useAtomRefresh,
-  useAtomSet,
-  useAtomValue,
-} from "@effect-atom/atom-react"
+import { useAtomRefresh, useAtomSet, useAtomValue } from "@effect/atom-react"
 import { Link, useNavigate } from "@tanstack/react-router"
 import * as Exit from "effect/Exit"
+import * as AsyncResult from "effect/reactivity/AsyncResult"
 import * as Schema from "effect/Schema"
 import { Loader2, Search, Sparkles, Users } from "lucide-react"
 import type { ReactNode } from "react"
@@ -112,7 +108,7 @@ function AdmissionLoader({
   const admission = useAtomValue(roomAdmissionAtom({ roomId, inviteToken }))
   const refresh = useAtomRefresh(roomAdmissionAtom({ roomId, inviteToken }))
 
-  return Result.builder(admission)
+  return AsyncResult.builder(admission)
     .onInitialOrWaiting(() => <RoomPending />)
     .onFailure(() => (
       <div className="mx-auto w-full max-w-xl p-4 md:p-8">
@@ -300,7 +296,7 @@ function Admission({
   admission: RoomAdmission
   inviteToken: string | undefined
 }) {
-  const session = Result.getOrElse(useAtomValue(sessionAtom), () => null)
+  const session = AsyncResult.getOrElse(useAtomValue(sessionAtom), () => null)
   const join = useAtomSet(joinRoomAtom, { mode: "promiseExit" })
   const setActiveRoom = useAtomSet(activeRoomIdAtom)
   const [joining, setJoining] = useState(false)

@@ -1,11 +1,12 @@
+import * as Effect from "effect/Effect"
 import * as Schema from "effect/Schema"
 
-export const OnboardingStep = Schema.Literal(
+export const OnboardingStep = Schema.Literals([
   "username",
   "connect",
   "import",
-  "done"
-)
+  "done",
+])
 export type OnboardingStep = typeof OnboardingStep.Type
 
 export const onboardingSteps: ReadonlyArray<{
@@ -25,7 +26,9 @@ export const stepIndex = (step: OnboardingStep) =>
   )
 
 export const WelcomeSearch = Schema.Struct({
-  step: Schema.optionalWith(OnboardingStep, { default: () => "username" }),
+  step: OnboardingStep.pipe(
+    Schema.withDecodingDefaultType(Effect.succeed("username"))
+  ),
 })
 export type WelcomeSearch = typeof WelcomeSearch.Type
 

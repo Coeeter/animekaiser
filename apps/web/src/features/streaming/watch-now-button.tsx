@@ -2,8 +2,9 @@ import type { StreamProviderId } from "@animekaiser/domain"
 import { Button } from "@animekaiser/ui/components/button"
 import { Skeleton } from "@animekaiser/ui/components/skeleton"
 import { cn } from "@animekaiser/ui/lib/utils"
-import { Result, useAtomValue } from "@effect-atom/atom-react"
+import { useAtomValue } from "@effect/atom-react"
 import { Link } from "@tanstack/react-router"
+import * as AsyncResult from "effect/reactivity/AsyncResult"
 import { PlayCircle } from "lucide-react"
 import type { ComponentProps } from "react"
 import { watchTargetAtom } from "./atoms"
@@ -23,7 +24,7 @@ export function WatchNowButton({
 }) {
   const result = useAtomValue(watchTargetAtom({ malId, provider }))
 
-  return Result.builder(result)
+  return AsyncResult.builder(result)
     .onInitialOrWaiting(() => (
       // Caller classNames size to content (w-fit, flex-1), which collapses an
       // empty skeleton, so the placeholder keeps its own dimensions.

@@ -1,9 +1,10 @@
 import type { FriendRelation } from "@animekaiser/domain"
 import { Button } from "@animekaiser/ui/components/button"
-import { Result, useAtomSet, useAtomValue } from "@effect-atom/atom-react"
+import { useAtomSet, useAtomValue } from "@effect/atom-react"
 import * as Cause from "effect/Cause"
 import * as Exit from "effect/Exit"
 import * as Option from "effect/Option"
+import * as AsyncResult from "effect/reactivity/AsyncResult"
 import { Check, Clock, UserPlus } from "lucide-react"
 import { toast } from "sonner"
 import {
@@ -16,7 +17,7 @@ import {
 
 const failed = (exit: Exit.Exit<unknown, { readonly message: string }>) => {
   if (Exit.isSuccess(exit)) return
-  const error = Cause.failureOption(exit.cause)
+  const error = Cause.findErrorOption(exit.cause)
   toast.error(
     Option.isSome(error) ? error.value.message : "Something went wrong."
   )
@@ -103,7 +104,7 @@ export function FriendActionButtons({
 
 export function ProfileFriendButton({ username }: { username: string }) {
   const relation = useAtomValue(friendRelationAtom(username))
-  return Result.builder(relation)
+  return AsyncResult.builder(relation)
     .onSuccess((value) =>
       value ? (
         <FriendActionButtons userId={value.userId} relation={value.relation} />

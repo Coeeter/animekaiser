@@ -1,6 +1,7 @@
 import type { UserPreferences } from "@animekaiser/domain"
-import { Atom, Result } from "@effect-atom/atom-react"
 import * as Effect from "effect/Effect"
+import * as AsyncResult from "effect/reactivity/AsyncResult"
+import * as Atom from "effect/reactivity/Atom"
 import { KaiserRpcClient } from "../../services/api-clients"
 import {
   animeTitlePreferenceAtom,
@@ -23,7 +24,7 @@ const savedPreferencesAtom = KaiserRpcClient.query("GetPreferences", void 0)
 const uploadPreferencesAtom = KaiserRpcClient.runtime
   .fn((preferences: UserPreferences) =>
     Effect.sleep("700 millis").pipe(
-      Effect.zipRight(
+      Effect.andThen(
         Effect.flatMap(KaiserRpcClient, (client) =>
           client("UpdatePreferences", { preferences })
         )
@@ -43,7 +44,9 @@ const lastSyncedAtom = Atom.make<string | null>(null).pipe(Atom.keepAlive)
 // change is uploaded. Signed out, preferences stay in this browser only.
 export const preferencesSyncAtom = Atom.make((get) => {
   const session = get(sessionAtom)
-  const userId = Result.isSuccess(session) ? session.value?.user.id : undefined
+  const userId = AsyncResult.isSuccess(session)
+    ? session.value?.user.id
+    : undefined
   if (!userId) return
 
   const local: UserPreferences = {
@@ -54,7 +57,7 @@ export const preferencesSyncAtom = Atom.make((get) => {
 
   if (get(hydratedForAtom) !== userId) {
     const saved = get(savedPreferencesAtom)
-    if (!Result.isSuccess(saved)) return
+    if (!AsyncResult.isSuccess(saved)) return
     if (saved.value === null) {
       get.set(uploadPreferencesAtom, local)
       get.set(lastSyncedAtom, JSON.stringify(local))

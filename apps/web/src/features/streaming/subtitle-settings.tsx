@@ -1,7 +1,7 @@
 import { Button } from "@animekaiser/ui/components/button"
 import { Switch } from "@animekaiser/ui/components/switch"
 import { cn } from "@animekaiser/ui/lib/utils"
-import { useAtomSet, useAtomValue } from "@effect-atom/atom-react"
+import { useAtomSet, useAtomValue } from "@effect/atom-react"
 import type { CSSProperties } from "react"
 import type { PlayerPreferences } from "./preferences"
 import {

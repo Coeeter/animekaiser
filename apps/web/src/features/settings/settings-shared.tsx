@@ -7,7 +7,7 @@ import {
   EmptyTitle,
 } from "@animekaiser/ui/components/empty"
 import { cn } from "@animekaiser/ui/lib/utils"
-import { useAtomValue } from "@effect-atom/atom-react"
+import { useAtomValue } from "@effect/atom-react"
 import { Link } from "@tanstack/react-router"
 import { LogIn, SearchX } from "lucide-react"
 import type { ReactNode } from "react"

@@ -5,7 +5,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@animekaiser/ui/components/sheet"
-import { useAtom } from "@effect-atom/atom-react"
+import { useAtom } from "@effect/atom-react"
 import { useState } from "react"
 import { assistantLaunchAtom } from "./atoms"
 import { Conversation } from "./conversation"

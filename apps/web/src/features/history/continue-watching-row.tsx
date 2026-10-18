@@ -8,8 +8,9 @@ import {
 } from "@animekaiser/ui/components/hover-card"
 import { Skeleton } from "@animekaiser/ui/components/skeleton"
 import { useIsMobile } from "@animekaiser/ui/hooks/use-mobile"
-import { Result, useAtomValue } from "@effect-atom/atom-react"
+import { useAtomValue } from "@effect/atom-react"
 import { Link } from "@tanstack/react-router"
+import * as AsyncResult from "effect/reactivity/AsyncResult"
 import { Play, Server } from "lucide-react"
 import { CardActions } from "../anime/common/anime-card"
 import { MediaRow } from "../anime/common/anime-scroll-row"
@@ -39,7 +40,7 @@ const remainingLabel = (item: ContinueWatchingItem) => {
 export function ContinueWatchingRow() {
   const result = useAtomValue(continueItemsAtom(12))
 
-  return Result.builder(result)
+  return AsyncResult.builder(result)
     .onInitialOrWaiting(() => <ContinueWatchingPending />)
     .onFailure(() => null)
     .onSuccess((items) =>

@@ -6,8 +6,9 @@ import type {
 } from "@animekaiser/domain"
 import { Button } from "@animekaiser/ui/components/button"
 import { cn } from "@animekaiser/ui/lib/utils"
-import { Result, useAtomSet, useAtomValue } from "@effect-atom/atom-react"
+import { useAtomSet, useAtomValue } from "@effect/atom-react"
 import { Link } from "@tanstack/react-router"
+import * as AsyncResult from "effect/reactivity/AsyncResult"
 import { Info, Play, Plus, ThumbsUp, X } from "lucide-react"
 import { useState } from "react"
 import { AnimeTitle } from "../anime/common/anime-title"
@@ -191,7 +192,7 @@ export function RoomEpisodeChooser({
 }) {
   const select = useAtomSet(selectRoomEpisodeAtom, { mode: "promiseExit" })
   const preferred = useAtomValue(preferredProviderAtom)
-  const providers = Result.getOrElse(
+  const providers = AsyncResult.getOrElse(
     useAtomValue(streamProvidersAtom),
     () => []
   )

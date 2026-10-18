@@ -2,7 +2,7 @@ import type { StreamPlayback } from "@animekaiser/domain"
 import { Button } from "@animekaiser/ui/components/button"
 import { useIsMobile } from "@animekaiser/ui/hooks/use-mobile"
 import { cn } from "@animekaiser/ui/lib/utils"
-import { useAtomSet, useAtomValue } from "@effect-atom/atom-react"
+import { useAtomSet, useAtomValue } from "@effect/atom-react"
 import { Link } from "@tanstack/react-router"
 import {
   ArrowLeft,

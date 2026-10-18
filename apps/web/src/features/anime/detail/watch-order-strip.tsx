@@ -1,6 +1,7 @@
 import { cn } from "@animekaiser/ui/lib/utils"
-import { Result, useAtomValue } from "@effect-atom/atom-react"
+import { useAtomValue } from "@effect/atom-react"
 import { Link } from "@tanstack/react-router"
+import * as AsyncResult from "effect/reactivity/AsyncResult"
 import { CheckCircle2 } from "lucide-react"
 import { AnimeTitle } from "../common/anime-title"
 import { formatAnimeFormat } from "../common/format"
@@ -29,7 +30,7 @@ const centreInStrip = (node: HTMLElement | null) => {
 }
 
 export function WatchOrderStrip({ malId }: { malId: number }) {
-  const items = Result.builder(useAtomValue(watchOrderItemsAtom(malId)))
+  const items = AsyncResult.builder(useAtomValue(watchOrderItemsAtom(malId)))
     .onSuccess((value) => value)
     .orElse(() => [])
 

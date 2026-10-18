@@ -1,12 +1,8 @@
 import { Badge } from "@animekaiser/ui/components/badge"
 import { Button } from "@animekaiser/ui/components/button"
-import {
-  Result,
-  useAtomRefresh,
-  useAtomSet,
-  useAtomValue,
-} from "@effect-atom/atom-react"
+import { useAtomRefresh, useAtomSet, useAtomValue } from "@effect/atom-react"
 import { Link } from "@tanstack/react-router"
+import * as AsyncResult from "effect/reactivity/AsyncResult"
 import { ListRestart, RefreshCw } from "lucide-react"
 import { toast } from "sonner"
 import { DataError } from "../../components/data-error"
@@ -51,7 +47,7 @@ export function SyncActivityPage({ page }: SyncActivitySearch) {
         title="Sync activity"
         description="Review durable outbound changes and retry failed provider updates."
       />
-      {Result.builder(result)
+      {AsyncResult.builder(result)
         .onInitialOrWaiting(() => (
           <div className="h-64 animate-pulse rounded-xl bg-muted" />
         ))

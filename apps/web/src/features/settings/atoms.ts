@@ -1,16 +1,16 @@
-import { Atom } from "@effect-atom/atom-react"
+import * as Atom from "effect/reactivity/Atom"
 import * as Schema from "effect/Schema"
 import { toast } from "sonner"
 
-export const SettingsSection = Schema.Literal(
+export const SettingsSection = Schema.Literals([
   "Account",
   "Profile",
   "General",
   "Playback",
   "Shortcuts",
   "Integrations",
-  "Privacy & data"
-)
+  "Privacy & data",
+])
 export type SettingsSection = typeof SettingsSection.Type
 
 export const settingsOpenAtom = Atom.make(false)

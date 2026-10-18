@@ -1,7 +1,7 @@
 import { useSidebar } from "@animekaiser/ui/components/sidebar"
 import { Skeleton } from "@animekaiser/ui/components/skeleton"
 import { cn } from "@animekaiser/ui/lib/utils"
-import { useAtomValue } from "@effect-atom/atom-react"
+import { useAtomValue } from "@effect/atom-react"
 import { playerPreferencesAtom } from "../preferences"
 import { PlayerShell } from "./player-shell"
 

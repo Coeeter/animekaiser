@@ -10,13 +10,9 @@ import {
 } from "@animekaiser/ui/components/dialog"
 import { Separator } from "@animekaiser/ui/components/separator"
 import { cn } from "@animekaiser/ui/lib/utils"
-import {
-  Result,
-  useAtom,
-  useAtomMount,
-  useAtomValue,
-} from "@effect-atom/atom-react"
+import { useAtom, useAtomMount, useAtomValue } from "@effect/atom-react"
 import { Link } from "@tanstack/react-router"
+import * as AsyncResult from "effect/reactivity/AsyncResult"
 import { LogOut, Search, XIcon } from "lucide-react"
 import { useRef, useState } from "react"
 import { toast } from "sonner"
@@ -76,7 +72,7 @@ export function SettingsDialog() {
   const [query, setQuery] = useAtom(settingsQueryAtom)
   const sessionResult = useAtomValue(sessionAtom)
   const [logoutPending, setLogoutPending] = useState(false)
-  const session = Result.builder(sessionResult)
+  const session = AsyncResult.builder(sessionResult)
     .onSuccess((value) => value)
     .orNull()
   const user: AppUser | null = session?.user ?? null

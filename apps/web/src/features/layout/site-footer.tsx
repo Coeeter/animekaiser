@@ -1,5 +1,6 @@
-import { Result, useAtomValue } from "@effect-atom/atom-react"
+import { useAtomValue } from "@effect/atom-react"
 import { Link } from "@tanstack/react-router"
+import * as AsyncResult from "effect/reactivity/AsyncResult"
 import { sessionAtom } from "../auth/atoms"
 import { mainLinks, personalLinks } from "./nav-links"
 
@@ -22,7 +23,7 @@ const linkClassName =
   "w-fit text-sm text-muted-foreground transition-colors hover:text-foreground"
 
 export function SiteFooter() {
-  const signedIn = Result.builder(useAtomValue(sessionAtom))
+  const signedIn = AsyncResult.builder(useAtomValue(sessionAtom))
     .onSuccess((session) => session !== null)
     .orElse(() => false)
 

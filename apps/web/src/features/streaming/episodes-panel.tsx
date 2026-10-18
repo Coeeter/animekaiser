@@ -27,8 +27,9 @@ import {
 } from "@animekaiser/ui/components/select"
 import { Skeleton } from "@animekaiser/ui/components/skeleton"
 import { cn } from "@animekaiser/ui/lib/utils"
-import { Result, useAtomRefresh, useAtomValue } from "@effect-atom/atom-react"
+import { useAtomRefresh, useAtomValue } from "@effect/atom-react"
 import { Link } from "@tanstack/react-router"
+import * as AsyncResult from "effect/reactivity/AsyncResult"
 import * as Schema from "effect/Schema"
 import {
   ArrowDownUp,
@@ -120,7 +121,7 @@ export function EpisodesPanel({
   onPageChange: (page: number) => void
   onProviderChange: (provider: StreamProviderId) => void
 }) {
-  const providerOptions = Result.getOrElse(
+  const providerOptions = AsyncResult.getOrElse(
     useAtomValue(streamProvidersAtom),
     () => []
   )
@@ -129,7 +130,7 @@ export function EpisodesPanel({
     streamEpisodesAtom(anime.malId, selectedProvider)
   )
 
-  const state = Result.builder(result)
+  const state = AsyncResult.builder(result)
     .onInitialOrWaiting(() => ({ catalog: null, loading: true, failed: false }))
     .onFailure(() => ({ catalog: null, loading: false, failed: true }))
     .onSuccess((value) => ({ catalog: value, loading: false, failed: false }))
@@ -240,7 +241,7 @@ function ProviderEpisodes({
   const progressResult = useAtomValue(
     episodeProgressAtom({ malId: anime.malId, provider: provider.provider })
   )
-  const progressByEpisode = Result.builder(progressResult)
+  const progressByEpisode = AsyncResult.builder(progressResult)
     .onSuccess((value) => value)
     .orElse(() => new Map<number, EpisodeProgress>())
 
@@ -428,7 +429,7 @@ function ProviderAvailability({
   provider: StreamProviderId
 }) {
   const result = useAtomValue(streamAvailabilityAtom(malId))
-  const label = Result.builder(result)
+  const label = AsyncResult.builder(result)
     .onSuccess((items) => {
       const entry = items.find((item) => item.provider === provider)
       if (entry?.status === "unavailable") return "Unavailable"

@@ -6,7 +6,8 @@ import {
   EmptyTitle,
 } from "@animekaiser/ui/components/empty"
 import { Skeleton } from "@animekaiser/ui/components/skeleton"
-import { Result, useAtomRefresh, useAtomValue } from "@effect-atom/atom-react"
+import { useAtomRefresh, useAtomValue } from "@effect/atom-react"
+import * as AsyncResult from "effect/reactivity/AsyncResult"
 import { MonitorPlay } from "lucide-react"
 import type { ReactNode } from "react"
 import { DataError } from "../../components/data-error"
@@ -66,7 +67,7 @@ function ContinueSection() {
       title="Continue watching"
       description="Episodes you started, new episodes of shows you're watching, and the next season of what you just finished."
     >
-      {Result.builder(result)
+      {AsyncResult.builder(result)
         .onInitialOrWaiting(() => <GridPending />)
         .onFailure(() => <DataError onRetry={refresh} />)
         .onSuccess((items) =>
@@ -109,7 +110,7 @@ function ContinueSection() {
 }
 
 function PlanToWatchSection() {
-  const items = Result.builder(useAtomValue(planningNewEpisodesAtom))
+  const items = AsyncResult.builder(useAtomValue(planningNewEpisodesAtom))
     .onSuccess((value) => value)
     .orNull()
 

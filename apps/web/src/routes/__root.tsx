@@ -1,6 +1,6 @@
 import { Toaster } from "@animekaiser/ui/components/sonner"
 import { TooltipProvider } from "@animekaiser/ui/components/tooltip"
-import { useAtomMount } from "@effect-atom/atom-react"
+import { useAtomMount } from "@effect/atom-react"
 import { createRootRoute, Outlet } from "@tanstack/react-router"
 import { DocumentTitle } from "../components/document-title"
 import { RouteErrorPage } from "../components/route-error-page"

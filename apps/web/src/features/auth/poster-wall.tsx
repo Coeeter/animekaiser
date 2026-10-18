@@ -1,6 +1,8 @@
 import { cn } from "@animekaiser/ui/lib/utils"
-import { Atom, Result, useAtomValue } from "@effect-atom/atom-react"
+import { useAtomValue } from "@effect/atom-react"
 import * as Effect from "effect/Effect"
+import * as AsyncResult from "effect/reactivity/AsyncResult"
+import * as Atom from "effect/reactivity/Atom"
 import { homeAtom } from "../anime/home/atoms"
 
 const columnCount = 5
@@ -47,7 +49,7 @@ const posterWallAtom = Atom.make((get) =>
 )
 
 export function PosterWall() {
-  const covers = Result.builder(useAtomValue(posterWallAtom))
+  const covers = AsyncResult.builder(useAtomValue(posterWallAtom))
     .onSuccess((value) => value)
     .orElse((): ReadonlyArray<string> => [])
   const loaded = covers.length > 0

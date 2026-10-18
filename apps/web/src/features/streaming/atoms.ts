@@ -4,9 +4,9 @@ import type {
   StreamEpisode,
   StreamProviderId,
 } from "@animekaiser/domain"
-import { Atom, Result } from "@effect-atom/atom-react"
-import * as Data from "effect/Data"
 import * as Effect from "effect/Effect"
+import * as AsyncResult from "effect/reactivity/AsyncResult"
+import * as Atom from "effect/reactivity/Atom"
 import { KaiserRpcClient } from "../../services/api-clients"
 import { watchOrderAtom } from "../anime/detail/atoms"
 import { libraryProgressOf } from "../library/atoms"
@@ -22,7 +22,7 @@ export const streamProvidersAtom = KaiserRpcClient.query(
 export const providerLabelAtom = Atom.family((provider: StreamProviderId) =>
   Atom.make((get) => {
     const providers = get(streamProvidersAtom)
-    return Result.isSuccess(providers)
+    return AsyncResult.isSuccess(providers)
       ? (providers.value.find((item) => item.id === provider)?.label ??
           provider)
       : provider
@@ -52,7 +52,7 @@ export const episodeChoicesAtom = Atom.family(
   (key: { readonly malId: number; readonly provider: StreamProviderId }) =>
     Atom.make((get) => {
       const requested = get(streamEpisodesAtom(key.malId, key.provider))
-      if (!Result.isSuccess(requested)) return requested
+      if (!AsyncResult.isSuccess(requested)) return requested
       const entry = requested.value.providers.at(0)
       if (entry?.status === "available" && entry.episodes.length > 0)
         return requested
@@ -135,8 +135,7 @@ const watchTargetFamily = Atom.family(
     )
 )
 
-export const watchTargetAtom = (key: WatchTargetKey) =>
-  watchTargetFamily(Data.struct(key))
+export const watchTargetAtom = (key: WatchTargetKey) => watchTargetFamily(key)
 
 export type NextSeason = {
   readonly anime: AnimeItem
@@ -166,8 +165,7 @@ const nextSeasonFamily = Atom.family(({ malId, provider }: NextSeasonKey) =>
   )
 )
 
-export const nextSeasonAtom = (key: NextSeasonKey) =>
-  nextSeasonFamily(Data.struct(key))
+export const nextSeasonAtom = (key: NextSeasonKey) => nextSeasonFamily(key)
 
 export type NextSeasonEpisodes = {
   readonly anime: AnimeItem
@@ -216,4 +214,4 @@ const nextSeasonEpisodesFamily = Atom.family(
 )
 
 export const nextSeasonEpisodesAtom = (key: NextSeasonKey) =>
-  nextSeasonEpisodesFamily(Data.struct(key))
+  nextSeasonEpisodesFamily(key)

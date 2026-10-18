@@ -9,7 +9,7 @@ import {
   TooltipTrigger,
 } from "@animekaiser/ui/components/tooltip"
 import { cn } from "@animekaiser/ui/lib/utils"
-import { useAtom } from "@effect-atom/atom-react"
+import { useAtom } from "@effect/atom-react"
 import { setAnimeTitlePreferenceAtom } from "./title"
 
 export function TitleLanguageToggle({ className }: { className?: string }) {

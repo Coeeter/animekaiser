@@ -1,13 +1,13 @@
 import { ShortcutOverrides } from "@animekaiser/domain"
-import { Atom } from "@effect-atom/atom-react"
 import * as Option from "effect/Option"
+import * as Atom from "effect/reactivity/Atom"
 import * as Schema from "effect/Schema"
 import { matchesAction, resolveShortcuts } from "./shortcuts"
 
 const storageKey = "kaiser-shortcuts"
 
 const decodeStored = Schema.decodeUnknownOption(
-  Schema.parseJson(ShortcutOverrides)
+  Schema.fromJsonString(ShortcutOverrides)
 )
 
 const readStored = (): ShortcutOverrides => {

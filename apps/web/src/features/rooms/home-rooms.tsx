@@ -1,6 +1,7 @@
 import { Button } from "@animekaiser/ui/components/button"
-import { Result, useAtomValue } from "@effect-atom/atom-react"
+import { useAtomValue } from "@effect/atom-react"
 import { Link } from "@tanstack/react-router"
+import * as AsyncResult from "effect/reactivity/AsyncResult"
 import { UserRound, Users } from "lucide-react"
 import { friendsAtom } from "../social/atoms"
 import { activeRoomIdAtom, roomListAtom } from "./atoms"
@@ -9,12 +10,15 @@ import { activeRoomIdAtom, roomListAtom } from "./atoms"
 // something to act on, so it never competes with the hero.
 export function HomeRoomsStrip() {
   const activeRoomId = useAtomValue(activeRoomIdAtom)
-  const mine = Result.getOrElse(useAtomValue(roomListAtom("mine")), () => [])
-  const invitations = Result.getOrElse(
+  const mine = AsyncResult.getOrElse(
+    useAtomValue(roomListAtom("mine")),
+    () => []
+  )
+  const invitations = AsyncResult.getOrElse(
     useAtomValue(roomListAtom("invitations")),
     () => []
   )
-  const requests = Result.getOrElse(useAtomValue(friendsAtom), () => null)
+  const requests = AsyncResult.getOrElse(useAtomValue(friendsAtom), () => null)
     ?.incoming.length
   const active = mine.find((room) => room.id === activeRoomId)
   if (!active && invitations.length === 0 && !requests) return null

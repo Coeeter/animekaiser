@@ -1,11 +1,11 @@
 import {
   RegistryContext,
-  Result,
   useAtomMount,
   useAtomRefresh,
   useAtomValue,
-} from "@effect-atom/atom-react"
+} from "@effect/atom-react"
 import { Navigate, useLocation } from "@tanstack/react-router"
+import * as AsyncResult from "effect/reactivity/AsyncResult"
 import { Loader2 } from "lucide-react"
 import type { ReactNode } from "react"
 import { useContext } from "react"
@@ -40,7 +40,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const refreshSession = useAtomRefresh(sessionAtom)
   const profileResult = useAtomValue(ownProfileAtom)
 
-  const needsOnboarding = Result.builder(profileResult)
+  const needsOnboarding = AsyncResult.builder(profileResult)
     .onSuccess((profile) => !profile.profile.onboarded)
     .orElse(() => false)
 
@@ -50,7 +50,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     return <Navigate to="/welcome" search={{ step: "username" }} replace />
 
   if (isProtectedRoute(location.pathname)) {
-    const element = Result.builder(sessionResult)
+    const element = AsyncResult.builder(sessionResult)
       .onInitialOrWaiting(() => <div className="min-h-svh" />)
       .onFailure(() => (
         <div className="mx-auto w-full max-w-3xl p-4 md:p-6">

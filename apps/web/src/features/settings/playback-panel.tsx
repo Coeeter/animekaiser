@@ -12,7 +12,8 @@ import {
   ToggleGroup,
   ToggleGroupItem,
 } from "@animekaiser/ui/components/toggle-group"
-import { Result, useAtomSet, useAtomValue } from "@effect-atom/atom-react"
+import { useAtomSet, useAtomValue } from "@effect/atom-react"
+import * as AsyncResult from "effect/reactivity/AsyncResult"
 import { streamProvidersAtom } from "../streaming/atoms"
 import {
   playerPreferencesAtom,
@@ -93,7 +94,7 @@ function ProviderSelect() {
   const providers = useAtomValue(streamProvidersAtom)
   const { preferredProvider } = useAtomValue(playerPreferencesAtom)
   const updatePreferences = useAtomSet(updatePlayerPreferencesAtom)
-  const options = Result.isSuccess(providers) ? providers.value : []
+  const options = AsyncResult.isSuccess(providers) ? providers.value : []
   const value = preferredProvider ?? automatic
 
   return (

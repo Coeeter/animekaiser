@@ -6,8 +6,8 @@ import type {
   RoomOperationError,
   RoomState,
 } from "@animekaiser/domain"
-import { Atom } from "@effect-atom/atom-react"
 import * as Effect from "effect/Effect"
+import * as Atom from "effect/reactivity/Atom"
 import * as Schedule from "effect/Schedule"
 import * as Stream from "effect/Stream"
 import { KaiserRpcClient } from "../../services/api-clients"
@@ -204,7 +204,7 @@ export const roomLiveAtom = Atom.family((roomId: string) =>
         )
       )
       const events = watch.pipe(
-        Stream.catchAll((error) =>
+        Stream.catch((error) =>
           error === "reconnect"
             ? Stream.succeed<LiveSignal>({ _tag: "Disconnected" }).pipe(
                 Stream.concat(Stream.fail("reconnect" as const))
@@ -212,15 +212,17 @@ export const roomLiveAtom = Atom.family((roomId: string) =>
             : Stream.succeed<LiveSignal>({ _tag: "Failed", error })
         ),
         Stream.retry(
-          Schedule.exponential("500 millis").pipe(
-            Schedule.either(Schedule.spaced("5 seconds"))
-          )
+          Schedule.min([
+            Schedule.exponential("500 millis"),
+            Schedule.spaced("5 seconds"),
+          ])
         ),
         Stream.orDie
       )
       return events.pipe(
-        Stream.scan(initialLive, (live: RoomLive, signal: LiveSignal) =>
-          reduceLive(live, signal)
+        Stream.scan(
+          () => initialLive,
+          (live: RoomLive, signal: LiveSignal) => reduceLive(live, signal)
         )
       )
     })

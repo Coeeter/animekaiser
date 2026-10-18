@@ -14,7 +14,7 @@ import {
 } from "@animekaiser/ui/components/dropdown-menu"
 import { Switch } from "@animekaiser/ui/components/switch"
 import { cn } from "@animekaiser/ui/lib/utils"
-import { useAtomSet } from "@effect-atom/atom-react"
+import { useAtomSet } from "@effect/atom-react"
 import { MoreHorizontal } from "lucide-react"
 import {
   removeRoomParticipantAtom,

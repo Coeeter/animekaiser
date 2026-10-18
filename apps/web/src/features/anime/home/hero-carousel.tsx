@@ -1,7 +1,7 @@
 import type { AnimeHeroItem } from "@animekaiser/domain"
 import { Button } from "@animekaiser/ui/components/button"
 import { cn } from "@animekaiser/ui/lib/utils"
-import { useAtomValue } from "@effect-atom/atom-react"
+import { useAtomValue } from "@effect/atom-react"
 import { Link } from "@tanstack/react-router"
 import Autoplay from "embla-carousel-autoplay"
 import useEmblaCarousel from "embla-carousel-react"

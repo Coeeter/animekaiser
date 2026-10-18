@@ -1,7 +1,8 @@
 import type { AnimeItem } from "@animekaiser/domain"
 import { cn } from "@animekaiser/ui/lib/utils"
-import { Result, useAtomValue } from "@effect-atom/atom-react"
+import { useAtomValue } from "@effect/atom-react"
 import { Link } from "@tanstack/react-router"
+import * as AsyncResult from "effect/reactivity/AsyncResult"
 import { Star } from "lucide-react"
 import type { RowLink } from "../common/anime-scroll-row"
 import { MediaRow, SectionHeading } from "../common/anime-scroll-row"
@@ -43,7 +44,7 @@ function AnimeMeta({ anime, when }: { anime: AnimeItem; when?: boolean }) {
 export function NewEpisodesRow() {
   const result = useAtomValue(latestEpisodesAtom)
 
-  return Result.builder(result)
+  return AsyncResult.builder(result)
     .onSuccess((items) =>
       items.length === 0 ? null : (
         <MediaRow

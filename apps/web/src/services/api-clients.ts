@@ -1,13 +1,16 @@
 import { createKaiserAuthClient } from "@animekaiser/auth/web"
 import { KaiserRpcs } from "@animekaiser/domain"
-import * as Socket from "@effect/platform/Socket"
-import { RpcClient, RpcSerialization } from "@effect/rpc"
-import * as RpcClientError from "@effect/rpc/RpcClientError"
-import { Atom, AtomRpc, type Registry } from "@effect-atom/atom-react"
 import * as Cause from "effect/Cause"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
+import * as AsyncResult from "effect/reactivity/AsyncResult"
+import * as Atom from "effect/reactivity/Atom"
+import type * as AtomRegistry from "effect/reactivity/AtomRegistry"
+import * as AtomRpc from "effect/reactivity/AtomRpc"
+import { RpcClient, RpcSerialization } from "effect/rpc"
+import * as RpcClientError from "effect/rpc/RpcClientError"
 import * as Schema from "effect/Schema"
+import * as Socket from "effect/socket/Socket"
 
 export const apiUrl = import.meta.env.VITE_API_URL
 
@@ -27,10 +30,16 @@ function setRpcConnectionStatus(status: RpcConnectionStatus) {
 
 const TrackedWebSocketConstructor = Layer.succeed(
   Socket.WebSocketConstructor,
-  (url: string, protocols?: string | Array<string>) => {
+  (url, options) => {
     setRpcConnectionStatus("connecting")
 
-    const socket = new WebSocket(url, protocols)
+    // Browsers take only subprotocols; header options are for server runtimes.
+    const socket = new WebSocket(
+      url,
+      typeof options === "string" || Array.isArray(options)
+        ? options
+        : undefined
+    )
 
     socket.addEventListener("open", () => {
       setTimeout(() => {
@@ -64,27 +73,26 @@ export const rpcConnectionStatusAtom = Atom.make((get) => {
   return rpcConnectionStatus
 }).pipe(Atom.keepAlive)
 
-const RpcFailure = Schema.TaggedStruct("Failure", { cause: Schema.Unknown })
-const decodeRpcFailure = Schema.decodeUnknownOption(RpcFailure)
 const isRpcClientError = Schema.is(RpcClientError.RpcClientError)
 
+// Transport failures (socket, HTTP, worker) recover on reconnect; client
+// defects do not.
 export function isRpcProtocolFailure(value: unknown) {
-  const result = decodeRpcFailure(value)
+  if (!AsyncResult.isAsyncResult(value) || !AsyncResult.isFailure(value))
+    return false
 
-  if (Option.isNone(result) || !Cause.isCause(result.value.cause)) return false
-
-  const failure = Cause.failureOption(result.value.cause)
+  const failure = Cause.findErrorOption(value.cause)
 
   return (
     Option.isSome(failure) &&
     isRpcClientError(failure.value) &&
-    failure.value.reason === "Protocol"
+    failure.value.reason._tag !== "RpcClientDefect"
   )
 }
 
 // Queries that ran while the socket was down cache a failure nothing else retries.
 export const rpcConnectionRecoveryAtom = Atom.family(
-  (registry: Registry.Registry) =>
+  (registry: AtomRegistry.AtomRegistry) =>
     Atom.make((get) => {
       let reconnecting = rpcConnectionStatus !== "connected"
 
@@ -116,7 +124,7 @@ export function navigateAfterAuthChange(href: string) {
   window.location.assign(href)
 }
 
-export class KaiserRpcClient extends AtomRpc.Tag<KaiserRpcClient>()(
+export class KaiserRpcClient extends AtomRpc.Service<KaiserRpcClient>()(
   "KaiserRpcClient",
   {
     group: KaiserRpcs,

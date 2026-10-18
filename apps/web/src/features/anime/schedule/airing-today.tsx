@@ -1,8 +1,9 @@
 import type { AnimeItem } from "@animekaiser/domain"
 import { Skeleton } from "@animekaiser/ui/components/skeleton"
 import { cn } from "@animekaiser/ui/lib/utils"
-import { Result, useAtomValue } from "@effect-atom/atom-react"
+import { useAtomValue } from "@effect/atom-react"
 import { Link } from "@tanstack/react-router"
+import * as AsyncResult from "effect/reactivity/AsyncResult"
 import { Check, Clock3 } from "lucide-react"
 import { SectionHeading } from "../common/anime-scroll-row"
 import { AnimeTitle } from "../common/anime-title"
@@ -38,7 +39,7 @@ export function AiringTodayList() {
         eyebrow="Schedule"
         more={{ to: "/schedule" }}
       />
-      {Result.builder(result)
+      {AsyncResult.builder(result)
         .onSuccess((page) => {
           const items = todaysLineup(page.items).slice(0, 8)
           return items.length === 0 ? (

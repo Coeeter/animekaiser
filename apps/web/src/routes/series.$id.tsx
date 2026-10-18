@@ -1,29 +1,35 @@
 import { StreamProviderId } from "@animekaiser/domain"
 import { createFileRoute, useNavigate } from "@tanstack/react-router"
 import * as Schema from "effect/Schema"
+import * as SchemaTransformation from "effect/SchemaTransformation"
 import {
   AnimeDetailPage,
   AnimeDetailPendingPage,
   AnimeDetailTab,
 } from "../features/anime/detail/detail-page"
 
-const SeriesId = Schema.NumberFromString.pipe(Schema.int(), Schema.positive())
-const PositivePage = Schema.Union(Schema.Number, Schema.NumberFromString).pipe(
-  Schema.int(),
-  Schema.positive()
+const SeriesId = Schema.NumberFromString.check(
+  Schema.isInt(),
+  Schema.isGreaterThan(0)
 )
+const PositivePage = Schema.Union([
+  Schema.Number,
+  Schema.NumberFromString,
+]).check(Schema.isInt(), Schema.isGreaterThan(0))
 
 const SeriesSearch = Schema.Struct({
   tab: Schema.optional(AnimeDetailTab),
   episodePage: Schema.optional(PositivePage),
   provider: Schema.optional(
     Schema.String.pipe(
-      Schema.transform(Schema.Union(StreamProviderId, Schema.Undefined), {
-        strict: true,
-        decode: (provider) =>
-          Schema.is(StreamProviderId)(provider) ? provider : undefined,
-        encode: (provider) => provider ?? "",
-      })
+      Schema.decodeTo(
+        Schema.UndefinedOr(StreamProviderId),
+        // An empty provider param means "no preference".
+        SchemaTransformation.transform<string | undefined, string>({
+          decode: (provider) => provider || undefined,
+          encode: (provider) => provider ?? "",
+        })
+      )
     )
   ),
 })

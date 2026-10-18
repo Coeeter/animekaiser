@@ -35,9 +35,9 @@ import {
   TooltipTrigger,
 } from "@animekaiser/ui/components/tooltip"
 import { cn } from "@animekaiser/ui/lib/utils"
-import { Result, useAtomValue } from "@effect-atom/atom-react"
+import { useAtomValue } from "@effect/atom-react"
 import { Link } from "@tanstack/react-router"
-import * as Data from "effect/Data"
+import * as AsyncResult from "effect/reactivity/AsyncResult"
 import {
   ArrowDownUp,
   ChevronLeft,
@@ -95,16 +95,17 @@ export function EpisodeSheet({
   const result = useAtomValue(
     picked
       ? streamEpisodesAtom(selection.malId, picked)
-      : episodeChoicesAtom(
-          Data.struct({ malId: selection.malId, provider: selection.provider })
-        )
+      : episodeChoicesAtom({
+          malId: selection.malId,
+          provider: selection.provider,
+        })
   )
 
-  const providerOptions = Result.getOrElse(
+  const providerOptions = AsyncResult.getOrElse(
     useAtomValue(streamProvidersAtom),
     () => []
   )
-  const catalog = Result.builder(result)
+  const catalog = AsyncResult.builder(result)
     .onSuccess((value) => value)
     .orNull()
 

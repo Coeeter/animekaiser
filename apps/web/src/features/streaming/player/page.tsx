@@ -7,14 +7,10 @@ import { Button } from "@animekaiser/ui/components/button"
 import { useSidebar } from "@animekaiser/ui/components/sidebar"
 import { useIsMobile } from "@animekaiser/ui/hooks/use-mobile"
 import { cn } from "@animekaiser/ui/lib/utils"
-import {
-  Atom,
-  Result,
-  useAtomRefresh,
-  useAtomSet,
-  useAtomValue,
-} from "@effect-atom/atom-react"
+import { useAtomRefresh, useAtomSet, useAtomValue } from "@effect/atom-react"
 import { Link, useNavigate } from "@tanstack/react-router"
+import * as AsyncResult from "effect/reactivity/AsyncResult"
+import * as Atom from "effect/reactivity/Atom"
 import { ListVideo, Server } from "lucide-react"
 import type { MouseEvent, PointerEvent } from "react"
 import { useEffect, useLayoutEffect, useRef, useState } from "react"
@@ -94,7 +90,7 @@ const defaultCaptionValue = (
   return playback.audio === "sub" && playback.tracks.length > 0 ? "0" : "off"
 }
 
-const noNextSeasonAtom = Atom.make(Result.success<NextSeason | null>(null))
+const noNextSeasonAtom = Atom.make(AsyncResult.success<NextSeason | null>(null))
 
 export function StreamPlayerPage({
   input,
@@ -117,7 +113,7 @@ export function StreamPlayerPage({
   const [recoveryEpisodesOpen, setRecoveryEpisodesOpen] = useState(false)
   const room = useRoomPlayer()
 
-  return Result.builder(result)
+  return AsyncResult.builder(result)
     .onInitialOrWaiting(() =>
       mode === "mini" ? null : <StreamPlayerPendingPage mode="full" />
     )
@@ -456,7 +452,7 @@ function StreamPlayer({
   const activeSubtitle = subtitleHtmlAtTime(subtitleCues, media.currentTime)
   const episodeKey = `${playback.provider}:${playback.episode.id}:${playback.audio}`
 
-  const catalog = Result.builder(episodesResult)
+  const catalog = AsyncResult.builder(episodesResult)
     .onSuccess((value) => value)
     .orNull()
 
@@ -479,7 +475,7 @@ function StreamPlayer({
   const nextEpisode =
     episodeIndex >= 0 ? (providerEpisodes[episodeIndex + 1] ?? null) : null
 
-  const libraryEntry = Result.builder(libraryEntryResult)
+  const libraryEntry = AsyncResult.builder(libraryEntryResult)
     .onSuccess((value) => value)
     .orNull()
 
@@ -493,7 +489,7 @@ function StreamPlayer({
     (playback.anime.episodes === null ||
       playback.episode.number >= playback.anime.episodes)
 
-  const nextSeason = Result.builder(
+  const nextSeason = AsyncResult.builder(
     useAtomValue(
       finale
         ? nextSeasonAtom({

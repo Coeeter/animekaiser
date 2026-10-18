@@ -2,9 +2,9 @@ import type { LibraryEntry, LibraryStatus } from "@animekaiser/domain"
 import * as Option from "effect/Option"
 import * as Schema from "effect/Schema"
 
-const ProgressInput = Schema.NumberFromString.pipe(
-  Schema.int(),
-  Schema.nonNegative()
+const ProgressInput = Schema.NumberFromString.check(
+  Schema.isInt(),
+  Schema.isGreaterThanOrEqualTo(0)
 )
 
 export const decodeLibraryProgress = (value: string) =>
@@ -12,9 +12,9 @@ export const decodeLibraryProgress = (value: string) =>
     Option.getOrElse(() => 0)
   )
 
-const ScoreInput = Schema.NumberFromString.pipe(
-  Schema.int(),
-  Schema.between(0, 100)
+const ScoreInput = Schema.NumberFromString.check(
+  Schema.isInt(),
+  Schema.isBetween({ minimum: 0, maximum: 100 })
 )
 
 export const decodeLibraryScore = (value: string) =>

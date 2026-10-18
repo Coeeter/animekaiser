@@ -18,13 +18,9 @@ import {
   EmptyTitle,
 } from "@animekaiser/ui/components/empty"
 import { Skeleton } from "@animekaiser/ui/components/skeleton"
-import {
-  Result,
-  useAtomRefresh,
-  useAtomSet,
-  useAtomValue,
-} from "@effect-atom/atom-react"
+import { useAtomRefresh, useAtomSet, useAtomValue } from "@effect/atom-react"
 import { Link, Navigate } from "@tanstack/react-router"
+import * as AsyncResult from "effect/reactivity/AsyncResult"
 import {
   Bookmark,
   Eye,
@@ -253,11 +249,11 @@ export function OwnProfilePage() {
   const refresh = useAtomRefresh(ownProfileAtom)
   const statsResult = useAtomValue(ownProfileStatsAtom)
 
-  const stats = Result.builder(statsResult)
+  const stats = AsyncResult.builder(statsResult)
     .onSuccess((value) => value)
     .orNull()
 
-  return Result.builder(result)
+  return AsyncResult.builder(result)
     .onInitialOrWaiting(() => <ProfilePendingPage />)
     .onFailure(() => (
       <div className="mx-auto w-full max-w-7xl p-4 md:p-6">
@@ -291,7 +287,7 @@ export function PublicProfilePage({
   )
   const sessionResult = useAtomValue(sessionAtom)
 
-  const viewerUsername = Result.builder(sessionResult)
+  const viewerUsername = AsyncResult.builder(sessionResult)
     .onSuccess((session) =>
       session?.user ? displayUsername(session.user) : null
     )
@@ -303,15 +299,15 @@ export function PublicProfilePage({
 
   if (isSelf && !asPublic) return <Navigate to="/profile" replace />
 
-  const stats = Result.builder(statsResult)
+  const stats = AsyncResult.builder(statsResult)
     .onSuccess((value) => value)
     .orNull()
 
-  const statsResolved = Result.builder(statsResult)
+  const statsResolved = AsyncResult.builder(statsResult)
     .onSuccess(() => true)
     .orElse(() => false)
 
-  return Result.builder(result)
+  return AsyncResult.builder(result)
     .onInitialOrWaiting(() => <ProfilePendingPage />)
     .onFailure(() => (
       <div className="mx-auto w-full max-w-7xl p-4 md:p-6">

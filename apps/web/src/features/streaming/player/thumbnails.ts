@@ -1,5 +1,5 @@
-import { Atom } from "@effect-atom/atom-react"
 import * as Effect from "effect/Effect"
+import * as Atom from "effect/reactivity/Atom"
 
 export type ThumbnailCue = {
   start: number

@@ -2,7 +2,7 @@ import {
   ToggleGroup,
   ToggleGroupItem,
 } from "@animekaiser/ui/components/toggle-group"
-import { useAtom } from "@effect-atom/atom-react"
+import { useAtom } from "@effect/atom-react"
 import { setAnimeTitlePreferenceAtom } from "../anime/common/title"
 import { SettingCard, SettingHeading } from "./settings-shared"
 

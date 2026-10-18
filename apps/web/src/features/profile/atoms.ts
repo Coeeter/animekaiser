@@ -1,5 +1,4 @@
-import { Atom } from "@effect-atom/atom-react"
-import * as Data from "effect/Data"
+import * as Atom from "effect/reactivity/Atom"
 import { KaiserRpcClient } from "../../services/api-clients"
 import { sessionReactivityKeys } from "../auth/atoms"
 
@@ -29,7 +28,7 @@ const publicProfileFamily = Atom.family(
 )
 
 export const publicProfileAtom = (key: PublicProfileKey) =>
-  publicProfileFamily(Data.struct(key))
+  publicProfileFamily(key)
 
 export const ownProfileStatsAtom = KaiserRpcClient.query(
   "GetOwnProfileStats",
@@ -49,7 +48,7 @@ const publicProfileStatsFamily = Atom.family(
 )
 
 export const publicProfileStatsAtom = (key: PublicProfileKey) =>
-  publicProfileStatsFamily(Data.struct(key))
+  publicProfileStatsFamily(key)
 
 export const suggestUsernamesAtom = KaiserRpcClient.query(
   "SuggestUsernames",

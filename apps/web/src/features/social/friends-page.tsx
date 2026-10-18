@@ -5,8 +5,9 @@ import {
   AvatarImage,
 } from "@animekaiser/ui/components/avatar"
 import { Skeleton } from "@animekaiser/ui/components/skeleton"
-import { Result, useAtomRefresh, useAtomValue } from "@effect-atom/atom-react"
+import { useAtomRefresh, useAtomValue } from "@effect/atom-react"
 import { Link } from "@tanstack/react-router"
+import * as AsyncResult from "effect/reactivity/AsyncResult"
 import { UserRound } from "lucide-react"
 import type { ReactNode } from "react"
 import { useState } from "react"
@@ -44,7 +45,7 @@ export function FriendsPage() {
 
 function SearchResults({ query }: { query: string }) {
   const result = useAtomValue(searchUsersAtom(query))
-  return Result.builder(result)
+  return AsyncResult.builder(result)
     .onInitialOrWaiting(() => <Skeleton className="h-16 rounded-2xl" />)
     .onFailure(() => (
       <p className="text-sm text-muted-foreground">Search failed. Try again.</p>
@@ -70,7 +71,7 @@ function SearchResults({ query }: { query: string }) {
 function FriendLists() {
   const result = useAtomValue(friendsAtom)
   const refresh = useAtomRefresh(friendsAtom)
-  return Result.builder(result)
+  return AsyncResult.builder(result)
     .onInitialOrWaiting(() => <Skeleton className="h-40 rounded-3xl" />)
     .onFailure(() => (
       <DataError title="Unable to load friends" onRetry={refresh} />

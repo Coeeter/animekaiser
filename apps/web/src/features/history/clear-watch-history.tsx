@@ -11,7 +11,7 @@ import {
   AlertDialogTrigger,
 } from "@animekaiser/ui/components/alert-dialog"
 import { Button } from "@animekaiser/ui/components/button"
-import { useAtom } from "@effect-atom/atom-react"
+import { useAtom } from "@effect/atom-react"
 import { Trash2 } from "lucide-react"
 import { useState } from "react"
 import { toast } from "sonner"

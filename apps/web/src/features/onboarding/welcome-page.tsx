@@ -12,13 +12,9 @@ import {
 import { Field, FieldError, FieldLabel } from "@animekaiser/ui/components/field"
 import { Skeleton } from "@animekaiser/ui/components/skeleton"
 import { cn } from "@animekaiser/ui/lib/utils"
-import {
-  Result,
-  useAtomRefresh,
-  useAtomSet,
-  useAtomValue,
-} from "@effect-atom/atom-react"
+import { useAtomRefresh, useAtomSet, useAtomValue } from "@effect/atom-react"
 import { Link, useNavigate } from "@tanstack/react-router"
+import * as AsyncResult from "effect/reactivity/AsyncResult"
 import {
   ArrowRight,
   Check,
@@ -149,7 +145,7 @@ function UsernameStep({ onDone }: { onDone: () => void }) {
   const [error, setError] = useState<string | null>(null)
   const [pending, setPending] = useState(false)
 
-  const suggestions = Result.builder(suggestionsResult)
+  const suggestions = AsyncResult.builder(suggestionsResult)
     .onSuccess((suggested) => suggested)
     .orNull()
 
@@ -278,7 +274,7 @@ function ConnectStep({
 }) {
   const accountsResult = useAtomValue(accountHealthAtom)
 
-  const accounts = Result.builder(accountsResult)
+  const accounts = AsyncResult.builder(accountsResult)
     .onSuccess((value) => value)
     .orElse(() => [])
 
@@ -350,7 +346,7 @@ function ImportStep({ onDone }: { onDone: () => void }) {
   const accountsResult = useAtomValue(accountHealthAtom)
   const [provider, setProvider] = useState<ExternalListProvider | null>(null)
 
-  const connected = Result.builder(accountsResult)
+  const connected = AsyncResult.builder(accountsResult)
     .onSuccess((value) => value.filter((account) => account.connected))
     .orElse(() => [])
 

@@ -1,6 +1,7 @@
 import { useIsMobile } from "@animekaiser/ui/hooks/use-mobile"
-import { Atom, useAtomSet, useAtomValue } from "@effect-atom/atom-react"
+import { useAtomSet, useAtomValue } from "@effect/atom-react"
 import { useLocation, useNavigate } from "@tanstack/react-router"
+import * as Atom from "effect/reactivity/Atom"
 import { useEffect } from "react"
 import { activeRoomIdAtom } from "../rooms/atoms"
 import { type StreamPlaybackInput, StreamPlayerPage } from "./player/page"

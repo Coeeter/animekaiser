@@ -5,29 +5,32 @@ import {
   AnimeSeason,
   AnimeSort,
 } from "@animekaiser/domain"
+import * as Effect from "effect/Effect"
 import * as Schema from "effect/Schema"
 
 export const DEFAULT_CATALOG_PER_PAGE = 24
 
-const PositivePage = Schema.Union(Schema.Number, Schema.NumberFromString).pipe(
-  Schema.int(),
-  Schema.positive()
+const PositivePage = Schema.Union([
+  Schema.Number,
+  Schema.NumberFromString,
+]).check(Schema.isInt(), Schema.isGreaterThan(0))
+
+const Score = Schema.Union([Schema.Number, Schema.NumberFromString]).check(
+  Schema.isBetween({ minimum: 0, maximum: 10 })
 )
 
-const Score = Schema.Union(Schema.Number, Schema.NumberFromString).pipe(
-  Schema.between(0, 10)
-)
-
-const SeasonYear = Schema.Union(Schema.Number, Schema.NumberFromString).pipe(
-  Schema.int(),
-  Schema.between(1900, 2200)
+const SeasonYear = Schema.Union([Schema.Number, Schema.NumberFromString]).check(
+  Schema.isInt(),
+  Schema.isBetween({ minimum: 1900, maximum: 2200 })
 )
 
 export const CatalogSearch = Schema.Struct({
   q: Schema.optional(Schema.String),
-  page: Schema.optionalWith(PositivePage, { default: () => 1 }),
-  sort: Schema.optionalWith(AnimeSort, { default: () => "popularity" }),
-  status: Schema.optional(Schema.Literal("airing", "complete", "upcoming")),
+  page: PositivePage.pipe(Schema.withDecodingDefaultType(Effect.succeed(1))),
+  sort: AnimeSort.pipe(
+    Schema.withDecodingDefaultType(Effect.succeed("popularity"))
+  ),
+  status: Schema.optional(Schema.Literals(["airing", "complete", "upcoming"])),
   format: Schema.optional(AnimeFormat),
   genre: Schema.optional(Schema.String),
   season: Schema.optional(AnimeSeason),
@@ -40,10 +43,10 @@ export const CatalogSearch = Schema.Struct({
 export type CatalogSearch = typeof CatalogSearch.Type
 
 export const DiscoverSearch = Schema.Struct({
-  tab: Schema.optionalWith(AnimeDiscoveryCategory, {
-    default: () => "trending",
-  }),
-  page: Schema.optionalWith(PositivePage, { default: () => 1 }),
+  tab: AnimeDiscoveryCategory.pipe(
+    Schema.withDecodingDefaultType(Effect.succeed("trending"))
+  ),
+  page: PositivePage.pipe(Schema.withDecodingDefaultType(Effect.succeed(1))),
 })
 export type DiscoverSearch = typeof DiscoverSearch.Type
 

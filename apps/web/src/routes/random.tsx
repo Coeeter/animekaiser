@@ -1,5 +1,6 @@
-import { Result, useAtomRefresh, useAtomValue } from "@effect-atom/atom-react"
+import { useAtomRefresh, useAtomValue } from "@effect/atom-react"
 import { createFileRoute, Navigate } from "@tanstack/react-router"
+import * as AsyncResult from "effect/reactivity/AsyncResult"
 import { useState } from "react"
 import { DataError } from "../components/data-error"
 import { makeRandomAnimeAtom } from "../features/anime/home/atoms"
@@ -12,7 +13,7 @@ function RandomRoute() {
   const [randomAnimeAtom] = useState(makeRandomAnimeAtom)
   const result = useAtomValue(randomAnimeAtom)
   const refresh = useAtomRefresh(randomAnimeAtom)
-  return Result.builder(result)
+  return AsyncResult.builder(result)
     .onFailure(() => (
       <div className="mx-auto w-full max-w-3xl p-4 md:p-6">
         <DataError onRetry={refresh} />

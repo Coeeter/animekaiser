@@ -10,8 +10,9 @@ import {
 import { Textarea } from "@animekaiser/ui/components/textarea"
 import { useIsMobile } from "@animekaiser/ui/hooks/use-mobile"
 import { cn } from "@animekaiser/ui/lib/utils"
-import { Result, useAtomSet, useAtomValue } from "@effect-atom/atom-react"
+import { useAtomSet, useAtomValue } from "@effect/atom-react"
 import { useNavigate } from "@tanstack/react-router"
+import * as AsyncResult from "effect/reactivity/AsyncResult"
 import {
   History,
   MessageSquareHeart,
@@ -122,7 +123,7 @@ function ThreadList({
   activeId: string | null
   onSelect: (id: string | null) => void
 }) {
-  const threads = Result.getOrElse(useAtomValue(aiThreadsAtom), () => [])
+  const threads = AsyncResult.getOrElse(useAtomValue(aiThreadsAtom), () => [])
   const rename = useAtomSet(renameAiThreadAtom, { mode: "promise" })
   const remove = useAtomSet(deleteAiThreadAtom, { mode: "promise" })
   const [editing, setEditing] = useState<string | null>(null)
@@ -216,7 +217,7 @@ function PreferencesSheet({
   open: boolean
   onOpenChange: (open: boolean) => void
 }) {
-  const saved = Result.getOrElse(useAtomValue(aiPreferencesAtom), () => [])
+  const saved = AsyncResult.getOrElse(useAtomValue(aiPreferencesAtom), () => [])
   const save = useAtomSet(saveAiPreferencesAtom, { mode: "promise" })
   const [text, setText] = useState<string | null>(null)
   const value = text ?? saved.join("\n")

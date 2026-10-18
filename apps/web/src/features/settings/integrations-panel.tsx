@@ -6,13 +6,9 @@ import {
 import { Badge } from "@animekaiser/ui/components/badge"
 import { Button } from "@animekaiser/ui/components/button"
 import { Switch } from "@animekaiser/ui/components/switch"
-import {
-  Result,
-  useAtomRefresh,
-  useAtomSet,
-  useAtomValue,
-} from "@effect-atom/atom-react"
+import { useAtomRefresh, useAtomSet, useAtomValue } from "@effect/atom-react"
 import { Link } from "@tanstack/react-router"
+import * as AsyncResult from "effect/reactivity/AsyncResult"
 import { Activity, Download, ExternalLink, Link2, Unlink } from "lucide-react"
 import { useState } from "react"
 import { toast } from "sonner"
@@ -38,7 +34,7 @@ export function IntegrationsPanel({ user }: { user: AppUser | null }) {
   const accountsResult = useAtomValue(accountHealthAtom)
   const refreshAccounts = useAtomRefresh(accountHealthAtom)
 
-  const accounts = Result.builder(accountsResult)
+  const accounts = AsyncResult.builder(accountsResult)
     .onSuccess((value) => value)
     .orElse(() => [])
 
@@ -54,7 +50,7 @@ export function IntegrationsPanel({ user }: { user: AppUser | null }) {
 
   if (!user) return <AuthRequired />
 
-  const accountsError = Result.builder(accountsResult)
+  const accountsError = AsyncResult.builder(accountsResult)
     .onFailure(() => <DataError onRetry={refreshAccounts} />)
     .orNull()
 

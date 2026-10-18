@@ -1,5 +1,6 @@
 import { Skeleton } from "@animekaiser/ui/components/skeleton"
-import { Result, useAtomRefresh, useAtomValue } from "@effect-atom/atom-react"
+import { useAtomRefresh, useAtomValue } from "@effect/atom-react"
+import * as AsyncResult from "effect/reactivity/AsyncResult"
 import { DataError } from "../../../components/data-error"
 import { sessionAtom } from "../../auth/atoms"
 import { ContinueWatchingRow } from "../../history/continue-watching-row"
@@ -21,11 +22,11 @@ export function HomePage() {
   const refresh = useAtomRefresh(homeAtom)
   const sessionResult = useAtomValue(sessionAtom)
 
-  const isAuthenticated = Result.builder(sessionResult)
+  const isAuthenticated = AsyncResult.builder(sessionResult)
     .onSuccess((session) => session !== null)
     .orElse(() => false)
 
-  return Result.builder(result)
+  return AsyncResult.builder(result)
     .onInitialOrWaiting(() => <HomePendingPage />)
     .onFailure(() => (
       <div className="mx-auto w-full max-w-3xl p-4 md:p-6">

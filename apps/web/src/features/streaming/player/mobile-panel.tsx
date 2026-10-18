@@ -8,8 +8,9 @@ import type {
 import { Badge } from "@animekaiser/ui/components/badge"
 import { Button } from "@animekaiser/ui/components/button"
 import { cn } from "@animekaiser/ui/lib/utils"
-import { Result, useAtomValue } from "@effect-atom/atom-react"
+import { useAtomValue } from "@effect/atom-react"
 import { Link } from "@tanstack/react-router"
+import * as AsyncResult from "effect/reactivity/AsyncResult"
 import {
   ChevronRight,
   Info,
@@ -199,7 +200,7 @@ function NextSeasonUpNext({
   playback: StreamPlayback
   count: number
 }) {
-  const next = Result.builder(
+  const next = AsyncResult.builder(
     useAtomValue(
       nextSeasonEpisodesAtom({
         malId: playback.anime.malId,

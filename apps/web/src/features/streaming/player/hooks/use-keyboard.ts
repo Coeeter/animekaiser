@@ -1,5 +1,5 @@
 import type { StreamEpisode } from "@animekaiser/domain"
-import { useAtomValue } from "@effect-atom/atom-react"
+import { useAtomValue } from "@effect/atom-react"
 import { useEffect, useRef } from "react"
 import { shortcutsAtom } from "../../../shortcuts/atoms"
 import {

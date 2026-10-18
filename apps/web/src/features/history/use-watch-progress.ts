@@ -1,5 +1,5 @@
 import type { StreamPlayback } from "@animekaiser/domain"
-import { useAtomSet } from "@effect-atom/atom-react"
+import { useAtomSet } from "@effect/atom-react"
 import { useCallback, useEffect, useRef } from "react"
 import { recordWatchProgressAtom, watchHistoryReactivityKeys } from "./atoms"
 

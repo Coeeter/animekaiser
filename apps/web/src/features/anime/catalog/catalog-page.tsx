@@ -1,4 +1,5 @@
-import { Result, useAtomRefresh, useAtomValue } from "@effect-atom/atom-react"
+import { useAtomRefresh, useAtomValue } from "@effect/atom-react"
+import * as AsyncResult from "effect/reactivity/AsyncResult"
 import { DataError } from "../../../components/data-error"
 import type { CatalogSearch } from "../common/search"
 import { catalogAtom } from "./atoms"
@@ -11,7 +12,7 @@ export function CatalogPage({ search }: { search: CatalogSearch }) {
   const result = useAtomValue(atom)
   const refresh = useAtomRefresh(atom)
 
-  return Result.builder(result)
+  return AsyncResult.builder(result)
     .onInitialOrWaiting(() => <CatalogPendingPage search={search} />)
     .onFailure(() => (
       <SeriesCatalogLayout search={search}>

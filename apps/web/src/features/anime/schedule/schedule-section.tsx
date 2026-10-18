@@ -2,8 +2,9 @@ import type { AnimeItem, AnimeScheduleDay } from "@animekaiser/domain"
 import { Badge } from "@animekaiser/ui/components/badge"
 import { Skeleton } from "@animekaiser/ui/components/skeleton"
 import { cn } from "@animekaiser/ui/lib/utils"
-import { Result, useAtomRefresh, useAtomValue } from "@effect-atom/atom-react"
+import { useAtomRefresh, useAtomValue } from "@effect/atom-react"
 import { Link } from "@tanstack/react-router"
+import * as AsyncResult from "effect/reactivity/AsyncResult"
 import { Clock3 } from "lucide-react"
 import { useState } from "react"
 import { DataError } from "../../../components/data-error"
@@ -109,7 +110,7 @@ function ScheduleResults({ day }: { day: AnimeScheduleDay }) {
   const result = useAtomValue(atom)
   const refresh = useAtomRefresh(atom)
 
-  return Result.builder(result)
+  return AsyncResult.builder(result)
     .onInitialOrWaiting(() => <ScheduleResultsPending />)
     .onFailure(() => <DataError onRetry={refresh} />)
     .onSuccess((data) => <ScheduleList items={sortScheduleItems(data.items)} />)

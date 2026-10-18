@@ -1,5 +1,5 @@
 import type { AnimeTitle, AnimeTitlePreference } from "@animekaiser/domain"
-import { Atom } from "@effect-atom/atom-react"
+import * as Atom from "effect/reactivity/Atom"
 
 export type { AnimeTitlePreference }
 

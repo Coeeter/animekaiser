@@ -1,6 +1,7 @@
 import { Skeleton } from "@animekaiser/ui/components/skeleton"
-import { Result, useAtomSet, useAtomValue } from "@effect-atom/atom-react"
+import { useAtomSet, useAtomValue } from "@effect/atom-react"
 import { Link, useNavigate } from "@tanstack/react-router"
+import * as AsyncResult from "effect/reactivity/AsyncResult"
 import { ArrowRight, Clock3, SearchX } from "lucide-react"
 import { DebouncedSearchInput } from "../../../components/debounced-search-input"
 import { catalogAtom } from "../catalog/atoms"
@@ -57,7 +58,7 @@ export function SearchPage({ query }: { query: string }) {
 function SearchSuggestions() {
   const recents = useAtomValue(recentSearchesAtom)
   const clearRecents = useAtomSet(clearRecentSearchesAtom)
-  const trending = Result.builder(useAtomValue(homeAtom))
+  const trending = AsyncResult.builder(useAtomValue(homeAtom))
     .onSuccess((home) => home.trending.slice(0, 9))
     .orElse(() => [])
 
@@ -130,7 +131,7 @@ function SearchResults({ query }: { query: string }) {
     catalogAtom({ q: query, page: 1, sort: "relevance" }, resultLimit)
   )
 
-  return Result.builder(result)
+  return AsyncResult.builder(result)
     .onInitialOrWaiting(() => (
       <div className="grid grid-cols-3 gap-x-3 gap-y-5 sm:grid-cols-4 lg:grid-cols-6">
         {Array.from({ length: 12 }, (_item, index) => (

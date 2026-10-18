@@ -6,10 +6,10 @@ import type {
   LibrarySyncEventPage,
   LibrarySyncStatus,
 } from "@animekaiser/domain"
-import * as Reactivity from "@effect/experimental/Reactivity"
-import { Atom, Result } from "@effect-atom/atom-react"
-import * as Data from "effect/Data"
 import * as Effect from "effect/Effect"
+import * as AsyncResult from "effect/reactivity/AsyncResult"
+import * as Atom from "effect/reactivity/Atom"
+import * as Reactivity from "effect/reactivity/Reactivity"
 import { KaiserRpcClient } from "../../services/api-clients"
 import { profileReactivityKeys } from "../profile/atoms"
 
@@ -62,7 +62,7 @@ const publicLibraryFamily = Atom.family((key: PublicLibraryKey) =>
 )
 
 export const publicLibraryAtom = (key: PublicLibraryKey) =>
-  publicLibraryFamily(Data.struct(key))
+  publicLibraryFamily(key)
 
 export const libraryEntryAtom = (malId: number) =>
   KaiserRpcClient.query(
@@ -83,7 +83,7 @@ const libraryEntriesFamily = Atom.family((malIds: string) =>
 export const libraryEntriesAtom = (malIds: ReadonlyArray<number>) =>
   libraryEntriesFamily(malIds.join(","))
 
-export const libraryProgressOf = (get: Atom.Context, malId: number) =>
+export const libraryProgressOf = (get: Atom.AtomContext, malId: number) =>
   get.result(libraryEntryAtom(malId)).pipe(
     Effect.map((entry) => entry?.progress ?? null),
     Effect.orElseSucceed(() => null)
@@ -135,13 +135,13 @@ export const libraryNextSeasonsAtom = KaiserRpcClient.query(
 )
 
 export const watchingNewEpisodesAtom = Atom.make((get) =>
-  Result.map(get(libraryNewEpisodesAtom), (items) =>
+  AsyncResult.map(get(libraryNewEpisodesAtom), (items) =>
     items.filter((item) => item.status !== "planning")
   )
 )
 
 export const planningNewEpisodesAtom = Atom.make((get) =>
-  Result.map(get(libraryNewEpisodesAtom), (items) =>
+  AsyncResult.map(get(libraryNewEpisodesAtom), (items) =>
     items.filter((item) => item.status === "planning")
   )
 )

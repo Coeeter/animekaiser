@@ -1,9 +1,10 @@
 import type { LibraryEntry } from "@animekaiser/domain"
 import { Button } from "@animekaiser/ui/components/button"
 import { Spinner } from "@animekaiser/ui/components/spinner"
-import { Result, useAtomSet, useAtomValue } from "@effect-atom/atom-react"
+import { useAtomSet, useAtomValue } from "@effect/atom-react"
 import { Link } from "@tanstack/react-router"
 import * as Effect from "effect/Effect"
+import * as AsyncResult from "effect/reactivity/AsyncResult"
 import { Download, History } from "lucide-react"
 import { useState } from "react"
 import { toast } from "sonner"
@@ -112,7 +113,7 @@ export function PrivacyPanel() {
   const sessionResult = useAtomValue(sessionAtom)
   const setSettingsOpen = useAtomSet(settingsOpenAtom)
 
-  const isAuthenticated = Result.builder(sessionResult)
+  const isAuthenticated = AsyncResult.builder(sessionResult)
     .onSuccess((session) => session !== null)
     .orElse(() => false)
 

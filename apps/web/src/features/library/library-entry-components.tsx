@@ -29,7 +29,7 @@ import {
 } from "@animekaiser/ui/components/select"
 import { Textarea } from "@animekaiser/ui/components/textarea"
 import { cn } from "@animekaiser/ui/lib/utils"
-import { useAtomSet, useAtomValue } from "@effect-atom/atom-react"
+import { useAtomSet, useAtomValue } from "@effect/atom-react"
 import { useForm } from "@tanstack/react-form"
 import { Link } from "@tanstack/react-router"
 import * as Schema from "effect/Schema"

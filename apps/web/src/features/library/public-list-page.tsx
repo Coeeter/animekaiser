@@ -23,8 +23,9 @@ import {
 } from "@animekaiser/ui/components/select"
 import { Skeleton } from "@animekaiser/ui/components/skeleton"
 import { cn } from "@animekaiser/ui/lib/utils"
-import { Result, useAtomRefresh, useAtomValue } from "@effect-atom/atom-react"
+import { useAtomRefresh, useAtomValue } from "@effect/atom-react"
 import { Link, useNavigate } from "@tanstack/react-router"
+import * as AsyncResult from "effect/reactivity/AsyncResult"
 import * as Schema from "effect/Schema"
 import {
   Bookmark,
@@ -91,7 +92,7 @@ export function PublicListPage({
     })
   }
 
-  return Result.builder(result)
+  return AsyncResult.builder(result)
     .onInitialOrWaiting(() => <PublicListPending />)
     .onFailure(() => (
       <div className="mx-auto w-full max-w-7xl p-4 md:p-6">

@@ -3,7 +3,7 @@ import {
   StreamAudio as StreamAudioSchema,
   StreamProviderId,
 } from "@animekaiser/domain"
-import { useAtomMount, useAtomValue } from "@effect-atom/atom-react"
+import { useAtomMount, useAtomValue } from "@effect/atom-react"
 import { createFileRoute } from "@tanstack/react-router"
 import * as Schema from "effect/Schema"
 import { activeRoomIdAtom } from "../features/rooms/atoms"
@@ -13,11 +13,14 @@ import type { StreamPlaybackInput } from "../features/streaming/player/page"
 
 const defaultAudio: StreamAudio = "sub"
 
-const WatchMalId = Schema.NumberFromString.pipe(Schema.int(), Schema.positive())
-const WatchEpisodeId = Schema.String.pipe(Schema.minLength(1))
+const WatchMalId = Schema.NumberFromString.check(
+  Schema.isInt(),
+  Schema.isGreaterThan(0)
+)
+const WatchEpisodeId = Schema.NonEmptyString
 const WatchSearch = Schema.Struct({
   audio: Schema.optional(StreamAudioSchema),
-  serverId: Schema.optional(Schema.String.pipe(Schema.minLength(1))),
+  serverId: Schema.optional(Schema.NonEmptyString),
 })
 
 const decodeWatchSearch = Schema.decodeUnknownSync(WatchSearch)

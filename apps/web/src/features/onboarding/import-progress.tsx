@@ -12,7 +12,8 @@ import {
   CardTitle,
 } from "@animekaiser/ui/components/card"
 import { cn } from "@animekaiser/ui/lib/utils"
-import { Result, useAtomSet, useAtomValue } from "@effect-atom/atom-react"
+import { useAtomSet, useAtomValue } from "@effect/atom-react"
+import * as AsyncResult from "effect/reactivity/AsyncResult"
 import { ArrowRight, Check, CircleAlert, Loader2 } from "lucide-react"
 import { useEffect, useState } from "react"
 import {
@@ -177,7 +178,7 @@ function ImportWatcher({
   const invalidateLibrary = useAtomSet(invalidateLibraryAtom)
 
   useEffect(() => {
-    Result.builder(result)
+    AsyncResult.builder(result)
       .onSuccess((value, state) => {
         if (state.waiting) return
 

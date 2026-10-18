@@ -36,9 +36,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@animekaiser/ui/components/select"
-import { Result, useAtomSet, useAtomValue } from "@effect-atom/atom-react"
+import { useAtomSet, useAtomValue } from "@effect/atom-react"
 import { useNavigate } from "@tanstack/react-router"
 import * as Exit from "effect/Exit"
+import * as AsyncResult from "effect/reactivity/AsyncResult"
 import { ChevronDown, Copy, Link2, Loader2, RefreshCw } from "lucide-react"
 import { useState } from "react"
 import { toast } from "sonner"
@@ -361,7 +362,7 @@ export function InviteDialog({
           </div>
           <div className="flex flex-col gap-2">
             <p className="text-sm font-medium">Friends</p>
-            {Result.builder(friends)
+            {AsyncResult.builder(friends)
               .onInitialOrWaiting(() => (
                 <Loader2 className="size-4 animate-spin text-muted-foreground" />
               ))
