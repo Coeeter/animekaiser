@@ -21,8 +21,18 @@
 - Keep Redis out of `packages/db`. Define storage behavior in `core` and wire the shared `ioredis` key-value adapter in `apps/api`.
 - Use Postgres as the durable job queue. The API process may run the worker loop initially.
 - Client applications must not import `core`; shared client contracts belong in `domain` and `rpc/client`.
-- Prefer `Effect.Service` when a service and its sole implementation live together. Use `Context.Tag` for seams implemented by another package.
+- Define services with `Context.Service` and attach their layers as static `layer` members. Use a bare `Context.Service` (no `make`) for seams implemented by another package.
 - Prefer existing Effect service/layer patterns in the repo when adding services.
 - Generate and commit migration SQL manually. The API applies pending migrations on startup.
 - Never fix formatting or auto-fixable lint issues manually. Run `bun format`, then `bun lint:fix`, and use `bun lint:fix --unsafe` when the unsafe fixes are appropriate and reviewed.
 - Before marking implementation work done, verify from the repository root with `bun typecheck` and `bun lint`. Do not run these checks from package directories.
+
+## Learning more about Effect
+
+This repository uses the Effect Typescript library.
+
+Before writing any Effect code, first read `node_modules/effect/AGENTS.md`
+**completely**, and follow the links in the file when required.
+
+If you need to learn more about particular Effect apis and concepts that the
+guide doesn't cover, search through the source code in `node_modules/effect/src`.
