@@ -16,6 +16,9 @@ export const createResendAuthMailer = (config: {
           subject: "Your Kaiser verification code",
           text: `Your Kaiser ${type} code is ${otp}.`,
         })
-        .then(() => undefined),
+        .then(({ error }) => {
+          // Resend reports API failures in the result instead of rejecting.
+          if (error) throw new Error(`Resend: ${error.message}`)
+        }),
   }
 }
