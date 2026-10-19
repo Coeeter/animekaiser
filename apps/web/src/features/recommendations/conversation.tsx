@@ -6,7 +6,7 @@ import type {
 } from "@animekaiser/domain"
 import { Button } from "@animekaiser/ui/components/button"
 import { Textarea } from "@animekaiser/ui/components/textarea"
-import { useAtomRefresh, useAtomSet, useAtomValue } from "@effect/atom-react"
+import { useAtomSet, useAtomValue } from "@effect/atom-react"
 import { Link } from "@tanstack/react-router"
 import * as Cause from "effect/Cause"
 import * as Exit from "effect/Exit"
@@ -14,7 +14,7 @@ import * as Option from "effect/Option"
 import * as AsyncResult from "effect/reactivity/AsyncResult"
 import { Loader2, Lock, SendHorizontal, Share2, Square } from "lucide-react"
 import type { ReactNode } from "react"
-import { useEffect, useState } from "react"
+import { useState } from "react"
 import { toast } from "sonner"
 import { sessionAtom } from "../auth/atoms"
 import { activeRoomIdAtom, roomReactivityKeys } from "../rooms/atoms"
@@ -122,11 +122,7 @@ export function Conversation({
         content: text,
         recap: recapRequest,
       },
-      reactivityKeys: [
-        aiReactivityKeys.thread(id),
-        aiReactivityKeys.threads,
-        aiReactivityKeys.availability,
-      ],
+      reactivityKeys: [aiReactivityKeys.threads, aiReactivityKeys.availability],
     })
     setSending(false)
     if (Exit.isFailure(exit)) {
@@ -275,19 +271,11 @@ function ThreadMessages({
   onRetry: (content: string, recap?: RecapRequest) => void
 }) {
   const result = useAtomValue(aiThreadAtom(threadId))
-  const refresh = useAtomRefresh(aiThreadAtom(threadId))
   const stop = useAtomSet(stopAiAtom, { mode: "promiseExit" })
   const share = useAtomSet(shareToRoomAtom, { mode: "promiseExit" })
   const session = AsyncResult.getOrElse(useAtomValue(sessionAtom), () => null)
   const activeRoom = useAtomValue(activeRoomIdAtom)
   const thread = AsyncResult.isSuccess(result) ? result.value : null
-  const busy = thread?.busy ?? false
-
-  useEffect(() => {
-    if (!busy) return
-    const interval = window.setInterval(refresh, 1500)
-    return () => window.clearInterval(interval)
-  }, [busy, refresh])
 
   if (!thread)
     return AsyncResult.isFailure(result) ? (
@@ -318,7 +306,7 @@ function ThreadMessages({
           key={message.id}
           message={message}
           signedIn={session !== null}
-          onStop={() => void stop({ payload: { threadId } }).then(refresh)}
+          onStop={() => void stop({ payload: { threadId } })}
           onRetry={() => {
             const previous = thread.messages[index - 1]
             if (previous?.role === "user")

@@ -1,9 +1,14 @@
+import type {
+  RecommendationOperationError,
+  RecommendationThread,
+} from "@animekaiser/domain"
+import * as Effect from "effect/Effect"
 import * as Atom from "effect/reactivity/Atom"
+import * as Stream from "effect/Stream"
 import { KaiserRpcClient } from "../../services/api-clients"
 
 export const aiReactivityKeys = {
   threads: "ai-threads",
-  thread: (id: string) => `ai-thread:${id}`,
   availability: "ai-availability",
   preferences: "ai-preferences",
 }
@@ -22,12 +27,31 @@ export const aiAvailabilityAtom = Atom.family((roomId: string) =>
   )
 )
 
-export const aiThreadAtom = Atom.family((threadId: string) =>
-  KaiserRpcClient.query(
-    "GetRecommendationThread",
-    { threadId },
-    { reactivityKeys: [aiReactivityKeys.thread(threadId)] }
+// The server pushes the thread whenever it changes, including the progress of
+// a running answer. A dropped connection resubscribes; domain failures such as
+// a missing thread end the stream.
+const watchThread = (
+  threadId: string
+): Stream.Stream<
+  RecommendationThread,
+  RecommendationOperationError,
+  KaiserRpcClient
+> =>
+  Stream.unwrap(
+    Effect.map(KaiserRpcClient, (client) =>
+      client("WatchRecommendationThread", { threadId })
+    )
+  ).pipe(
+    Stream.catchTag("RpcClientError", () =>
+      Stream.fromEffect(Effect.sleep("1 second")).pipe(
+        Stream.drain,
+        Stream.concat(Stream.suspend(() => watchThread(threadId)))
+      )
+    )
   )
+
+export const aiThreadAtom = Atom.family((threadId: string) =>
+  KaiserRpcClient.runtime.atom(watchThread(threadId))
 )
 
 export const aiPreferencesAtom = KaiserRpcClient.query(

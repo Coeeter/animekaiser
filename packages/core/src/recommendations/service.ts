@@ -37,6 +37,7 @@ import * as Fiber from "effect/Fiber"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import * as Schema from "effect/Schema"
+import * as Stream from "effect/Stream"
 import { AnimeService } from "../anime"
 import { notifyRoom } from "../rooms/events"
 import {
@@ -61,6 +62,7 @@ import {
   titleOf,
   toMetadata,
 } from "./agent"
+import { notifyThread, ThreadEvents } from "./events"
 import {
   type AgentProgress,
   type AgentRequest,
@@ -171,6 +173,7 @@ export class RecommendationService extends Context.Service<RecommendationService
       const provider = yield* AiProvider
       const animeService = yield* AnimeService
       const rooms = yield* RoomService
+      const events = yield* ThreadEvents
       const running = new Map<string, Fiber.Fiber<void, never>>()
 
       const run = <A, R>(
@@ -468,6 +471,27 @@ export class RecommendationService extends Context.Service<RecommendationService
         return yield* loadThread(thread)
       }, run)
 
+      // Pushes the thread whenever it changes, so a running answer streams
+      // its progress without the client polling.
+      const watch = (actor: Actor, threadId: string) =>
+        Stream.unwrap(
+          Effect.gen(function* () {
+            const signals = yield* events.subscribe(threadId)
+            yield* run(requireThread(actor, threadId))
+            return Stream.concat(
+              Stream.succeed(undefined),
+              Stream.merge(signals, Stream.tick("15 seconds")).pipe(
+                Stream.groupedWithin(64, "100 millis")
+              )
+            ).pipe(
+              Stream.mapEffect(() => get(actor, threadId)),
+              Stream.changesWith(
+                (left, right) => JSON.stringify(left) === JSON.stringify(right)
+              )
+            )
+          })
+        )
+
       const rename = Effect.fn("RecommendationService.rename")(function* (
         userId: string,
         threadId: string,
@@ -661,20 +685,24 @@ export class RecommendationService extends Context.Service<RecommendationService
         messageId
           ? (progress: AgentProgress) =>
               run(
-                query((db) =>
-                  db
-                    .update(recommendationMessage)
-                    .set({
-                      content: progress.text,
-                      data: { activity: progress.activity },
-                    })
-                    .where(
-                      and(
-                        eq(recommendationMessage.id, messageId),
-                        eq(recommendationMessage.status, "pending")
+                Effect.gen(function* () {
+                  const updated = yield* query((db) =>
+                    db
+                      .update(recommendationMessage)
+                      .set({
+                        content: progress.text,
+                        data: { activity: progress.activity },
+                      })
+                      .where(
+                        and(
+                          eq(recommendationMessage.id, messageId),
+                          eq(recommendationMessage.status, "pending")
+                        )
                       )
-                    )
-                )
+                      .returning({ threadId: recommendationMessage.threadId })
+                  )
+                  for (const row of updated) yield* notifyThread(row.threadId)
+                })
               ).pipe(Effect.ignore)
           : undefined
 
@@ -1130,13 +1158,15 @@ export class RecommendationService extends Context.Service<RecommendationService
               )
               .where(eq(recommendationMessage.id, assistantMessageId))
           )
-        if (threadId)
+        if (threadId) {
           yield* query((db) =>
             db
               .update(recommendationThread)
               .set({ updatedAt: finishedAt })
               .where(eq(recommendationThread.id, threadId))
           )
+          yield* notifyThread(threadId)
+        }
         yield* settle(job.amount, cost, monthOf(generation.createdAt))
         if (job.roomId) yield* notifyRoom(job.roomId)
       }, transact)
@@ -1424,6 +1454,7 @@ export class RecommendationService extends Context.Service<RecommendationService
             .orderBy(desc(recommendationMessage.seq))
             .limit(1)
         )
+        yield* notifyThread(thread.id)
         return {
           thread,
           owner,
@@ -1881,6 +1912,7 @@ export class RecommendationService extends Context.Service<RecommendationService
               })
               .where(eq(recommendationMessage.generationId, generation.id))
           )
+          if (generation.threadId) yield* notifyThread(generation.threadId)
         }
       }, transact)
 
@@ -1890,6 +1922,7 @@ export class RecommendationService extends Context.Service<RecommendationService
         list,
         create,
         get,
+        watch,
         rename,
         remove,
         getPreferences,
@@ -1907,5 +1940,7 @@ export class RecommendationService extends Context.Service<RecommendationService
   static readonly layer = Layer.effect(
     RecommendationService,
     RecommendationService.make
-  ).pipe(Layer.provide([RoomService.layer, AnimeService.layer]))
+  ).pipe(
+    Layer.provide([RoomService.layer, AnimeService.layer, ThreadEvents.layer])
+  )
 }

@@ -1,6 +1,7 @@
 import { RecommendationService } from "@animekaiser/core"
 import { CurrentUser, RecommendationRpcs, RoomActor } from "@animekaiser/domain"
 import * as Effect from "effect/Effect"
+import * as Stream from "effect/Stream"
 
 export const RecommendationHandlersLive = RecommendationRpcs.toLayer(
   Effect.gen(function* () {
@@ -23,6 +24,10 @@ export const RecommendationHandlersLive = RecommendationRpcs.toLayer(
         Effect.flatMap(RoomActor, (actor) => ai.create(actor, input)),
       GetRecommendationThread: ({ threadId }) =>
         Effect.flatMap(RoomActor, (actor) => ai.get(actor, threadId)),
+      WatchRecommendationThread: ({ threadId }) =>
+        Stream.unwrap(
+          Effect.map(RoomActor, (actor) => ai.watch(actor, threadId))
+        ),
       SendRecommendationMessage: (input) =>
         Effect.flatMap(RoomActor, (actor) => ai.send(actor, input)),
       StopRecommendation: ({ threadId }) =>

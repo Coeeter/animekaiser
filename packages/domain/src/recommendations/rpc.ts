@@ -115,6 +115,16 @@ export class GetRecommendationThread extends Rpc.make(
   }
 ) {}
 
+export class WatchRecommendationThread extends Rpc.make(
+  "WatchRecommendationThread",
+  {
+    payload: { threadId: ThreadId },
+    success: RecommendationThread,
+    error: RecommendationOperationError,
+    stream: true,
+  }
+) {}
+
 export class SendRecommendationMessage extends Rpc.make(
   "SendRecommendationMessage",
   {
@@ -151,6 +161,7 @@ class ActorRecommendationRpcs extends RpcGroup.make(
   GetAiAvailability,
   CreateRecommendationThread,
   GetRecommendationThread,
+  WatchRecommendationThread,
   SendRecommendationMessage,
   StopRecommendation,
   AskRoomAi,
