@@ -5,6 +5,7 @@ import {
   userLibraryEntry,
 } from "@animekaiser/db"
 import { and, asc, eq, sql } from "drizzle-orm"
+import * as Clock from "effect/Clock"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as FetchHttpClient from "effect/http/FetchHttpClient"
@@ -308,10 +309,11 @@ export class LibrarySyncService extends Context.Service<LibrarySyncService>()(
       const recoverRunningEvents = Effect.fn(
         "LibrarySyncService.recoverRunningEvents"
       )(function* () {
+        const updatedAt = new Date(yield* Clock.currentTimeMillis)
         yield* database.execute((db) =>
           db
             .update(librarySyncEvent)
-            .set({ status: "pending", updatedAt: new Date() })
+            .set({ status: "pending", updatedAt })
             .where(eq(librarySyncEvent.status, "running"))
         )
       })
@@ -328,13 +330,14 @@ export class LibrarySyncService extends Context.Service<LibrarySyncService>()(
           )
           const id = pending[0]?.id
           if (!id) return null
+          const updatedAt = new Date(yield* Clock.currentTimeMillis)
           const claimed = yield* database.execute((db) =>
             db
               .update(librarySyncEvent)
               .set({
                 status: "running",
                 attempts: sql`${librarySyncEvent.attempts} + 1`,
-                updatedAt: new Date(),
+                updatedAt,
               })
               .where(
                 and(
@@ -376,56 +379,49 @@ export class LibrarySyncService extends Context.Service<LibrarySyncService>()(
                 })
               )
 
-          yield* sync.pipe(
-            Effect.flatMap((aniListEntryId) =>
-              typeof aniListEntryId === "number"
-                ? database.execute((db) =>
-                    db
-                      .update(userLibraryEntry)
-                      .set({ aniListEntryId })
-                      .where(
-                        and(
-                          eq(userLibraryEntry.userId, event.userId),
-                          eq(userLibraryEntry.malId, event.malId)
-                        )
-                      )
-                  )
-                : Effect.void
-            ),
-            Effect.flatMap(() =>
-              database.execute((db) =>
+          yield* Effect.gen(function* () {
+            const aniListEntryId = yield* sync
+            if (typeof aniListEntryId === "number")
+              yield* database.execute((db) =>
                 db
-                  .update(librarySyncEvent)
-                  .set({
-                    status: "completed",
-                    errorMessage: null,
-                    updatedAt: new Date(),
-                  })
-                  .where(eq(librarySyncEvent.id, event.id))
+                  .update(userLibraryEntry)
+                  .set({ aniListEntryId })
+                  .where(
+                    and(
+                      eq(userLibraryEntry.userId, event.userId),
+                      eq(userLibraryEntry.malId, event.malId)
+                    )
+                  )
               )
-            ),
+            const updatedAt = new Date(yield* Clock.currentTimeMillis)
+            yield* database.execute((db) =>
+              db
+                .update(librarySyncEvent)
+                .set({ status: "completed", errorMessage: null, updatedAt })
+                .where(eq(librarySyncEvent.id, event.id))
+            )
+          }).pipe(
             Effect.catchTag("LibrarySyncError", (error) =>
-              database.execute((db) =>
-                db.transaction(async (tx) => {
-                  await tx
+              Effect.gen(function* () {
+                const updatedAt = new Date(yield* Clock.currentTimeMillis)
+                yield* database.execute((db) =>
+                  db
                     .update(librarySyncEvent)
                     .set({
                       status: nextSyncFailureStatus(event.attempts),
                       errorMessage: error.message,
-                      updatedAt: new Date(),
+                      updatedAt,
                     })
                     .where(eq(librarySyncEvent.id, event.id))
-                  if (error.authenticationRejected && account !== null) {
-                    await tx
+                )
+                if (error.authenticationRejected && account !== null)
+                  yield* database.execute((db) =>
+                    db
                       .update(externalListAccount)
-                      .set({
-                        relinkRequiredAt: new Date(),
-                        updatedAt: new Date(),
-                      })
+                      .set({ relinkRequiredAt: updatedAt, updatedAt })
                       .where(eq(externalListAccount.id, account.id))
-                  }
-                })
-              )
+                  )
+              }).pipe(database.transaction)
             )
           )
           return true

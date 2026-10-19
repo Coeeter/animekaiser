@@ -1,5 +1,6 @@
 import { Database, externalListAccount, job } from "@animekaiser/db"
 import { and, eq, sql } from "drizzle-orm"
+import * as Clock from "effect/Clock"
 import * as Context from "effect/Context"
 import * as Data from "effect/Data"
 import * as Duration from "effect/Duration"
@@ -166,8 +167,7 @@ export class ExternalListAccountsService extends Context.Service<ExternalListAcc
         // Claiming ids and forking must happen in one synchronous step,
         // otherwise concurrent requests both pass the check before either
         // claims and the provider gets fetched twice.
-        Effect.suspend(() => {
-          const now = Date.now()
+        Effect.flatMap(Clock.currentTimeMillis, (now) => {
           const stale = accounts.filter(
             (account) =>
               !syncingProfiles.has(account.id) && isProfileStale(account, now)
@@ -216,9 +216,9 @@ export class ExternalListAccountsService extends Context.Service<ExternalListAcc
 
         yield* syncStaleProfilesInBackground(rows)
 
+        const now = yield* Clock.currentTimeMillis
         return (["mal", "anilist"] as const).map((provider) => {
           const account = rows.find((item) => item.provider === provider)
-          const now = Date.now()
           const expiresAt = account?.expiresAt?.getTime() ?? null
           const state:
             | "disconnected"
@@ -316,31 +316,32 @@ export class ExternalListAccountsService extends Context.Service<ExternalListAcc
           }
 
           const id = crypto.randomUUID()
-          yield* database
-            .execute((db) =>
-              db.transaction(async (tx) => {
-                await tx.insert(job).values({
-                  id,
-                  userId,
-                  type: "library_import",
-                  payload: { provider },
-                })
-                await tx.execute(
-                  sql`select pg_notify(${LIBRARY_IMPORT_JOB_CHANNEL}, ${id})`
-                )
+          yield* Effect.gen(function* () {
+            yield* database.execute((db) =>
+              db.insert(job).values({
+                id,
+                userId,
+                type: "library_import",
+                payload: { provider },
               })
             )
-            .pipe(
-              Effect.catchTag("DatabaseError", (cause) =>
-                Effect.fail(
-                  new ExternalListAccountError({
-                    status: 503,
-                    message: "Unable to queue library import.",
-                    cause,
-                  })
-                )
+            yield* database.execute((db) =>
+              db.execute(
+                sql`select pg_notify(${LIBRARY_IMPORT_JOB_CHANNEL}, ${id})`
               )
             )
+          }).pipe(
+            database.transaction,
+            Effect.catchTag("DatabaseError", (cause) =>
+              Effect.fail(
+                new ExternalListAccountError({
+                  status: 503,
+                  message: "Unable to queue library import.",
+                  cause,
+                })
+              )
+            )
+          )
 
           return {
             id,

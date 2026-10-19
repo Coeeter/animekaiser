@@ -1,6 +1,7 @@
 import { Database, profile, user } from "@animekaiser/db"
 import { ProfileOperationError, UserPreferences } from "@animekaiser/domain"
 import { eq, inArray } from "drizzle-orm"
+import * as Clock from "effect/Clock"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
@@ -180,7 +181,10 @@ export class ProfileService extends Context.Service<ProfileService>()(
             )
 
           const base = usernameFromEmail(rows.at(0)?.email ?? "")
-          const candidates = usernameCandidates(base, Date.now())
+          const candidates = usernameCandidates(
+            base,
+            yield* Clock.currentTimeMillis
+          )
           const taken = yield* takenUsernames(candidates)
           const free = candidates.filter((value) => !taken.has(value))
 
@@ -220,13 +224,14 @@ export class ProfileService extends Context.Service<ProfileService>()(
         userId: string,
         onboarded: boolean
       ) {
+        const updatedAt = new Date(yield* Clock.currentTimeMillis)
         yield* database
           .execute((db) => {
             const insert = db.insert(profile).values({ userId, onboarded })
             return onboarded
               ? insert.onConflictDoUpdate({
                   target: profile.userId,
-                  set: { onboarded, updatedAt: new Date() },
+                  set: { onboarded, updatedAt: updatedAt },
                 })
               : insert.onConflictDoNothing({ target: profile.userId })
           })
@@ -274,6 +279,7 @@ export class ProfileService extends Context.Service<ProfileService>()(
       // here must not send them back through it.
       const updatePreferences = Effect.fn("ProfileService.updatePreferences")(
         function* (userId: string, preferences: UserPreferences) {
+          const updatedAt = new Date(yield* Clock.currentTimeMillis)
           const encoded = yield* Schema.encodeEffect(UserPreferences)(
             preferences
           ).pipe(Effect.orDie)
@@ -284,7 +290,7 @@ export class ProfileService extends Context.Service<ProfileService>()(
                 .values({ userId, onboarded: true, preferences: encoded })
                 .onConflictDoUpdate({
                   target: profile.userId,
-                  set: { preferences: encoded, updatedAt: new Date() },
+                  set: { preferences: encoded, updatedAt: updatedAt },
                 })
             )
             .pipe(
@@ -301,6 +307,7 @@ export class ProfileService extends Context.Service<ProfileService>()(
 
       const updateDescription = Effect.fn("ProfileService.updateDescription")(
         function* (userId: string, description: string | null) {
+          const updatedAt = new Date(yield* Clock.currentTimeMillis)
           yield* database
             .execute((db) =>
               db
@@ -308,7 +315,7 @@ export class ProfileService extends Context.Service<ProfileService>()(
                 .values({ userId, description })
                 .onConflictDoUpdate({
                   target: profile.userId,
-                  set: { description, updatedAt: new Date() },
+                  set: { description, updatedAt: updatedAt },
                 })
             )
             .pipe(
@@ -334,6 +341,7 @@ export class ProfileService extends Context.Service<ProfileService>()(
             shareList?: boolean
           }
         ) {
+          const updatedAt = new Date(yield* Clock.currentTimeMillis)
           const changes = {
             ...(patch.private === undefined ? {} : { private: patch.private }),
             ...(patch.shareStats === undefined
@@ -354,7 +362,7 @@ export class ProfileService extends Context.Service<ProfileService>()(
                 .values({ userId, ...changes })
                 .onConflictDoUpdate({
                   target: profile.userId,
-                  set: { ...changes, updatedAt: new Date() },
+                  set: { ...changes, updatedAt: updatedAt },
                 })
             )
             .pipe(
@@ -374,6 +382,7 @@ export class ProfileService extends Context.Service<ProfileService>()(
         userId: string,
         bannerKey: string | null
       ) {
+        const updatedAt = new Date(yield* Clock.currentTimeMillis)
         yield* database
           .execute((db) =>
             db
@@ -381,7 +390,7 @@ export class ProfileService extends Context.Service<ProfileService>()(
               .values({ userId, bannerKey })
               .onConflictDoUpdate({
                 target: profile.userId,
-                set: { bannerKey, updatedAt: new Date() },
+                set: { bannerKey, updatedAt: updatedAt },
               })
           )
           .pipe(

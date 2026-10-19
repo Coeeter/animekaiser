@@ -15,6 +15,7 @@ import type {
   LibrarySyncRetryTarget,
 } from "@animekaiser/domain"
 import { and, asc, count, desc, eq, inArray, sql } from "drizzle-orm"
+import * as Clock from "effect/Clock"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
@@ -107,6 +108,17 @@ export class LibraryService extends Context.Service<LibraryService>()(
     make: Effect.gen(function* () {
       const database = yield* Database
 
+      const atomically =
+        (message: string) =>
+        <A, E, R>(effect: Effect.Effect<A, E, R>) =>
+          database
+            .transaction(effect)
+            .pipe(
+              Effect.catchTag("DatabaseError", (cause) =>
+                Effect.fail(new LibraryServiceError({ message, cause }))
+              )
+            )
+
       const linkedProviders = Effect.fn("LibraryService.linkedProviders")(
         function* (userId: string) {
           const rows = yield* database
@@ -138,20 +150,23 @@ export class LibraryService extends Context.Service<LibraryService>()(
         sourceEventId: string | null = null
       ) {
         if (providers.length === 0) return []
+        const updatedAt = new Date(yield* Clock.currentTimeMillis)
         return yield* database
-          .execute((db) =>
-            db.transaction(async (tx) => {
-              await tx
-                .update(librarySyncEvent)
-                .set({ status: "superseded", updatedAt: new Date() })
-                .where(
-                  and(
-                    eq(librarySyncEvent.userId, userId),
-                    eq(librarySyncEvent.malId, malId),
-                    inArray(librarySyncEvent.provider, [...providers]),
-                    eq(librarySyncEvent.status, "pending")
+          .transaction(
+            Effect.gen(function* () {
+              yield* database.execute((db) =>
+                db
+                  .update(librarySyncEvent)
+                  .set({ status: "superseded", updatedAt })
+                  .where(
+                    and(
+                      eq(librarySyncEvent.userId, userId),
+                      eq(librarySyncEvent.malId, malId),
+                      inArray(librarySyncEvent.provider, [...providers]),
+                      eq(librarySyncEvent.status, "pending")
+                    )
                   )
-                )
+              )
               const values = providers.map((provider) => ({
                 id: crypto.randomUUID(),
                 sourceEventId,
@@ -161,15 +176,15 @@ export class LibraryService extends Context.Service<LibraryService>()(
                 action,
                 payload,
               }))
-              const rows = await tx
-                .insert(librarySyncEvent)
-                .values(values)
-                .returning()
-              for (const row of rows) {
-                await tx.execute(
-                  sql`select pg_notify(${LIBRARY_SYNC_EVENT_CHANNEL}, ${row.id})`
+              const rows = yield* database.execute((db) =>
+                db.insert(librarySyncEvent).values(values).returning()
+              )
+              for (const row of rows)
+                yield* database.execute((db) =>
+                  db.execute(
+                    sql`select pg_notify(${LIBRARY_SYNC_EVENT_CHANNEL}, ${row.id})`
+                  )
                 )
-              }
               return rows
             })
           )
@@ -355,62 +370,64 @@ export class LibraryService extends Context.Service<LibraryService>()(
         }
       })
 
+      // The entry and its outbound sync events commit together, so a saved
+      // change is never left without its sync.
       const upsertEntry = Effect.fn("LibraryService.upsertEntry")(function* (
         userId: string,
         metadata: AnimeLibraryMetadata,
         state: EntryState,
         syncExternal = true
       ) {
+        const updatedAt = new Date(yield* Clock.currentTimeMillis)
+        const saveFailed = (cause: unknown) =>
+          new LibraryServiceError({
+            message: "Unable to save library entry.",
+            cause,
+          })
         yield* database
           .execute((db) =>
-            db.transaction(async (tx) => {
-              await tx
-                .insert(animeMetadata)
-                .values({
-                  malId: metadata.malId,
+            db
+              .insert(animeMetadata)
+              .values({
+                malId: metadata.malId,
+                aniListId: metadata.aniListId,
+                titleRomaji: metadata.title.romaji,
+                titleEnglish: metadata.title.english,
+                coverImage: metadata.coverImage,
+                episodes: metadata.episodes,
+                genres: [...(metadata.genres ?? [])],
+                seasonYear: metadata.seasonYear ?? null,
+              })
+              .onConflictDoUpdate({
+                target: animeMetadata.malId,
+                set: {
                   aniListId: metadata.aniListId,
                   titleRomaji: metadata.title.romaji,
                   titleEnglish: metadata.title.english,
                   coverImage: metadata.coverImage,
                   episodes: metadata.episodes,
-                  genres: [...(metadata.genres ?? [])],
-                  seasonYear: metadata.seasonYear ?? null,
-                })
-                .onConflictDoUpdate({
-                  target: animeMetadata.malId,
-                  set: {
-                    aniListId: metadata.aniListId,
-                    titleRomaji: metadata.title.romaji,
-                    titleEnglish: metadata.title.english,
-                    coverImage: metadata.coverImage,
-                    episodes: metadata.episodes,
-                    ...(metadata.genres && metadata.genres.length > 0
-                      ? { genres: [...metadata.genres] }
-                      : {}),
-                    ...(metadata.seasonYear == null
-                      ? {}
-                      : { seasonYear: metadata.seasonYear }),
-                    updatedAt: new Date(),
-                  },
-                })
-              await tx
-                .insert(userLibraryEntry)
-                .values({ userId, malId: metadata.malId, ...state })
-                .onConflictDoUpdate({
-                  target: [userLibraryEntry.userId, userLibraryEntry.malId],
-                  set: { ...state, updatedAt: new Date() },
-                })
-            })
+                  ...(metadata.genres && metadata.genres.length > 0
+                    ? { genres: [...metadata.genres] }
+                    : {}),
+                  ...(metadata.seasonYear == null
+                    ? {}
+                    : { seasonYear: metadata.seasonYear }),
+                  updatedAt,
+                },
+              })
           )
-          .pipe(
-            Effect.mapError(
-              (cause) =>
-                new LibraryServiceError({
-                  message: "Unable to save library entry.",
-                  cause,
-                })
-            )
+          .pipe(Effect.mapError(saveFailed))
+        yield* database
+          .execute((db) =>
+            db
+              .insert(userLibraryEntry)
+              .values({ userId, malId: metadata.malId, ...state })
+              .onConflictDoUpdate({
+                target: [userLibraryEntry.userId, userLibraryEntry.malId],
+                set: { ...state, updatedAt },
+              })
           )
+          .pipe(Effect.mapError(saveFailed))
         if (syncExternal) {
           const providers = yield* linkedProviders(userId)
           yield* enqueue(userId, metadata.malId, providers, "upsert", {
@@ -420,7 +437,7 @@ export class LibraryService extends Context.Service<LibraryService>()(
           })
         }
         return yield* getEntry(userId, metadata.malId)
-      })
+      }, atomically("Unable to save library entry."))
 
       const removeEntry = Effect.fn("LibraryService.removeEntry")(function* (
         userId: string,
@@ -462,40 +479,31 @@ export class LibraryService extends Context.Service<LibraryService>()(
           aniListEntryId: entry.aniListEntryId,
         })
         return { removed: true, queuedProviders: selected }
-      })
+      }, atomically("Unable to remove library entry."))
 
       const clear = Effect.fn("LibraryService.clear")(function* (
         userId: string
       ) {
-        return yield* database
-          .execute((db) =>
-            db.transaction(async (tx) => {
-              await tx
-                .update(librarySyncEvent)
-                .set({ status: "superseded", updatedAt: new Date() })
-                .where(
-                  and(
-                    eq(librarySyncEvent.userId, userId),
-                    eq(librarySyncEvent.status, "pending")
-                  )
-                )
-              const deleted = await tx
-                .delete(userLibraryEntry)
-                .where(eq(userLibraryEntry.userId, userId))
-                .returning({ malId: userLibraryEntry.malId })
-              return deleted.length
-            })
-          )
-          .pipe(
-            Effect.mapError(
-              (cause) =>
-                new LibraryServiceError({
-                  message: "Unable to clear library.",
-                  cause,
-                })
+        const updatedAt = new Date(yield* Clock.currentTimeMillis)
+        yield* database.execute((db) =>
+          db
+            .update(librarySyncEvent)
+            .set({ status: "superseded", updatedAt })
+            .where(
+              and(
+                eq(librarySyncEvent.userId, userId),
+                eq(librarySyncEvent.status, "pending")
+              )
             )
-          )
-      })
+        )
+        const deleted = yield* database.execute((db) =>
+          db
+            .delete(userLibraryEntry)
+            .where(eq(userLibraryEntry.userId, userId))
+            .returning({ malId: userLibraryEntry.malId })
+        )
+        return deleted.length
+      }, atomically("Unable to clear library."))
 
       const listSyncEvents = Effect.fn("LibraryService.listSyncEvents")(
         function* (

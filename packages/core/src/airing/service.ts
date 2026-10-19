@@ -25,6 +25,7 @@ import {
   sql,
 } from "drizzle-orm"
 import * as Chunk from "effect/Chunk"
+import * as Clock from "effect/Clock"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
@@ -420,7 +421,7 @@ export class AiringService extends Context.Service<AiringService>()(
       })
 
       const sync = Effect.fn("AiringService.sync")(function* () {
-        const now = new Date()
+        const now = new Date(yield* Clock.currentTimeMillis)
         const tracked = yield* syncAiredEpisodes(now)
         const checked = yield* syncProviderAvailability(now)
         yield* Effect.logInfo("Airing sync finished", {
@@ -431,6 +432,7 @@ export class AiringService extends Context.Service<AiringService>()(
 
       const listNextSeasons = Effect.fn("AiringService.listNextSeasons")(
         function* (userId: string) {
+          const now = yield* Clock.currentTimeMillis
           const completed = yield* query(
             "Unable to load completed anime.",
             (db) =>
@@ -447,7 +449,7 @@ export class AiringService extends Context.Service<AiringService>()(
                     eq(userLibraryEntry.status, "completed"),
                     gte(
                       userLibraryEntry.updatedAt,
-                      new Date(Date.now() - nextSeasonWindowMs)
+                      new Date(now - nextSeasonWindowMs)
                     )
                   )
                 )
@@ -528,7 +530,7 @@ export class AiringService extends Context.Service<AiringService>()(
 
       const listNewEpisodes = Effect.fn("AiringService.listNewEpisodes")(
         function* (userId: string) {
-          const now = new Date()
+          const now = new Date(yield* Clock.currentTimeMillis)
           const rows = yield* query("Unable to load new episodes.", (db) =>
             db
               .select({
@@ -622,7 +624,7 @@ export class AiringService extends Context.Service<AiringService>()(
             .limit(1)
         )
         if (known.length > 0) return
-        const now = new Date()
+        const now = new Date(yield* Clock.currentTimeMillis)
         yield* syncAiredEpisodes(now, [malId])
         yield* syncProviderAvailability(now, [malId])
       })

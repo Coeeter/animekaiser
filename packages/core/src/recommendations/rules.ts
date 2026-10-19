@@ -66,14 +66,10 @@ export const filterCandidates = (
 }
 
 export const normalizeUrl = (value: string) => {
-  try {
-    const url = new URL(value)
-    if (url.protocol !== "https:" && url.protocol !== "http:") return null
-    url.hash = ""
-    return `${url.hostname.replace(/^www\./, "")}${url.pathname.replace(/\/$/, "")}${url.search}`
-  } catch {
-    return null
-  }
+  if (!URL.canParse(value)) return null
+  const url = new URL(value)
+  if (url.protocol !== "https:" && url.protocol !== "http:") return null
+  return `${url.hostname.replace(/^www\./, "")}${url.pathname.replace(/\/$/, "")}${url.search}`
 }
 
 // A model-returned URL is accepted only if the provider actually surfaced it

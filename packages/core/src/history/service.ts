@@ -14,6 +14,7 @@ import type {
   WatchHistoryStatus,
 } from "@animekaiser/domain"
 import { and, desc, eq, gte, inArray, max, sql } from "drizzle-orm"
+import * as Clock from "effect/Clock"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
@@ -126,57 +127,59 @@ export class WatchHistoryService extends Context.Service<WatchHistoryService>()(
           input.durationSeconds
         )
 
-        const rows = yield* database
-          .execute((db) =>
-            db.transaction(async (tx) => {
-              await tx
-                .insert(animeMetadata)
-                .values({
-                  malId: input.anime.malId,
-                  aniListId: input.anime.aniListId,
-                  titleRomaji: input.anime.title.romaji,
-                  titleEnglish: input.anime.title.english,
-                  coverImage: input.anime.coverImage,
-                  episodes: input.anime.episodes,
-                })
-                .onConflictDoNothing({ target: animeMetadata.malId })
-
-              return await tx
-                .insert(watchHistory)
-                .values({
-                  userId,
-                  malId: input.anime.malId,
+        const updatedAt = new Date(yield* Clock.currentTimeMillis)
+        const rows = yield* Effect.gen(function* () {
+          yield* database.execute((db) =>
+            db
+              .insert(animeMetadata)
+              .values({
+                malId: input.anime.malId,
+                aniListId: input.anime.aniListId,
+                titleRomaji: input.anime.title.romaji,
+                titleEnglish: input.anime.title.english,
+                coverImage: input.anime.coverImage,
+                episodes: input.anime.episodes,
+              })
+              .onConflictDoNothing({ target: animeMetadata.malId })
+          )
+          return yield* database.execute((db) =>
+            db
+              .insert(watchHistory)
+              .values({
+                userId,
+                malId: input.anime.malId,
+                provider: input.provider,
+                episodeId: input.episodeId,
+                serverId: input.serverId,
+                serverName: input.serverName,
+                episode: input.episode,
+                audio: input.audio,
+                positionSeconds: input.positionSeconds,
+                durationSeconds: input.durationSeconds,
+                status,
+              })
+              .onConflictDoUpdate({
+                target: [
+                  watchHistory.userId,
+                  watchHistory.malId,
+                  watchHistory.episode,
+                ],
+                set: {
                   provider: input.provider,
                   episodeId: input.episodeId,
                   serverId: input.serverId,
                   serverName: input.serverName,
-                  episode: input.episode,
                   audio: input.audio,
                   positionSeconds: input.positionSeconds,
                   durationSeconds: input.durationSeconds,
                   status,
-                })
-                .onConflictDoUpdate({
-                  target: [
-                    watchHistory.userId,
-                    watchHistory.malId,
-                    watchHistory.episode,
-                  ],
-                  set: {
-                    provider: input.provider,
-                    episodeId: input.episodeId,
-                    serverId: input.serverId,
-                    serverName: input.serverName,
-                    audio: input.audio,
-                    positionSeconds: input.positionSeconds,
-                    durationSeconds: input.durationSeconds,
-                    status,
-                    updatedAt: new Date(),
-                  },
-                })
-                .returning()
-            })
+                  updatedAt,
+                },
+              })
+              .returning()
           )
+        })
+          .pipe(database.transaction)
           .pipe(
             Effect.mapError(
               (cause) =>

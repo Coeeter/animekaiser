@@ -13,6 +13,7 @@ import type {
   TopRatedTitle,
 } from "@animekaiser/domain"
 import { and, desc, eq, isNotNull, sql } from "drizzle-orm"
+import * as Clock from "effect/Clock"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
@@ -193,7 +194,8 @@ export class ProfileStatsService extends Context.Service<ProfileStatsService>()(
         const activityByDay = new Map<string, number>()
         const startedTitles = new Set<number>()
 
-        const todayUtc = new Date(`${isoDate(new Date())}T00:00:00Z`)
+        const now = new Date(yield* Clock.currentTimeMillis)
+        const todayUtc = new Date(`${isoDate(now)}T00:00:00Z`)
         const windowStart = new Date(
           todayUtc.getTime() -
             (activityWindowDays - 1 + todayUtc.getUTCDay()) * 86_400_000
@@ -231,7 +233,7 @@ export class ProfileStatsService extends Context.Service<ProfileStatsService>()(
           }
         )
 
-        const streaks = calculateStreaks(activeDays, new Date())
+        const streaks = calculateStreaks(activeDays, now)
 
         const topRated: Array<TopRatedTitle> = topRatedRows.flatMap((row) =>
           row.score === null

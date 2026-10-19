@@ -1,6 +1,7 @@
 import type { DatabaseService } from "@animekaiser/db"
 import { externalListAccount } from "@animekaiser/db"
 import { and, eq, lte } from "drizzle-orm"
+import * as Clock from "effect/Clock"
 import * as Effect from "effect/Effect"
 import type * as HttpClient from "effect/http/HttpClient"
 import type { ExternalListProvider, ProviderOAuthConfig } from "./oauth"
@@ -41,9 +42,9 @@ type RefreshExternalListTokenParams = {
   currentNextTokenRefreshAt?: Date | null
 }
 
-const getNextTokenRefreshAt = (expiresAt?: Date) =>
+const getNextTokenRefreshAt = (now: Date, expiresAt?: Date) =>
   expiresAt
-    ? new Date(Math.max(Date.now(), expiresAt.getTime() - 10 * 60 * 1000))
+    ? new Date(Math.max(now.getTime(), expiresAt.getTime() - 10 * 60 * 1000))
     : undefined
 
 const linkExternalListAccount = (
@@ -51,7 +52,7 @@ const linkExternalListAccount = (
   linkedAccount: LinkedExternalListAccount
 ) =>
   Effect.gen(function* () {
-    const now = new Date()
+    const now = new Date(yield* Clock.currentTimeMillis)
     const linkedRows = yield* database.execute((db) =>
       db
         .select({
@@ -93,6 +94,7 @@ const linkExternalListAccount = (
     )
 
     const nextTokenRefreshAt = getNextTokenRefreshAt(
+      now,
       linkedAccount.accessTokenExpiresAt
     )
 
@@ -192,7 +194,7 @@ export const handleMalCallback = (
       accessToken: tokens.access_token,
       refreshToken: tokens.refresh_token,
       accessTokenExpiresAt: tokens.expires_in
-        ? new Date(Date.now() + tokens.expires_in * 1000)
+        ? new Date((yield* Clock.currentTimeMillis) + tokens.expires_in * 1000)
         : undefined,
       scopes: tokens.scope ?? malScopes.join(" "),
       tokenType: tokens.token_type,
@@ -235,7 +237,7 @@ export const handleAniListCallback = (
       accessToken: tokens.access_token,
       refreshToken: tokens.refresh_token,
       accessTokenExpiresAt: tokens.expires_in
-        ? new Date(Date.now() + tokens.expires_in * 1000)
+        ? new Date((yield* Clock.currentTimeMillis) + tokens.expires_in * 1000)
         : undefined,
       tokenType: tokens.token_type,
     })
@@ -309,6 +311,7 @@ export const syncExternalListAccountProfile = (
       profile.providerUsername !== account.providerUsername ||
       profile.profileImageUrl !== account.profileImageUrl
 
+    const profileSyncedAt = new Date(yield* Clock.currentTimeMillis)
     yield* database
       .execute((db) =>
         db
@@ -318,9 +321,9 @@ export const syncExternalListAccountProfile = (
               ? {
                   providerUsername: profile.providerUsername,
                   profileImageUrl: profile.profileImageUrl,
-                  profileSyncedAt: new Date(),
+                  profileSyncedAt,
                 }
-              : { profileSyncedAt: new Date() }
+              : { profileSyncedAt }
           )
           .where(eq(externalListAccount.id, account.id))
       )
@@ -342,11 +345,13 @@ export const markExternalListAccountProfileSynced = (
   database: DatabaseService,
   accountId: string
 ) =>
-  database.execute((db) =>
-    db
-      .update(externalListAccount)
-      .set({ profileSyncedAt: new Date() })
-      .where(eq(externalListAccount.id, accountId))
+  Effect.flatMap(Clock.currentTimeMillis, (now) =>
+    database.execute((db) =>
+      db
+        .update(externalListAccount)
+        .set({ profileSyncedAt: new Date(now) })
+        .where(eq(externalListAccount.id, accountId))
+    )
   )
 
 export const refreshExternalListAccountToken = (
@@ -356,12 +361,12 @@ export const refreshExternalListAccountToken = (
 ) =>
   Effect.gen(function* () {
     const tokens = yield* refreshMalAccessToken(config.mal, params.refreshToken)
-    const now = new Date()
+    const now = new Date(yield* Clock.currentTimeMillis)
     const accessTokenExpiresAt = tokens.expires_in
       ? new Date(now.getTime() + tokens.expires_in * 1000)
       : params.currentAccessTokenExpiresAt
     const nextTokenRefreshAt =
-      getNextTokenRefreshAt(accessTokenExpiresAt ?? undefined) ??
+      getNextTokenRefreshAt(now, accessTokenExpiresAt ?? undefined) ??
       params.currentNextTokenRefreshAt
 
     yield* database
@@ -393,11 +398,11 @@ export const refreshExternalListAccountToken = (
   })
 
 export const findExternalListAccountsDueForTokenRefresh = (
-  database: DatabaseService,
-  now = new Date()
+  database: DatabaseService
 ) =>
-  database
-    .execute((db) =>
+  Effect.gen(function* () {
+    const now = new Date(yield* Clock.currentTimeMillis)
+    return yield* database.execute((db) =>
       db
         .select()
         .from(externalListAccount)
@@ -408,13 +413,13 @@ export const findExternalListAccountsDueForTokenRefresh = (
           )
         )
     )
-    .pipe(
-      Effect.mapError(
-        (cause) =>
-          new ExternalListOAuthError({
-            message:
-              "[External List] Failed to load accounts due for token refresh.",
-            cause,
-          })
-      )
+  }).pipe(
+    Effect.mapError(
+      (cause) =>
+        new ExternalListOAuthError({
+          message:
+            "[External List] Failed to load accounts due for token refresh.",
+          cause,
+        })
     )
+  )

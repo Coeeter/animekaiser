@@ -8,6 +8,7 @@ import {
   RoomAuthentication,
   RoomRpcs,
 } from "@animekaiser/domain"
+import * as Clock from "effect/Clock"
 import * as Effect from "effect/Effect"
 import * as Cookies from "effect/http/Cookies"
 import type * as Headers from "effect/http/Headers"
@@ -108,7 +109,8 @@ export const RoomHandlersLive = RoomRpcs.toLayer(
             rooms.watch(actor, roomId, connectionId)
           )
         ),
-      GetRoomClock: () => Effect.sync(() => ({ serverTime: Date.now() })),
+      GetRoomClock: () =>
+        Effect.map(Clock.currentTimeMillis, (serverTime) => ({ serverTime })),
       ListRoomMessages: ({ roomId, beforeSeq }) =>
         withActor((actor) => rooms.listMessages(actor, roomId, beforeSeq)),
       SendRoomMessage: ({ roomId, requestId, body }) =>

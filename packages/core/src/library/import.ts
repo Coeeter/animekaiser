@@ -6,6 +6,7 @@ import {
   userLibraryEntry,
 } from "@animekaiser/db"
 import { and, asc, eq, sql } from "drizzle-orm"
+import * as Clock from "effect/Clock"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as FetchHttpClient from "effect/http/FetchHttpClient"
@@ -444,13 +445,21 @@ export class LibraryImportService extends Context.Service<LibraryImportService>(
         }
       })
 
+      const notifyJob = (jobId: string) =>
+        database.execute((db) =>
+          db.execute(
+            sql`select pg_notify(${LIBRARY_IMPORT_JOB_UPDATE_CHANNEL}, ${jobId})`
+          )
+        )
+
       const recoverRunningJobs = Effect.fn(
         "LibraryImportService.recoverRunningJobs"
       )(function* () {
+        const updatedAt = new Date(yield* Clock.currentTimeMillis)
         yield* database.execute((db) =>
           db
             .update(job)
-            .set({ status: "pending", lockedAt: null, updatedAt: new Date() })
+            .set({ status: "pending", lockedAt: null, updatedAt })
             .where(
               and(eq(job.type, "library_import"), eq(job.status, "running"))
             )
@@ -537,6 +546,7 @@ export class LibraryImportService extends Context.Service<LibraryImportService>(
           )
           const next = pending.at(0)
           if (!next) return null
+          const lockedAt = new Date(yield* Clock.currentTimeMillis)
 
           const claimed = yield* database.execute((db) =>
             db
@@ -544,8 +554,8 @@ export class LibraryImportService extends Context.Service<LibraryImportService>(
               .set({
                 status: "running",
                 attempts: next.attempts + 1,
-                lockedAt: new Date(),
-                updatedAt: new Date(),
+                lockedAt,
+                updatedAt: lockedAt,
               })
               .where(and(eq(job.id, next.id), eq(job.status, "pending")))
               .returning()
@@ -560,114 +570,108 @@ export class LibraryImportService extends Context.Service<LibraryImportService>(
           entries: ReadonlyArray<NormalizedEntry>,
           skippedCount: number
         ) {
-          return yield* database.execute((db) =>
-            db.transaction(async (tx) => {
-              const current = await tx
-                .select()
-                .from(userLibraryEntry)
-                .where(eq(userLibraryEntry.userId, userId))
-              const byMalId = new Map(
-                current.map((entry) => [entry.malId, entry])
-              )
-              let insertedCount = 0
-              let updatedCount = 0
-              let unchangedCount = 0
+          const current = yield* database.execute((db) =>
+            db
+              .select()
+              .from(userLibraryEntry)
+              .where(eq(userLibraryEntry.userId, userId))
+          )
+          const byMalId = new Map(current.map((entry) => [entry.malId, entry]))
+          const importedAt = new Date(yield* Clock.currentTimeMillis)
+          let insertedCount = 0
+          let updatedCount = 0
+          let unchangedCount = 0
 
-              for (const entry of entries) {
-                await tx
-                  .insert(animeMetadata)
-                  .values({
-                    malId: entry.malId,
+          for (const entry of entries) {
+            yield* database.execute((db) =>
+              db
+                .insert(animeMetadata)
+                .values({
+                  malId: entry.malId,
+                  aniListId: entry.aniListId,
+                  titleRomaji: entry.titleRomaji,
+                  titleEnglish: entry.titleEnglish,
+                  coverImage: entry.coverImage,
+                  episodes: entry.episodes,
+                  genres: entry.genres,
+                  seasonYear: entry.seasonYear,
+                })
+                .onConflictDoUpdate({
+                  target: animeMetadata.malId,
+                  set: {
                     aniListId: entry.aniListId,
                     titleRomaji: entry.titleRomaji,
                     titleEnglish: entry.titleEnglish,
                     coverImage: entry.coverImage,
                     episodes: entry.episodes,
-                    genres: entry.genres,
-                    seasonYear: entry.seasonYear,
-                  })
-                  .onConflictDoUpdate({
-                    target: animeMetadata.malId,
-                    set: {
-                      aniListId: entry.aniListId,
-                      titleRomaji: entry.titleRomaji,
-                      titleEnglish: entry.titleEnglish,
-                      coverImage: entry.coverImage,
-                      episodes: entry.episodes,
-                      ...(entry.genres.length > 0
-                        ? { genres: entry.genres }
-                        : {}),
-                      ...(entry.seasonYear === null
-                        ? {}
-                        : { seasonYear: entry.seasonYear }),
-                      updatedAt: new Date(),
-                    },
-                  })
-                const importedAt = new Date()
-                const sourceUpdatedAt = entry.updatedAt ?? importedAt
-                const sourceCreatedAt =
-                  entry.createdAt ?? entry.updatedAt ?? importedAt
+                    ...(entry.genres.length > 0
+                      ? { genres: entry.genres }
+                      : {}),
+                    ...(entry.seasonYear === null
+                      ? {}
+                      : { seasonYear: entry.seasonYear }),
+                    updatedAt: importedAt,
+                  },
+                })
+            )
+            const sourceUpdatedAt = entry.updatedAt ?? importedAt
+            const sourceCreatedAt =
+              entry.createdAt ?? entry.updatedAt ?? importedAt
 
-                const existing = byMalId.get(entry.malId)
-                if (!existing) {
-                  await tx.insert(userLibraryEntry).values({
-                    userId,
-                    malId: entry.malId,
-                    status: entry.status,
-                    score: entry.score,
-                    progress: entry.progress,
-                    notes: entry.notes,
-                    aniListEntryId: entry.aniListEntryId,
-                    createdAt: sourceCreatedAt,
-                    updatedAt: sourceUpdatedAt,
-                  })
-                  insertedCount += 1
-                  continue
-                }
-                if (sameEntry(existing, entry)) {
-                  unchangedCount += 1
-                  continue
-                }
+            const existing = byMalId.get(entry.malId)
+            if (!existing) {
+              yield* database.execute((db) =>
+                db.insert(userLibraryEntry).values({
+                  userId,
+                  malId: entry.malId,
+                  status: entry.status,
+                  score: entry.score,
+                  progress: entry.progress,
+                  notes: entry.notes,
+                  aniListEntryId: entry.aniListEntryId,
+                  createdAt: sourceCreatedAt,
+                  updatedAt: sourceUpdatedAt,
+                })
+              )
+              insertedCount += 1
+              continue
+            }
+            if (sameEntry(existing, entry)) {
+              unchangedCount += 1
+              continue
+            }
 
-                await tx
-                  .update(userLibraryEntry)
-                  .set({
-                    status: entry.status,
-                    score: entry.score,
-                    progress: entry.progress,
-                    notes: entry.notes,
-                    aniListEntryId: entry.aniListEntryId,
-                    updatedAt: sourceUpdatedAt,
-                  })
-                  .where(
-                    and(
-                      eq(userLibraryEntry.userId, userId),
-                      eq(userLibraryEntry.malId, entry.malId)
-                    )
+            yield* database.execute((db) =>
+              db
+                .update(userLibraryEntry)
+                .set({
+                  status: entry.status,
+                  score: entry.score,
+                  progress: entry.progress,
+                  notes: entry.notes,
+                  aniListEntryId: entry.aniListEntryId,
+                  updatedAt: sourceUpdatedAt,
+                })
+                .where(
+                  and(
+                    eq(userLibraryEntry.userId, userId),
+                    eq(userLibraryEntry.malId, entry.malId)
                   )
-                updatedCount += 1
-              }
+                )
+            )
+            updatedCount += 1
+          }
 
-              return {
-                insertedCount,
-                updatedCount,
-                unchangedCount,
-                skippedCount,
-              }
-            })
-          )
-        }
+          return { insertedCount, updatedCount, unchangedCount, skippedCount }
+        },
+        database.transaction
       )
 
       const processNextJob = Effect.fn("LibraryImportService.processNextJob")(
         function* () {
           const next = yield* claimNextJob()
           if (!next) return false
-          yield* database.execute((db) =>
-            db.execute(
-              sql`select pg_notify(${LIBRARY_IMPORT_JOB_UPDATE_CHANNEL}, ${next.id})`
-            )
-          )
+          yield* notifyJob(next.id)
           const provider = next.payload.provider
 
           const program = Effect.gen(function* () {
@@ -703,52 +707,39 @@ export class LibraryImportService extends Context.Service<LibraryImportService>(
             )
           })
 
+          const finishJob = (
+            update: Pick<
+              typeof job.$inferInsert,
+              "status" | "result" | "errorMessage"
+            >
+          ) =>
+            Effect.gen(function* () {
+              const updatedAt = new Date(yield* Clock.currentTimeMillis)
+              yield* database.execute((db) =>
+                db
+                  .update(job)
+                  .set({ ...update, lockedAt: null, updatedAt })
+                  .where(eq(job.id, next.id))
+              )
+              yield* notifyJob(next.id)
+            }).pipe(database.transaction)
+
           yield* program.pipe(
             Effect.flatMap((result) =>
-              database.execute((db) =>
-                db.transaction(async (tx) => {
-                  await tx
-                    .update(job)
-                    .set({
-                      status: "completed",
-                      result,
-                      errorMessage: null,
-                      lockedAt: null,
-                      updatedAt: new Date(),
-                    })
-                    .where(eq(job.id, next.id))
-                  await tx.execute(
-                    sql`select pg_notify(${LIBRARY_IMPORT_JOB_UPDATE_CHANNEL}, ${next.id})`
-                  )
-                })
-              )
+              finishJob({ status: "completed", result, errorMessage: null })
             ),
             Effect.catch((error) =>
-              database
-                .execute((db) =>
-                  db.transaction(async (tx) => {
-                    await tx
-                      .update(job)
-                      .set({
-                        status: "failed",
-                        errorMessage:
-                          "message" in error
-                            ? String(error.message)
-                            : "Library import failed.",
-                        lockedAt: null,
-                        updatedAt: new Date(),
-                      })
-                      .where(eq(job.id, next.id))
-                    await tx.execute(
-                      sql`select pg_notify(${LIBRARY_IMPORT_JOB_UPDATE_CHANNEL}, ${next.id})`
-                    )
-                  })
+              finishJob({
+                status: "failed",
+                errorMessage:
+                  "message" in error
+                    ? String(error.message)
+                    : "Library import failed.",
+              }).pipe(
+                Effect.andThen(
+                  Effect.logError("Library import failed", { error })
                 )
-                .pipe(
-                  Effect.andThen(
-                    Effect.logError("Library import failed", { error })
-                  )
-                )
+              )
             )
           )
           return true
