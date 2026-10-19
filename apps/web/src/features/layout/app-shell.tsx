@@ -40,9 +40,12 @@ export function AppShell({ children }: { children: ReactNode }) {
   const refreshSession = useAtomRefresh(sessionAtom)
   const profileResult = useAtomValue(ownProfileAtom)
 
-  const needsOnboarding = AsyncResult.builder(profileResult)
-    .onSuccess((profile) => !profile.profile.onboarded)
-    .orElse(() => false)
+  // A profile still refreshing after a mutation (such as finishing onboarding)
+  // holds its previous value, which must not trigger a redirect.
+  const needsOnboarding =
+    AsyncResult.isSuccess(profileResult) &&
+    !profileResult.waiting &&
+    !profileResult.value.profile.onboarded
 
   if (bareRoutes.has(location.pathname)) return children
 

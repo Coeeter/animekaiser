@@ -50,6 +50,9 @@ test("a new account is walked through the welcome flow", async ({ page }) => {
 
   await page.getByRole("button", { name: "Ready to watch anime" }).click()
   await page.waitForURL("http://localhost:3000/")
+  // The profile refetch must not bounce a finished account back to /welcome.
+  await expect(page.locator("a[href^='/series/']").first()).toBeVisible()
+  await expect(page).toHaveURL("http://localhost:3000/")
 
   await page.goto("/my-list?status=all&sort=updated_desc&page=1")
   await expect(page.getByRole("heading", { name: "My list" })).toBeVisible()
