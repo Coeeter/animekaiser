@@ -6,11 +6,9 @@ import * as Cause from "effect/Cause"
 import * as Context from "effect/Context"
 import * as Data from "effect/Data"
 import * as Effect from "effect/Effect"
-import * as Filter from "effect/Filter"
+import * as Exit from "effect/Exit"
 import * as Layer from "effect/Layer"
-import type * as Predicate from "effect/Predicate"
 import * as Queue from "effect/Queue"
-import * as Result from "effect/Result"
 import type { Notification } from "pg"
 import { escapeIdentifier, DatabaseError as PgDatabaseError, Pool } from "pg"
 import * as schema from "./schema"
@@ -65,14 +63,10 @@ export class DatabaseMigrationError extends Data.TaggedError(
   cause: unknown
 }> {}
 
-// Domain errors thrown inside a query callback reach the caller as a
-// DatabaseError cause; this filter moves them back into the error channel.
-export const thrownBy = <E>(
-  refinement: Predicate.Refinement<unknown, E>
-): Filter.Filter<DatabaseError, E, DatabaseError> =>
-  Filter.make((error) =>
-    refinement(error.cause) ? Result.succeed(error.cause) : Result.fail(error)
-  )
+export const CurrentTransaction = Context.Reference<KaiserExecutor | null>(
+  "@animekaiser/db/CurrentTransaction",
+  { defaultValue: () => null }
+)
 
 const toDatabaseError = (cause: unknown) => {
   if (cause instanceof PgDatabaseError) {
@@ -146,8 +140,38 @@ const make = Effect.fnUntraced(function* (config: DatabaseConnectionConfig) {
     )
   )
 
-  const execute = <T>(fn: (client: KaiserDb) => Promise<T>) =>
-    Effect.tryPromise({ try: () => fn(db), catch: toDatabaseError })
+  const execute = <T>(fn: (client: KaiserExecutor) => Promise<T>) =>
+    Effect.flatMap(CurrentTransaction, (tx) =>
+      Effect.tryPromise({ try: () => fn(tx ?? db), catch: toDatabaseError })
+    )
+
+  // Queries issued through `execute` inside the effect join the transaction;
+  // a failure of the effect rolls it back and keeps its typed error.
+  const transaction = <A, E, R>(
+    effect: Effect.Effect<A, E, R>
+  ): Effect.Effect<A, E | DatabaseError, R> =>
+    Effect.gen(function* () {
+      if (yield* CurrentTransaction) return yield* effect
+      const context = yield* Effect.context<R>()
+      const exit = yield* Effect.promise((signal) =>
+        db
+          .transaction(async (tx) => {
+            const result = await Effect.runPromiseExitWith(context)(
+              Effect.provideService(effect, CurrentTransaction, tx),
+              { signal }
+            )
+            // Throwing is how drizzle rolls back; the exit carries the typed error.
+            if (Exit.isFailure(result)) throw result
+            return result
+          })
+          .catch((cause: unknown) =>
+            Exit.isExit(cause)
+              ? (cause as Exit.Exit<A, E>)
+              : Exit.fail(toDatabaseError(cause))
+          )
+      )
+      return yield* exit
+    })
 
   const listen = Effect.fn("Database.listen")(function* (channel: string) {
     let connectionFailed = false
@@ -199,7 +223,7 @@ const make = Effect.fnUntraced(function* (config: DatabaseConnectionConfig) {
     return Queue.asDequeue(notifications)
   })
 
-  return { client: db, awaitConnectionError, execute, listen }
+  return { client: db, awaitConnectionError, execute, transaction, listen }
 })
 
 export type DatabaseService = Effect.Success<ReturnType<typeof make>>
@@ -210,3 +234,6 @@ export class Database extends Context.Service<Database, DatabaseService>()(
   static readonly layer = (config: DatabaseConnectionConfig) =>
     Layer.effect(Database, make(config))
 }
+
+export const query = <T>(fn: (client: KaiserExecutor) => Promise<T>) =>
+  Database.use((database) => database.execute(fn))

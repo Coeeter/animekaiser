@@ -1,4 +1,4 @@
-import type { KaiserDb, KaiserExecutor } from "@animekaiser/db"
+import type { DatabaseError } from "@animekaiser/db"
 import {
   aiBudgetMonth,
   aiGeneration,
@@ -6,11 +6,11 @@ import {
   aiUsageDaily,
   animeMetadata,
   Database,
+  query,
   recommendationMessage,
   recommendationThread,
   room,
   roomParticipant,
-  thrownBy,
   userLibraryEntry,
 } from "@animekaiser/db"
 import type {
@@ -28,6 +28,7 @@ import {
 } from "@animekaiser/domain"
 import { and, asc, desc, eq, inArray, sql } from "drizzle-orm"
 import * as Cause from "effect/Cause"
+import * as Clock from "effect/Clock"
 import * as Context from "effect/Context"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
@@ -86,18 +87,20 @@ const fail = (
   resetsAt?: number
 ) => new RecommendationOperationError({ reason, message, resetsAt })
 
-const today = () => new Date().toISOString().slice(0, 10)
-const thisMonth = () => new Date().toISOString().slice(0, 7)
-const nextUtcMidnight = () => {
-  const now = new Date()
-  return Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1)
-}
-const nextMonth = () => {
-  const now = new Date()
-  return Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1)
-}
-
+const dayOf = (now: number) => new Date(now).toISOString().slice(0, 10)
 const monthOf = (date: Date) => date.toISOString().slice(0, 7)
+const nextUtcMidnight = (now: number) => {
+  const date = new Date(now)
+  return Date.UTC(
+    date.getUTCFullYear(),
+    date.getUTCMonth(),
+    date.getUTCDate() + 1
+  )
+}
+const nextMonth = (now: number) => {
+  const date = new Date(now)
+  return Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + 1, 1)
+}
 
 const MessageData = Schema.Struct({
   activity: Schema.optional(Schema.NullOr(Schema.String)),
@@ -170,77 +173,106 @@ export class RecommendationService extends Context.Service<RecommendationService
       const rooms = yield* RoomService
       const running = new Map<string, Fiber.Fiber<void, never>>()
 
-      const run = <T>(fn: (db: KaiserDb) => Promise<T>) =>
-        database.execute(fn).pipe(
-          Effect.catchFilter(
-            thrownBy(Schema.is(RecommendationOperationError)),
-            Effect.fail
-          ),
+      const run = <A, R>(
+        effect: Effect.Effect<
+          A,
+          RecommendationOperationError | DatabaseError,
+          R
+        >
+      ) =>
+        effect.pipe(
           Effect.tapErrorTag("DatabaseError", (error) =>
             Effect.logError("[AI] Database operation failed", error)
           ),
           Effect.catchTag("DatabaseError", () =>
             Effect.fail(fail("failed", "Something went wrong. Try again."))
+          ),
+          Effect.provideService(Database, database)
+        )
+
+      const transact = <A, R>(
+        effect: Effect.Effect<
+          A,
+          RecommendationOperationError | DatabaseError,
+          R
+        >
+      ) => run(database.transaction(effect))
+
+      const postToRoom = (input: Parameters<typeof insertMessage>[0]) =>
+        insertMessage(input).pipe(
+          Effect.catchTag("RoomOperationError", (error) =>
+            Effect.fail(fail("failed", error.message))
           )
         )
-      const transact = <T>(fn: (tx: KaiserExecutor) => Promise<T>) =>
-        run((db) => db.transaction((tx) => fn(tx)))
 
-      const guestOwner = async (
-        ex: KaiserExecutor,
+      const lockRoom = (roomId: string) =>
+        query((db) =>
+          db
+            .select({ id: room.id })
+            .from(room)
+            .where(eq(room.id, roomId))
+            .for("update")
+        )
+
+      const findRoom = (roomId: string) =>
+        query((db) => db.select().from(room).where(eq(room.id, roomId))).pipe(
+          Effect.map(([row]) => row ?? null)
+        )
+
+      const guestOwner = Effect.fnUntraced(function* (
         actor: Actor,
         roomId: string
-      ) => {
-        const { guest } = await findParticipants(ex, actor, roomId)
-        if (!guest || participantState(guest, Date.now()) !== "admitted")
-          return null
+      ) {
+        const { guest } = yield* findParticipants(actor, roomId)
+        const now = yield* Clock.currentTimeMillis
+        if (!guest || participantState(guest, now) !== "admitted") return null
         return guest
-      }
+      })
 
-      const ownerOf = async (
-        ex: KaiserExecutor,
+      const ownerOf = Effect.fnUntraced(function* (
         actor: Actor,
         thread: ThreadRow
-      ): Promise<Owner | null> => {
+      ) {
         if (thread.ownerUserId)
           return actor.user?.id === thread.ownerUserId
-            ? { kind: "account", userId: thread.ownerUserId }
+            ? ({ kind: "account", userId: thread.ownerUserId } as Owner)
             : null
         if (thread.guestParticipantId && thread.roomId) {
-          const guest = await guestOwner(ex, actor, thread.roomId)
+          const guest = yield* guestOwner(actor, thread.roomId)
           return guest?.id === thread.guestParticipantId
-            ? {
+            ? ({
                 kind: "guest",
                 participantId: guest.id,
                 roomId: thread.roomId,
-              }
+              } as Owner)
             : null
         }
         return null
-      }
+      })
 
-      const loadThread = async (
-        ex: KaiserExecutor,
-        thread: ThreadRow
-      ): Promise<RecommendationThread> => {
-        const rows = await ex
-          .select()
-          .from(recommendationMessage)
-          .where(eq(recommendationMessage.threadId, thread.id))
-          .orderBy(asc(recommendationMessage.seq))
-        const [busy] = await ex
-          .select({ id: aiGeneration.id })
-          .from(aiGeneration)
-          .where(
-            and(
-              eq(aiGeneration.threadId, thread.id),
-              eq(aiGeneration.status, "running")
+      const loadThread = Effect.fnUntraced(function* (thread: ThreadRow) {
+        const rows = yield* query((db) =>
+          db
+            .select()
+            .from(recommendationMessage)
+            .where(eq(recommendationMessage.threadId, thread.id))
+            .orderBy(asc(recommendationMessage.seq))
+        )
+        const [busy] = yield* query((db) =>
+          db
+            .select({ id: aiGeneration.id })
+            .from(aiGeneration)
+            .where(
+              and(
+                eq(aiGeneration.threadId, thread.id),
+                eq(aiGeneration.status, "running")
+              )
             )
-          )
+        )
         const context = (thread.context ?? {}) as {
           seed?: AnimeLibraryMetadata
         }
-        return {
+        const loaded: RecommendationThread = {
           id: thread.id,
           title: thread.title,
           scope: thread.ownerUserId ? "personal" : "guest",
@@ -249,51 +281,63 @@ export class RecommendationService extends Context.Service<RecommendationService
           messages: rows.map(toMessage),
           busy: busy !== undefined,
         }
-      }
+        return loaded
+      })
 
-      const requireThread = async (
-        ex: KaiserExecutor,
+      const requireThread = Effect.fnUntraced(function* (
         actor: Actor,
         threadId: string,
         lock = false
-      ) => {
-        const query = ex
-          .select()
-          .from(recommendationThread)
-          .where(eq(recommendationThread.id, threadId))
-        const [thread] = lock ? await query.for("update") : await query
-        if (!thread) throw fail("not_found", "This conversation was not found.")
-        const owner = await ownerOf(ex, actor, thread)
-        if (!owner) throw fail("not_found", "This conversation was not found.")
+      ) {
+        const [thread] = yield* query(async (db) => {
+          const select = db
+            .select()
+            .from(recommendationThread)
+            .where(eq(recommendationThread.id, threadId))
+          return lock ? await select.for("update") : await select
+        })
+        if (!thread)
+          return yield* fail("not_found", "This conversation was not found.")
+        const owner = yield* ownerOf(actor, thread)
+        if (!owner)
+          return yield* fail("not_found", "This conversation was not found.")
         return { thread, owner }
-      }
+      })
 
       const availability = Effect.fn("RecommendationService.availability")(
         function* (actor: Actor, roomId: string | undefined) {
-          if (!provider.run)
-            return {
-              available: false,
-              reason: "not_configured" as const,
-              remainingToday: 0,
-              resetsAt: null,
-            }
-          return yield* run(async (db) => {
+          const notConfigured = {
+            available: false,
+            reason: "not_configured" as const,
+            remainingToday: 0,
+            resetsAt: null,
+          }
+          if (!provider.run) return notConfigured
+          const now = yield* Clock.currentTimeMillis
+          return yield* Effect.gen(function* () {
             const key = actor.user
               ? `user:${actor.user.id}`
               : roomId
-                ? `guest:${(await guestOwner(db, actor, roomId))?.id ?? "none"}`
+                ? `guest:${(yield* guestOwner(actor, roomId))?.id ?? "none"}`
                 : "none"
             const limit = actor.user ? aiLimits.userDaily : aiLimits.guestDaily
-            const [usage] = await db
-              .select({ count: aiUsageDaily.count })
-              .from(aiUsageDaily)
-              .where(
-                and(eq(aiUsageDaily.key, key), eq(aiUsageDaily.day, today()))
-              )
-            const [month] = await db
-              .select()
-              .from(aiBudgetMonth)
-              .where(eq(aiBudgetMonth.month, thisMonth()))
+            const [usage] = yield* query((db) =>
+              db
+                .select({ count: aiUsageDaily.count })
+                .from(aiUsageDaily)
+                .where(
+                  and(
+                    eq(aiUsageDaily.key, key),
+                    eq(aiUsageDaily.day, dayOf(now))
+                  )
+                )
+            )
+            const [month] = yield* query((db) =>
+              db
+                .select()
+                .from(aiBudgetMonth)
+                .where(eq(aiBudgetMonth.month, monthOf(new Date(now))))
+            )
             const remaining = Math.max(0, limit - (usage?.count ?? 0))
             if (
               month &&
@@ -309,14 +353,14 @@ export class RecommendationService extends Context.Service<RecommendationService
                 available: false,
                 reason: "budget" as const,
                 remainingToday: remaining,
-                resetsAt: nextMonth(),
+                resetsAt: nextMonth(now),
               }
             return remaining === 0
               ? {
                   available: false,
                   reason: "daily_limit" as const,
                   remainingToday: 0,
-                  resetsAt: nextUtcMidnight(),
+                  resetsAt: nextUtcMidnight(now),
                 }
               : {
                   available: true,
@@ -325,12 +369,8 @@ export class RecommendationService extends Context.Service<RecommendationService
                   resetsAt: null,
                 }
           }).pipe(
-            Effect.orElseSucceed(() => ({
-              available: false,
-              reason: "not_configured" as const,
-              remainingToday: 0,
-              resetsAt: null,
-            }))
+            run,
+            Effect.orElseSucceed(() => notConfigured)
           )
         }
       )
@@ -338,20 +378,39 @@ export class RecommendationService extends Context.Service<RecommendationService
       const list = Effect.fn("RecommendationService.list")(function* (
         userId: string
       ) {
-        return yield* run(async (db) => {
-          const rows = await db
+        const rows = yield* query((db) =>
+          db
             .select()
             .from(recommendationThread)
             .where(eq(recommendationThread.ownerUserId, userId))
             .orderBy(desc(recommendationThread.updatedAt))
             .limit(100)
-          return rows.map((row) => ({
-            id: row.id,
-            title: row.title,
-            scope: "personal" as const,
-            updatedAt: row.updatedAt.getTime(),
-          }))
-        })
+        )
+        return rows.map((row) => ({
+          id: row.id,
+          title: row.title,
+          scope: "personal" as const,
+          updatedAt: row.updatedAt.getTime(),
+        }))
+      }, run)
+
+      const createOwner = Effect.fnUntraced(function* (
+        actor: Actor,
+        roomId: string | undefined
+      ) {
+        if (actor.user) return { ownerUserId: actor.user.id }
+        if (!roomId)
+          return yield* fail("forbidden", "Sign in to use AI recommendations.")
+        const guest = yield* guestOwner(actor, roomId)
+        const roomRow = yield* findRoom(roomId)
+        if (!guest || !roomRow)
+          return yield* fail("forbidden", "Join the room to use its catch-up.")
+        if (!canAskAi(roomRow.aiAccess, false, roomRow.status))
+          return yield* fail(
+            "forbidden",
+            "The host hasn't allowed guests to ask AI here."
+          )
+        return { guestParticipantId: guest.id, roomId }
       })
 
       const create = Effect.fn("RecommendationService.create")(function* (
@@ -366,64 +425,55 @@ export class RecommendationService extends Context.Service<RecommendationService
               )
             )
           : null
-        return yield* transact(async (tx) => {
-          const [existing] = await tx
-            .select()
-            .from(recommendationThread)
-            .where(eq(recommendationThread.id, input.threadId))
-          if (existing) {
-            if (!(await ownerOf(tx, actor, existing)))
-              throw fail("not_found", "This conversation was not found.")
-            return loadThread(tx, existing)
-          }
-          const owner = await (async () => {
-            if (actor.user) return { ownerUserId: actor.user.id }
-            if (!input.roomId)
-              throw fail("forbidden", "Sign in to use AI recommendations.")
-            const guest = await guestOwner(tx, actor, input.roomId)
-            const [roomRow] = await tx
-              .select()
-              .from(room)
-              .where(eq(room.id, input.roomId))
-            if (!guest || !roomRow)
-              throw fail("forbidden", "Join the room to use its catch-up.")
-            if (!canAskAi(roomRow.aiAccess, false, roomRow.status))
-              throw fail(
-                "forbidden",
-                "The host hasn't allowed guests to ask AI here."
-              )
-            return { guestParticipantId: guest.id, roomId: input.roomId }
-          })()
-          const [thread] = await tx
-            .insert(recommendationThread)
-            .values({
-              id: input.threadId,
-              ...owner,
-              title: seed ? `Like ${titleOf(seed)}` : "New conversation",
-              context: seed ? { seed } : null,
-            })
-            .returning()
-          if (!thread) throw fail("failed", "Unable to start a conversation.")
-          return loadThread(tx, thread)
-        })
+        return yield* transact(
+          Effect.gen(function* () {
+            const [existing] = yield* query((db) =>
+              db
+                .select()
+                .from(recommendationThread)
+                .where(eq(recommendationThread.id, input.threadId))
+            )
+            if (existing) {
+              if (!(yield* ownerOf(actor, existing)))
+                return yield* fail(
+                  "not_found",
+                  "This conversation was not found."
+                )
+              return yield* loadThread(existing)
+            }
+            const owner = yield* createOwner(actor, input.roomId)
+            const [thread] = yield* query((db) =>
+              db
+                .insert(recommendationThread)
+                .values({
+                  id: input.threadId,
+                  ...owner,
+                  title: seed ? `Like ${titleOf(seed)}` : "New conversation",
+                  context: seed ? { seed } : null,
+                })
+                .returning()
+            )
+            if (!thread)
+              return yield* fail("failed", "Unable to start a conversation.")
+            return yield* loadThread(thread)
+          })
+        )
       })
 
       const get = Effect.fn("RecommendationService.get")(function* (
         actor: Actor,
         threadId: string
       ) {
-        return yield* run(async (db) => {
-          const { thread } = await requireThread(db, actor, threadId)
-          return loadThread(db, thread)
-        })
-      })
+        const { thread } = yield* requireThread(actor, threadId)
+        return yield* loadThread(thread)
+      }, run)
 
       const rename = Effect.fn("RecommendationService.rename")(function* (
         userId: string,
         threadId: string,
         title: string
       ) {
-        yield* run((db) =>
+        yield* query((db) =>
           db
             .update(recommendationThread)
             .set({ title: title.trim() })
@@ -434,83 +484,67 @@ export class RecommendationService extends Context.Service<RecommendationService
               )
             )
         )
-      })
+      }, run)
 
       const remove = Effect.fn("RecommendationService.remove")(function* (
         userId: string,
         threadId: string
       ) {
-        const [owned] = yield* run((db) =>
-          db
-            .select({ id: recommendationThread.id })
-            .from(recommendationThread)
-            .where(
-              and(
-                eq(recommendationThread.id, threadId),
-                eq(recommendationThread.ownerUserId, userId)
-              )
-            )
+        const owned = and(
+          eq(recommendationThread.id, threadId),
+          eq(recommendationThread.ownerUserId, userId)
         )
-        if (!owned) return
+        const [thread] = yield* run(
+          query((db) =>
+            db
+              .select({ id: recommendationThread.id })
+              .from(recommendationThread)
+              .where(owned)
+          )
+        )
+        if (!thread) return
         yield* stopThread(threadId)
-        yield* run((db) =>
-          db
-            .delete(recommendationThread)
-            .where(
-              and(
-                eq(recommendationThread.id, threadId),
-                eq(recommendationThread.ownerUserId, userId)
-              )
-            )
-        )
+        yield* run(query((db) => db.delete(recommendationThread).where(owned)))
       })
 
       const getPreferences = Effect.fn("RecommendationService.getPreferences")(
         function* (userId: string) {
-          return yield* run(async (db) => {
-            const [row] = await db
+          const [row] = yield* query((db) =>
+            db
               .select()
               .from(aiPreference)
               .where(eq(aiPreference.userId, userId))
-            return row?.notes ?? []
-          })
-        }
+          )
+          return row?.notes ?? []
+        },
+        run
       )
 
       const savePreferences = Effect.fn(
         "RecommendationService.savePreferences"
       )(function* (userId: string, notes: ReadonlyArray<string>) {
         const clean = notes.map((note) => note.trim()).filter(Boolean)
-        yield* run((db) =>
+        const updatedAt = new Date(yield* Clock.currentTimeMillis)
+        yield* query((db) =>
           db
             .insert(aiPreference)
             .values({ userId, notes: clean })
             .onConflictDoUpdate({
               target: aiPreference.userId,
-              set: { notes: clean, updatedAt: new Date() },
+              set: { notes: clean, updatedAt },
             })
         )
-      })
+      }, run)
 
-      // Counts and budget are reserved in the same transaction that records
-      // the generation, so concurrent or retried requests cannot overspend.
-      const reserve = async (
-        tx: KaiserExecutor,
-        input: {
-          actorKey: string
-          actorLimit: number
-          roomId: string | null
-          amount: number
-          at: Date
-        }
-      ) => {
-        const day = today()
-        const bump = async (
-          key: string,
-          limit: number,
-          reason: "daily_limit" | "room_limit"
-        ) => {
-          const [row] = await tx
+      const bumpUsage = Effect.fnUntraced(function* (
+        key: string,
+        day: string,
+        limit: number,
+        reason: "daily_limit" | "room_limit",
+        now: number
+      ) {
+        const [row] = yield* query((db) =>
+          db
             .insert(aiUsageDaily)
             .values({ key, day, count: 1 })
             .onConflictDoUpdate({
@@ -518,27 +552,56 @@ export class RecommendationService extends Context.Service<RecommendationService
               set: { count: sql`${aiUsageDaily.count} + 1` },
             })
             .returning({ count: aiUsageDaily.count })
-          if ((row?.count ?? 0) > limit)
-            throw fail(
-              reason,
-              reason === "daily_limit"
-                ? "You've reached today's AI limit."
-                : "This room has reached today's AI limit.",
-              nextUtcMidnight()
-            )
-        }
-        await bump(input.actorKey, input.actorLimit, "daily_limit")
+        )
+        if ((row?.count ?? 0) > limit)
+          return yield* fail(
+            reason,
+            reason === "daily_limit"
+              ? "You've reached today's AI limit."
+              : "This room has reached today's AI limit.",
+            nextUtcMidnight(now)
+          )
+      })
+
+      // Counts and budget are reserved in the same transaction that records
+      // the generation, so concurrent or retried requests cannot overspend.
+      const reserve = Effect.fnUntraced(function* (input: {
+        actorKey: string
+        actorLimit: number
+        roomId: string | null
+        amount: number
+        at: Date
+      }) {
+        const now = input.at.getTime()
+        const day = dayOf(now)
+        yield* bumpUsage(
+          input.actorKey,
+          day,
+          input.actorLimit,
+          "daily_limit",
+          now
+        )
         if (input.roomId)
-          await bump(`room:${input.roomId}`, aiLimits.roomDaily, "room_limit")
+          yield* bumpUsage(
+            `room:${input.roomId}`,
+            day,
+            aiLimits.roomDaily,
+            "room_limit",
+            now
+          )
         // The generation stores the same instant as `createdAt`, so settling
         // later always finds the month this reservation was made in.
         const month = monthOf(input.at)
-        await tx.insert(aiBudgetMonth).values({ month }).onConflictDoNothing()
-        const [budget] = await tx
-          .select()
-          .from(aiBudgetMonth)
-          .where(eq(aiBudgetMonth.month, month))
-          .for("update")
+        yield* query((db) =>
+          db.insert(aiBudgetMonth).values({ month }).onConflictDoNothing()
+        )
+        const [budget] = yield* query((db) =>
+          db
+            .select()
+            .from(aiBudgetMonth)
+            .where(eq(aiBudgetMonth.month, month))
+            .for("update")
+        )
         if (
           !budget ||
           !fitsBudget(
@@ -549,33 +612,31 @@ export class RecommendationService extends Context.Service<RecommendationService
             input.amount
           )
         )
-          throw fail(
+          return yield* fail(
             "budget",
             "AI is paused for the rest of the month.",
-            nextMonth()
+            nextMonth(now)
           )
-        await tx
-          .update(aiBudgetMonth)
-          .set({
-            reservedUsd: sql`${aiBudgetMonth.reservedUsd} + ${input.amount}`,
-          })
-          .where(eq(aiBudgetMonth.month, month))
-      }
+        yield* query((db) =>
+          db
+            .update(aiBudgetMonth)
+            .set({
+              reservedUsd: sql`${aiBudgetMonth.reservedUsd} + ${input.amount}`,
+            })
+            .where(eq(aiBudgetMonth.month, month))
+        )
+      })
 
-      const settle = async (
-        tx: KaiserExecutor,
-        amount: number,
-        cost: number | null,
-        month: string
-      ) => {
-        await tx
-          .update(aiBudgetMonth)
-          .set({
-            reservedUsd: sql`greatest(0, ${aiBudgetMonth.reservedUsd} - ${amount})`,
-            spentUsd: sql`${aiBudgetMonth.spentUsd} + ${cost ?? amount}`,
-          })
-          .where(eq(aiBudgetMonth.month, month))
-      }
+      const settle = (amount: number, cost: number | null, month: string) =>
+        query((db) =>
+          db
+            .update(aiBudgetMonth)
+            .set({
+              reservedUsd: sql`greatest(0, ${aiBudgetMonth.reservedUsd} - ${amount})`,
+              spentUsd: sql`${aiBudgetMonth.spentUsd} + ${cost ?? amount}`,
+            })
+            .where(eq(aiBudgetMonth.month, month))
+        )
 
       type Outcome = {
         content: string
@@ -599,38 +660,42 @@ export class RecommendationService extends Context.Service<RecommendationService
       const progressTo = (messageId: string | null) =>
         messageId
           ? (progress: AgentProgress) =>
-              run((db) =>
-                db
-                  .update(recommendationMessage)
-                  .set({
-                    content: progress.text,
-                    data: { activity: progress.activity },
-                  })
-                  .where(
-                    and(
-                      eq(recommendationMessage.id, messageId),
-                      eq(recommendationMessage.status, "pending")
+              run(
+                query((db) =>
+                  db
+                    .update(recommendationMessage)
+                    .set({
+                      content: progress.text,
+                      data: { activity: progress.activity },
+                    })
+                    .where(
+                      and(
+                        eq(recommendationMessage.id, messageId),
+                        eq(recommendationMessage.status, "pending")
+                      )
                     )
-                  )
+                )
               ).pipe(Effect.ignore)
           : undefined
 
       const readLibrary = (userId: string) => (status?: LibraryStatus) =>
-        run((db) =>
-          db
-            .select({ entry: userLibraryEntry, anime: animeMetadata })
-            .from(userLibraryEntry)
-            .innerJoin(
-              animeMetadata,
-              eq(animeMetadata.malId, userLibraryEntry.malId)
-            )
-            .where(
-              and(
-                eq(userLibraryEntry.userId, userId),
-                status ? eq(userLibraryEntry.status, status) : undefined
+        run(
+          query((db) =>
+            db
+              .select({ entry: userLibraryEntry, anime: animeMetadata })
+              .from(userLibraryEntry)
+              .innerJoin(
+                animeMetadata,
+                eq(animeMetadata.malId, userLibraryEntry.malId)
               )
-            )
-            .orderBy(desc(userLibraryEntry.updatedAt))
+              .where(
+                and(
+                  eq(userLibraryEntry.userId, userId),
+                  status ? eq(userLibraryEntry.status, status) : undefined
+                )
+              )
+              .orderBy(desc(userLibraryEntry.updatedAt))
+          )
         ).pipe(
           Effect.map((rows) =>
             rows.map(
@@ -647,14 +712,16 @@ export class RecommendationService extends Context.Service<RecommendationService
         )
 
       const libraryStatusOf = (userId: string) =>
-        run((db) =>
-          db
-            .select({
-              malId: userLibraryEntry.malId,
-              status: userLibraryEntry.status,
-            })
-            .from(userLibraryEntry)
-            .where(eq(userLibraryEntry.userId, userId))
+        run(
+          query((db) =>
+            db
+              .select({
+                malId: userLibraryEntry.malId,
+                status: userLibraryEntry.status,
+              })
+              .from(userLibraryEntry)
+              .where(eq(userLibraryEntry.userId, userId))
+          )
         ).pipe(
           Effect.map(
             (rows) =>
@@ -664,29 +731,33 @@ export class RecommendationService extends Context.Service<RecommendationService
         )
 
       // Only consenting signed-in members contribute, aggregated without names.
-      const roomTaste = async (ex: KaiserExecutor, roomId: string) => {
-        const members = await ex
-          .select({ userId: roomParticipant.userId })
-          .from(roomParticipant)
-          .where(
-            and(
-              eq(roomParticipant.roomId, roomId),
-              eq(roomParticipant.state, "admitted"),
-              eq(roomParticipant.shareTaste, true)
+      const roomTaste = Effect.fnUntraced(function* (roomId: string) {
+        const members = yield* query((db) =>
+          db
+            .select({ userId: roomParticipant.userId })
+            .from(roomParticipant)
+            .where(
+              and(
+                eq(roomParticipant.roomId, roomId),
+                eq(roomParticipant.state, "admitted"),
+                eq(roomParticipant.shareTaste, true)
+              )
             )
-          )
+        )
         const ids = members.flatMap((member) =>
           member.userId ? [member.userId] : []
         )
         if (ids.length === 0) return ""
-        const rows = await ex
-          .select({ entry: userLibraryEntry, anime: animeMetadata })
-          .from(userLibraryEntry)
-          .innerJoin(
-            animeMetadata,
-            eq(animeMetadata.malId, userLibraryEntry.malId)
-          )
-          .where(inArray(userLibraryEntry.userId, ids))
+        const rows = yield* query((db) =>
+          db
+            .select({ entry: userLibraryEntry, anime: animeMetadata })
+            .from(userLibraryEntry)
+            .innerJoin(
+              animeMetadata,
+              eq(animeMetadata.malId, userLibraryEntry.malId)
+            )
+            .where(inArray(userLibraryEntry.userId, ids))
+        )
         const genres = new Map<string, number>()
         for (const row of rows)
           if ((row.entry.score ?? 0) >= 70 || row.entry.status === "completed")
@@ -722,7 +793,7 @@ export class RecommendationService extends Context.Service<RecommendationService
         ]
           .filter(Boolean)
           .join("\n")
-      }
+      })
 
       const assist = (input: {
         scope: "personal" | "room"
@@ -737,11 +808,13 @@ export class RecommendationService extends Context.Service<RecommendationService
           const state = new RunState()
           const userId = input.userId
           const preferences = userId
-            ? yield* run((db) =>
-                db
-                  .select()
-                  .from(aiPreference)
-                  .where(eq(aiPreference.userId, userId))
+            ? yield* run(
+                query((db) =>
+                  db
+                    .select()
+                    .from(aiPreference)
+                    .where(eq(aiPreference.userId, userId))
+                )
               ).pipe(
                 Effect.map(([row]) => row?.notes ?? []),
                 Effect.orElseSucceed((): Array<string> => [])
@@ -962,7 +1035,7 @@ export class RecommendationService extends Context.Service<RecommendationService
                   sections.length === 0
                     ? "No verified evidence was found."
                     : "Summaries are written from public sources and may miss details. Source pages can contain later spoilers.",
-                retrievedAt: Date.now(),
+                retrievedAt: yield* Clock.currentTimeMillis,
               },
             },
             cost: result.costUsd,
@@ -983,42 +1056,48 @@ export class RecommendationService extends Context.Service<RecommendationService
       // answer finishing just after access was revoked is never shown.
       type Publication = {
         roomId: string | null
-        allowed: (ex: KaiserExecutor) => Promise<boolean>
-        publish?: (tx: KaiserExecutor, outcome: Outcome) => Promise<void>
+        allowed: Effect.Effect<boolean, DatabaseError, Database>
+        publish?: (
+          outcome: Outcome
+        ) => Effect.Effect<
+          void,
+          RecommendationOperationError | DatabaseError,
+          Database
+        >
       }
 
       const revokedMessage = "Stopped because AI access changed."
 
-      const finish = (job: Job, result: Result, publication?: Publication) =>
-        transact(async (tx) => {
-          if (publication?.roomId)
-            await tx
-              .select({ id: room.id })
-              .from(room)
-              .where(eq(room.id, publication.roomId))
-              .for("update")
-          const final: Result =
-            result.status === "completed" &&
-            publication &&
-            !(await publication.allowed(tx))
-              ? {
-                  status: "stopped",
-                  error: revokedMessage,
-                  cost: result.outcome.cost,
-                }
-              : result
-          const cost =
-            final.status === "completed"
-              ? final.outcome.cost
-              : (final.cost ?? null)
-          const [generation] = await tx
+      const finish = Effect.fnUntraced(function* (
+        job: Job,
+        result: Result,
+        publication?: Publication
+      ) {
+        if (publication?.roomId) yield* lockRoom(publication.roomId)
+        const final: Result =
+          result.status === "completed" &&
+          publication &&
+          !(yield* publication.allowed)
+            ? {
+                status: "stopped",
+                error: revokedMessage,
+                cost: result.outcome.cost,
+              }
+            : result
+        const cost =
+          final.status === "completed"
+            ? final.outcome.cost
+            : (final.cost ?? null)
+        const finishedAt = new Date(yield* Clock.currentTimeMillis)
+        const [generation] = yield* query((db) =>
+          db
             .update(aiGeneration)
             .set({
               status: final.status,
               actualUsd: cost === null ? null : String(cost),
               usage: final.status === "completed" ? final.outcome.usage : null,
               error: final.status === "completed" ? null : final.error,
-              finishedAt: new Date(),
+              finishedAt,
             })
             .where(
               and(
@@ -1027,11 +1106,14 @@ export class RecommendationService extends Context.Service<RecommendationService
               )
             )
             .returning()
-          if (!generation) return
-          if (final.status === "completed" && publication?.publish)
-            await publication.publish(tx, final.outcome)
-          if (job.assistantMessageId)
-            await tx
+        )
+        if (!generation) return
+        if (final.status === "completed" && publication?.publish)
+          yield* publication.publish(final.outcome)
+        const { assistantMessageId, threadId } = job
+        if (assistantMessageId)
+          yield* query((db) =>
+            db
               .update(recommendationMessage)
               .set(
                 final.status === "completed"
@@ -1046,15 +1128,18 @@ export class RecommendationService extends Context.Service<RecommendationService
                       content: final.error,
                     }
               )
-              .where(eq(recommendationMessage.id, job.assistantMessageId))
-          if (job.threadId)
-            await tx
+              .where(eq(recommendationMessage.id, assistantMessageId))
+          )
+        if (threadId)
+          yield* query((db) =>
+            db
               .update(recommendationThread)
-              .set({ updatedAt: new Date() })
-              .where(eq(recommendationThread.id, job.threadId))
-          await settle(tx, job.amount, cost, monthOf(generation.createdAt))
-          if (job.roomId) await tx.execute(notifyRoom(job.roomId))
-        })
+              .set({ updatedAt: finishedAt })
+              .where(eq(recommendationThread.id, threadId))
+          )
+        yield* settle(job.amount, cost, monthOf(generation.createdAt))
+        if (job.roomId) yield* notifyRoom(job.roomId)
+      }, transact)
 
       const resultOf = (
         exit: Exit.Exit<
@@ -1158,16 +1243,18 @@ export class RecommendationService extends Context.Service<RecommendationService
         })
 
       const stopThread = (threadId: string) =>
-        run((db) =>
-          db
-            .select()
-            .from(aiGeneration)
-            .where(
-              and(
-                eq(aiGeneration.threadId, threadId),
-                eq(aiGeneration.status, "running")
+        run(
+          query((db) =>
+            db
+              .select()
+              .from(aiGeneration)
+              .where(
+                and(
+                  eq(aiGeneration.threadId, threadId),
+                  eq(aiGeneration.status, "running")
+                )
               )
-            )
+          )
         ).pipe(
           Effect.flatMap((rows) =>
             Effect.forEach(rows, (row) =>
@@ -1178,6 +1265,210 @@ export class RecommendationService extends Context.Service<RecommendationService
           ),
           Effect.asVoid
         )
+
+      const prepareSend = Effect.fnUntraced(function* (
+        actor: Actor,
+        input: {
+          threadId: string
+          requestId: string
+          content: string
+          recap?: RecapRequest
+        },
+        kind: "recap" | "recommend",
+        amount: number
+      ) {
+        // Locks go room, thread, budget everywhere AI and rooms meet.
+        const [guestThread] = yield* query((db) =>
+          db
+            .select({ roomId: recommendationThread.roomId })
+            .from(recommendationThread)
+            .where(eq(recommendationThread.id, input.threadId))
+        )
+        if (guestThread?.roomId) yield* lockRoom(guestThread.roomId)
+        const { thread, owner } = yield* requireThread(
+          actor,
+          input.threadId,
+          true
+        )
+        const [duplicate] = yield* query((db) =>
+          db
+            .select()
+            .from(recommendationMessage)
+            .where(
+              and(
+                eq(recommendationMessage.threadId, thread.id),
+                eq(recommendationMessage.requestId, input.requestId)
+              )
+            )
+        )
+        if (duplicate) return { thread, owner, job: null }
+        if (owner.kind === "guest") {
+          if (!input.recap)
+            return yield* fail(
+              "forbidden",
+              "Guests can use AI for catch-up recaps."
+            )
+          const roomRow = yield* findRoom(owner.roomId)
+          if (!roomRow || !canAskAi(roomRow.aiAccess, false, roomRow.status))
+            return yield* fail(
+              "forbidden",
+              "The host hasn't allowed guests to ask AI here."
+            )
+        }
+        const [busy] = yield* query((db) =>
+          db
+            .select({ id: aiGeneration.id })
+            .from(aiGeneration)
+            .where(
+              and(
+                eq(aiGeneration.threadId, thread.id),
+                eq(aiGeneration.status, "running")
+              )
+            )
+        )
+        if (busy)
+          return yield* fail(
+            "busy",
+            "Wait for the current answer or stop it first."
+          )
+        const reservedAt = new Date(yield* Clock.currentTimeMillis)
+        const actorKey =
+          owner.kind === "account"
+            ? `user:${owner.userId}`
+            : `guest:${owner.participantId}`
+        yield* reserve({
+          actorKey,
+          actorLimit:
+            owner.kind === "account" ? aiLimits.userDaily : aiLimits.guestDaily,
+          roomId: owner.kind === "guest" ? owner.roomId : null,
+          amount,
+          at: reservedAt,
+        })
+        const [generation] = yield* query((db) =>
+          db
+            .insert(aiGeneration)
+            .values({
+              requestId: input.requestId,
+              actorKey,
+              roomId: owner.kind === "guest" ? owner.roomId : null,
+              threadId: thread.id,
+              kind,
+              status: "running",
+              model: provider.model,
+              reservedUsd: String(amount),
+              createdAt: reservedAt,
+            })
+            .returning()
+        )
+        if (!generation)
+          return yield* fail("failed", "Unable to start the request.")
+        const [last] = yield* query((db) =>
+          db
+            .select({ seq: recommendationMessage.seq })
+            .from(recommendationMessage)
+            .where(eq(recommendationMessage.threadId, thread.id))
+            .orderBy(desc(recommendationMessage.seq))
+            .limit(1)
+        )
+        const seq = (last?.seq ?? 0) + 1
+        yield* query((db) =>
+          db.insert(recommendationMessage).values({
+            threadId: thread.id,
+            seq,
+            role: "user",
+            status: "complete",
+            content: input.content,
+            requestId: input.requestId,
+            data: input.recap ? { recapRequest: input.recap } : null,
+          })
+        )
+        const [assistant] = yield* query((db) =>
+          db
+            .insert(recommendationMessage)
+            .values({
+              threadId: thread.id,
+              seq: seq + 1,
+              role: "assistant",
+              status: "pending",
+              content: "",
+              generationId: generation.id,
+            })
+            .returning()
+        )
+        if (thread.title === "New conversation")
+          yield* query((db) =>
+            db
+              .update(recommendationThread)
+              .set({ title: input.content.slice(0, 60) })
+              .where(eq(recommendationThread.id, thread.id))
+          )
+        const history = yield* query((db) =>
+          db
+            .select()
+            .from(recommendationMessage)
+            .where(eq(recommendationMessage.threadId, thread.id))
+            .orderBy(desc(recommendationMessage.seq))
+            .limit(10)
+        )
+        const [lastRecap] = yield* query((db) =>
+          db
+            .select()
+            .from(recommendationMessage)
+            .where(
+              and(
+                eq(recommendationMessage.threadId, thread.id),
+                eq(recommendationMessage.status, "complete"),
+                sql`${recommendationMessage.data} -> 'recap' is not null`
+              )
+            )
+            .orderBy(desc(recommendationMessage.seq))
+            .limit(1)
+        )
+        return {
+          thread,
+          owner,
+          history: history.reverse(),
+          lastRecap: lastRecap ?? null,
+          job: {
+            generationId: generation.id,
+            threadId: thread.id,
+            roomId: null,
+            assistantMessageId: assistant?.id ?? null,
+            amount,
+          } satisfies Job,
+        }
+      }, transact)
+
+      // A guest who converts mid-run now owns the thread as an account, which
+      // keeps the answer.
+      const guestStillAllowed = Effect.fnUntraced(function* (
+        threadId: string,
+        owner: Extract<Owner, { kind: "guest" }>
+      ) {
+        const [current] = yield* query((db) =>
+          db
+            .select()
+            .from(recommendationThread)
+            .where(eq(recommendationThread.id, threadId))
+        )
+        if (!current) return false
+        if (current.ownerUserId) return true
+        const roomRow = yield* findRoom(owner.roomId)
+        const [participant] = yield* query((db) =>
+          db
+            .select()
+            .from(roomParticipant)
+            .where(eq(roomParticipant.id, owner.participantId))
+        )
+        const now = yield* Clock.currentTimeMillis
+        return Boolean(
+          roomRow &&
+            participant &&
+            current.guestParticipantId === participant.id &&
+            participantState(participant, now) === "admitted" &&
+            canAskAi(roomRow.aiAccess, false, roomRow.status)
+        )
+      })
 
       const send = Effect.fn("RecommendationService.send")(function* (
         actor: Actor,
@@ -1196,155 +1487,12 @@ export class RecommendationService extends Context.Service<RecommendationService
         if (input.recap && !validRecapRequest(input.recap))
           return yield* fail("invalid", "Choose a valid episode range.")
         const kind = input.recap ? "recap" : "recommend"
-        const amount = reservationUsd[kind]
-        const prepared = yield* transact(async (tx) => {
-          // Locks go room, thread, budget everywhere AI and rooms meet.
-          const [guestThread] = await tx
-            .select({ roomId: recommendationThread.roomId })
-            .from(recommendationThread)
-            .where(eq(recommendationThread.id, input.threadId))
-          if (guestThread?.roomId)
-            await tx
-              .select({ id: room.id })
-              .from(room)
-              .where(eq(room.id, guestThread.roomId))
-              .for("update")
-          const { thread, owner } = await requireThread(
-            tx,
-            actor,
-            input.threadId,
-            true
-          )
-          const [duplicate] = await tx
-            .select()
-            .from(recommendationMessage)
-            .where(
-              and(
-                eq(recommendationMessage.threadId, thread.id),
-                eq(recommendationMessage.requestId, input.requestId)
-              )
-            )
-          if (duplicate) return { thread, job: null, owner }
-          if (owner.kind === "guest") {
-            if (!input.recap)
-              throw fail("forbidden", "Guests can use AI for catch-up recaps.")
-            const [roomRow] = await tx
-              .select()
-              .from(room)
-              .where(eq(room.id, owner.roomId))
-            if (!roomRow || !canAskAi(roomRow.aiAccess, false, roomRow.status))
-              throw fail(
-                "forbidden",
-                "The host hasn't allowed guests to ask AI here."
-              )
-          }
-          const [busy] = await tx
-            .select({ id: aiGeneration.id })
-            .from(aiGeneration)
-            .where(
-              and(
-                eq(aiGeneration.threadId, thread.id),
-                eq(aiGeneration.status, "running")
-              )
-            )
-          if (busy)
-            throw fail("busy", "Wait for the current answer or stop it first.")
-          const reservedAt = new Date()
-          await reserve(tx, {
-            actorKey:
-              owner.kind === "account"
-                ? `user:${owner.userId}`
-                : `guest:${owner.participantId}`,
-            actorLimit:
-              owner.kind === "account"
-                ? aiLimits.userDaily
-                : aiLimits.guestDaily,
-            roomId: owner.kind === "guest" ? owner.roomId : null,
-            amount,
-            at: reservedAt,
-          })
-          const [generation] = await tx
-            .insert(aiGeneration)
-            .values({
-              requestId: input.requestId,
-              actorKey:
-                owner.kind === "account"
-                  ? `user:${owner.userId}`
-                  : `guest:${owner.participantId}`,
-              roomId: owner.kind === "guest" ? owner.roomId : null,
-              threadId: thread.id,
-              kind,
-              status: "running",
-              model: provider.model,
-              reservedUsd: String(amount),
-              createdAt: reservedAt,
-            })
-            .returning()
-          if (!generation) throw fail("failed", "Unable to start the request.")
-          const [last] = await tx
-            .select({ seq: recommendationMessage.seq })
-            .from(recommendationMessage)
-            .where(eq(recommendationMessage.threadId, thread.id))
-            .orderBy(desc(recommendationMessage.seq))
-            .limit(1)
-          const seq = (last?.seq ?? 0) + 1
-          await tx.insert(recommendationMessage).values({
-            threadId: thread.id,
-            seq,
-            role: "user",
-            status: "complete",
-            content: input.content,
-            requestId: input.requestId,
-            data: input.recap ? { recapRequest: input.recap } : null,
-          })
-          const [assistant] = await tx
-            .insert(recommendationMessage)
-            .values({
-              threadId: thread.id,
-              seq: seq + 1,
-              role: "assistant",
-              status: "pending",
-              content: "",
-              generationId: generation.id,
-            })
-            .returning()
-          if (thread.title === "New conversation")
-            await tx
-              .update(recommendationThread)
-              .set({ title: input.content.slice(0, 60) })
-              .where(eq(recommendationThread.id, thread.id))
-          const history = await tx
-            .select()
-            .from(recommendationMessage)
-            .where(eq(recommendationMessage.threadId, thread.id))
-            .orderBy(desc(recommendationMessage.seq))
-            .limit(10)
-          const [lastRecap] = await tx
-            .select()
-            .from(recommendationMessage)
-            .where(
-              and(
-                eq(recommendationMessage.threadId, thread.id),
-                eq(recommendationMessage.status, "complete"),
-                sql`${recommendationMessage.data} -> 'recap' is not null`
-              )
-            )
-            .orderBy(desc(recommendationMessage.seq))
-            .limit(1)
-          return {
-            thread,
-            owner,
-            history: history.reverse(),
-            lastRecap: lastRecap ?? null,
-            job: {
-              generationId: generation.id,
-              threadId: thread.id,
-              roomId: null,
-              assistantMessageId: assistant?.id ?? null,
-              amount,
-            } satisfies Job,
-          }
-        })
+        const prepared = yield* prepareSend(
+          actor,
+          input,
+          kind,
+          reservationUsd[kind]
+        )
 
         if (prepared.job && "history" in prepared) {
           const { history, lastRecap } = prepared
@@ -1380,36 +1528,11 @@ export class RecommendationService extends Context.Service<RecommendationService
             roomId: owner.kind === "guest" ? owner.roomId : null,
             allowed:
               owner.kind === "guest"
-                ? async (ex) => {
-                    // A guest who converts mid-run now owns the thread as an
-                    // account, which keeps the answer.
-                    const [current] = await ex
-                      .select()
-                      .from(recommendationThread)
-                      .where(eq(recommendationThread.id, prepared.thread.id))
-                    if (!current) return false
-                    if (current.ownerUserId) return true
-                    const [roomRow] = await ex
-                      .select()
-                      .from(room)
-                      .where(eq(room.id, owner.roomId))
-                    const [participant] = await ex
-                      .select()
-                      .from(roomParticipant)
-                      .where(eq(roomParticipant.id, owner.participantId))
-                    return Boolean(
-                      roomRow &&
-                        participant &&
-                        current.guestParticipantId === participant.id &&
-                        participantState(participant, Date.now()) ===
-                          "admitted" &&
-                        canAskAi(roomRow.aiAccess, false, roomRow.status)
-                    )
-                  }
-                : async () => true,
+                ? guestStillAllowed(prepared.thread.id, owner)
+                : Effect.succeed(true),
           })
         }
-        return yield* run((db) => loadThread(db, prepared.thread))
+        return yield* run(loadThread(prepared.thread))
         // Uninterruptible from reservation to launch: a dropped request must
         // not leave a reserved generation without its settling finalizer.
       }, Effect.uninterruptible)
@@ -1418,8 +1541,126 @@ export class RecommendationService extends Context.Service<RecommendationService
         actor: Actor,
         threadId: string
       ) {
-        yield* run((db) => requireThread(db, actor, threadId))
+        yield* run(requireThread(actor, threadId))
         yield* stopThread(threadId)
+      })
+
+      const prepareAskRoom = Effect.fnUntraced(function* (
+        actor: Actor,
+        roomId: string,
+        requestId: string,
+        content: string,
+        amount: number
+      ) {
+        const [roomRow] = yield* query((db) =>
+          db.select().from(room).where(eq(room.id, roomId)).for("update")
+        )
+        const { account, guest } = yield* findParticipants(actor, roomId)
+        const participant = account ?? guest
+        const now = yield* Clock.currentTimeMillis
+        if (
+          !participant ||
+          !roomRow ||
+          participantState(participant, now) !== "admitted"
+        )
+          return yield* fail("forbidden", "Join the room first.")
+        const isHost =
+          actor.user !== null && roomRow.hostUserId === actor.user.id
+        if (!canAskAi(roomRow.aiAccess, isHost, roomRow.status))
+          return yield* fail(
+            "forbidden",
+            "The host hasn't allowed you to ask AI in this room."
+          )
+        const [existing] = yield* query((db) =>
+          db
+            .select({ id: aiGeneration.id })
+            .from(aiGeneration)
+            .where(
+              and(
+                eq(aiGeneration.actorKey, `participant:${participant.id}`),
+                eq(aiGeneration.requestId, requestId)
+              )
+            )
+        )
+        if (existing) return null
+        const [busy] = yield* query((db) =>
+          db
+            .select({ id: aiGeneration.id })
+            .from(aiGeneration)
+            .where(
+              and(
+                eq(aiGeneration.roomId, roomId),
+                eq(aiGeneration.status, "running"),
+                sql`${aiGeneration.threadId} is null`
+              )
+            )
+        )
+        if (busy)
+          return yield* fail(
+            "busy",
+            "Someone's AI request is still running in this room."
+          )
+        const reservedAt = new Date(now)
+        yield* reserve({
+          actorKey:
+            participant.kind === "account" && participant.userId
+              ? `user:${participant.userId}`
+              : `guest:${participant.id}`,
+          actorLimit:
+            participant.kind === "account"
+              ? aiLimits.userDaily
+              : aiLimits.guestDaily,
+          roomId,
+          amount,
+          at: reservedAt,
+        })
+        const [generation] = yield* query((db) =>
+          db
+            .insert(aiGeneration)
+            .values({
+              requestId,
+              actorKey: `participant:${participant.id}`,
+              roomId,
+              kind: "recommend",
+              status: "running",
+              model: provider.model,
+              reservedUsd: String(amount),
+              createdAt: reservedAt,
+            })
+            .returning()
+        )
+        if (!generation)
+          return yield* fail("failed", "Unable to start the request.")
+        const taste = yield* roomTaste(roomId)
+        yield* postToRoom({
+          roomId,
+          participantId: participant.id,
+          kind: "text",
+          body: content,
+          data: { aiRequest: true },
+          requestId,
+        })
+        yield* notifyRoom(roomId)
+        return { generation, participant, taste }
+      }, transact)
+
+      const participantMayAsk = Effect.fnUntraced(function* (
+        roomId: string,
+        participantId: string
+      ) {
+        const roomRow = yield* findRoom(roomId)
+        const [participant] = yield* query((db) =>
+          db
+            .select()
+            .from(roomParticipant)
+            .where(eq(roomParticipant.id, participantId))
+        )
+        if (!roomRow || !participant || participant.state !== "admitted")
+          return false
+        const isHost =
+          participant.userId !== null &&
+          participant.userId === roomRow.hostUserId
+        return canAskAi(roomRow.aiAccess, isHost, roomRow.status)
       })
 
       const askRoom = Effect.fn("RecommendationService.askRoom")(function* (
@@ -1434,99 +1675,20 @@ export class RecommendationService extends Context.Service<RecommendationService
             "Room AI isn't available right now. Picks and search still work."
           )
         const amount = reservationUsd.recommend
-        const prepared = yield* transact(async (tx) => {
-          const [roomRow] = await tx
-            .select()
-            .from(room)
-            .where(eq(room.id, roomId))
-            .for("update")
-          const { account, guest } = await findParticipants(tx, actor, roomId)
-          const participant = account ?? guest
-          if (
-            !participant ||
-            !roomRow ||
-            participantState(participant, Date.now()) !== "admitted"
-          )
-            throw fail("forbidden", "Join the room first.")
-          const isHost =
-            actor.user !== null && roomRow.hostUserId === actor.user.id
-          if (!canAskAi(roomRow.aiAccess, isHost, roomRow.status))
-            throw fail(
-              "forbidden",
-              "The host hasn't allowed you to ask AI in this room."
-            )
-          const [existing] = await tx
-            .select({ id: aiGeneration.id })
-            .from(aiGeneration)
-            .where(
-              and(
-                eq(aiGeneration.actorKey, `participant:${participant.id}`),
-                eq(aiGeneration.requestId, requestId)
-              )
-            )
-          if (existing) return null
-          const [busy] = await tx
-            .select({ id: aiGeneration.id })
-            .from(aiGeneration)
-            .where(
-              and(
-                eq(aiGeneration.roomId, roomId),
-                eq(aiGeneration.status, "running"),
-                sql`${aiGeneration.threadId} is null`
-              )
-            )
-          if (busy)
-            throw fail(
-              "busy",
-              "Someone's AI request is still running in this room."
-            )
-          const reservedAt = new Date()
-          await reserve(tx, {
-            actorKey:
-              participant.kind === "account" && participant.userId
-                ? `user:${participant.userId}`
-                : `guest:${participant.id}`,
-            actorLimit:
-              participant.kind === "account"
-                ? aiLimits.userDaily
-                : aiLimits.guestDaily,
-            roomId,
-            amount,
-            at: reservedAt,
-          })
-          const [generation] = await tx
-            .insert(aiGeneration)
-            .values({
-              requestId,
-              actorKey: `participant:${participant.id}`,
-              roomId,
-              kind: "recommend",
-              status: "running",
-              model: provider.model,
-              reservedUsd: String(amount),
-              createdAt: reservedAt,
-            })
-            .returning()
-          if (!generation) throw fail("failed", "Unable to start the request.")
-          const taste = await roomTaste(tx, roomId)
-          await insertMessage(tx, {
-            roomId,
-            participantId: participant.id,
-            kind: "text",
-            body: content,
-            data: { aiRequest: true },
-            requestId,
-          })
-          await tx.execute(notifyRoom(roomId))
-          return { generation, participant, taste }
-        })
+        const prepared = yield* prepareAskRoom(
+          actor,
+          roomId,
+          requestId,
+          content,
+          amount
+        )
         if (!prepared) return
         const job: Job = {
           generationId: prepared.generation.id,
           threadId: null,
           roomId,
           assistantMessageId: null,
-          amount: reservationUsd.recommend,
+          amount,
         }
         const participantId = prepared.participant.id
         yield* launch(
@@ -1542,24 +1704,9 @@ export class RecommendationService extends Context.Service<RecommendationService
           }),
           {
             roomId,
-            allowed: async (ex) => {
-              const [roomRow] = await ex
-                .select()
-                .from(room)
-                .where(eq(room.id, roomId))
-              const [participant] = await ex
-                .select()
-                .from(roomParticipant)
-                .where(eq(roomParticipant.id, participantId))
-              if (!roomRow || !participant || participant.state !== "admitted")
-                return false
-              const isHost =
-                participant.userId !== null &&
-                participant.userId === roomRow.hostUserId
-              return canAskAi(roomRow.aiAccess, isHost, roomRow.status)
-            },
-            publish: async (tx, outcome) => {
-              await insertMessage(tx, {
+            allowed: participantMayAsk(roomId, participantId),
+            publish: (outcome) =>
+              postToRoom({
                 roomId,
                 participantId: null,
                 kind: "ai",
@@ -1568,8 +1715,7 @@ export class RecommendationService extends Context.Service<RecommendationService
                   cards: outcome.data.cards ?? [],
                   requestedBy: participantId,
                 },
-              })
-            },
+              }).pipe(Effect.asVoid),
           }
         )
       }, Effect.uninterruptible)
@@ -1578,47 +1724,46 @@ export class RecommendationService extends Context.Service<RecommendationService
         actor: Actor,
         roomId: string
       ) {
-        const generations = yield* transact(async (tx) => {
-          const { account, guest } = await findParticipants(tx, actor, roomId)
-          const participant = account ?? guest
-          const [roomRow] = await tx
-            .select()
-            .from(room)
-            .where(eq(room.id, roomId))
-          if (!participant || !roomRow)
-            throw fail("forbidden", "Join the room first.")
-          const isHost =
-            actor.user !== null && roomRow.hostUserId === actor.user.id
-          return tx
-            .select()
-            .from(aiGeneration)
-            .where(
-              and(
-                eq(aiGeneration.roomId, roomId),
-                eq(aiGeneration.status, "running"),
-                sql`${aiGeneration.threadId} is null`,
-                isHost
-                  ? undefined
-                  : eq(aiGeneration.actorKey, `participant:${participant.id}`)
-              )
+        const generations = yield* transact(
+          Effect.gen(function* () {
+            const { account, guest } = yield* findParticipants(actor, roomId)
+            const participant = account ?? guest
+            const roomRow = yield* findRoom(roomId)
+            if (!participant || !roomRow)
+              return yield* fail("forbidden", "Join the room first.")
+            const isHost =
+              actor.user !== null && roomRow.hostUserId === actor.user.id
+            return yield* query((db) =>
+              db
+                .select()
+                .from(aiGeneration)
+                .where(
+                  and(
+                    eq(aiGeneration.roomId, roomId),
+                    eq(aiGeneration.status, "running"),
+                    sql`${aiGeneration.threadId} is null`,
+                    isHost
+                      ? undefined
+                      : eq(
+                          aiGeneration.actorKey,
+                          `participant:${participant.id}`
+                        )
+                  )
+                )
             )
-        })
+          })
+        )
         yield* Effect.forEach(generations, (row) =>
           stopGeneration(row.id, Number(row.reservedUsd)).pipe(Effect.ignore)
         )
       })
 
-      const share = Effect.fn("RecommendationService.share")(function* (
+      const sharedMessage = Effect.fnUntraced(function* (
         userId: string,
-        input: {
-          roomId: string
-          threadId: string
-          messageId: string
-          malId?: number
-        }
+        input: { roomId: string; threadId: string; messageId: string }
       ) {
-        const message = yield* run(async (db) => {
-          const [row] = await db
+        const [row] = yield* query((db) =>
+          db
             .select({ message: recommendationMessage })
             .from(recommendationMessage)
             .innerJoin(
@@ -1632,7 +1777,9 @@ export class RecommendationService extends Context.Service<RecommendationService
                 eq(recommendationThread.ownerUserId, userId)
               )
             )
-          const [participant] = await db
+        )
+        const [participant] = yield* query((db) =>
+          db
             .select()
             .from(roomParticipant)
             .where(
@@ -1642,13 +1789,25 @@ export class RecommendationService extends Context.Service<RecommendationService
                 eq(roomParticipant.state, "admitted")
               )
             )
-          if (!row || !participant)
-            throw fail("not_found", "That couldn't be shared.")
-          return {
-            data: dataOf(row.message.data),
-            participantId: participant.id,
-          }
-        })
+        )
+        if (!row || !participant)
+          return yield* fail("not_found", "That couldn't be shared.")
+        return {
+          data: dataOf(row.message.data),
+          participantId: participant.id,
+        }
+      }, run)
+
+      const share = Effect.fn("RecommendationService.share")(function* (
+        userId: string,
+        input: {
+          roomId: string
+          threadId: string
+          messageId: string
+          malId?: number
+        }
+      ) {
+        const message = yield* sharedMessage(userId, input)
         if (input.malId !== undefined) {
           const card = message.data.cards?.find(
             (entry) => entry.anime.malId === input.malId
@@ -1695,33 +1854,35 @@ export class RecommendationService extends Context.Service<RecommendationService
       const recoverAfterRestart = Effect.fn(
         "RecommendationService.recoverAfterRestart"
       )(function* () {
-        yield* transact(async (tx) => {
-          const stale = await tx
+        const finishedAt = new Date(yield* Clock.currentTimeMillis)
+        const stale = yield* query((db) =>
+          db
             .update(aiGeneration)
             .set({
               status: "interrupted",
-              finishedAt: new Date(),
+              finishedAt,
               error: "Interrupted by a restart.",
             })
             .where(eq(aiGeneration.status, "running"))
             .returning()
-          for (const generation of stale) {
-            await settle(
-              tx,
-              Number(generation.reservedUsd),
-              null,
-              monthOf(generation.createdAt)
-            )
-            await tx
+        )
+        for (const generation of stale) {
+          yield* settle(
+            Number(generation.reservedUsd),
+            null,
+            monthOf(generation.createdAt)
+          )
+          yield* query((db) =>
+            db
               .update(recommendationMessage)
               .set({
                 status: "interrupted",
                 content: "Interrupted. Try again.",
               })
               .where(eq(recommendationMessage.generationId, generation.id))
-          }
-        })
-      })
+          )
+        }
+      }, transact)
 
       return {
         model: provider.model ?? AiModelId,

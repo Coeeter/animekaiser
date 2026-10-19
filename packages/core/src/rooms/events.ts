@@ -1,4 +1,4 @@
-import { Database } from "@animekaiser/db"
+import { Database, query } from "@animekaiser/db"
 import { sql } from "drizzle-orm"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
@@ -15,7 +15,9 @@ const everyRoom = "*"
 // issuing it inside the state change cannot announce uncommitted state or be
 // lost between commit and a separate publish.
 export const notifyRoom = (roomId: string) =>
-  sql`select pg_notify(${ROOM_EVENTS_CHANNEL}, ${roomId})`
+  query((db) =>
+    db.execute(sql`select pg_notify(${ROOM_EVENTS_CHANNEL}, ${roomId})`)
+  )
 
 export class RoomEvents extends Context.Service<RoomEvents>()(
   "@animekaiser/core/RoomEvents",
