@@ -36,7 +36,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@animekaiser/ui/components/select"
-import { useAtomSet, useAtomValue } from "@effect/atom-react"
+import { useAtom, useAtomSet, useAtomValue } from "@effect/atom-react"
 import { useNavigate } from "@tanstack/react-router"
 import * as Exit from "effect/Exit"
 import * as AsyncResult from "effect/reactivity/AsyncResult"
@@ -49,6 +49,7 @@ import {
   closeRoomAtom,
   createRoomAtom,
   createRoomInviteLinkAtom,
+  inviteLinkAtom,
   inviteToRoomAtom,
   inviteUrl,
   leaveRoomAtom,
@@ -56,7 +57,6 @@ import {
   revokeRoomInviteLinksAtom,
   roomAccessLabel,
   roomReactivityKeys,
-  storedInviteLink,
   transferRoomHostAtom,
   updateRoomSettingsAtom,
 } from "./atoms"
@@ -262,7 +262,7 @@ export function InviteDialog({
   })
   const [chosen, setChosen] = useState<ReadonlySet<string>>(new Set())
   const [busy, setBusy] = useState(false)
-  const [link, setLink] = useState(() => storedInviteLink.read(roomId))
+  const [link, setLink] = useAtom(inviteLinkAtom(roomId))
   const memberNames = new Set(
     state.members.map((member) => member.displayName.toLowerCase())
   )
@@ -275,14 +275,13 @@ export function InviteDialog({
         toastRoomFailure(revoked)
         return null
       }
-      storedInviteLink.clear(roomId)
+      setLink(null)
     }
     const exit = await createLink({ payload: { roomId } })
     if (Exit.isFailure(exit)) {
       toastRoomFailure(exit)
       return null
     }
-    storedInviteLink.write(roomId, exit.value)
     setLink(exit.value)
     return exit.value
   }
@@ -293,14 +292,14 @@ export function InviteDialog({
     setBusy(false)
     if (!value) return
     const url = inviteUrl(roomId, value.token)
-    try {
-      await navigator.clipboard.writeText(url)
-      toast.success(replace ? "New invite link copied" : "Invite link copied", {
-        description: "Links expire after 7 days.",
-      })
-    } catch {
-      toast.message("Copy this invite link", { description: url })
-    }
+    await navigator.clipboard.writeText(url).then(
+      () =>
+        toast.success(
+          replace ? "New invite link copied" : "Invite link copied",
+          { description: "Links expire after 7 days." }
+        ),
+      () => toast.message("Copy this invite link", { description: url })
+    )
   }
 
   const sendInvites = async () => {
@@ -350,7 +349,6 @@ export function InviteDialog({
               onClick={() =>
                 void revokeLinks({ payload: { roomId } }).then((exit) => {
                   if (Exit.isFailure(exit)) return toastRoomFailure(exit)
-                  storedInviteLink.clear(roomId)
                   setLink(null)
                   toast.success("Invite links revoked")
                 })

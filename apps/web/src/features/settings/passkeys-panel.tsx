@@ -19,68 +19,67 @@ import {
 import { Field, FieldLabel } from "@animekaiser/ui/components/field"
 import { Input } from "@animekaiser/ui/components/input"
 import { Separator } from "@animekaiser/ui/components/separator"
+import { useAtom, useAtomValue } from "@effect/atom-react"
 import { useForm } from "@tanstack/react-form"
+import * as Effect from "effect/Effect"
+import * as AsyncResult from "effect/reactivity/AsyncResult"
+import * as Atom from "effect/reactivity/Atom"
 import { Fingerprint, KeyRound, Pencil, Trash2 } from "lucide-react"
 import { useId, useState } from "react"
 import { toast } from "sonner"
 import { IconInput } from "../../components/icon-input"
-import { authClient } from "../../services/api-clients"
-import { errorMessage } from "../../utils/error"
+import { auth } from "../../services/auth"
+import { toastFailure } from "../../utils/error"
 import { SettingHeading } from "./settings-shared"
 
 type AddPasskeyValues = { name: string }
 
+const passkeysAtom = Atom.make(
+  auth((client) => client.passkey.listUserPasskeys()).pipe(
+    Effect.map((passkeys) => passkeys ?? []),
+    Effect.orElseSucceed(() => [])
+  )
+)
+
+const addPasskeyAtom = Atom.fn((name: string | undefined, get) =>
+  auth((client) => client.passkey.addPasskey({ name })).pipe(
+    Effect.tap(() => Effect.sync(() => get.refresh(passkeysAtom)))
+  )
+)
+
+const renamePasskeyAtom = Atom.family((id: string) =>
+  Atom.fn((name: string, get) =>
+    auth((client) => client.passkey.updatePasskey({ id, name })).pipe(
+      Effect.tap(() => Effect.sync(() => get.refresh(passkeysAtom)))
+    )
+  )
+)
+
+const deletePasskeyAtom = Atom.family((id: string) =>
+  Atom.fn<void>()((_, get) =>
+    auth((client) => client.passkey.deletePasskey({ id })).pipe(
+      Effect.tap(() => Effect.sync(() => get.refresh(passkeysAtom)))
+    )
+  )
+)
+
 export function PasskeysSection() {
-  const query = authClient.useListPasskeys()
+  const passkeys = AsyncResult.getOrElse(useAtomValue(passkeysAtom), () => [])
   const nameId = useId()
-  const [pending, setPending] = useState<string | null>(null)
+  const [addResult, addPasskey] = useAtom(addPasskeyAtom, {
+    mode: "promiseExit",
+  })
   const addForm = useForm({
     defaultValues: { name: "" },
     onSubmit: ({ value }) => add(value),
   })
 
-  const add = async (values: AddPasskeyValues) => {
-    setPending("add")
-    try {
-      const result = await authClient.passkey.addPasskey({
-        name: values.name.trim() || undefined,
-      })
-      if (result.error) throw result.error
+  const add = (values: AddPasskeyValues) =>
+    addPasskey(values.name.trim() || undefined).then((exit) => {
+      if (!toastFailure("Unable to add passkey")(exit)) return
       addForm.reset()
-      await query.refetch()
       toast.success("Passkey added.")
-    } catch (reason) {
-      toast.error(errorMessage(reason, "Unable to add passkey"))
-    } finally {
-      setPending(null)
-    }
-  }
-  const rename = async (id: string, name: string) => {
-    setPending(id)
-    try {
-      const result = await authClient.passkey.updatePasskey({ id, name })
-      if (result.error) throw result.error
-      await query.refetch()
-      toast.success("Passkey renamed.")
-    } catch (reason) {
-      toast.error(errorMessage(reason, "Unable to rename passkey"))
-    } finally {
-      setPending(null)
-    }
-  }
-  const remove = async (id: string) => {
-    setPending(id)
-    try {
-      const result = await authClient.passkey.deletePasskey({ id })
-      if (result.error) throw result.error
-      await query.refetch()
-      toast.success("Passkey removed.")
-    } catch (reason) {
-      toast.error(errorMessage(reason, "Unable to remove passkey"))
-    } finally {
-      setPending(null)
-    }
-  }
+    })
 
   return (
     <div className="flex flex-col gap-4">
@@ -111,22 +110,19 @@ export function PasskeysSection() {
             </Field>
           )}
         </addForm.Field>
-        <Button disabled={pending === "add"} type="submit">
+        <Button disabled={addResult.waiting} type="submit">
           <Fingerprint data-icon="inline-start" />
           Add passkey
         </Button>
       </form>
       <Separator />
-      {query.data?.length ? (
+      {passkeys.length ? (
         <div className="flex flex-col gap-2">
-          {query.data.map((passkey) => (
+          {passkeys.map((passkey) => (
             <PasskeyRow
               key={passkey.id}
               id={passkey.id}
               name={passkey.name ?? "Passkey"}
-              pending={pending === passkey.id}
-              rename={rename}
-              remove={remove}
             />
           ))}
         </div>
@@ -144,25 +140,27 @@ export function PasskeysSection() {
   )
 }
 
-function PasskeyRow({
-  id,
-  name,
-  pending,
-  rename,
-  remove,
-}: {
-  id: string
-  name: string
-  pending: boolean
-  rename: (id: string, name: string) => Promise<void>
-  remove: (id: string) => Promise<void>
-}) {
+function PasskeyRow({ id, name }: { id: string; name: string }) {
+  const [renameResult, renamePasskey] = useAtom(renamePasskeyAtom(id), {
+    mode: "promiseExit",
+  })
+  const [deleteResult, deletePasskey] = useAtom(deletePasskeyAtom(id), {
+    mode: "promiseExit",
+  })
+  const pending = renameResult.waiting || deleteResult.waiting
   const [editing, setEditing] = useState(false)
   const [value, setValue] = useState(name)
-  const save = async () => {
-    await rename(id, value.trim())
-    setEditing(false)
-  }
+  const save = () =>
+    renamePasskey(value.trim()).then((exit) => {
+      if (toastFailure("Unable to rename passkey")(exit))
+        toast.success("Passkey renamed.")
+      setEditing(false)
+    })
+  const remove = () =>
+    deletePasskey().then((exit) => {
+      if (toastFailure("Unable to remove passkey")(exit))
+        toast.success("Passkey removed.")
+    })
   return (
     <div className="flex items-center gap-3 rounded-xl border bg-card p-3">
       <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-muted">
@@ -224,7 +222,7 @@ function PasskeyRow({
               <AlertDialogCancel>Cancel</AlertDialogCancel>
               <AlertDialogAction
                 variant="destructive"
-                onClick={() => void remove(id)}
+                onClick={() => void remove()}
               >
                 Remove
               </AlertDialogAction>

@@ -37,6 +37,7 @@ import { Edit3, ListChecks, Star, Trash2 } from "lucide-react"
 import { useEffect, useId, useState } from "react"
 import { toast } from "sonner"
 import { IconInput } from "../../components/icon-input"
+import { toastFailure } from "../../utils/error"
 import { AnimeTitle } from "../anime/common/anime-title"
 import { animeTitlePreferenceAtom, getAnimeTitle } from "../anime/common/title"
 import { playerPreferencesAtom } from "../streaming/preferences"
@@ -164,7 +165,7 @@ export function DeleteLibraryDialog({
   entry: LibraryEntry
   onDeleted: () => void
 }) {
-  const remove = useAtomSet(removeLibraryAtom, { mode: "promise" })
+  const remove = useAtomSet(removeLibraryAtom, { mode: "promiseExit" })
   const [open, setOpen] = useState(false)
   const formId = useId()
 
@@ -183,22 +184,18 @@ export function DeleteLibraryDialog({
     if (values.mal) providers.push("mal")
     if (values.anilist) providers.push("anilist")
 
-    try {
-      await remove({
-        payload: { malId: entry.malId, providers },
-        reactivityKeys: libraryMutationKeys(entry.malId),
-      })
-
-      toast.success(
-        providers.length
-          ? "Removed locally; external deletes queued"
-          : "Removed locally"
-      )
-      setOpen(false)
-      onDeleted()
-    } catch {
-      toast.error("Unable to remove title")
-    }
+    const exit = await remove({
+      payload: { malId: entry.malId, providers },
+      reactivityKeys: libraryMutationKeys(entry.malId),
+    })
+    if (!toastFailure("Unable to remove title")(exit)) return
+    toast.success(
+      providers.length
+        ? "Removed locally; external deletes queued"
+        : "Removed locally"
+    )
+    setOpen(false)
+    onDeleted()
   }
 
   return (
@@ -296,7 +293,7 @@ export function LibraryDialog({
   entry: LibraryEntry
   onSaved: () => void
 }) {
-  const save = useAtomSet(upsertLibraryAtom, { mode: "promise" })
+  const save = useAtomSet(upsertLibraryAtom, { mode: "promiseExit" })
   const preferences = useAtomValue(playerPreferencesAtom)
   const [open, setOpen] = useState(false)
   const formId = useId()
@@ -311,25 +308,21 @@ export function LibraryDialog({
   }, [entry, open])
 
   const submit = async (values: LibraryEntryFormValues) => {
-    try {
-      await save({
-        payload: {
-          anime: entry.anime,
-          status: values.status,
-          progress: decodeLibraryProgress(values.progress),
-          score: decodeLibraryScore(values.score),
-          notes: values.notes.trim() || null,
-          syncExternal: preferences.syncLibraryOnFinish,
-        },
-        reactivityKeys: libraryMutationKeys(entry.malId),
-      })
-
-      toast.success("Library entry updated")
-      setOpen(false)
-      onSaved()
-    } catch {
-      toast.error("Unable to update entry")
-    }
+    const exit = await save({
+      payload: {
+        anime: entry.anime,
+        status: values.status,
+        progress: decodeLibraryProgress(values.progress),
+        score: decodeLibraryScore(values.score),
+        notes: values.notes.trim() || null,
+        syncExternal: preferences.syncLibraryOnFinish,
+      },
+      reactivityKeys: libraryMutationKeys(entry.malId),
+    })
+    if (!toastFailure("Unable to update entry")(exit)) return
+    toast.success("Library entry updated")
+    setOpen(false)
+    onSaved()
   }
 
   return (

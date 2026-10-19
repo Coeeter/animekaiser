@@ -5,11 +5,7 @@ import { useAtomSet, useAtomValue } from "@effect/atom-react"
 import { RotateCcw } from "lucide-react"
 import { useEffect, useState } from "react"
 import { toast } from "sonner"
-import {
-  setShortcutOverridesAtom,
-  shortcutOverridesAtom,
-  shortcutsAtom,
-} from "../shortcuts/atoms"
+import { shortcutOverridesAtom, shortcutsAtom } from "../shortcuts/atoms"
 import {
   bindingFromEvent,
   formatBinding,
@@ -24,7 +20,7 @@ const groups = ["General", "Player"] as const
 export function ShortcutsPanel() {
   const shortcuts = useAtomValue(shortcutsAtom)
   const overrides = useAtomValue(shortcutOverridesAtom)
-  const setOverrides = useAtomSet(setShortcutOverridesAtom)
+  const setOverrides = useAtomSet(shortcutOverridesAtom)
   const [recording, setRecording] = useState<ShortcutActionId | null>(null)
 
   // Capture runs before the player and search listeners, so the key being

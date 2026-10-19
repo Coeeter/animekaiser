@@ -1,5 +1,7 @@
 import type { AnimeItem } from "@animekaiser/domain"
 import * as Atom from "effect/reactivity/Atom"
+import * as Schema from "effect/Schema"
+import { localStorageRuntime } from "../../../services/storage"
 import { shortcutsAtom } from "../../shortcuts/atoms"
 import { isTypingTarget, matchesAction } from "../../shortcuts/shortcuts"
 
@@ -19,23 +21,12 @@ export const searchPickAtom = Atom.make<SearchPick | null>(null).pipe(
 const recentSearchesKey = "animekaiser:recent-searches"
 const recentSearchesLimit = 6
 
-const readRecentSearches = (): ReadonlyArray<string> => {
-  try {
-    const raw = window.localStorage.getItem(recentSearchesKey)
-    if (!raw) return []
-    const parsed: unknown = JSON.parse(raw)
-    if (!Array.isArray(parsed)) return []
-    return parsed
-      .filter((value): value is string => typeof value === "string")
-      .slice(0, recentSearchesLimit)
-  } catch {
-    return []
-  }
-}
-
-export const recentSearchesAtom = Atom.make<ReadonlyArray<string>>(
-  typeof window === "undefined" ? [] : readRecentSearches()
-).pipe(Atom.keepAlive)
+export const recentSearchesAtom = Atom.kvs({
+  runtime: localStorageRuntime,
+  key: recentSearchesKey,
+  schema: Schema.Array(Schema.String),
+  defaultValue: (): ReadonlyArray<string> => [],
+}).pipe(Atom.keepAlive)
 
 export const rememberSearchAtom = Atom.writable<ReadonlyArray<string>, string>(
   (get) => get(recentSearchesAtom),
@@ -49,10 +40,6 @@ export const rememberSearchAtom = Atom.writable<ReadonlyArray<string>, string>(
     const next = [trimmed, ...existing].slice(0, recentSearchesLimit)
 
     ctx.set(recentSearchesAtom, next)
-
-    try {
-      window.localStorage.setItem(recentSearchesKey, JSON.stringify(next))
-    } catch {}
   }
 )
 
@@ -63,10 +50,6 @@ export const clearRecentSearchesAtom = Atom.writable<
   (get) => get(recentSearchesAtom),
   (ctx) => {
     ctx.set(recentSearchesAtom, [])
-
-    try {
-      window.localStorage.removeItem(recentSearchesKey)
-    } catch {}
   }
 )
 

@@ -1,5 +1,6 @@
 import * as Effect from "effect/Effect"
 import * as Atom from "effect/reactivity/Atom"
+import { fetchText } from "../../../services/http"
 
 export type ThumbnailCue = {
   start: number
@@ -33,12 +34,8 @@ export const parseThumbnailVtt = (
 
     const [path = "", fragment] = target.split("#xywh=")
     const [x, y, width, height] = (fragment ?? "").split(",").map(Number)
-    let url: string
-    try {
-      url = new URL(path, baseUrl).toString()
-    } catch {
-      return []
-    }
+    if (!URL.canParse(path, baseUrl)) return []
+    const url = new URL(path, baseUrl).toString()
     const frame =
       [x, y, width, height].every((value) => Number.isFinite(value)) &&
       width !== undefined &&
@@ -54,9 +51,7 @@ export const thumbnailCuesAtom = Atom.family((url: string | null) =>
   Atom.make(
     url === null
       ? Effect.succeed<ReadonlyArray<ThumbnailCue>>([])
-      : Effect.tryPromise(() =>
-          fetch(url).then((response) => response.text())
-        ).pipe(
+      : fetchText(url).pipe(
           Effect.map((vtt) => parseThumbnailVtt(vtt, url)),
           Effect.orElseSucceed((): ReadonlyArray<ThumbnailCue> => [])
         )

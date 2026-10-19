@@ -13,6 +13,7 @@ import {
 } from "@animekaiser/ui/components/card"
 import { cn } from "@animekaiser/ui/lib/utils"
 import { useAtomSet, useAtomValue } from "@effect/atom-react"
+import * as Exit from "effect/Exit"
 import * as AsyncResult from "effect/reactivity/AsyncResult"
 import { ArrowRight, Check, CircleAlert, Loader2 } from "lucide-react"
 import { useEffect, useState } from "react"
@@ -50,7 +51,9 @@ export function ImportProgress({
   provider: ExternalListProvider
   onDone: () => void
 }) {
-  const startImport = useAtomSet(startLibraryImportAtom, { mode: "promise" })
+  const startImport = useAtomSet(startLibraryImportAtom, {
+    mode: "promiseExit",
+  })
   const [jobId, setJobId] = useState<string | null>(null)
   const [phase, setPhase] = useState<Phase>("starting")
   const [error, setError] = useState<string | null>(null)
@@ -62,17 +65,16 @@ export function ImportProgress({
     void startImport({
       payload: { provider },
       reactivityKeys: [libraryReactivityKeys.sync],
-    })
-      .then((job) => {
-        if (cancelled) return
-        setJobId(job.id)
-        setPhase(phaseFromJob(job))
-      })
-      .catch(() => {
-        if (cancelled) return
+    }).then((exit) => {
+      if (cancelled) return
+      if (Exit.isSuccess(exit)) {
+        setJobId(exit.value.id)
+        setPhase(phaseFromJob(exit.value))
+      } else {
         setError("We could not start the import.")
         setPhase("failed")
-      })
+      }
+    })
 
     return () => {
       cancelled = true

@@ -5,6 +5,7 @@ import { useAtomSet } from "@effect/atom-react"
 import { Link } from "@tanstack/react-router"
 import { BookmarkPlus, Info, Send } from "lucide-react"
 import { toast } from "sonner"
+import { toastFailure } from "../../utils/error"
 import { AnimeTitle } from "../anime/common/anime-title"
 import { formatAnimeFormat } from "../anime/common/format"
 import { libraryMutationKeys, upsertLibraryAtom } from "../library/atoms"
@@ -19,25 +20,22 @@ export function RecommendationCardView({
   onSendToRoom?: () => void
   signedIn: boolean
 }) {
-  const upsert = useAtomSet(upsertLibraryAtom, { mode: "promise" })
+  const upsert = useAtomSet(upsertLibraryAtom, { mode: "promiseExit" })
 
-  const addToList = async () => {
-    try {
-      await upsert({
-        payload: {
-          anime: card.anime,
-          status: "planning",
-          score: null,
-          progress: 0,
-          notes: null,
-        },
-        reactivityKeys: libraryMutationKeys(card.anime.malId),
-      })
-      toast.success("Added to your planning list")
-    } catch {
-      toast.error("Unable to add this to your list.")
-    }
-  }
+  const addToList = () =>
+    upsert({
+      payload: {
+        anime: card.anime,
+        status: "planning",
+        score: null,
+        progress: 0,
+        notes: null,
+      },
+      reactivityKeys: libraryMutationKeys(card.anime.malId),
+    }).then((exit) => {
+      if (toastFailure("Unable to add this to your list.")(exit))
+        toast.success("Added to your planning list")
+    })
 
   return (
     <article className="flex gap-3 rounded-2xl border bg-card p-3">

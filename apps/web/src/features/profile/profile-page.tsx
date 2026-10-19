@@ -18,7 +18,12 @@ import {
   EmptyTitle,
 } from "@animekaiser/ui/components/empty"
 import { Skeleton } from "@animekaiser/ui/components/skeleton"
-import { useAtomRefresh, useAtomSet, useAtomValue } from "@effect/atom-react"
+import {
+  useAtom,
+  useAtomRefresh,
+  useAtomSet,
+  useAtomValue,
+} from "@effect/atom-react"
 import { Link, Navigate } from "@tanstack/react-router"
 import * as AsyncResult from "effect/reactivity/AsyncResult"
 import {
@@ -31,12 +36,10 @@ import {
   Settings2,
   UserRoundX,
 } from "lucide-react"
-import { useState } from "react"
-import { toast } from "sonner"
 import { DataError } from "../../components/data-error"
-import { authClient, navigateAfterAuthChange } from "../../services/api-clients"
-import { errorMessage } from "../../utils/error"
-import { sessionAtom } from "../auth/atoms"
+import { navigateAfterAuthChange } from "../../services/api-clients"
+import { toastFailure } from "../../utils/error"
+import { sessionAtom, signOutAtom } from "../auth/atoms"
 import { displayUsername } from "../auth/user"
 import { settingsOpenAtom, settingsSectionAtom } from "../settings/atoms"
 import { ProfileFriendButton } from "../social/friend-button"
@@ -334,26 +337,20 @@ export function PublicProfilePage({
 }
 
 function SignOutButton() {
-  const [pending, setPending] = useState(false)
-
-  const signOut = async () => {
-    setPending(true)
-
-    try {
-      const result = await authClient.signOut()
-      if (result.error) throw result.error
-
-      navigateAfterAuthChange("/")
-    } catch (reason) {
-      setPending(false)
-      toast.error(errorMessage(reason, "Unable to sign out"))
-    }
-  }
+  const [result, signOut] = useAtom(signOutAtom, { mode: "promiseExit" })
+  const run = () =>
+    signOut().then((exit) => {
+      if (toastFailure("Unable to sign out")(exit)) navigateAfterAuthChange("/")
+    })
 
   return (
-    <Button variant="outline" disabled={pending} onClick={() => void signOut()}>
+    <Button
+      variant="outline"
+      disabled={result.waiting}
+      onClick={() => void run()}
+    >
       <LogOut data-icon="inline-start" />
-      {pending ? "Signing out…" : "Sign out"}
+      {result.waiting ? "Signing out…" : "Sign out"}
     </Button>
   )
 }

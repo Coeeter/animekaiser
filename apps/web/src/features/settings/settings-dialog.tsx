@@ -14,12 +14,11 @@ import { useAtom, useAtomMount, useAtomValue } from "@effect/atom-react"
 import { Link } from "@tanstack/react-router"
 import * as AsyncResult from "effect/reactivity/AsyncResult"
 import { LogOut, Search, XIcon } from "lucide-react"
-import { useRef, useState } from "react"
-import { toast } from "sonner"
+import { useRef } from "react"
 import { IconInput } from "../../components/icon-input"
-import { authClient, navigateAfterAuthChange } from "../../services/api-clients"
-import { errorMessage } from "../../utils/error"
-import { sessionAtom } from "../auth/atoms"
+import { navigateAfterAuthChange } from "../../services/api-clients"
+import { toastFailure } from "../../utils/error"
+import { sessionAtom, signOutAtom } from "../auth/atoms"
 import type { AppUser } from "../auth/user"
 import { AccountPanel } from "./account-panel"
 import type { SettingsSection } from "./atoms"
@@ -71,7 +70,7 @@ export function SettingsDialog() {
   const [active, setActive] = useAtom(settingsSectionAtom)
   const [query, setQuery] = useAtom(settingsQueryAtom)
   const sessionResult = useAtomValue(sessionAtom)
-  const [logoutPending, setLogoutPending] = useState(false)
+  const [logoutResult, signOut] = useAtom(signOutAtom, { mode: "promiseExit" })
   const session = AsyncResult.builder(sessionResult)
     .onSuccess((value) => value)
     .orNull()
@@ -79,21 +78,10 @@ export function SettingsDialog() {
 
   useAtomMount(oauthResultAtom)
 
-  const logout = async () => {
-    setLogoutPending(true)
-    try {
-      const result = await authClient.signOut()
-      if (result.error) {
-        toast.error(errorMessage(result.error, "Unable to sign out"))
-        return
-      }
-      navigateAfterAuthChange("/")
-    } catch (cause) {
-      toast.error(errorMessage(cause, "Unable to sign out"))
-    } finally {
-      setLogoutPending(false)
-    }
-  }
+  const logout = () =>
+    signOut().then((exit) => {
+      if (toastFailure("Unable to sign out")(exit)) navigateAfterAuthChange("/")
+    })
 
   const visibleSections = settingsSections.filter((section) =>
     sectionMatchesQuery(section, query)
@@ -131,7 +119,7 @@ export function SettingsDialog() {
                 <Button
                   size="sm"
                   variant="destructive"
-                  disabled={logoutPending}
+                  disabled={logoutResult.waiting}
                   onClick={() => void logout()}
                 >
                   <LogOut data-icon="inline-start" />

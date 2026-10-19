@@ -18,6 +18,7 @@ import {
   InputOTPGroup,
   InputOTPSlot,
 } from "@animekaiser/ui/components/input-otp"
+import { useAtomSet } from "@effect/atom-react"
 import { useForm } from "@tanstack/react-form"
 import { useNavigate } from "@tanstack/react-router"
 import { Mail } from "lucide-react"
@@ -25,8 +26,8 @@ import { useState } from "react"
 import { toast } from "sonner"
 import { IconInput } from "../../components/icon-input"
 import { PasswordInput } from "../../components/password-input"
-import { authClient } from "../../services/api-clients"
-import { errorMessage } from "../../utils/error"
+import { failureMessage } from "../../utils/error"
+import { requestPasswordResetAtom, resetPasswordAtom } from "./atoms"
 import { AuthFooter, SubmitButton } from "./auth-shared"
 
 export function ForgotPasswordPage() {
@@ -37,20 +38,19 @@ export function ForgotPasswordPage() {
   const [confirmationError, setConfirmationError] = useState<string | null>(
     null
   )
+  const requestReset = useAtomSet(requestPasswordResetAtom, {
+    mode: "promiseExit",
+  })
+  const resetPassword = useAtomSet(resetPasswordAtom, { mode: "promiseExit" })
   const requestForm = useForm({
     defaultValues: { email: "" },
     onSubmit: async ({ value }) => {
       setRequestError(null)
       const targetEmail = value.email.trim()
-      try {
-        const result = await authClient.emailOtp.requestPasswordReset({
-          email: targetEmail,
-        })
-        if (result.error) throw result.error
-        setEmail(targetEmail)
-      } catch (cause) {
-        setRequestError(errorMessage(cause, "Unable to send reset code"))
-      }
+      const exit = await requestReset({ email: targetEmail })
+      const failure = failureMessage(exit, "Unable to send reset code")
+      if (failure) setRequestError(failure)
+      else setEmail(targetEmail)
     },
   })
   const resetForm = useForm({
@@ -63,18 +63,18 @@ export function ForgotPasswordPage() {
         setConfirmationError("Passwords do not match")
         return
       }
-      try {
-        const result = await authClient.emailOtp.resetPassword({
-          email,
-          otp: value.otp,
-          password: value.password,
-        })
-        if (result.error) throw result.error
-        toast.success("Password reset. You can log in now.")
-        await navigate({ to: "/login", search: { redirect: undefined } })
-      } catch (cause) {
-        setResetError(errorMessage(cause, "Unable to reset password"))
+      const exit = await resetPassword({
+        email,
+        otp: value.otp,
+        password: value.password,
+      })
+      const failure = failureMessage(exit, "Unable to reset password")
+      if (failure) {
+        setResetError(failure)
+        return
       }
+      toast.success("Password reset. You can log in now.")
+      await navigate({ to: "/login", search: { redirect: undefined } })
     },
   })
 

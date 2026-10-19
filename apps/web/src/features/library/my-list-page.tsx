@@ -75,6 +75,7 @@ import { DebouncedSearchInput } from "../../components/debounced-search-input"
 import { PageHero } from "../../components/page-hero"
 import { StatTile } from "../../components/stat-tile"
 import { isStaleResult, useLastSuccess } from "../../hooks/use-last-success"
+import { toastFailure } from "../../utils/error"
 import {
   clearLibraryAtom,
   invalidateLibraryAtom,
@@ -334,29 +335,22 @@ function MyListActions({
   refresh: () => void
   hasEntries: boolean
 }) {
-  const startLibraryImport = useAtomSet(startLibraryImportAtom, {
-    mode: "promise",
+  const [importResult, startLibraryImport] = useAtom(startLibraryImportAtom, {
+    mode: "promiseExit",
   })
-  const [pendingProvider, setPendingProvider] =
-    useState<ExternalListProvider | null>(null)
+  const importing = importResult.waiting
   const [watchingJobId, setWatchingJobId] = useState<string | null>(null)
   const [clearOpen, setClearOpen] = useState(false)
 
-  const start = async (provider: ExternalListProvider) => {
-    setPendingProvider(provider)
-    try {
-      const job = await startLibraryImport({
-        payload: { provider },
-        reactivityKeys: [libraryReactivityKeys.sync],
-      })
-      toast.success(`Import queued: ${job.id}`)
-      setWatchingJobId(job.id)
-    } catch {
-      toast.error("Connect this provider in Settings first")
-    } finally {
-      setPendingProvider(null)
-    }
-  }
+  const start = (provider: ExternalListProvider) =>
+    startLibraryImport({
+      payload: { provider },
+      reactivityKeys: [libraryReactivityKeys.sync],
+    }).then((exit) => {
+      if (!toastFailure("Connect this provider in Settings first")(exit)) return
+      toast.success(`Import queued: ${exit.value.id}`)
+      setWatchingJobId(exit.value.id)
+    })
 
   return (
     <div className="flex flex-wrap items-center gap-2">
@@ -366,9 +360,9 @@ function MyListActions({
 
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="outline" disabled={pendingProvider !== null}>
+          <Button variant="outline" disabled={importing}>
             <Download data-icon="inline-start" />
-            {pendingProvider === null ? "Import" : "Importing…"}
+            {importing ? "Importing…" : "Import"}
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-56">
@@ -606,23 +600,21 @@ function ClearLibraryDialog({
   onOpenChange: (open: boolean) => void
   refresh: () => void
 }) {
-  const [clearResult, clear] = useAtom(clearLibraryAtom, { mode: "promise" })
+  const [clearResult, clear] = useAtom(clearLibraryAtom, {
+    mode: "promiseExit",
+  })
   const pending = clearResult.waiting
 
-  const clearList = async () => {
-    try {
-      const result = await clear({
-        payload: void 0,
-        reactivityKeys: libraryGlobalMutationKeys,
-      })
-
+  const clearList = () =>
+    clear({
+      payload: void 0,
+      reactivityKeys: libraryGlobalMutationKeys,
+    }).then((exit) => {
+      if (!toastFailure("Unable to clear library")(exit)) return
       refresh()
-      toast.success(`Removed ${result.removedCount} library entries.`)
+      toast.success(`Removed ${exit.value.removedCount} library entries.`)
       onOpenChange(false)
-    } catch {
-      toast.error("Unable to clear library")
-    }
-  }
+    })
 
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>

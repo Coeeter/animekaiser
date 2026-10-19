@@ -1,6 +1,6 @@
 import type { StreamPlayback } from "@animekaiser/domain"
 import { useAtomSet } from "@effect/atom-react"
-import { toast } from "sonner"
+import { toastFailure } from "../../../../utils/error"
 import { libraryMutationKeys, upsertLibraryAtom } from "../../../library/atoms"
 
 export function usePlayerSync({
@@ -26,7 +26,7 @@ export function usePlayerSync({
   flushWatchProgress: () => void
   onFinished: () => void
 }) {
-  const upsertLibrary = useAtomSet(upsertLibraryAtom, { mode: "promise" })
+  const upsertLibrary = useAtomSet(upsertLibraryAtom, { mode: "promiseExit" })
 
   const syncLibraryProgress = async () => {
     if (syncedEpisodeKey === episodeKey) return
@@ -37,28 +37,25 @@ export function usePlayerSync({
     const completed = totalEpisodes !== null && progress >= totalEpisodes
     const status = completed ? "completed" : "watching"
 
-    try {
-      await upsertLibrary({
-        payload: {
-          anime: {
-            malId: playback.anime.malId,
-            aniListId: playback.anime.aniListId,
-            title: playback.anime.title,
-            coverImage: playback.anime.coverImage,
-            episodes: playback.anime.episodes,
-          },
-          status,
-          score: libraryEntry?.score ?? null,
-          progress,
-          notes: libraryEntry?.notes ?? null,
-          syncExternal: syncLibraryOnFinish,
+    const exit = await upsertLibrary({
+      payload: {
+        anime: {
+          malId: playback.anime.malId,
+          aniListId: playback.anime.aniListId,
+          title: playback.anime.title,
+          coverImage: playback.anime.coverImage,
+          episodes: playback.anime.episodes,
         },
-        reactivityKeys: libraryMutationKeys(playback.anime.malId),
-      })
+        status,
+        score: libraryEntry?.score ?? null,
+        progress,
+        notes: libraryEntry?.notes ?? null,
+        syncExternal: syncLibraryOnFinish,
+      },
+      reactivityKeys: libraryMutationKeys(playback.anime.malId),
+    })
+    if (toastFailure("Log in to sync episode progress to your library.")(exit))
       onSyncedEpisodeKey(episodeKey)
-    } catch {
-      toast.error("Log in to sync episode progress to your library.")
-    }
   }
 
   const finishEpisode = () => {

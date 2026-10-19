@@ -8,6 +8,7 @@ import {
 import * as Option from "effect/Option"
 import * as Atom from "effect/reactivity/Atom"
 import * as Schema from "effect/Schema"
+import { localStorageRuntime } from "../../services/storage"
 
 export {
   PlayerPreferences,
@@ -34,50 +35,23 @@ export const defaultPlayerPreferences: PlayerPreferences = {
   autoLandscape: false,
 }
 
-export const playerPreferencesStorageKey = "kaiser-player-preferences"
-
-const StoredPlayerPreferences = Schema.fromJsonString(PlayerPreferences)
-const decodeStoredPlayerPreferencesOption = Schema.decodeUnknownOption(
-  StoredPlayerPreferences
-)
-
-export const readStoredPlayerPreferences = (value: string | null) =>
-  value === null
-    ? defaultPlayerPreferences
-    : decodeStoredPlayerPreferencesOption(value).pipe(
-        Option.getOrElse(() => defaultPlayerPreferences)
-      )
-
-export const playerPreferencesAtom = Atom.make<PlayerPreferences>(
-  typeof window === "undefined"
-    ? defaultPlayerPreferences
-    : readStoredPlayerPreferences(
-        window.localStorage.getItem(playerPreferencesStorageKey)
-      )
-).pipe(Atom.keepAlive)
-
-export const writeStoredPlayerPreferences = (
-  preferences: PlayerPreferences
-) => {
-  if (typeof window === "undefined") return
-
-  window.localStorage.setItem(
-    playerPreferencesStorageKey,
-    JSON.stringify(preferences)
-  )
-}
+export const playerPreferencesAtom = Atom.kvs({
+  runtime: localStorageRuntime,
+  key: "kaiser-player-preferences",
+  schema: PlayerPreferences,
+  defaultValue: () => defaultPlayerPreferences,
+}).pipe(Atom.keepAlive)
 
 export const updatePlayerPreferencesAtom = Atom.writable<
   PlayerPreferences,
   Partial<PlayerPreferences>
 >(
   (get) => get(playerPreferencesAtom),
-  (ctx, patch) => {
-    const next = { ...ctx.get(playerPreferencesAtom), ...patch }
-
-    writeStoredPlayerPreferences(next)
-    ctx.set(playerPreferencesAtom, next)
-  }
+  (ctx, patch) =>
+    ctx.set(playerPreferencesAtom, {
+      ...ctx.get(playerPreferencesAtom),
+      ...patch,
+    })
 )
 
 export const spoilerBlurAtom = Atom.make(

@@ -14,7 +14,7 @@ import { useState } from "react"
 import { toast } from "sonner"
 import { DataError } from "../../components/data-error"
 import { apiUrl } from "../../services/api-clients"
-import { errorMessage } from "../../utils/error"
+import { toastFailure } from "../../utils/error"
 import type { AppUser } from "../auth/user"
 import {
   accountHealthAtom,
@@ -39,11 +39,11 @@ export function IntegrationsPanel({ user }: { user: AppUser | null }) {
     .orElse(() => [])
 
   const disconnectExternalAccount = useAtomSet(disconnectExternalAccountAtom, {
-    mode: "promise",
+    mode: "promiseExit",
   })
 
   const startLibraryImport = useAtomSet(startLibraryImportAtom, {
-    mode: "promise",
+    mode: "promiseExit",
   })
 
   const [pending, setPending] = useState<string | null>(null)
@@ -65,36 +65,28 @@ export function IntegrationsPanel({ user }: { user: AppUser | null }) {
     return `${apiUrl}/api/link/${provider}?callbackURL=${encodeURIComponent(callbackURL.toString())}`
   }
 
-  const disconnect = async (provider: "mal" | "anilist") => {
+  const disconnect = (provider: "mal" | "anilist") => {
     setPending(provider)
-
-    try {
-      await disconnectExternalAccount({
-        payload: { provider },
-        reactivityKeys: integrationsReactivityKeys,
-      })
-      toast.success("Integration disconnected.")
-    } catch (reason) {
-      toast.error(errorMessage(reason, "Unable to disconnect"))
-    } finally {
+    return disconnectExternalAccount({
+      payload: { provider },
+      reactivityKeys: integrationsReactivityKeys,
+    }).then((exit) => {
       setPending(null)
-    }
+      if (toastFailure("Unable to disconnect")(exit))
+        toast.success("Integration disconnected.")
+    })
   }
 
-  const runImport = async (provider: "mal" | "anilist") => {
+  const runImport = (provider: "mal" | "anilist") => {
     setPending(`${provider}:import`)
-
-    try {
-      await startLibraryImport({
-        payload: { provider },
-        reactivityKeys: [libraryReactivityKeys.sync],
-      })
-      toast.success("Import queued.")
-    } catch (reason) {
-      toast.error(errorMessage(reason, "Unable to start import"))
-    } finally {
+    return startLibraryImport({
+      payload: { provider },
+      reactivityKeys: [libraryReactivityKeys.sync],
+    }).then((exit) => {
       setPending(null)
-    }
+      if (toastFailure("Unable to start import")(exit))
+        toast.success("Import queued.")
+    })
   }
 
   return (

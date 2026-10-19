@@ -7,6 +7,7 @@ import { ListRestart, RefreshCw } from "lucide-react"
 import { toast } from "sonner"
 import { DataError } from "../../components/data-error"
 import { PageHero } from "../../components/page-hero"
+import { toastFailure } from "../../utils/error"
 import { libraryReactivityKeys, retrySyncAtom, syncEventsAtom } from "./atoms"
 import type { SyncActivitySearch } from "./search"
 
@@ -14,20 +15,16 @@ export function SyncActivityPage({ page }: SyncActivitySearch) {
   const queryAtom = syncEventsAtom(page, 50)
   const result = useAtomValue(queryAtom)
   const refresh = useAtomRefresh(queryAtom)
-  const retry = useAtomSet(retrySyncAtom, { mode: "promise" })
+  const retry = useAtomSet(retrySyncAtom, { mode: "promiseExit" })
 
-  const retryEvent = async (id: string) => {
-    try {
-      await retry({
-        payload: { eventIds: [id], target: { type: "original" } },
-        reactivityKeys: [libraryReactivityKeys.sync],
-      })
-
-      toast.success("Retry queued")
-    } catch {
-      toast.error("Unable to retry sync")
-    }
-  }
+  const retryEvent = (id: string) =>
+    retry({
+      payload: { eventIds: [id], target: { type: "original" } },
+      reactivityKeys: [libraryReactivityKeys.sync],
+    }).then((exit) => {
+      if (toastFailure("Unable to retry sync")(exit))
+        toast.success("Retry queued")
+    })
 
   return (
     <main className="mx-auto flex w-full max-w-7xl flex-col gap-7 p-4 pb-10 md:p-6">

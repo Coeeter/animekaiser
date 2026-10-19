@@ -32,6 +32,7 @@ import { DataError } from "../../components/data-error"
 import { DebouncedSearchInput } from "../../components/debounced-search-input"
 import { PageHero } from "../../components/page-hero"
 import { isStaleResult, useLastSuccess } from "../../hooks/use-last-success"
+import { toastFailure } from "../../utils/error"
 import { AnimeTitle } from "../anime/common/anime-title"
 import {
   clearWatchHistoryEntryAtom,
@@ -194,22 +195,19 @@ export function WatchHistoryPage({ search }: { search: WatchHistorySearch }) {
 
 function HistoryRow({ item }: { item: ContinueWatchingItem }) {
   const clearEntry = useAtomSet(clearWatchHistoryEntryAtom, {
-    mode: "promise",
+    mode: "promiseExit",
   })
   const percent = percentWatched(item)
   const image = item.episodeImage ?? item.anime.coverImage
 
-  const removeShow = async () => {
-    try {
-      await clearEntry({
-        payload: { malId: item.malId },
-        reactivityKeys: watchHistoryClearKeys,
-      })
-      toast.success("Removed from your history")
-    } catch {
-      toast.error("Unable to remove this show")
-    }
-  }
+  const removeShow = () =>
+    clearEntry({
+      payload: { malId: item.malId },
+      reactivityKeys: watchHistoryClearKeys,
+    }).then((exit) => {
+      if (toastFailure("Unable to remove this show")(exit))
+        toast.success("Removed from your history")
+    })
 
   return (
     <li className="group relative flex items-center gap-4 rounded-2xl p-2 transition hover:bg-accent/60">

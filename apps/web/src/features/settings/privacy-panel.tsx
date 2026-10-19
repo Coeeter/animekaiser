@@ -1,15 +1,16 @@
 import type { LibraryEntry } from "@animekaiser/domain"
 import { Button } from "@animekaiser/ui/components/button"
 import { Spinner } from "@animekaiser/ui/components/spinner"
-import { useAtomSet, useAtomValue } from "@effect/atom-react"
+import { useAtom, useAtomSet, useAtomValue } from "@effect/atom-react"
 import { Link } from "@tanstack/react-router"
+import * as Clock from "effect/Clock"
 import * as Effect from "effect/Effect"
 import * as AsyncResult from "effect/reactivity/AsyncResult"
+import * as Atom from "effect/reactivity/Atom"
 import { Download, History } from "lucide-react"
-import { useState } from "react"
 import { toast } from "sonner"
 import { KaiserRpcClient } from "../../services/api-clients"
-import { errorMessage } from "../../utils/error"
+import { toastFailure } from "../../utils/error"
 import { sessionAtom } from "../auth/atoms"
 import { ClearWatchHistoryButton } from "../history/clear-watch-history"
 import { settingsOpenAtom } from "./atoms"
@@ -17,22 +18,6 @@ import { toExportJson, toMalXml } from "./export-list"
 import { AuthRequired, SettingCard, SettingHeading } from "./settings-shared"
 
 const exportPageSize = 100
-
-const fetchWholeListAtom = KaiserRpcClient.runtime.fn(() =>
-  Effect.gen(function* () {
-    const client = yield* KaiserRpcClient
-    const entries: Array<LibraryEntry> = []
-    for (let page = 1; ; page++) {
-      const result = yield* client("GetLibraryPage", {
-        sort: "title_asc",
-        page,
-        perPage: exportPageSize,
-      })
-      entries.push(...result.items)
-      if (page >= result.totalPages) return entries
-    }
-  })
-)
 
 const download = (contents: string, filename: string, type: string) => {
   const url = URL.createObjectURL(new Blob([contents], { type }))
@@ -43,15 +28,21 @@ const download = (contents: string, filename: string, type: string) => {
   URL.revokeObjectURL(url)
 }
 
-function ExportListSetting() {
-  const fetchWholeList = useAtomSet(fetchWholeListAtom, { mode: "promise" })
-  const [pending, setPending] = useState<"json" | "xml" | null>(null)
-
-  const exportAs = async (format: "json" | "xml") => {
-    setPending(format)
-    try {
-      const entries = await fetchWholeList()
-      const date = new Date()
+const exportListAtom = Atom.family((format: "json" | "xml") =>
+  KaiserRpcClient.runtime.fn<void>()(() =>
+    Effect.gen(function* () {
+      const client = yield* KaiserRpcClient
+      const entries: Array<LibraryEntry> = []
+      for (let page = 1; ; page++) {
+        const result = yield* client("GetLibraryPage", {
+          sort: "title_asc",
+          page,
+          perPage: exportPageSize,
+        })
+        entries.push(...result.items)
+        if (page >= result.totalPages) break
+      }
+      const date = new Date(yield* Clock.currentTimeMillis)
       const stamp = date.toISOString().slice(0, 10)
       if (format === "json")
         download(
@@ -65,13 +56,25 @@ function ExportListSetting() {
           `animekaiser-list-${stamp}.xml`,
           "application/xml"
         )
-      toast.success(`Exported ${entries.length} entries.`)
-    } catch (reason) {
-      toast.error(errorMessage(reason, "Unable to export your list"))
-    } finally {
-      setPending(null)
-    }
-  }
+      return entries.length
+    })
+  )
+)
+
+function ExportListSetting() {
+  const [xmlResult, exportXml] = useAtom(exportListAtom("xml"), {
+    mode: "promiseExit",
+  })
+  const [jsonResult, exportJson] = useAtom(exportListAtom("json"), {
+    mode: "promiseExit",
+  })
+  const pending = xmlResult.waiting ? "xml" : jsonResult.waiting ? "json" : null
+
+  const exportAs = (format: "json" | "xml") =>
+    (format === "xml" ? exportXml : exportJson)().then((exit) => {
+      if (toastFailure("Unable to export your list")(exit))
+        toast.success(`Exported ${exit.value} entries.`)
+    })
 
   return (
     <SettingCard id="privacy.export">

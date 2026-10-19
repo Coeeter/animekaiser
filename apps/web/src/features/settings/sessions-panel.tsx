@@ -22,11 +22,15 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@animekaiser/ui/components/tooltip"
+import { useAtom, useAtomValue } from "@effect/atom-react"
+import * as Effect from "effect/Effect"
+import type * as Exit from "effect/Exit"
+import * as AsyncResult from "effect/reactivity/AsyncResult"
+import * as Atom from "effect/reactivity/Atom"
 import { LogOut, MonitorOff } from "lucide-react"
-import { useEffect, useState } from "react"
 import { toast } from "sonner"
-import { authClient } from "../../services/api-clients"
-import { errorMessage } from "../../utils/error"
+import { auth } from "../../services/auth"
+import { toastFailure } from "../../utils/error"
 import { SettingHeading } from "./settings-shared"
 import { describeUserAgent } from "./user-agent"
 
@@ -51,55 +55,48 @@ const relative = (value: Date | string) => {
   return formatter.format(minutes, "minute")
 }
 
+// The list is `null` when it couldn't be loaded; the section stays usable.
+const sessionsAtom = Atom.make(
+  auth((client) => client.listSessions()).pipe(
+    Effect.map((sessions): ReadonlyArray<Session> => sessions ?? []),
+    Effect.orElseSucceed(() => null)
+  )
+)
+
+const revokeSessionAtom = Atom.family((token: string) =>
+  Atom.fn<void>()((_, get) =>
+    auth((client) => client.revokeSession({ token })).pipe(
+      Effect.tap(() => Effect.sync(() => get.refresh(sessionsAtom)))
+    )
+  )
+)
+
+const revokeOtherSessionsAtom = Atom.fn<void>()((_, get) =>
+  auth((client) => client.revokeOtherSessions()).pipe(
+    Effect.tap(() => Effect.sync(() => get.refresh(sessionsAtom)))
+  )
+)
+
+const signedOut =
+  (success: string, failure: string) => (exit: Exit.Exit<unknown, unknown>) => {
+    if (toastFailure(failure)(exit)) toast.success(success)
+  }
+
 export function SessionsSection({
   currentSessionToken,
 }: {
   currentSessionToken: string | null
 }) {
-  const [sessions, setSessions] = useState<Array<Session>>([])
-  const [pending, setPending] = useState<string | null>(null)
-  const refresh = async () => {
-    const result = await authClient.listSessions()
-    if (result.error) throw result.error
-    setSessions(
-      [...result.data].sort(
-        (a, b) =>
-          Number(b.token === currentSessionToken) -
-            Number(a.token === currentSessionToken) ||
-          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-      )
-    )
-  }
-  useEffect(() => {
-    void refresh().catch(() => setSessions([]))
-  }, [currentSessionToken])
-
-  const revoke = async (token: string) => {
-    setPending(token)
-    try {
-      const result = await authClient.revokeSession({ token })
-      if (result.error) throw result.error
-      await refresh()
-      toast.success("Session revoked.")
-    } catch (reason) {
-      toast.error(errorMessage(reason, "Unable to revoke session"))
-    } finally {
-      setPending(null)
-    }
-  }
-  const revokeOthers = async () => {
-    setPending("others")
-    try {
-      const result = await authClient.revokeOtherSessions()
-      if (result.error) throw result.error
-      await refresh()
-      toast.success("Other sessions revoked.")
-    } catch (reason) {
-      toast.error(errorMessage(reason, "Unable to revoke sessions"))
-    } finally {
-      setPending(null)
-    }
-  }
+  const loaded = AsyncResult.getOrElse(useAtomValue(sessionsAtom), () => null)
+  const sessions = [...(loaded ?? [])].sort(
+    (a, b) =>
+      Number(b.token === currentSessionToken) -
+        Number(a.token === currentSessionToken) ||
+      new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+  )
+  const [revokeOthersResult, revokeOthers] = useAtom(revokeOtherSessionsAtom, {
+    mode: "promiseExit",
+  })
 
   const action = (
     <AlertDialog>
@@ -107,7 +104,7 @@ export function SessionsSection({
         <Button
           size="sm"
           variant="outline"
-          disabled={sessions.length <= 1 || pending === "others"}
+          disabled={sessions.length <= 1 || revokeOthersResult.waiting}
         >
           Sign out everywhere else
         </Button>
@@ -123,7 +120,14 @@ export function SessionsSection({
           <AlertDialogCancel>Cancel</AlertDialogCancel>
           <AlertDialogAction
             variant="destructive"
-            onClick={() => void revokeOthers()}
+            onClick={() =>
+              void revokeOthers().then(
+                signedOut(
+                  "Other sessions revoked.",
+                  "Unable to revoke sessions"
+                )
+              )
+            }
           >
             Sign out
           </AlertDialogAction>
@@ -141,49 +145,13 @@ export function SessionsSection({
       />
       {sessions.length ? (
         <div className="flex flex-col gap-2">
-          {sessions.map((item) => {
-            const device = describeUserAgent(item.userAgent)
-            const isCurrent = item.token === currentSessionToken
-            return (
-              <div
-                className="flex items-center gap-3 rounded-xl border bg-card p-3"
-                key={item.id}
-              >
-                <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-muted">
-                  <device.icon className="size-5" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <p className="truncate font-medium">{device.label}</p>
-                    {isCurrent ? (
-                      <Badge variant="secondary">This device</Badge>
-                    ) : null}
-                  </div>
-                  <p className="mt-0.5 truncate text-sm text-muted-foreground">
-                    {item.ipAddress || "Unknown IP"} · Signed in{" "}
-                    {relative(item.createdAt)}
-                  </p>
-                </div>
-                {isCurrent ? null : (
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        size="icon-sm"
-                        variant="ghost"
-                        className="shrink-0 text-muted-foreground hover:text-destructive"
-                        disabled={pending === item.token}
-                        onClick={() => void revoke(item.token)}
-                      >
-                        <LogOut />
-                        <span className="sr-only">Revoke session</span>
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>Revoke session</TooltipContent>
-                  </Tooltip>
-                )}
-              </div>
-            )
-          })}
+          {sessions.map((item) => (
+            <SessionRow
+              key={item.id}
+              session={item}
+              isCurrent={item.token === currentSessionToken}
+            />
+          ))}
         </div>
       ) : (
         <Empty className="border">
@@ -194,6 +162,57 @@ export function SessionsSection({
             <EmptyTitle>No active sessions found</EmptyTitle>
           </EmptyHeader>
         </Empty>
+      )}
+    </div>
+  )
+}
+
+function SessionRow({
+  session,
+  isCurrent,
+}: {
+  session: Session
+  isCurrent: boolean
+}) {
+  const [result, revoke] = useAtom(revokeSessionAtom(session.token), {
+    mode: "promiseExit",
+  })
+  const device = describeUserAgent(session.userAgent)
+  return (
+    <div className="flex items-center gap-3 rounded-xl border bg-card p-3">
+      <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-muted">
+        <device.icon className="size-5" />
+      </div>
+      <div className="min-w-0 flex-1">
+        <div className="flex flex-wrap items-center gap-2">
+          <p className="truncate font-medium">{device.label}</p>
+          {isCurrent ? <Badge variant="secondary">This device</Badge> : null}
+        </div>
+        <p className="mt-0.5 truncate text-sm text-muted-foreground">
+          {session.ipAddress || "Unknown IP"} · Signed in{" "}
+          {relative(session.createdAt)}
+        </p>
+      </div>
+      {isCurrent ? null : (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              size="icon-sm"
+              variant="ghost"
+              className="shrink-0 text-muted-foreground hover:text-destructive"
+              disabled={result.waiting}
+              onClick={() =>
+                void revoke().then(
+                  signedOut("Session revoked.", "Unable to revoke session")
+                )
+              }
+            >
+              <LogOut />
+              <span className="sr-only">Revoke session</span>
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>Revoke session</TooltipContent>
+        </Tooltip>
       )}
     </div>
   )

@@ -1,19 +1,25 @@
 import { expect, test } from "bun:test"
-import {
-  clampMiniPlayerFrame,
-  readStoredMiniPlayerFrame,
-} from "./mini-player-frame"
+import * as Option from "effect/Option"
+import * as Schema from "effect/Schema"
+import { decodeStored } from "../../utils/stored"
+import { clampMiniPlayerFrame, MiniPlayerFrame } from "./mini-player-frame"
+
+const read = (raw: string) =>
+  Option.getOrNull(decodeStored(Schema.NullOr(MiniPlayerFrame), raw))
 
 test("stored mini player frame round trips", () => {
-  expect(
-    readStoredMiniPlayerFrame('{"left":10,"top":20,"width":384,"height":216}')
-  ).toEqual({ left: 10, top: 20, width: 384, height: 216 })
+  expect(read('{"left":10,"top":20,"width":384,"height":216}')).toEqual({
+    left: 10,
+    top: 20,
+    width: 384,
+    height: 216,
+  })
 })
 
 test("missing or invalid mini player frame falls back to no frame", () => {
-  expect(readStoredMiniPlayerFrame(null)).toBeNull()
-  expect(readStoredMiniPlayerFrame("not-json")).toBeNull()
-  expect(readStoredMiniPlayerFrame('{"left":10}')).toBeNull()
+  expect(read("null")).toBeNull()
+  expect(read("not-json")).toBeNull()
+  expect(read('{"left":10}')).toBeNull()
 })
 
 test("mini player frame is clamped into the current viewport", () => {

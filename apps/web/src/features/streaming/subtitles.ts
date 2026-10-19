@@ -1,3 +1,6 @@
+import * as Effect from "effect/Effect"
+import * as Atom from "effect/reactivity/Atom"
+import { fetchText } from "../../services/http"
 export type SubtitleCue = {
   start: number
   end: number
@@ -77,3 +80,14 @@ export const subtitleHtmlAtTime = (
   const active = cues.filter((cue) => time >= cue.start && time <= cue.end)
   return active.length > 0 ? active.map((cue) => cue.html).join("<br />") : null
 }
+
+export const subtitleCuesAtom = Atom.family((url: string | null) =>
+  Atom.make(
+    url === null
+      ? Effect.succeed<ReadonlyArray<SubtitleCue>>([])
+      : fetchText(url).pipe(
+          Effect.map(parseSubtitleVtt),
+          Effect.orElseSucceed((): ReadonlyArray<SubtitleCue> => [])
+        )
+  )
+)

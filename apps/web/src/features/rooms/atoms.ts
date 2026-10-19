@@ -7,10 +7,20 @@ import type {
   RoomState,
 } from "@animekaiser/domain"
 import * as Effect from "effect/Effect"
+import * as FetchHttpClient from "effect/http/FetchHttpClient"
+import * as HttpClient from "effect/http/HttpClient"
+import * as HttpClientRequest from "effect/http/HttpClientRequest"
+import * as HttpClientResponse from "effect/http/HttpClientResponse"
+import * as Option from "effect/Option"
 import * as Atom from "effect/reactivity/Atom"
 import * as Schedule from "effect/Schedule"
+import * as Schema from "effect/Schema"
 import * as Stream from "effect/Stream"
-import { KaiserRpcClient } from "../../services/api-clients"
+import { apiUrl, KaiserRpcClient } from "../../services/api-clients"
+import {
+  localStorageRuntime,
+  sessionStorageRuntime,
+} from "../../services/storage"
 
 export const roomReactivityKeys = {
   lists: "rooms",
@@ -93,32 +103,14 @@ export const recordRoomViewingAtom =
   KaiserRpcClient.mutation("RecordRoomViewing")
 export const convertRoomGuestAtom = KaiserRpcClient.mutation("ConvertRoomGuest")
 
-const activeRoomStorageKey = "kaiser.activeRoom"
-
-const readActiveRoom = () => {
-  try {
-    return window.localStorage.getItem(activeRoomStorageKey)
-  } catch {
-    return null
-  }
-}
-
-const activeRoomStoreAtom = Atom.make<string | null>(readActiveRoom()).pipe(
-  Atom.keepAlive
-)
-
 // The room this browser stays connected to while browsing elsewhere; it is
 // remembered across reloads until the viewer leaves or loses access.
-export const activeRoomIdAtom = Atom.writable(
-  (get) => get(activeRoomStoreAtom),
-  (ctx, roomId: string | null) => {
-    try {
-      if (roomId) window.localStorage.setItem(activeRoomStorageKey, roomId)
-      else window.localStorage.removeItem(activeRoomStorageKey)
-    } catch {}
-    ctx.set(activeRoomStoreAtom, roomId)
-  }
-)
+export const activeRoomIdAtom = Atom.kvs({
+  runtime: localStorageRuntime,
+  key: "kaiser.activeRoom",
+  schema: Schema.NullOr(Schema.String),
+  defaultValue: (): string | null => null,
+}).pipe(Atom.keepAlive)
 
 // Why this browser last lost a room, so the room page can explain it instead
 // of retrying with stale admission results.
@@ -266,35 +258,91 @@ export const roomEndMessage: Record<RoomEndReason, string> = {
   signed_out: "You were signed out.",
 }
 
-const inviteLinkStorageKey = (roomId: string) => `kaiser.roomInvite.${roomId}`
+const StoredInviteLink = Schema.NullOr(
+  Schema.Struct({ token: Schema.String, expiresAt: Schema.Number })
+)
+type StoredInviteLink = typeof StoredInviteLink.Type
+
+const storedInviteLinkAtom = Atom.family((roomId: string) =>
+  Atom.kvs({
+    runtime: localStorageRuntime,
+    key: `kaiser.roomInvite.${roomId}`,
+    schema: StoredInviteLink,
+    defaultValue: (): StoredInviteLink => null,
+  })
+)
 
 // Only token hashes are stored server-side, so the host's browser keeps the
 // plain link it created to copy it again later.
-export const storedInviteLink = {
-  read: (roomId: string) => {
-    try {
-      const raw = window.localStorage.getItem(inviteLinkStorageKey(roomId))
-      if (!raw) return null
-      const value = JSON.parse(raw) as { token: string; expiresAt: number }
-      return value.expiresAt > Date.now() ? value : null
-    } catch {
-      return null
-    }
-  },
-  write: (roomId: string, value: { token: string; expiresAt: number }) => {
-    try {
-      window.localStorage.setItem(
-        inviteLinkStorageKey(roomId),
-        JSON.stringify(value)
+export const inviteLinkAtom = Atom.family((roomId: string) =>
+  Atom.writable(
+    (get) => {
+      const link = get(storedInviteLinkAtom(roomId))
+      return link && link.expiresAt > Date.now() ? link : null
+    },
+    (ctx, link: StoredInviteLink) => ctx.set(storedInviteLinkAtom(roomId), link)
+  )
+)
+
+export class GuestJoinError extends Schema.TaggedError<GuestJoinError>()(
+  "GuestJoinError",
+  { message: Schema.String }
+) {}
+
+const GuestJoinFailure = Schema.Struct({ message: Schema.String })
+
+// Guests join over plain HTTP because admission sets the guest cookie, which
+// the RPC socket only picks up on its next handshake.
+export const joinAsGuestAtom = Atom.fn(
+  Effect.fnUntraced(
+    function* (input: {
+      roomId: string
+      inviteToken: string | undefined
+      displayName: string
+    }) {
+      const response = yield* HttpClientRequest.post(
+        new URL(`/api/rooms/${input.roomId}/guests`, apiUrl)
+      ).pipe(
+        HttpClientRequest.bodyJson({
+          inviteToken: input.inviteToken,
+          displayName: input.displayName,
+        }),
+        Effect.flatMap(HttpClient.execute),
+        Effect.mapError(
+          () =>
+            new GuestJoinError({
+              message: "Unable to reach the server. Try again.",
+            })
+        )
       )
-    } catch {}
-  },
-  clear: (roomId: string) => {
-    try {
-      window.localStorage.removeItem(inviteLinkStorageKey(roomId))
-    } catch {}
-  },
-}
+      if (response.status < 400) return
+      const failure = yield* HttpClientResponse.schemaBodyJson(
+        GuestJoinFailure
+      )(response).pipe(Effect.option)
+      return yield* new GuestJoinError({
+        message: Option.match(failure, {
+          onNone: () => "Unable to join as a guest.",
+          onSome: ({ message }) => message,
+        }),
+      })
+    },
+    Effect.provide(FetchHttpClient.layer),
+    Effect.provideService(FetchHttpClient.RequestInit, {
+      credentials: "include",
+    })
+  )
+)
+
+// An invite token arriving in the URL is kept for this tab, so signing in or
+// reloading before joining still admits the viewer.
+export const pendingInviteAtom = Atom.family((roomId: string) =>
+  Atom.kvs({
+    runtime: sessionStorageRuntime,
+    key: `kaiser.pendingInvite.${roomId}`,
+    schema: Schema.NullOr(Schema.String),
+    defaultValue: (): string | null => null,
+  })
+)
 
 export const inviteUrl = (roomId: string, token: string) =>
   `${window.location.origin}/rooms/${roomId}#invite=${encodeURIComponent(token)}`

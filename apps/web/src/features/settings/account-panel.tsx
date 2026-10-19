@@ -12,8 +12,9 @@ import { Trash2 } from "lucide-react"
 import { useState } from "react"
 import { toast } from "sonner"
 import { PasswordInput } from "../../components/password-input"
-import { authClient, navigateAfterAuthChange } from "../../services/api-clients"
-import { errorMessage } from "../../utils/error"
+import { navigateAfterAuthChange } from "../../services/api-clients"
+import { toastFailure } from "../../utils/error"
+import { changePasswordAtom, signOutAtom } from "../auth/atoms"
 import type { AppUser } from "../auth/user"
 import { deleteAccountAtom } from "../profile/atoms"
 import { ChangeEmailSection } from "./change-email"
@@ -39,8 +40,12 @@ export function AccountPanel({
   currentSessionToken: string | null
 }) {
   const deleteKaiserAccount = useAtomSet(deleteAccountAtom, {
-    mode: "promise",
+    mode: "promiseExit",
   })
+  const changeUserPassword = useAtomSet(changePasswordAtom, {
+    mode: "promiseExit",
+  })
+  const signOut = useAtomSet(signOutAtom, { mode: "promiseExit" })
 
   const [confirmationError, setConfirmationError] = useState<string | null>(
     null
@@ -61,24 +66,21 @@ export function AccountPanel({
 
   if (!user) return <AuthRequired />
 
-  const changePassword = async (values: ChangePasswordValues) => {
+  const changePassword = (values: ChangePasswordValues) => {
     if (values.newPassword !== values.confirmation) {
       setConfirmationError("Passwords do not match.")
       return
     }
-    try {
-      const result = await authClient.changePassword({
-        currentPassword: values.currentPassword,
-        newPassword: values.newPassword,
-        revokeOtherSessions: false,
-      })
-      if (result.error) throw result.error
+    return changeUserPassword({
+      currentPassword: values.currentPassword,
+      newPassword: values.newPassword,
+      revokeOtherSessions: false,
+    }).then((exit) => {
+      if (!toastFailure("Unable to change password")(exit)) return
       passwordForm.reset()
       setConfirmationError(null)
       toast.success("Password updated.")
-    } catch (reason) {
-      toast.error(errorMessage(reason, "Unable to change password"))
-    }
+    })
   }
 
   const deleteAccount = async (values: DeleteAccountValues) => {
@@ -88,16 +90,13 @@ export function AccountPanel({
       )
     )
       return
-    try {
-      await deleteKaiserAccount({
-        payload: { password: values.deletePassword },
-      })
-
-      await authClient.signOut()
-      navigateAfterAuthChange("/")
-    } catch (reason) {
-      toast.error(errorMessage(reason, "Unable to delete account"))
-    }
+    const deleted = await deleteKaiserAccount({
+      payload: { password: values.deletePassword },
+    })
+    if (!toastFailure("Unable to delete account")(deleted)) return
+    // The account is gone either way; signing out only clears this browser.
+    await signOut()
+    navigateAfterAuthChange("/")
   }
 
   return (

@@ -15,6 +15,7 @@ import { useAtom } from "@effect/atom-react"
 import { Trash2 } from "lucide-react"
 import { useState } from "react"
 import { toast } from "sonner"
+import { toastFailure } from "../../utils/error"
 import { clearWatchHistoryAtom, watchHistoryClearKeys } from "./atoms"
 
 export function ClearWatchHistoryButton({
@@ -27,24 +28,21 @@ export function ClearWatchHistoryButton({
   className?: string
 }) {
   const [clearResult, clearHistory] = useAtom(clearWatchHistoryAtom, {
-    mode: "promise",
+    mode: "promiseExit",
   })
   const [open, setOpen] = useState(false)
   const pending = clearResult.waiting
 
-  const clear = async () => {
-    try {
-      await clearHistory({
-        payload: void 0,
-        reactivityKeys: watchHistoryClearKeys,
-      })
+  const clear = () =>
+    clearHistory({
+      payload: void 0,
+      reactivityKeys: watchHistoryClearKeys,
+    }).then((exit) => {
+      if (!toastFailure("Unable to clear your watch history")(exit)) return
       setOpen(false)
       onCleared?.()
       toast.success("Watch history cleared")
-    } catch {
-      toast.error("Unable to clear your watch history")
-    }
-  }
+    })
 
   return (
     <AlertDialog open={open} onOpenChange={setOpen}>

@@ -50,6 +50,7 @@ import {
 import { useEffect, useId, useState } from "react"
 import { toast } from "sonner"
 import { IconInput } from "../../components/icon-input"
+import { toastFailure } from "../../utils/error"
 import { playerPreferencesAtom } from "../streaming/preferences"
 import {
   libraryMutationKeys,
@@ -106,8 +107,8 @@ export function AddToLibraryDialog({
   anime: AnimeDetail
   entry?: LibraryEntry | null
 }) {
-  const save = useAtomSet(upsertLibraryAtom, { mode: "promise" })
-  const remove = useAtomSet(removeLibraryAtom, { mode: "promise" })
+  const save = useAtomSet(upsertLibraryAtom, { mode: "promiseExit" })
+  const remove = useAtomSet(removeLibraryAtom, { mode: "promiseExit" })
   const preferences = useAtomValue(playerPreferencesAtom)
   const [open, setOpen] = useState(false)
 
@@ -131,32 +132,28 @@ export function AddToLibraryDialog({
   }, [entry, open])
 
   const saveEntry = async (values: LibraryEntryFormValues) => {
-    try {
-      await save({
-        payload: {
-          anime: {
-            malId: anime.malId,
-            aniListId: anime.aniListId,
-            title: anime.title,
-            coverImage: anime.coverImage,
-            episodes: anime.episodes,
-            genres: anime.genres,
-            seasonYear: anime.seasonYear,
-          },
-          status: values.status,
-          score: decodeLibraryScore(values.score),
-          progress: decodeLibraryProgress(values.progress),
-          notes: values.notes.trim() || null,
-          syncExternal: preferences.syncLibraryOnFinish,
+    const exit = await save({
+      payload: {
+        anime: {
+          malId: anime.malId,
+          aniListId: anime.aniListId,
+          title: anime.title,
+          coverImage: anime.coverImage,
+          episodes: anime.episodes,
+          genres: anime.genres,
+          seasonYear: anime.seasonYear,
         },
-        reactivityKeys: libraryMutationKeys(anime.malId),
-      })
-
-      setOpen(false)
-      toast.success("Library entry saved")
-    } catch {
-      toast.error("Log in to add this title to your list")
-    }
+        status: values.status,
+        score: decodeLibraryScore(values.score),
+        progress: decodeLibraryProgress(values.progress),
+        notes: values.notes.trim() || null,
+        syncExternal: preferences.syncLibraryOnFinish,
+      },
+      reactivityKeys: libraryMutationKeys(anime.malId),
+    })
+    if (!toastFailure("Log in to add this title to your list")(exit)) return
+    setOpen(false)
+    toast.success("Library entry saved")
   }
 
   const deleteEntry = async (values: LibraryDeleteFormValues) => {
@@ -167,20 +164,17 @@ export function AddToLibraryDialog({
     if (values.mal) providers.push("mal")
     if (values.anilist) providers.push("anilist")
 
-    try {
-      await remove({
-        payload: { malId: anime.malId, providers },
-        reactivityKeys: libraryMutationKeys(anime.malId),
-      })
-      setOpen(false)
-      toast.success(
-        providers.length
-          ? "Removed locally; external deletes queued"
-          : "Removed locally"
-      )
-    } catch {
-      toast.error("Unable to remove title")
-    }
+    const exit = await remove({
+      payload: { malId: anime.malId, providers },
+      reactivityKeys: libraryMutationKeys(anime.malId),
+    })
+    if (!toastFailure("Unable to remove title")(exit)) return
+    setOpen(false)
+    toast.success(
+      providers.length
+        ? "Removed locally; external deletes queued"
+        : "Removed locally"
+    )
   }
 
   return (

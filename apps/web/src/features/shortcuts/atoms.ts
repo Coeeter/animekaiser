@@ -1,46 +1,14 @@
 import { ShortcutOverrides } from "@animekaiser/domain"
-import * as Option from "effect/Option"
 import * as Atom from "effect/reactivity/Atom"
-import * as Schema from "effect/Schema"
+import { localStorageRuntime } from "../../services/storage"
 import { matchesAction, resolveShortcuts } from "./shortcuts"
 
-const storageKey = "kaiser-shortcuts"
-
-const decodeStored = Schema.decodeUnknownOption(
-  Schema.fromJsonString(ShortcutOverrides)
-)
-
-const readStored = (): ShortcutOverrides => {
-  if (typeof window === "undefined") return {}
-  try {
-    return decodeStored(window.localStorage.getItem(storageKey)).pipe(
-      Option.getOrElse(() => ({}))
-    )
-  } catch {
-    return {}
-  }
-}
-
-export const writeStoredShortcutOverrides = (overrides: ShortcutOverrides) => {
-  try {
-    window.localStorage.setItem(storageKey, JSON.stringify(overrides))
-  } catch {}
-}
-
-export const shortcutOverridesAtom = Atom.make<ShortcutOverrides>(
-  readStored()
-).pipe(Atom.keepAlive)
-
-export const setShortcutOverridesAtom = Atom.writable<
-  ShortcutOverrides,
-  ShortcutOverrides
->(
-  (get) => get(shortcutOverridesAtom),
-  (ctx, overrides) => {
-    ctx.set(shortcutOverridesAtom, overrides)
-    writeStoredShortcutOverrides(overrides)
-  }
-)
+export const shortcutOverridesAtom = Atom.kvs({
+  runtime: localStorageRuntime,
+  key: "kaiser-shortcuts",
+  schema: ShortcutOverrides,
+  defaultValue: (): ShortcutOverrides => ({}),
+}).pipe(Atom.keepAlive)
 
 export const shortcutsAtom = Atom.make((get) =>
   resolveShortcuts(get(shortcutOverridesAtom))

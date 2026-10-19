@@ -23,6 +23,7 @@ import {
 } from "lucide-react"
 import { useState } from "react"
 import { toast } from "sonner"
+import { toastFailure } from "../../utils/error"
 import {
   aiPreferencesAtom,
   aiReactivityKeys,
@@ -124,8 +125,8 @@ function ThreadList({
   onSelect: (id: string | null) => void
 }) {
   const threads = AsyncResult.getOrElse(useAtomValue(aiThreadsAtom), () => [])
-  const rename = useAtomSet(renameAiThreadAtom, { mode: "promise" })
-  const remove = useAtomSet(deleteAiThreadAtom, { mode: "promise" })
+  const rename = useAtomSet(renameAiThreadAtom, { mode: "promiseExit" })
+  const remove = useAtomSet(deleteAiThreadAtom, { mode: "promiseExit" })
   const [editing, setEditing] = useState<string | null>(null)
   const [title, setTitle] = useState("")
   if (threads.length === 0)
@@ -156,7 +157,7 @@ function ThreadList({
                     title: title.trim() || thread.title,
                   },
                   reactivityKeys: [aiReactivityKeys.threads],
-                })
+                }).then(toastFailure("Unable to rename the conversation"))
               }}
             >
               <Input
@@ -196,7 +197,9 @@ function ThreadList({
               void remove({
                 payload: { threadId: thread.id },
                 reactivityKeys: [aiReactivityKeys.threads],
-              }).then(() => {
+              }).then((exit) => {
+                if (!toastFailure("Unable to delete the conversation")(exit))
+                  return
                 if (thread.id === activeId) onSelect(null)
                 toast.success("Conversation deleted")
               })
@@ -218,7 +221,7 @@ function PreferencesSheet({
   onOpenChange: (open: boolean) => void
 }) {
   const saved = AsyncResult.getOrElse(useAtomValue(aiPreferencesAtom), () => [])
-  const save = useAtomSet(saveAiPreferencesAtom, { mode: "promise" })
+  const save = useAtomSet(saveAiPreferencesAtom, { mode: "promiseExit" })
   const [text, setText] = useState<string | null>(null)
   const value = text ?? saved.join("\n")
   return (
@@ -255,7 +258,9 @@ function PreferencesSheet({
                     .slice(0, 20),
                 },
                 reactivityKeys: [aiReactivityKeys.preferences],
-              }).then(() => {
+              }).then((exit) => {
+                if (!toastFailure("Unable to save your preferences")(exit))
+                  return
                 toast.success("Preferences saved")
                 onOpenChange(false)
               })

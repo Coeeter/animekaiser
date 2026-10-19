@@ -7,18 +7,22 @@ import { useAtomRefresh, useAtomSet, useAtomValue } from "@effect/atom-react"
 import { Link, useNavigate } from "@tanstack/react-router"
 import * as Exit from "effect/Exit"
 import * as AsyncResult from "effect/reactivity/AsyncResult"
+import * as Atom from "effect/reactivity/Atom"
 import * as Schema from "effect/Schema"
 import { Loader2, Search, Sparkles, Users } from "lucide-react"
 import type { ReactNode } from "react"
 import { useEffect, useState } from "react"
 import { DataError } from "../../components/data-error"
-import { apiUrl, navigateAfterAuthChange } from "../../services/api-clients"
+import { navigateAfterAuthChange } from "../../services/api-clients"
+import { failureMessage } from "../../utils/error"
 import { AnimeTitle } from "../anime/common/anime-title"
 import { sessionAtom } from "../auth/atoms"
 import {
   activeRoomIdAtom,
   endedRoomsAtom,
+  joinAsGuestAtom,
   joinRoomAtom,
+  pendingInviteAtom,
   roomAccessLabel,
   roomAdmissionAtom,
   roomEndMessage,
@@ -30,14 +34,13 @@ import { liveOf, toastRoomFailure } from "./room-host"
 import { RoomPanel } from "./room-panel"
 import { useAddToRoom } from "./room-picks"
 
-const readInviteToken = (roomId: string) => {
-  const key = `kaiser.pendingInvite.${roomId}`
-  const hash = new URLSearchParams(window.location.hash.slice(1))
-  const fromHash = hash.get("invite")
-  if (fromHash) {
-    try {
-      window.sessionStorage.setItem(key, fromHash)
-    } catch {}
+const inviteTokenAtom = Atom.family((roomId: string) =>
+  Atom.make((get): string | undefined => {
+    const fromHash = new URLSearchParams(window.location.hash.slice(1)).get(
+      "invite"
+    )
+    if (!fromHash) return get(pendingInviteAtom(roomId)) ?? undefined
+    get.set(pendingInviteAtom(roomId), fromHash)
     // The token must not linger in history, screenshots, or referrers.
     window.history.replaceState(
       window.history.state,
@@ -45,19 +48,8 @@ const readInviteToken = (roomId: string) => {
       window.location.pathname + window.location.search
     )
     return fromHash
-  }
-  try {
-    return window.sessionStorage.getItem(key) ?? undefined
-  } catch {
-    return undefined
-  }
-}
-
-const clearInviteToken = (roomId: string) => {
-  try {
-    window.sessionStorage.removeItem(`kaiser.pendingInvite.${roomId}`)
-  } catch {}
-}
+  })
+)
 
 export function RoomPage({
   roomId,
@@ -66,7 +58,7 @@ export function RoomPage({
   roomId: string
   openInvite: boolean
 }) {
-  const [inviteToken] = useState(() => readInviteToken(roomId))
+  const inviteToken = useAtomValue(inviteTokenAtom(roomId))
   const activeRoom = useAtomValue(activeRoomIdAtom)
   const endedMessage = useAtomValue(endedRoomsAtom).get(roomId)
 
@@ -141,9 +133,8 @@ function JoinedRoom({
   const navigate = useNavigate()
   const [inviteOpen, setInviteOpen] = useState(openInvite)
 
-  useEffect(() => {
-    clearInviteToken(roomId)
-  }, [roomId])
+  const setPendingInvite = useAtomSet(pendingInviteAtom(roomId))
+  useEffect(() => setPendingInvite(null), [setPendingInvite])
 
   if (!live?.state) return <RoomPending />
   const state = live.state
@@ -299,6 +290,8 @@ function Admission({
   const session = AsyncResult.getOrElse(useAtomValue(sessionAtom), () => null)
   const join = useAtomSet(joinRoomAtom, { mode: "promiseExit" })
   const setActiveRoom = useAtomSet(activeRoomIdAtom)
+  const joinGuest = useAtomSet(joinAsGuestAtom, { mode: "promiseExit" })
+  const setPendingInvite = useAtomSet(pendingInviteAtom(roomId))
   const [joining, setJoining] = useState(false)
   const [guestName, setGuestName] = useState("")
   const [guestError, setGuestError] = useState<string | null>(null)
@@ -333,32 +326,20 @@ function Admission({
     }
     setJoining(true)
     setGuestError(null)
-    try {
-      const response = await fetch(
-        new URL(`/api/rooms/${roomId}/guests`, apiUrl),
-        {
-          method: "POST",
-          credentials: "include",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({ inviteToken, displayName: name.value }),
-        }
-      )
-      if (!response.ok) {
-        const body = (await response.json().catch(() => null)) as {
-          message?: string
-        } | null
-        setGuestError(body?.message ?? "Unable to join as a guest.")
-        setJoining(false)
-        return
-      }
-      setActiveRoom(roomId)
-      clearInviteToken(roomId)
-      // The guest cookie only reaches the RPC socket on a new handshake.
-      navigateAfterAuthChange(roomPath)
-    } catch {
-      setGuestError("Unable to reach the server. Try again.")
+    const exit = await joinGuest({
+      roomId,
+      inviteToken,
+      displayName: name.value,
+    })
+    if (Exit.isFailure(exit)) {
+      setGuestError(failureMessage(exit, "Unable to join as a guest."))
       setJoining(false)
+      return
     }
+    setActiveRoom(roomId)
+    setPendingInvite(null)
+    // The guest cookie only reaches the RPC socket on a new handshake.
+    navigateAfterAuthChange(roomPath)
   }
 
   const signInHref = `/login?redirect=${encodeURIComponent(roomPath)}`

@@ -12,38 +12,36 @@ import {
   FieldGroup,
   FieldLabel,
 } from "@animekaiser/ui/components/field"
+import { useAtomSet } from "@effect/atom-react"
 import { useForm } from "@tanstack/react-form"
 import { Mail } from "lucide-react"
 import { useState } from "react"
 import { IconInput } from "../../components/icon-input"
 import { PasswordInput } from "../../components/password-input"
-import { authClient, navigateAfterAuthChange } from "../../services/api-clients"
-import { errorMessage } from "../../utils/error"
+import { navigateAfterAuthChange } from "../../services/api-clients"
+import { failureMessage } from "../../utils/error"
+import { signUpEmailAtom } from "./atoms"
 import { AuthFooter, SubmitButton } from "./auth-shared"
 import { provisionalUsername } from "./username"
 
 export function RegisterPage() {
   const [error, setError] = useState<string | null>(null)
+  const signUp = useAtomSet(signUpEmailAtom, { mode: "promiseExit" })
   const form = useForm({
     defaultValues: { email: "", password: "" },
     onSubmit: async ({ value }) => {
       setError(null)
       const email = value.email.trim()
       const username = provisionalUsername(email)
-
-      try {
-        const result = await authClient.signUp.email({
-          name: username,
-          username,
-          email,
-          password: value.password,
-        })
-        if (result.error) throw result.error
-
-        navigateAfterAuthChange("/welcome")
-      } catch (cause) {
-        setError(errorMessage(cause, "Unable to create account"))
-      }
+      const exit = await signUp({
+        name: username,
+        username,
+        email,
+        password: value.password,
+      })
+      const failure = failureMessage(exit, "Unable to create account")
+      if (failure) setError(failure)
+      else navigateAfterAuthChange("/welcome")
     },
   })
 

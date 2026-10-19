@@ -3,11 +3,11 @@ import {
   ToggleGroupItem,
 } from "@animekaiser/ui/components/toggle-group"
 import { useAtom } from "@effect/atom-react"
-import { setAnimeTitlePreferenceAtom } from "../anime/common/title"
+import { animeTitlePreferenceAtom } from "../anime/common/title"
 import { SettingCard, SettingHeading } from "./settings-shared"
 
 export function GeneralPanel() {
-  const [title, setTitle] = useAtom(setAnimeTitlePreferenceAtom)
+  const [title, setTitle] = useAtom(animeTitlePreferenceAtom)
   const titleAction = (
     <ToggleGroup
       type="single"

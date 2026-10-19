@@ -24,15 +24,23 @@ import {
   ToggleGroup,
   ToggleGroupItem,
 } from "@animekaiser/ui/components/toggle-group"
+import { useAtom, useAtomSet } from "@effect/atom-react"
 import { useForm } from "@tanstack/react-form"
 import { Link } from "@tanstack/react-router"
+import * as Exit from "effect/Exit"
 import { Fingerprint, KeyRound, Mail, UserRound } from "lucide-react"
 import { useState } from "react"
-import { toast } from "sonner"
 import { IconInput } from "../../components/icon-input"
 import { PasswordInput } from "../../components/password-input"
-import { authClient, navigateAfterAuthChange } from "../../services/api-clients"
-import { errorMessage } from "../../utils/error"
+import { navigateAfterAuthChange } from "../../services/api-clients"
+import { toastFailure } from "../../utils/error"
+import {
+  sendVerificationOtpAtom,
+  signInEmailAtom,
+  signInEmailOtpAtom,
+  signInPasskeyAtom,
+  signInUsernameAtom,
+} from "./atoms"
 import { AuthFooter, SubmitButton } from "./auth-shared"
 import { safeRedirect } from "./user"
 import { signInErrorMessage } from "./validation"
@@ -41,26 +49,23 @@ type LoginMethod = "password" | "otp" | "passkey"
 
 function PasswordLogin({ onSuccess }: { onSuccess: () => void }) {
   const [error, setError] = useState<string | null>(null)
+  const signInEmail = useAtomSet(signInEmailAtom, { mode: "promiseExit" })
+  const signInUsername = useAtomSet(signInUsernameAtom, {
+    mode: "promiseExit",
+  })
   const form = useForm({
     defaultValues: { identifier: "", password: "" },
     onSubmit: async ({ value }) => {
       setError(null)
       const identifier = value.identifier.trim()
-      try {
-        const result = identifier.includes("@")
-          ? await authClient.signIn.email({
-              email: identifier,
-              password: value.password,
-            })
-          : await authClient.signIn.username({
-              username: identifier,
-              password: value.password,
-            })
-        if (result.error) throw result.error
-        onSuccess()
-      } catch (cause) {
-        setError(signInErrorMessage(cause))
-      }
+      const exit = identifier.includes("@")
+        ? await signInEmail({ email: identifier, password: value.password })
+        : await signInUsername({
+            username: identifier,
+            password: value.password,
+          })
+      if (Exit.isSuccess(exit)) onSuccess()
+      else setError(signInErrorMessage)
     },
   })
 
@@ -132,21 +137,18 @@ function EmailCodeLogin({ onSuccess }: { onSuccess: () => void }) {
   const [email, setEmail] = useState<string | null>(null)
   const [requestError, setRequestError] = useState<string | null>(null)
   const [verifyError, setVerifyError] = useState<string | null>(null)
+  const sendCode = useAtomSet(sendVerificationOtpAtom, { mode: "promiseExit" })
+  const signInWithCode = useAtomSet(signInEmailOtpAtom, {
+    mode: "promiseExit",
+  })
   const requestForm = useForm({
     defaultValues: { email: "" },
     onSubmit: async ({ value }) => {
       setRequestError(null)
       const targetEmail = value.email.trim()
-      try {
-        const result = await authClient.emailOtp.sendVerificationOtp({
-          email: targetEmail,
-          type: "sign-in",
-        })
-        if (result.error) throw result.error
-        setEmail(targetEmail)
-      } catch (cause) {
-        setRequestError(signInErrorMessage(cause))
-      }
+      const exit = await sendCode({ email: targetEmail, type: "sign-in" })
+      if (Exit.isSuccess(exit)) setEmail(targetEmail)
+      else setRequestError(signInErrorMessage)
     },
   })
   const verifyForm = useForm({
@@ -154,16 +156,9 @@ function EmailCodeLogin({ onSuccess }: { onSuccess: () => void }) {
     onSubmit: async ({ value }) => {
       if (!email) return
       setVerifyError(null)
-      try {
-        const result = await authClient.signIn.emailOtp({
-          email,
-          otp: value.otp,
-        })
-        if (result.error) throw result.error
-        onSuccess()
-      } catch (cause) {
-        setVerifyError(signInErrorMessage(cause))
-      }
+      const exit = await signInWithCode({ email, otp: value.otp })
+      if (Exit.isSuccess(exit)) onSuccess()
+      else setVerifyError(signInErrorMessage)
     },
   })
 
@@ -268,19 +263,14 @@ function EmailCodeLogin({ onSuccess }: { onSuccess: () => void }) {
 }
 
 function PasskeyLogin({ onSuccess }: { onSuccess: () => void }) {
-  const [pending, setPending] = useState(false)
-  const signIn = async () => {
-    setPending(true)
-    try {
-      const result = await authClient.signIn.passkey()
-      if (result.error) throw result.error
-      onSuccess()
-    } catch (cause) {
-      toast.error(errorMessage(cause, "Unable to sign in with passkey"))
-    } finally {
-      setPending(false)
-    }
-  }
+  const [result, signInWithPasskey] = useAtom(signInPasskeyAtom, {
+    mode: "promiseExit",
+  })
+  const pending = result.waiting
+  const signIn = () =>
+    signInWithPasskey().then((exit) => {
+      if (toastFailure("Unable to sign in with passkey")(exit)) onSuccess()
+    })
   return (
     <div className="flex flex-col gap-6 text-center">
       <Fingerprint className="mx-auto size-12 text-primary" />

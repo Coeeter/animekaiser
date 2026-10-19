@@ -12,8 +12,14 @@ import {
 import { Field, FieldError, FieldLabel } from "@animekaiser/ui/components/field"
 import { Skeleton } from "@animekaiser/ui/components/skeleton"
 import { cn } from "@animekaiser/ui/lib/utils"
-import { useAtomRefresh, useAtomSet, useAtomValue } from "@effect/atom-react"
+import {
+  useAtom,
+  useAtomRefresh,
+  useAtomSet,
+  useAtomValue,
+} from "@effect/atom-react"
 import { Link, useNavigate } from "@tanstack/react-router"
+import * as Exit from "effect/Exit"
 import * as AsyncResult from "effect/reactivity/AsyncResult"
 import {
   ArrowRight,
@@ -27,13 +33,13 @@ import {
 } from "lucide-react"
 import { useEffect, useState } from "react"
 import { IconInput } from "../../components/icon-input"
-import { apiUrl, authClient } from "../../services/api-clients"
-import { errorMessage } from "../../utils/error"
+import { apiUrl } from "../../services/api-clients"
+import { failureMessage } from "../../utils/error"
 import { sessionAtom } from "../auth/atoms"
 import { accountHealthAtom } from "../integrations/atoms"
 import {
   beginOnboardingAtom,
-  checkUsernameAtom,
+  claimUsernameAtom,
   completeOnboardingAtom,
   ownProfileAtom,
   profileMutationKeys,
@@ -56,13 +62,10 @@ export function WelcomePage({
   step: OnboardingStep
   onStepChange: (step: OnboardingStep) => void
 }) {
-  const beginOnboarding = useAtomSet(beginOnboardingAtom, { mode: "promise" })
+  const beginOnboarding = useAtomSet(beginOnboardingAtom)
 
   useEffect(() => {
-    void beginOnboarding({
-      payload: void 0,
-      reactivityKeys: profileMutationKeys,
-    }).catch(() => undefined)
+    beginOnboarding({ payload: void 0, reactivityKeys: profileMutationKeys })
   }, [beginOnboarding])
 
   return (
@@ -137,13 +140,15 @@ function StepIndicator({ current }: { current: OnboardingStep }) {
 
 function UsernameStep({ onDone }: { onDone: () => void }) {
   const suggestionsResult = useAtomValue(suggestUsernamesAtom)
-  const checkUsername = useAtomSet(checkUsernameAtom, { mode: "promise" })
+  const [claimResult, claimUsername] = useAtom(claimUsernameAtom, {
+    mode: "promiseExit",
+  })
+  const pending = claimResult.waiting
   const refreshSession = useAtomRefresh(sessionAtom)
   const refreshProfile = useAtomRefresh(ownProfileAtom)
 
   const [username, setUsername] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [pending, setPending] = useState(false)
 
   const suggestions = AsyncResult.builder(suggestionsResult)
     .onSuccess((suggested) => suggested)
@@ -160,32 +165,15 @@ function UsernameStep({ onDone }: { onDone: () => void }) {
       return
     }
 
-    setPending(true)
-    try {
-      const { available } = await checkUsername({
-        payload: { username: next },
-      })
-
-      if (!available) {
-        setError("That username is taken.")
-        return
-      }
-
-      const result = await authClient.updateUser({
-        username: next,
-        displayUsername: next,
-        name: next,
-      })
-      if (result.error) throw result.error
-
-      refreshSession()
-      refreshProfile()
-      onDone()
-    } catch (cause) {
-      setError(errorMessage(cause, "Unable to save that username"))
-    } finally {
-      setPending(false)
+    const exit = await claimUsername(next)
+    const failure = failureMessage(exit, "Unable to save that username")
+    if (failure) {
+      setError(failure)
+      return
     }
+    refreshSession()
+    refreshProfile()
+    onDone()
   }
 
   return (
@@ -389,27 +377,21 @@ function ImportStep({ onDone }: { onDone: () => void }) {
 
 function DoneStep() {
   const navigate = useNavigate()
-  const completeOnboarding = useAtomSet(completeOnboardingAtom, {
-    mode: "promise",
+  const [result, completeOnboarding] = useAtom(completeOnboardingAtom, {
+    mode: "promiseExit",
   })
-  const [pending, setPending] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const pending = result.waiting
+  const error = AsyncResult.isFailure(result)
+    ? failureMessage(Exit.failCause(result.cause), "Unable to finish setup")
+    : null
 
-  const finish = async () => {
-    setPending(true)
-    setError(null)
-    try {
-      await completeOnboarding({
-        payload: void 0,
-        reactivityKeys: profileMutationKeys,
-      })
-      await navigate({ to: "/" })
-    } catch (reason) {
-      setError(errorMessage(reason, "Unable to finish setup"))
-    } finally {
-      setPending(false)
-    }
-  }
+  const finish = () =>
+    completeOnboarding({
+      payload: void 0,
+      reactivityKeys: profileMutationKeys,
+    }).then((exit) => {
+      if (Exit.isSuccess(exit)) return navigate({ to: "/" })
+    })
 
   return (
     <>

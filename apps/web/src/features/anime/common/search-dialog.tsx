@@ -53,11 +53,7 @@ import {
   searchShortcutAtom,
   suggestedGenres,
 } from "./search-atoms"
-import {
-  animeTitlePreferenceAtom,
-  getAnimeTitle,
-  setAnimeTitlePreferenceAtom,
-} from "./title"
+import { animeTitlePreferenceAtom, getAnimeTitle } from "./title"
 
 const searchDebounceMs = 1000
 const minSearchLength = 2
@@ -182,7 +178,7 @@ function PaletteCommands({
     .onSuccess((session) => session !== null)
     .orElse(() => false)
   const [titlePreference, setTitlePreference] = useAtom(
-    setAnimeTitlePreferenceAtom
+    animeTitlePreferenceAtom
   )
   const { blurUnwatched } = useAtomValue(playerPreferencesAtom)
   const updatePlayerPreferences = useAtomSet(updatePlayerPreferencesAtom)

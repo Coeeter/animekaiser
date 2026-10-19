@@ -30,7 +30,7 @@ export function useWatchProgress({
   playing: boolean
   enabled?: boolean
 }) {
-  const record = useAtomSet(recordWatchProgressAtom, { mode: "promise" })
+  const record = useAtomSet(recordWatchProgressAtom)
 
   const latestRef = useRef({ currentTime, duration })
   const lastSentSecondRef = useRef<number | null>(null)
@@ -52,7 +52,7 @@ export function useWatchProgress({
 
       lastSentSecondRef.current = positionSeconds
 
-      void record({
+      record({
         payload: {
           anime: {
             malId: playback.anime.malId,
@@ -71,7 +71,7 @@ export function useWatchProgress({
           durationSeconds: durationSeconds > 0 ? durationSeconds : null,
         },
         reactivityKeys: [watchHistoryReactivityKeys.all],
-      }).catch(() => undefined)
+      })
     },
     [enabled, playback, record]
   )

@@ -42,7 +42,7 @@ import {
 } from "../player-format"
 import { playerPreferencesAtom } from "../preferences"
 import type { SubtitleCue } from "../subtitles"
-import { parseSubtitleVtt, subtitleHtmlAtTime } from "../subtitles"
+import { subtitleCuesAtom, subtitleHtmlAtTime } from "../subtitles"
 import {
   type CenterIndicatorIcon,
   PlayerCenterIndicator,
@@ -282,7 +282,6 @@ function StreamPlayer({
     pointerType: string
   } | null>(null)
 
-  const [subtitleCues, setSubtitleCues] = useState<Array<SubtitleCue>>([])
   const [syncedEpisodeKey, setSyncedEpisodeKey] = useState<string | null>(null)
   const [endedEpisodeKey, setEndedEpisodeKey] = useState<string | null>(null)
   const [playerElement, setPlayerElement] = useState<HTMLElement | null>(null)
@@ -449,6 +448,10 @@ function StreamPlayer({
   const selectedCaptionTrack =
     caption === "off" ? null : (playback.tracks[Number(caption)] ?? null)
 
+  const subtitleCues = AsyncResult.getOrElse(
+    useAtomValue(subtitleCuesAtom(selectedCaptionTrack?.file ?? null)),
+    (): ReadonlyArray<SubtitleCue> => []
+  )
   const activeSubtitle = subtitleHtmlAtTime(subtitleCues, media.currentTime)
   const episodeKey = `${playback.provider}:${playback.episode.id}:${playback.audio}`
 
@@ -579,30 +582,7 @@ function StreamPlayer({
   useEffect(() => {
     setCaption(defaultCaption)
     setSyncedEpisodeKey(null)
-    setSubtitleCues([])
   }, [defaultCaption, episodeKey])
-
-  useEffect(() => {
-    if (!selectedCaptionTrack) {
-      setSubtitleCues([])
-      return
-    }
-
-    let disposed = false
-    setSubtitleCues([])
-    void fetch(selectedCaptionTrack.file)
-      .then((response) => (response.ok ? response.text() : ""))
-      .then((text) => {
-        if (!disposed) setSubtitleCues(parseSubtitleVtt(text))
-      })
-      .catch(() => {
-        if (!disposed) setSubtitleCues([])
-      })
-
-    return () => {
-      disposed = true
-    }
-  }, [selectedCaptionTrack])
 
   useEffect(() => {
     if (!preferences.autoplay || room) return

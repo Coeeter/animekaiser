@@ -10,10 +10,10 @@ import {
 } from "@animekaiser/ui/components/tooltip"
 import { cn } from "@animekaiser/ui/lib/utils"
 import { useAtom } from "@effect/atom-react"
-import { setAnimeTitlePreferenceAtom } from "./title"
+import { animeTitlePreferenceAtom } from "./title"
 
 export function TitleLanguageToggle({ className }: { className?: string }) {
-  const [preference, setPreference] = useAtom(setAnimeTitlePreferenceAtom)
+  const [preference, setPreference] = useAtom(animeTitlePreferenceAtom)
   const next = preference === "english" ? "romaji" : "english"
   const label =
     next === "english" ? "Show English titles" : "Show romaji titles"
@@ -39,7 +39,7 @@ export function TitleLanguageToggle({ className }: { className?: string }) {
 }
 
 export function TitleLanguageSwitch({ className }: { className?: string }) {
-  const [preference, setPreference] = useAtom(setAnimeTitlePreferenceAtom)
+  const [preference, setPreference] = useAtom(animeTitlePreferenceAtom)
 
   return (
     <div

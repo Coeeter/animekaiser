@@ -1,4 +1,3 @@
-import { ProfileImageContentType } from "@animekaiser/domain"
 import {
   Avatar,
   AvatarFallback,
@@ -20,28 +19,24 @@ import {
 } from "@effect/atom-react"
 import { useForm } from "@tanstack/react-form"
 import { useRouter } from "@tanstack/react-router"
-import * as Option from "effect/Option"
 import * as AsyncResult from "effect/reactivity/AsyncResult"
-import * as Schema from "effect/Schema"
 import { UserRound } from "lucide-react"
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useRef } from "react"
 import { toast } from "sonner"
 import { DataError } from "../../components/data-error"
 import { IconInput } from "../../components/icon-input"
-import { authClient } from "../../services/api-clients"
-import { errorMessage } from "../../utils/error"
-import { sessionAtom } from "../auth/atoms"
+import { toastFailure } from "../../utils/error"
+import { sessionAtom, updateUserAtom } from "../auth/atoms"
 import type { AppUser } from "../auth/user"
 import { displayUsername, userInitials } from "../auth/user"
 import {
-  completeProfileImageUploadAtom,
-  createProfileImageUploadAtom,
   ownProfileAtom,
   profileMutationKeys,
   profileReactivityKeys,
   removeProfileImageAtom,
   updatePrivacyAtom,
   updateProfileAtom,
+  uploadProfileImageAtom,
 } from "../profile/atoms"
 import { AuthRequired, SettingCard, SettingHeading } from "./settings-shared"
 
@@ -67,24 +62,27 @@ export function ProfilePanel({ user }: { user: AppUser | null }) {
     .onSuccess((value) => value)
     .orNull()
 
-  const saveProfile = useAtomSet(updateProfileAtom, { mode: "promise" })
+  const saveProfile = useAtomSet(updateProfileAtom, { mode: "promiseExit" })
   const [privacyResult, savePrivacy] = useAtom(updatePrivacyAtom, {
-    mode: "promise",
+    mode: "promiseExit",
   })
 
-  const createUpload = useAtomSet(createProfileImageUploadAtom, {
-    mode: "promise",
+  const [avatarUpload, uploadAvatar] = useAtom(
+    uploadProfileImageAtom("avatar"),
+    { mode: "promiseExit" }
+  )
+  const [bannerUpload, uploadBanner] = useAtom(
+    uploadProfileImageAtom("banner"),
+    { mode: "promiseExit" }
+  )
+  const [removal, removeProfileImage] = useAtom(removeProfileImageAtom, {
+    mode: "promiseExit",
   })
-
-  const completeUpload = useAtomSet(completeProfileImageUploadAtom, {
-    mode: "promise",
-  })
-
-  const removeProfileImage = useAtomSet(removeProfileImageAtom, {
-    mode: "promise",
-  })
-
-  const [pending, setPending] = useState<string | null>(null)
+  const updateUser = useAtomSet(updateUserAtom, { mode: "promiseExit" })
+  const pending = {
+    avatar: avatarUpload.waiting || removal.waiting,
+    banner: bannerUpload.waiting || removal.waiting,
+  }
 
   const usernameForm = useForm({
     defaultValues: { username: user ? displayUsername(user) : "" },
@@ -109,129 +107,64 @@ export function ProfilePanel({ user }: { user: AppUser | null }) {
     .onFailure(() => <DataError onRetry={refreshProfile} />)
     .orNull()
 
-  const upload = async (kind: "avatar" | "banner", file: File) => {
-    if (
-      !["image/jpeg", "image/png", "image/webp"].includes(file.type) ||
-      file.size > 5 * 1024 * 1024
-    ) {
-      toast.error("Upload a JPEG, PNG, or WebP image up to 5 MB.")
-      return
-    }
+  const imageLabel = (kind: "avatar" | "banner") =>
+    kind === "avatar" ? "Profile picture" : "Banner"
 
-    setPending(kind)
-
-    try {
-      const contentType = Schema.decodeUnknownOption(ProfileImageContentType)(
-        file.type
-      ).pipe(Option.getOrThrowWith(() => new Error("Unsupported image type.")))
-
-      const uploadTarget = await createUpload({
-        payload: { kind, contentType, size: file.size },
-      })
-
-      const response = await fetch(uploadTarget.uploadUrl, {
-        method: "PUT",
-        headers: { "content-type": contentType },
-        body: file,
-      })
-
-      if (!response.ok) throw new Error("Unable to upload image.")
-
-      await completeUpload({
-        payload: { kind, key: uploadTarget.key },
-        reactivityKeys: profileMutationKeys,
-      })
-
-      refreshProfile()
-      await router.invalidate()
-
-      toast.success(
-        `${kind === "avatar" ? "Profile picture" : "Banner"} updated.`
-      )
-    } catch (reason) {
-      toast.error(errorMessage(reason, `Unable to update ${kind}`))
-    } finally {
-      setPending(null)
-    }
+  const afterSave = (success: string | null) => {
+    refreshProfile()
+    if (success) toast.success(success)
+    return router.invalidate()
   }
 
-  const remove = async (kind: "avatar" | "banner") => {
-    setPending(kind)
+  const upload = (kind: "avatar" | "banner", file: File) =>
+    (kind === "avatar" ? uploadAvatar : uploadBanner)(file).then((exit) => {
+      if (toastFailure(`Unable to update ${kind}`)(exit))
+        return afterSave(`${imageLabel(kind)} updated.`)
+    })
 
-    try {
-      await removeProfileImage({
-        payload: { kind },
-        reactivityKeys: profileMutationKeys,
-      })
+  const remove = (kind: "avatar" | "banner") =>
+    removeProfileImage({
+      payload: { kind },
+      reactivityKeys: profileMutationKeys,
+    }).then((exit) => {
+      if (toastFailure(`Unable to remove ${kind}`)(exit))
+        return afterSave(`${imageLabel(kind)} removed.`)
+    })
 
-      refreshProfile()
-      await router.invalidate()
-
-      toast.success(
-        `${kind === "avatar" ? "Profile picture" : "Banner"} removed.`
-      )
-    } catch (reason) {
-      toast.error(errorMessage(reason, `Unable to remove ${kind}`))
-    } finally {
-      setPending(null)
-    }
-  }
-
-  const updateUsername = async (values: UsernameFormValues) => {
+  const updateUsername = (values: UsernameFormValues) => {
     const username = values.username.trim()
-
-    try {
-      const result = await authClient.updateUser({
-        username,
-        displayUsername: username,
-        name: username,
-      })
-
-      if (result.error) throw result.error
-
+    return updateUser({
+      username,
+      displayUsername: username,
+      name: username,
+    }).then((exit) => {
+      if (!toastFailure("Unable to update username")(exit)) return
       refreshSession()
-      refreshProfile()
-      await router.invalidate()
-      toast.success("Username updated.")
-    } catch (reason) {
-      toast.error(errorMessage(reason, "Unable to update username"))
-    }
+      return afterSave("Username updated.")
+    })
   }
 
-  const updateBio = async (values: BioFormValues) => {
-    const description = values.description.trim()
+  const updateBio = (values: BioFormValues) =>
+    saveProfile({
+      payload: { description: values.description.trim() || null },
+      reactivityKeys: profileMutationKeys,
+    }).then((exit) => {
+      if (toastFailure("Unable to update bio")(exit))
+        return afterSave("Bio updated.")
+    })
 
-    try {
-      await saveProfile({
-        payload: { description: description || null },
-        reactivityKeys: profileMutationKeys,
-      })
-
-      refreshProfile()
-      await router.invalidate()
-      toast.success("Bio updated.")
-    } catch (reason) {
-      toast.error(errorMessage(reason, "Unable to update bio"))
-    }
-  }
-
-  const updatePrivacy = async (patch: {
+  const updatePrivacy = (patch: {
     private?: boolean
     shareStats?: boolean
     shareActivity?: boolean
     shareList?: boolean
-  }) => {
-    try {
-      await savePrivacy({
-        payload: patch,
-        reactivityKeys: profileReactivityKeys,
-      })
-      refreshProfile()
-      await router.invalidate()
-    } catch (reason) {
-      toast.error(errorMessage(reason, "Unable to update privacy"))
-    }
-  }
+  }) =>
+    savePrivacy({
+      payload: patch,
+      reactivityKeys: profileReactivityKeys,
+    }).then((exit) => {
+      if (toastFailure("Unable to update privacy")(exit)) return afterSave(null)
+    })
 
   const isPrivate = profile?.profile.private ?? false
   const username = user.username ?? user.name
@@ -268,7 +201,7 @@ export function ProfilePanel({ user }: { user: AppUser | null }) {
             <Button
               type="button"
               variant="outline"
-              disabled={pending === "banner"}
+              disabled={pending.banner}
               onClick={() => bannerInput.current?.click()}
             >
               Upload
@@ -276,7 +209,7 @@ export function ProfilePanel({ user }: { user: AppUser | null }) {
             <Button
               type="button"
               variant="ghost"
-              disabled={pending === "banner" || !profile?.profile.bannerUrl}
+              disabled={pending.banner || !profile?.profile.bannerUrl}
               onClick={() => void remove("banner")}
             >
               Remove
@@ -312,7 +245,7 @@ export function ProfilePanel({ user }: { user: AppUser | null }) {
             <Button
               type="button"
               variant="outline"
-              disabled={pending === "avatar"}
+              disabled={pending.avatar}
               onClick={() => avatarInput.current?.click()}
             >
               Upload
@@ -320,7 +253,7 @@ export function ProfilePanel({ user }: { user: AppUser | null }) {
             <Button
               type="button"
               variant="ghost"
-              disabled={pending === "avatar" || !user.image}
+              disabled={pending.avatar || !user.image}
               onClick={() => void remove("avatar")}
             >
               Remove

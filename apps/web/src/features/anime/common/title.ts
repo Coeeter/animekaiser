@@ -1,39 +1,16 @@
-import type { AnimeTitle, AnimeTitlePreference } from "@animekaiser/domain"
+import type { AnimeTitle } from "@animekaiser/domain"
+import { AnimeTitlePreference } from "@animekaiser/domain"
 import * as Atom from "effect/reactivity/Atom"
+import { localStorageRuntime } from "../../../services/storage"
 
 export type { AnimeTitlePreference }
 
-const titlePreferenceKey = "anime-title-preference"
-
-const initialTitlePreference = (): AnimeTitlePreference => {
-  if (typeof window === "undefined") return "romaji"
-  return window.localStorage.getItem(titlePreferenceKey) === "english"
-    ? "english"
-    : "romaji"
-}
-
-export const animeTitlePreferenceAtom = Atom.make<AnimeTitlePreference>(
-  initialTitlePreference()
-).pipe(Atom.keepAlive)
-
-export const writeStoredTitlePreference = (
-  preference: AnimeTitlePreference
-) => {
-  try {
-    window.localStorage.setItem(titlePreferenceKey, preference)
-  } catch {}
-}
-
-export const setAnimeTitlePreferenceAtom = Atom.writable<
-  AnimeTitlePreference,
-  AnimeTitlePreference
->(
-  (get) => get(animeTitlePreferenceAtom),
-  (ctx, preference) => {
-    ctx.set(animeTitlePreferenceAtom, preference)
-    writeStoredTitlePreference(preference)
-  }
-)
+export const animeTitlePreferenceAtom = Atom.kvs({
+  runtime: localStorageRuntime,
+  key: "anime-title-preference",
+  schema: AnimeTitlePreference,
+  defaultValue: (): AnimeTitlePreference => "romaji",
+}).pipe(Atom.keepAlive)
 
 export const getAnimeTitle = (
   title: AnimeTitle,

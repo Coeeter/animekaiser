@@ -1,6 +1,6 @@
-import * as Option from "effect/Option"
 import * as Atom from "effect/reactivity/Atom"
 import * as Schema from "effect/Schema"
+import { localStorageRuntime } from "../../services/storage"
 
 export const MiniPlayerFrame = Schema.Struct({
   left: Schema.Number,
@@ -12,20 +12,6 @@ export type MiniPlayerFrame = typeof MiniPlayerFrame.Type
 
 export const miniPlayerMinWidth = 256
 export const miniPlayerMinHeight = 144
-
-export const miniPlayerFrameStorageKey = "kaiser-mini-player-frame"
-
-const StoredMiniPlayerFrame = Schema.fromJsonString(MiniPlayerFrame)
-const decodeStoredMiniPlayerFrameOption = Schema.decodeUnknownOption(
-  StoredMiniPlayerFrame
-)
-
-export const readStoredMiniPlayerFrame = (
-  value: string | null
-): MiniPlayerFrame | null =>
-  value === null
-    ? null
-    : decodeStoredMiniPlayerFrameOption(value).pipe(Option.getOrNull)
 
 export const clampMiniPlayerFrame = (
   frame: MiniPlayerFrame,
@@ -48,27 +34,17 @@ export const clampMiniPlayerFrame = (
   }
 }
 
-export const miniPlayerFrameAtom = Atom.make<MiniPlayerFrame | null>(
-  typeof window === "undefined"
-    ? null
-    : readStoredMiniPlayerFrame(
-        window.localStorage.getItem(miniPlayerFrameStorageKey)
-      )
-).pipe(Atom.keepAlive)
-
-export const writeStoredMiniPlayerFrame = (frame: MiniPlayerFrame) => {
-  if (typeof window === "undefined") return
-
-  window.localStorage.setItem(miniPlayerFrameStorageKey, JSON.stringify(frame))
-}
+export const miniPlayerFrameAtom = Atom.kvs({
+  runtime: localStorageRuntime,
+  key: "kaiser-mini-player-frame",
+  schema: Schema.NullOr(MiniPlayerFrame),
+  defaultValue: (): MiniPlayerFrame | null => null,
+}).pipe(Atom.keepAlive)
 
 export const setMiniPlayerFrameAtom = Atom.writable<
   MiniPlayerFrame | null,
   MiniPlayerFrame
 >(
   (get) => get(miniPlayerFrameAtom),
-  (ctx, frame) => {
-    writeStoredMiniPlayerFrame(frame)
-    ctx.set(miniPlayerFrameAtom, frame)
-  }
+  (ctx, frame) => ctx.set(miniPlayerFrameAtom, frame)
 )

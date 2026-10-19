@@ -3,19 +3,10 @@ import * as Effect from "effect/Effect"
 import * as AsyncResult from "effect/reactivity/AsyncResult"
 import * as Atom from "effect/reactivity/Atom"
 import { KaiserRpcClient } from "../../services/api-clients"
-import {
-  animeTitlePreferenceAtom,
-  writeStoredTitlePreference,
-} from "../anime/common/title"
+import { animeTitlePreferenceAtom } from "../anime/common/title"
 import { sessionAtom } from "../auth/atoms"
-import {
-  shortcutOverridesAtom,
-  writeStoredShortcutOverrides,
-} from "../shortcuts/atoms"
-import {
-  playerPreferencesAtom,
-  writeStoredPlayerPreferences,
-} from "../streaming/preferences"
+import { shortcutOverridesAtom } from "../shortcuts/atoms"
+import { playerPreferencesAtom } from "../streaming/preferences"
 
 const savedPreferencesAtom = KaiserRpcClient.query("GetPreferences", void 0)
 
@@ -63,11 +54,8 @@ export const preferencesSyncAtom = Atom.make((get) => {
       get.set(lastSyncedAtom, JSON.stringify(local))
     } else {
       get.set(animeTitlePreferenceAtom, saved.value.titleLanguage)
-      writeStoredTitlePreference(saved.value.titleLanguage)
       get.set(playerPreferencesAtom, saved.value.player)
-      writeStoredPlayerPreferences(saved.value.player)
       get.set(shortcutOverridesAtom, saved.value.shortcuts)
-      writeStoredShortcutOverrides(saved.value.shortcuts)
       get.set(lastSyncedAtom, JSON.stringify(saved.value))
     }
     get.set(hydratedForAtom, userId)
