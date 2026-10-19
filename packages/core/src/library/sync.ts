@@ -111,6 +111,19 @@ export const malListStatusParams = (
 export const nextSyncFailureStatus = (attempts: number) =>
   attempts >= 3 ? "failed" : "pending"
 
+// An edit made while an event was running queues a newer pending event for the
+// same entry. Returning the older one to pending would collide with it on the
+// pending unique index, so it is superseded instead.
+const pendingUnlessSuperseded = (status: "pending" | "failed") =>
+  sql<"pending" | "failed" | "superseded">`case when exists (
+    select 1 from ${librarySyncEvent} as newer
+    where newer.user_id = ${librarySyncEvent.userId}
+      and newer.mal_id = ${librarySyncEvent.malId}
+      and newer.provider = ${librarySyncEvent.provider}
+      and newer.status = 'pending'
+      and newer.id <> ${librarySyncEvent.id}
+  ) then 'superseded' else ${status} end`
+
 export const aniListSaveMutation = (
   mediaId: number,
   payload: typeof librarySyncEvent.$inferSelect.payload
@@ -313,7 +326,7 @@ export class LibrarySyncService extends Context.Service<LibrarySyncService>()(
         yield* database.execute((db) =>
           db
             .update(librarySyncEvent)
-            .set({ status: "pending", updatedAt })
+            .set({ status: pendingUnlessSuperseded("pending"), updatedAt })
             .where(eq(librarySyncEvent.status, "running"))
         )
       })
@@ -408,7 +421,9 @@ export class LibrarySyncService extends Context.Service<LibrarySyncService>()(
                   db
                     .update(librarySyncEvent)
                     .set({
-                      status: nextSyncFailureStatus(event.attempts),
+                      status: pendingUnlessSuperseded(
+                        nextSyncFailureStatus(event.attempts)
+                      ),
                       errorMessage: error.message,
                       updatedAt,
                     })
