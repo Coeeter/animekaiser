@@ -55,7 +55,8 @@ export function usePlayerMedia({
     const video = videoRef.current
     if (!video) return
     setCurrentTime(video.currentTime)
-    setDuration(video.duration)
+    // `duration` is NaN until metadata loads and Infinity for live streams.
+    setDuration(Number.isFinite(video.duration) ? video.duration : 0)
     setBufferedEnd(
       video.buffered.length > 0
         ? video.buffered.end(video.buffered.length - 1)
