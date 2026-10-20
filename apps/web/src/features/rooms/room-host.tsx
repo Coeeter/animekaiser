@@ -14,6 +14,8 @@ import * as Exit from "effect/Exit"
 import * as Option from "effect/Option"
 import * as AsyncResult from "effect/reactivity/AsyncResult"
 import * as Atom from "effect/reactivity/Atom"
+import * as RpcClientError from "effect/rpc/RpcClientError"
+import * as Schema from "effect/Schema"
 import { Users } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
 import { toast } from "sonner"
@@ -69,11 +71,20 @@ export const roomErrorOf = (exit: Exit.Exit<unknown, unknown>) => {
     : null
 }
 
+const unexpectedFailureMessage = (exit: Exit.Failure<unknown, unknown>) => {
+  const failure = Cause.squash(exit.cause)
+  if (Schema.is(RpcClientError.RpcClientError)(failure))
+    return "Can't reach AnimeKaiser right now. Check your connection and try again."
+  if (failure instanceof Schema.SchemaError)
+    return "Some of those details aren't valid. Check them and try again."
+  return "Something went wrong on our side. Try again in a moment."
+}
+
 export const toastRoomFailure = (exit: Exit.Exit<unknown, unknown>) => {
   if (Exit.isSuccess(exit)) return
   const error = roomErrorOf(exit)
   if (error?.reason === "stale") return
-  toast.error(error?.message ?? "Something went wrong. Try again.")
+  toast.error(error?.message ?? unexpectedFailureMessage(exit))
 }
 
 const serverOverrideAtom = Atom.family((_key: string) =>

@@ -110,6 +110,16 @@ function ChoiceField<T extends string>({
   )
 }
 
+const roomNameMaxLength = 60
+
+// Anime titles can run past the room name limit, which the API rejects.
+const clampRoomName = (name: string) => {
+  const trimmed = name.trim()
+  return trimmed.length <= roomNameMaxLength
+    ? trimmed
+    : `${trimmed.slice(0, roomNameMaxLength - 1).trimEnd()}…`
+}
+
 export function CreateRoomDialog({
   open,
   onOpenChange,
@@ -126,7 +136,7 @@ export function CreateRoomDialog({
   const create = useAtomSet(createRoomAtom, { mode: "promiseExit" })
   const setActiveRoom = useAtomSet(activeRoomIdAtom)
   const navigate = useNavigate()
-  const [name, setName] = useState(defaultName)
+  const [name, setName] = useState(() => clampRoomName(defaultName))
   const [access, setAccess] = useState<RoomAccess>("invite")
   const [aiAccess, setAiAccess] = useState<RoomAiAccess>("everyone")
   const [more, setMore] = useState(false)
@@ -138,7 +148,7 @@ export function CreateRoomDialog({
     const exit = await create({
       payload: {
         roomId,
-        name: name.trim() || defaultName,
+        name: clampRoomName(name) || clampRoomName(defaultName),
         access,
         aiAccess,
         selection: selection ? { ...selection, positionSeconds } : null,
@@ -174,7 +184,7 @@ export function CreateRoomDialog({
             <Input
               id="room-name"
               value={name}
-              maxLength={60}
+              maxLength={roomNameMaxLength}
               onChange={(event) => setName(event.currentTarget.value)}
             />
           </div>

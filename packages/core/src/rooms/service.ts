@@ -782,7 +782,10 @@ export class RoomService extends Context.Service<RoomService>()(
         )
         if (existing) {
           if (existing.hostUserId !== hostUserId)
-            return yield* fail("invalid", "Unable to create this room.")
+            return yield* fail(
+              "invalid",
+              "That room already exists. Close this and try again."
+            )
           return { roomId: input.roomId }
         }
         const [recent] = yield* query((db) =>
