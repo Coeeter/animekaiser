@@ -346,3 +346,7 @@ export const pendingInviteAtom = Atom.family((roomId: string) =>
 
 export const inviteUrl = (roomId: string, token: string) =>
   `${window.location.origin}/rooms/${roomId}#invite=${encodeURIComponent(token)}`
+
+export const roomComposerIntentAtom = Atom.family((_roomId: string) =>
+  Atom.make<{ mention: string; id: string } | null>(null).pipe(Atom.keepAlive)
+)

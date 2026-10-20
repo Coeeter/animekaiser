@@ -831,6 +831,7 @@ export class RecommendationService extends Context.Service<RecommendationService
         seed: AnimeLibraryMetadata | null
         earlier: ReadonlyArray<number>
         messageId: string | null
+        onProgress?: (progress: AgentProgress) => Effect.Effect<void>
       }) =>
         Effect.gen(function* () {
           const state = new RunState()
@@ -889,7 +890,7 @@ export class RecommendationService extends Context.Service<RecommendationService
             maxCostUsd: agentCostCap.recommend,
             maxOutputTokens: 1500,
             reasoning: "medium",
-            onProgress: progressTo(input.messageId),
+            onProgress: input.onProgress ?? progressTo(input.messageId),
           })
           return {
             content:
@@ -1126,6 +1127,8 @@ export class RecommendationService extends Context.Service<RecommendationService
               usage: final.status === "completed" ? final.outcome.usage : null,
               error: final.status === "completed" ? null : final.error,
               finishedAt,
+              progressText: "",
+              progressActivity: null,
             })
             .where(
               and(
@@ -1138,6 +1141,18 @@ export class RecommendationService extends Context.Service<RecommendationService
         if (!generation) return
         if (final.status === "completed" && publication?.publish)
           yield* publication.publish(final.outcome)
+        else if (
+          final.status !== "completed" &&
+          job.roomId &&
+          generation.roomId &&
+          !job.threadId
+        )
+          yield* postToRoom({
+            roomId: job.roomId,
+            participantId: null,
+            kind: "ai",
+            body: final.error,
+          })
         const { assistantMessageId, threadId } = job
         if (assistantMessageId)
           yield* query((db) =>
@@ -1694,6 +1709,32 @@ export class RecommendationService extends Context.Service<RecommendationService
         return canAskAi(roomRow.aiAccess, isHost, roomRow.status)
       })
 
+      const roomProgressTo =
+        (generationId: string, roomId: string, participantId: string) =>
+        (progress: AgentProgress) =>
+          transact(
+            Effect.gen(function* () {
+              yield* lockRoom(roomId)
+              if (!(yield* participantMayAsk(roomId, participantId))) return
+              const updated = yield* query((db) =>
+                db
+                  .update(aiGeneration)
+                  .set({
+                    progressText: progress.text,
+                    progressActivity: progress.activity,
+                  })
+                  .where(
+                    and(
+                      eq(aiGeneration.id, generationId),
+                      eq(aiGeneration.status, "running")
+                    )
+                  )
+                  .returning({ id: aiGeneration.id })
+              )
+              if (updated.length) yield* notifyRoom(roomId)
+            })
+          ).pipe(Effect.ignore)
+
       const askRoom = Effect.fn("RecommendationService.askRoom")(function* (
         actor: Actor,
         roomId: string,
@@ -1732,6 +1773,11 @@ export class RecommendationService extends Context.Service<RecommendationService
             seed: null,
             earlier: [],
             messageId: null,
+            onProgress: roomProgressTo(
+              prepared.generation.id,
+              roomId,
+              participantId
+            ),
           }),
           {
             roomId,

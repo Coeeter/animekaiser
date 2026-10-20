@@ -595,7 +595,12 @@ const loadState = Effect.fnUntraced(function* (
       : []
   const [aiPending] = yield* query((db) =>
     db
-      .select({ actorKey: aiGeneration.actorKey })
+      .select({
+        id: aiGeneration.id,
+        actorKey: aiGeneration.actorKey,
+        text: aiGeneration.progressText,
+        activity: aiGeneration.progressActivity,
+      })
       .from(aiGeneration)
       .where(
         and(
@@ -669,6 +674,14 @@ const loadState = Effect.fnUntraced(function* (
     aiPendingBy: aiPending
       ? (names.get(aiPending.actorKey.replace(/^participant:/, "")) ??
         "Someone")
+      : null,
+    aiResponse: aiPending
+      ? {
+          id: aiPending.id,
+          participantId: aiPending.actorKey.replace(/^participant:/, ""),
+          text: aiPending.text,
+          activity: aiPending.activity,
+        }
       : null,
     serverTime: now,
   }

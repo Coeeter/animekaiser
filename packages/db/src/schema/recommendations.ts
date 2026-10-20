@@ -106,6 +106,8 @@ export const aiGeneration = pgTable(
     actualUsd: numeric("actual_usd", { precision: 10, scale: 6 }),
     usage: jsonb("usage"),
     error: text("error"),
+    progressText: text("progress_text").notNull().default(""),
+    progressActivity: text("progress_activity"),
     createdAt: timestamp("created_at", tz).defaultNow().notNull(),
     finishedAt: timestamp("finished_at", tz),
   },

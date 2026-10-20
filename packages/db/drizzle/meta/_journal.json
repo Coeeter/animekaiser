@@ -148,6 +148,13 @@
       "when": 1791996492649,
       "tag": "0020_recommendations",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1792477464008,
+      "tag": "0021_room_ai_progress",
+      "breakpoints": true
     }
   ]
 }

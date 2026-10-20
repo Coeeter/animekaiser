@@ -25,6 +25,7 @@ function RoomRoute() {
       key={roomId}
       roomId={roomId}
       openInvite={search.invite === true}
+      openAi={search.ai === true}
     />
   )
 }

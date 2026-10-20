@@ -25,6 +25,7 @@ import {
   pendingInviteAtom,
   roomAccessLabel,
   roomAdmissionAtom,
+  roomComposerIntentAtom,
   roomEndMessage,
   roomLiveAtom,
   roomReactivityKeys,
@@ -54,16 +55,20 @@ const inviteTokenAtom = Atom.family((roomId: string) =>
 export function RoomPage({
   roomId,
   openInvite,
+  openAi,
 }: {
   roomId: string
   openInvite: boolean
+  openAi: boolean
 }) {
   const inviteToken = useAtomValue(inviteTokenAtom(roomId))
   const activeRoom = useAtomValue(activeRoomIdAtom)
   const endedMessage = useAtomValue(endedRoomsAtom).get(roomId)
 
   if (activeRoom === roomId)
-    return <JoinedRoom roomId={roomId} openInvite={openInvite} />
+    return (
+      <JoinedRoom roomId={roomId} openInvite={openInvite} openAi={openAi} />
+    )
   if (endedMessage) return <EndedRoom roomId={roomId} message={endedMessage} />
   return <AdmissionLoader roomId={roomId} inviteToken={inviteToken} />
 }
@@ -124,14 +129,27 @@ function RoomPending() {
 function JoinedRoom({
   roomId,
   openInvite,
+  openAi,
 }: {
   roomId: string
   openInvite: boolean
+  openAi: boolean
 }) {
   const live = liveOf(useAtomValue(roomLiveAtom(roomId)))
   const addToRoom = useAddToRoom(roomId)
   const navigate = useNavigate()
   const [inviteOpen, setInviteOpen] = useState(openInvite)
+  const setComposerIntent = useAtomSet(roomComposerIntentAtom(roomId))
+  useEffect(() => {
+    if (!openAi) return
+    setComposerIntent({ mention: "AI", id: crypto.randomUUID() })
+    void navigate({
+      to: "/rooms/$roomId",
+      params: { roomId },
+      search: (previous) => ({ ...previous, ai: undefined }),
+      replace: true,
+    })
+  }, [openAi, roomId, setComposerIntent, navigate])
 
   const setPendingInvite = useAtomSet(pendingInviteAtom(roomId))
   useEffect(() => setPendingInvite(null), [setPendingInvite])
@@ -176,13 +194,13 @@ function JoinedRoom({
   }
 
   return (
-    <div className="mx-auto flex h-[calc(100dvh-4.5rem-env(safe-area-inset-bottom))] w-full max-w-6xl flex-col gap-4 p-0 md:h-dvh md:flex-row md:p-6">
+    <div className="mx-auto flex h-[calc(100dvh-3.5rem-env(safe-area-inset-bottom))] w-full max-w-6xl flex-col gap-4 p-0 md:h-dvh md:flex-row md:p-6">
       <title>{`${state.name} | AnimeKaiser`}</title>
       {state.status === "open" ? (
-        <section className="flex flex-col items-center justify-center gap-4 border-b px-4 py-8 text-center md:flex-1 md:rounded-3xl md:border">
-          <Users className="size-10 text-muted-foreground" />
+        <section className="flex flex-col items-center justify-center gap-3 border-b px-4 py-4 text-center md:flex-1 md:gap-4 md:py-8 md:rounded-3xl md:border">
+          <Users className="hidden size-10 text-muted-foreground md:block" />
           <div className="flex max-w-sm flex-col gap-1.5">
-            <h1 className="font-heading text-2xl font-semibold">
+            <h1 className="font-heading text-xl font-semibold md:text-2xl">
               What are we watching?
             </h1>
             <p className="text-sm text-muted-foreground">
@@ -192,7 +210,7 @@ function JoinedRoom({
                 : "The host picks the episode and starts playback."}
             </p>
           </div>
-          <div className="grid w-full max-w-sm grid-cols-1 gap-2 sm:grid-cols-2">
+          <div className="grid w-full max-w-sm grid-cols-2 gap-2">
             <Button size="lg" onClick={addToRoom}>
               <Search data-icon="inline-start" />
               Search anime
@@ -208,11 +226,7 @@ function JoinedRoom({
                     : "The host hasn't allowed you to ask AI here."
                 }
                 onClick={() =>
-                  void navigate({
-                    to: "/rooms/$roomId",
-                    params: { roomId },
-                    search: { ai: true },
-                  })
+                  setComposerIntent({ mention: "AI", id: crypto.randomUUID() })
                 }
               >
                 <Sparkles data-icon="inline-start" />
@@ -383,7 +397,7 @@ function Admission({
           </p>
         </div>
       ) : (
-        <h1 className="font-heading text-2xl font-semibold">Room</h1>
+        <h1 className="font-heading text-xl font-semibold md:text-2xl">Room</h1>
       )}
 
       {admission.status === "joinable" && session ? (

@@ -116,6 +116,14 @@ export const RoomState = Schema.Struct({
   you: RoomViewer,
   closedAt: Schema.NullOr(Schema.Finite),
   aiPendingBy: Schema.NullOr(Schema.String),
+  aiResponse: Schema.NullOr(
+    Schema.Struct({
+      id: Schema.String,
+      participantId: Schema.String,
+      text: Schema.String,
+      activity: Schema.NullOr(Schema.String),
+    })
+  ),
   serverTime: Schema.Finite,
 })
 export type RoomState = typeof RoomState.Type

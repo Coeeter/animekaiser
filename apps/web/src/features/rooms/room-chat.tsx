@@ -1,19 +1,26 @@
 import type { RoomMessage, RoomState } from "@animekaiser/domain"
 import { Button } from "@animekaiser/ui/components/button"
-import { Textarea } from "@animekaiser/ui/components/textarea"
 import { cn } from "@animekaiser/ui/lib/utils"
 import { useAtomSet } from "@effect/atom-react"
 import * as Exit from "effect/Exit"
-import { Loader2, SendHorizontal, Trash2 } from "lucide-react"
-import type { KeyboardEvent } from "react"
-import { useEffect, useLayoutEffect, useRef, useState } from "react"
+import { Loader2, Square, Trash2 } from "lucide-react"
+import { useLayoutEffect, useRef, useState } from "react"
 import { KaiserRpcClient } from "../../services/api-clients"
+import { toastFailure } from "../../utils/error"
+import {
+  aiReactivityKeys,
+  askRoomAiAtom,
+  stopRoomAiAtom,
+} from "../recommendations/atoms"
+import { AssistantMarkdown } from "../recommendations/markdown"
 import {
   deleteRoomMessageAtom,
   mergeMessages,
   type RoomLive,
   sendRoomMessageAtom,
 } from "./atoms"
+import { hasAiMention } from "./mentions"
+import { RoomComposer } from "./room-composer"
 import { roomErrorOf, toastRoomFailure } from "./room-host"
 import { RoomMessageBody } from "./room-message-body"
 
@@ -34,17 +41,17 @@ export function RoomChat({
   state: RoomState
   live: RoomLive
 }) {
+  const askAi = useAtomSet(askRoomAiAtom, { mode: "promiseExit" })
+  const stopAi = useAtomSet(stopRoomAiAtom, { mode: "promiseExit" })
   const send = useAtomSet(sendRoomMessageAtom, { mode: "promiseExit" })
   const remove = useAtomSet(deleteRoomMessageAtom, { mode: "promiseExit" })
   const loadEarlier = useAtomSet(loadEarlierAtom, { mode: "promiseExit" })
-  const [draft, setDraft] = useState("")
   const [pending, setPending] = useState<ReadonlyArray<Pending>>([])
   const [earlier, setEarlier] = useState<ReadonlyArray<RoomMessage>>([])
   const [hasEarlier, setHasEarlier] = useState<boolean | null>(null)
   const [loadingEarlier, setLoadingEarlier] = useState(false)
   const listRef = useRef<HTMLDivElement>(null)
   const stickToBottom = useRef(true)
-  const keyboardOffset = useKeyboardOffset()
 
   const messages = mergeMessages(earlier, live.messages)
   const canEarlier = hasEarlier ?? live.hasEarlier
@@ -53,7 +60,12 @@ export function RoomChat({
   useLayoutEffect(() => {
     const list = listRef.current
     if (list && stickToBottom.current) list.scrollTop = list.scrollHeight
-  }, [messages.length, pending.length])
+  }, [
+    messages.length,
+    pending.length,
+    state.aiResponse?.text,
+    state.aiResponse?.activity,
+  ])
 
   const submit = async (
     body: string,
@@ -66,6 +78,25 @@ export function RoomChat({
       { requestId, body: text, failed: false },
     ])
     stickToBottom.current = true
+    if (hasAiMention(text)) {
+      const exit = await askAi({
+        payload: { roomId, requestId, content: text },
+        reactivityKeys: [aiReactivityKeys.availability],
+      })
+      if (Exit.isSuccess(exit))
+        setPending((current) =>
+          current.filter((item) => item.requestId !== requestId)
+        )
+      else {
+        setPending((current) =>
+          current.map((item) =>
+            item.requestId === requestId ? { ...item, failed: true } : item
+          )
+        )
+        toastFailure("Unable to ask AI right now.")(exit)
+      }
+      return
+    }
     const exit = await send({ payload: { roomId, requestId, body: text } })
     if (Exit.isSuccess(exit)) {
       setEarlier((current) => mergeMessages(current, [exit.value]))
@@ -80,19 +111,6 @@ export function RoomChat({
       )
     )
     toastRoomFailure(exit)
-  }
-
-  const onKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
-    if (
-      event.key !== "Enter" ||
-      event.shiftKey ||
-      event.nativeEvent.isComposing
-    )
-      return
-    event.preventDefault()
-    const value = draft
-    setDraft("")
-    void submit(value)
   }
 
   const showEarlier = async () => {
@@ -118,7 +136,7 @@ export function RoomChat({
           stickToBottom.current =
             list.scrollHeight - list.scrollTop - list.clientHeight < 48
         }}
-        className="flex min-h-48 flex-1 flex-col gap-2 overflow-y-auto px-4 py-3"
+        className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto px-4 py-3"
       >
         {canEarlier ? (
           <Button
@@ -157,6 +175,49 @@ export function RoomChat({
             }
           />
         ))}
+        {state.aiResponse ? (
+          <div className="flex max-w-[90%] flex-col gap-2 self-start rounded-2xl bg-muted px-3 py-2 text-sm">
+            <span className="font-medium">
+              AI · answering {state.aiPendingBy}
+            </span>
+            {state.aiResponse.text ? (
+              <AssistantMarkdown>{state.aiResponse.text}</AssistantMarkdown>
+            ) : (
+              <span aria-hidden="true" className="flex gap-1 py-2">
+                {[0, 1, 2].map((dot) => (
+                  <span
+                    key={dot}
+                    className="size-1.5 animate-bounce rounded-full bg-muted-foreground motion-reduce:animate-none"
+                    style={{ animationDelay: `${dot * 150}ms` }}
+                  />
+                ))}
+              </span>
+            )}
+            <div
+              role="status"
+              className="flex items-center gap-2 text-xs text-muted-foreground"
+            >
+              <Loader2 className="size-3 animate-spin" />
+              {state.aiResponse.activity ??
+                (state.aiResponse.text ? "Writing…" : "Thinking…")}
+              {state.you.isHost ||
+              state.you.participantId === state.aiResponse.participantId ? (
+                <Button
+                  variant="ghost"
+                  size="xs"
+                  onClick={() =>
+                    void stopAi({ payload: { roomId } }).then(
+                      toastFailure("Unable to stop AI.")
+                    )
+                  }
+                >
+                  <Square data-icon="inline-start" />
+                  Stop
+                </Button>
+              ) : null}
+            </div>
+          </div>
+        ) : null}
         {pending.map((item) => (
           <div
             key={item.requestId}
@@ -193,38 +254,13 @@ export function RoomChat({
           This room is closed. Its history stays readable for 30 days.
         </p>
       ) : (
-        <form
-          className="sticky bottom-0 flex items-end gap-2 border-t bg-background px-3 pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))]"
-          style={{ marginBottom: keyboardOffset }}
-          onSubmit={(event) => {
-            event.preventDefault()
-            const value = draft
-            setDraft("")
-            void submit(value)
+        <RoomComposer
+          state={state}
+          onSend={(body) => {
+            stickToBottom.current = true
+            void submit(body)
           }}
-        >
-          <label className="sr-only" htmlFor={`room-chat-${roomId}`}>
-            Message the room
-          </label>
-          <Textarea
-            id={`room-chat-${roomId}`}
-            value={draft}
-            maxLength={1000}
-            rows={1}
-            placeholder="Send to room"
-            className="max-h-32 min-h-10 flex-1 resize-none"
-            onChange={(event) => setDraft(event.currentTarget.value)}
-            onKeyDown={onKeyDown}
-          />
-          <Button
-            type="submit"
-            size="icon"
-            aria-label="Send to room"
-            disabled={draft.trim().length === 0}
-          >
-            <SendHorizontal />
-          </Button>
-        </form>
+        />
       )}
     </div>
   )
@@ -300,26 +336,4 @@ function DeleteButton({ onDelete }: { onDelete: () => void }) {
       <Trash2 />
     </Button>
   )
-}
-
-// iOS Safari keeps the layout viewport under the software keyboard, so the
-// composer has to be lifted by the part of the page the keyboard covers.
-function useKeyboardOffset() {
-  const [offset, setOffset] = useState(0)
-  useEffect(() => {
-    const viewport = window.visualViewport
-    if (!viewport) return
-    const update = () => {
-      const covered = window.innerHeight - viewport.height - viewport.offsetTop
-      setOffset(covered > 80 ? covered : 0)
-    }
-    viewport.addEventListener("resize", update)
-    viewport.addEventListener("scroll", update)
-    update()
-    return () => {
-      viewport.removeEventListener("resize", update)
-      viewport.removeEventListener("scroll", update)
-    }
-  }, [])
-  return offset
 }

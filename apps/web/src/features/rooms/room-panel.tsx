@@ -15,7 +15,7 @@ import {
   TabsTrigger,
 } from "@animekaiser/ui/components/tabs"
 import { cn } from "@animekaiser/ui/lib/utils"
-import { useAtomValue } from "@effect/atom-react"
+import { useAtomSet, useAtomValue } from "@effect/atom-react"
 import { Link } from "@tanstack/react-router"
 import {
   DoorOpen,
@@ -29,7 +29,7 @@ import {
 import { useEffect, useRef, useState } from "react"
 import { rpcConnectionStatusAtom } from "../../services/api-clients"
 import { AnimeTitle } from "../anime/common/anime-title"
-import { roomAccessLabel, roomLiveAtom } from "./atoms"
+import { roomAccessLabel, roomComposerIntentAtom, roomLiveAtom } from "./atoms"
 import { RoomChat } from "./room-chat"
 import {
   CloseRoomDialog,
@@ -51,8 +51,12 @@ export function RoomPanel({
   variant: "rail" | "page"
 }) {
   const live = liveOf(useAtomValue(roomLiveAtom(roomId)))
-  const state = live?.state
+  const composerIntent = useAtomValue(roomComposerIntentAtom(roomId))
   const [tab, setTab] = useState<PanelTab>("chat")
+  useEffect(() => {
+    if (composerIntent) setTab("chat")
+  }, [composerIntent])
+  const state = live?.state
   const messages = live?.messages ?? []
   const lastSeq = messages.at(-1)?.seq ?? 0
   const [seenSeq, setSeenSeq] = useState(lastSeq)
@@ -77,7 +81,7 @@ export function RoomPanel({
       className={cn(
         "flex min-h-0 flex-col bg-background text-foreground",
         variant === "rail"
-          ? "w-full md:sticky md:top-0 md:h-dvh md:w-96 md:shrink-0 md:border-l"
+          ? "w-full flex-1 md:flex-none md:sticky md:top-0 md:h-dvh md:w-96 md:shrink-0 md:border-l"
           : "h-full"
       )}
     >
@@ -137,6 +141,7 @@ function RoomHeader({
 }) {
   const rpcStatus = useAtomValue(rpcConnectionStatusAtom)
   const online = connected && rpcStatus === "connected"
+  const setComposerIntent = useAtomSet(roomComposerIntentAtom(state.id))
   const [inviteOpen, setInviteOpen] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [leaveOpen, setLeaveOpen] = useState(false)
@@ -169,6 +174,20 @@ function RoomHeader({
             </p>
           ) : null}
         </div>
+        {!closed && state.aiAccess !== "off" ? (
+          <Button
+            size="sm"
+            variant="outline"
+            aria-label="Ask AI"
+            title="Ask AI"
+            disabled={!state.you.canAskAi}
+            onClick={() =>
+              setComposerIntent({ mention: "AI", id: crypto.randomUUID() })
+            }
+          >
+            @AI
+          </Button>
+        ) : null}
         {state.you.isHost && !closed ? (
           <Button size="sm" onClick={() => setInviteOpen(true)}>
             <UserPlus data-icon="inline-start" />
