@@ -27,7 +27,7 @@ import {
   updatePlayerPreferencesAtom,
 } from "../preferences"
 import { PlayerSettingsPopover } from "./settings-popover"
-import { PlayerTimeline } from "./timeline"
+import { PlayerTimeline, type TimelineLive } from "./timeline"
 
 export function PlayerDesktopControls({
   playback,
@@ -35,6 +35,7 @@ export function PlayerDesktopControls({
   duration,
   bufferedEnd,
   onSeek,
+  live,
   playing,
   loading,
   muted,
@@ -54,6 +55,7 @@ export function PlayerDesktopControls({
   duration: number
   bufferedEnd: number
   onSeek: (value: string) => void
+  live: TimelineLive | null
   playing: boolean
   loading: boolean
   muted: boolean
@@ -147,6 +149,7 @@ export function PlayerDesktopControls({
         duration={duration}
         bufferedEnd={bufferedEnd}
         onSeek={onSeek}
+        live={live}
       />
 
       <div className="flex items-center justify-between gap-3">

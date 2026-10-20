@@ -19,7 +19,6 @@ import {
   RoomName,
   RoomOperationError,
   RoomPlaybackAction,
-  RoomPlaybackControl,
   RoomPlaybackState,
   RoomSummary,
   RoomViewingResult,
@@ -57,7 +56,6 @@ export class CreateRoom extends Rpc.make("CreateRoom", {
   payload: {
     name: RoomName,
     access: RoomAccess,
-    playbackControl: RoomPlaybackControl,
     aiAccess: RoomAiAccess,
     selection: Schema.NullOr(
       Schema.Struct({
@@ -252,7 +250,6 @@ export class UpdateRoomSettings extends Rpc.make("UpdateRoomSettings", {
     roomId: RoomId,
     name: Schema.optional(RoomName),
     access: Schema.optional(RoomAccess),
-    playbackControl: Schema.optional(RoomPlaybackControl),
     aiAccess: Schema.optional(RoomAiAccess),
   },
   success: Schema.Void,

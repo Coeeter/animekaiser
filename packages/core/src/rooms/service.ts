@@ -31,7 +31,6 @@ import type {
   RoomMessage,
   RoomMessageKind,
   RoomPlaybackAction,
-  RoomPlaybackControl,
   RoomPlaybackState,
   RoomState,
   RoomSummary,
@@ -609,18 +608,12 @@ const loadState = Effect.fnUntraced(function* (
   const ownConnections = connections.filter(
     (connection) => connection.participantId === context.participant.id
   )
-  const hostAway =
-    roomRow.hostAwaySince !== null &&
-    now - roomRow.hostAwaySince.getTime() > hostGraceMs
-  const canControlPlayback =
-    roomRow.status === "open" &&
-    (context.isHost || (roomRow.playbackControl === "everyone" && !hostAway))
+  const canControlPlayback = roomRow.status === "open" && context.isHost
 
   const state: RoomState = {
     id: roomRow.id,
     name: roomRow.name,
     access: roomRow.access,
-    playbackControl: roomRow.playbackControl,
     aiAccess: roomRow.aiAccess,
     status: roomRow.status,
     revision: roomRow.revision,
@@ -776,7 +769,6 @@ export class RoomService extends Context.Service<RoomService>()(
           roomId: string
           name: string
           access: RoomAccess
-          playbackControl: RoomPlaybackControl
           aiAccess: RoomAiAccess
           selection: (RoomEpisodeSelection & { positionSeconds: number }) | null
         }
@@ -817,7 +809,6 @@ export class RoomService extends Context.Service<RoomService>()(
             name: input.name,
             hostUserId,
             access: input.access,
-            playbackControl: input.playbackControl,
             aiAccess: input.aiAccess,
             malId: selection?.anime.malId ?? null,
             provider: selection?.provider ?? null,
@@ -1493,18 +1484,8 @@ export class RoomService extends Context.Service<RoomService>()(
           open: true,
         })
         const roomRow = context.room
-        if (!context.isHost) {
-          if (roomRow.playbackControl !== "everyone")
-            return yield* fail("cannot_control", "The host controls playback.")
-          if (
-            roomRow.hostAwaySince &&
-            now - roomRow.hostAwaySince.getTime() > hostGraceMs
-          )
-            return yield* fail(
-              "host_away",
-              "Playback is paused until the host returns."
-            )
-        }
+        if (!context.isHost)
+          return yield* fail("cannot_control", "The host controls playback.")
         if (roomRow.malId === null)
           return yield* fail("invalid", "Choose an episode first.")
         if (roomRow.selectionRevision !== selectionRevision)
@@ -1695,7 +1676,6 @@ export class RoomService extends Context.Service<RoomService>()(
         input: {
           name?: string
           access?: RoomAccess
-          playbackControl?: RoomPlaybackControl
           aiAccess?: RoomAiAccess
         }
       ) {
@@ -1732,16 +1712,6 @@ export class RoomService extends Context.Service<RoomService>()(
               host: "Only the host can ask AI",
               everyone: "Everyone can ask AI",
             }[input.aiAccess]
-          )
-        if (
-          input.playbackControl &&
-          input.playbackControl !== context.room.playbackControl
-        )
-          yield* systemMessage(
-            roomId,
-            input.playbackControl === "everyone"
-              ? "Everyone can control playback"
-              : "Only the host controls playback"
           )
         yield* query((db) =>
           db

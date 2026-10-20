@@ -150,19 +150,30 @@ const timelineSegmentLabel = (segment: TimelineSegment | null) => {
   return null
 }
 
+export type TimelineLive = {
+  position: number
+  onGoLive: () => void
+}
+
 export function PlayerTimeline({
   playback,
   currentTime,
   duration,
   bufferedEnd,
   onSeek,
+  live,
 }: {
   playback: StreamPlayback
   currentTime: number
   duration: number
   bufferedEnd: number
   onSeek: (value: string) => void
+  live?: TimelineLive | null
 }) {
+  const livePercent =
+    live && duration > 0
+      ? (Math.min(Math.max(live.position, 0), duration) / duration) * 100
+      : null
   const [hoverPercent, setHoverPercent] = useState(0)
   const [hoverTime, setHoverTime] = useState<number | null>(null)
   const timelineSegments = chapterTimelineSegments({
@@ -253,6 +264,18 @@ export function PlayerTimeline({
             </div>
           ))}
         </div>
+        {livePercent !== null ? (
+          <>
+            <div
+              className="pointer-events-none absolute top-1/2 left-0 h-1 -translate-y-1/2 rounded-full bg-red-500/40"
+              style={{ width: `${livePercent}%` }}
+            />
+            <div
+              className="pointer-events-none absolute top-1/2 z-10 size-3 -translate-x-1/2 -translate-y-1/2 rounded-full bg-red-500 ring-2 ring-black/60"
+              style={{ left: `${livePercent}%` }}
+            />
+          </>
+        ) : null}
         <input
           aria-label="Seek"
           type="range"
@@ -264,6 +287,17 @@ export function PlayerTimeline({
           className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
         />
       </div>
+      {live ? (
+        <button
+          type="button"
+          onClick={live.onGoLive}
+          className="flex shrink-0 items-center gap-1.5 rounded-full bg-red-500/15 px-2 py-0.5 font-medium text-red-300 hover:bg-red-500/25"
+        >
+          <span className="size-1.5 rounded-full bg-red-500" />
+          {formatTime(Math.max(live.position - currentTime, 0))} behind · Go
+          live
+        </button>
+      ) : null}
       <span className="w-10 text-right tabular-nums md:w-12">
         {formatTime(duration)}
       </span>

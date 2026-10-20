@@ -21,6 +21,7 @@ import { useWatchProgress } from "../../history/use-watch-progress"
 import { libraryEntryAtom } from "../../library/atoms"
 import { RoomPlayerOverlay } from "../../rooms/room-overlays"
 import {
+  useRoomLivePosition,
   useRoomPlayer,
   useRoomSync,
   useRoomViewing,
@@ -351,11 +352,16 @@ function StreamPlayer({
     enabled: room === null,
   })
 
-  const { joinPlayback, holdPlayback } = useRoomSync({
+  const { joinPlayback, holdPlayback, held } = useRoomSync({
     room,
     videoRef: media.videoRef,
     onBlocked: setRoomBlocked,
   })
+  const livePosition = useRoomLivePosition(room, held)
+  const live =
+    livePosition === null
+      ? null
+      : { position: livePosition, onGoLive: joinPlayback }
 
   const blockedControl = () =>
     toast.message(
@@ -839,6 +845,7 @@ function StreamPlayer({
               duration={media.duration}
               bufferedEnd={media.bufferedEnd}
               onSeek={controls.seekTo}
+              live={live}
               playing={media.playing}
               loading={mediaLoading}
               fullscreen={fullscreen}
@@ -857,6 +864,7 @@ function StreamPlayer({
               duration={media.duration}
               bufferedEnd={media.bufferedEnd}
               onSeek={controls.seekTo}
+              live={live}
               playing={media.playing}
               loading={mediaLoading}
               muted={media.muted}

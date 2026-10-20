@@ -16,7 +16,7 @@ import {
 import { AnimeTitle } from "../../anime/common/anime-title"
 import { episodeLabel } from "../player-format"
 import { PlayerSettingsPopover } from "./settings-popover"
-import { PlayerTimeline } from "./timeline"
+import { PlayerTimeline, type TimelineLive } from "./timeline"
 
 export function PlayerMobileControls({
   playback,
@@ -24,6 +24,7 @@ export function PlayerMobileControls({
   duration,
   bufferedEnd,
   onSeek,
+  live,
   playing,
   loading,
   fullscreen,
@@ -38,6 +39,7 @@ export function PlayerMobileControls({
   duration: number
   bufferedEnd: number
   onSeek: (value: string) => void
+  live: TimelineLive | null
   playing: boolean
   loading: boolean
   fullscreen: boolean
@@ -137,6 +139,7 @@ export function PlayerMobileControls({
             duration={duration}
             bufferedEnd={bufferedEnd}
             onSeek={onSeek}
+            live={live}
           />
         </div>
         <Button

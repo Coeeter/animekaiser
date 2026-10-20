@@ -8,7 +8,7 @@ import type {
   StreamProviderId,
 } from "@animekaiser/domain"
 import type { ReactNode, RefObject } from "react"
-import { createContext, useContext, useEffect, useRef } from "react"
+import { createContext, useContext, useEffect, useRef, useState } from "react"
 
 export type RoomPlayerController = {
   readonly roomId: string
@@ -30,6 +30,7 @@ export type RoomPlayerController = {
     options?: { play?: boolean; provider?: StreamProviderId }
   ) => void
   readonly setServerId: (serverId: string | undefined) => void
+  readonly setAudio: (audio: StreamAudio) => void
   readonly claimPlayback: () => void
   readonly reportState: (state: RoomPlaybackState) => void
   readonly recordViewing: (input: RoomViewingSample) => Promise<boolean>
@@ -90,6 +91,7 @@ export function useRoomSync({
   roomRef.current = room
   const blockedRef = useRef(false)
   const heldRef = useRef(false)
+  const [held, setHeld] = useState(false)
   const onBlockedRef = useRef(onBlocked)
   onBlockedRef.current = onBlocked
   const active = room !== null
@@ -167,6 +169,7 @@ export function useRoomSync({
     const video = videoRef.current
     if (!video) return
     heldRef.current = false
+    setHeld(false)
     blockedRef.current = false
     onBlockedRef.current(false)
     const current = roomRef.current
@@ -185,10 +188,41 @@ export function useRoomSync({
   // room keeps playing and joining again jumps back to the room's position.
   const holdPlayback = () => {
     heldRef.current = true
+    setHeld(true)
     videoRef.current?.pause()
   }
 
-  return { joinPlayback, holdPlayback }
+  return { joinPlayback, holdPlayback, held }
+}
+
+// Where the room is now, refreshed while this viewer sits paused behind it.
+export function useRoomLivePosition(
+  room: RoomPlayerController | null,
+  enabled: boolean
+) {
+  const roomRef = useRef(room)
+  roomRef.current = room
+  const [position, setPosition] = useState<number | null>(null)
+
+  useEffect(() => {
+    if (!enabled) {
+      setPosition(null)
+      return
+    }
+    const update = () => {
+      const current = roomRef.current
+      setPosition(
+        current
+          ? expectedRoomPosition(current.playback, current.clockOffset)
+          : null
+      )
+    }
+    update()
+    const interval = window.setInterval(update, 500)
+    return () => window.clearInterval(interval)
+  }, [enabled])
+
+  return position
 }
 
 const viewingIntervalMs = 5_000

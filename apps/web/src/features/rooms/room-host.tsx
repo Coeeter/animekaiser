@@ -2,6 +2,7 @@ import type {
   AnimeItem,
   AnimeLibraryMetadata,
   RoomOperationError,
+  StreamAudio,
 } from "@animekaiser/domain"
 import { Button } from "@animekaiser/ui/components/button"
 import { useIsMobile } from "@animekaiser/ui/hooks/use-mobile"
@@ -79,6 +80,11 @@ const serverOverrideAtom = Atom.family((_key: string) =>
   Atom.make<string | undefined>(undefined).pipe(Atom.keepAlive)
 )
 
+// Viewers pick their own audio edition; the room's selection stays the host's.
+const audioOverrideAtom = Atom.family((_key: string) =>
+  Atom.make<StreamAudio | undefined>(undefined).pipe(Atom.keepAlive)
+)
+
 export const roomPlayerHiddenAtom = Atom.family((_roomId: string) =>
   Atom.make(false).pipe(Atom.keepAlive)
 )
@@ -125,6 +131,8 @@ function ActiveRoom({ roomId }: { roomId: string }) {
   const serverKey = `${roomId}:${selection?.revision ?? 0}`
   const serverId = useAtomValue(serverOverrideAtom(serverKey))
   const setServerId = useAtomSet(serverOverrideAtom(serverKey))
+  const audioOverride = useAtomValue(audioOverrideAtom(serverKey))
+  const setAudioOverride = useAtomSet(audioOverrideAtom(serverKey))
 
   const ended = live?.ended ?? null
   const failure = live?.failure ?? null
@@ -217,6 +225,10 @@ function ActiveRoom({ roomId }: { roomId: string }) {
             },
           }).then(toastRoomFailure),
         setServerId,
+        setAudio: (audio) => {
+          setServerId(undefined)
+          setAudioOverride(audio === selection.audio ? undefined : audio)
+        },
         claimPlayback: () =>
           void claim({ payload: { roomId, connectionId } }).then(
             toastRoomFailure
@@ -263,7 +275,7 @@ function ActiveRoom({ roomId }: { roomId: string }) {
               malId: selection.anime.malId,
               provider: selection.provider,
               episodeId: selection.episodeId,
-              audio: selection.audio,
+              audio: audioOverride ?? selection.audio,
               serverId,
             }}
             mode={expanded ? "full" : "mini"}

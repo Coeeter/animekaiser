@@ -3,7 +3,6 @@ import type {
   RoomAccessChangePreview,
   RoomAiAccess,
   RoomEpisodeSelection,
-  RoomPlaybackControl,
   RoomState,
 } from "@animekaiser/domain"
 import {
@@ -68,11 +67,6 @@ const accessDescriptions: Record<RoomAccess, string> = {
   public: "Listed for signed-in people. Guests need your link.",
 }
 
-const playbackLabels: Record<RoomPlaybackControl, string> = {
-  host: "Host only",
-  everyone: "Everyone",
-}
-
 const aiLabels: Record<RoomAiAccess, string> = {
   off: "Off",
   host: "Host only",
@@ -134,9 +128,7 @@ export function CreateRoomDialog({
   const navigate = useNavigate()
   const [name, setName] = useState(defaultName)
   const [access, setAccess] = useState<RoomAccess>("invite")
-  const [playbackControl, setPlaybackControl] =
-    useState<RoomPlaybackControl>("host")
-  const [aiAccess, setAiAccess] = useState<RoomAiAccess>("host")
+  const [aiAccess, setAiAccess] = useState<RoomAiAccess>("everyone")
   const [more, setMore] = useState(false)
   const [roomId, setRoomId] = useState(() => crypto.randomUUID())
   const [creating, setCreating] = useState(false)
@@ -148,7 +140,6 @@ export function CreateRoomDialog({
         roomId,
         name: name.trim() || defaultName,
         access,
-        playbackControl,
         aiAccess,
         selection: selection ? { ...selection, positionSeconds } : null,
       },
@@ -208,23 +199,13 @@ export function CreateRoomDialog({
             />
           </button>
           {more ? (
-            <>
-              <ChoiceField
-                id="room-playback"
-                label="Playback controls"
-                value={playbackControl}
-                options={playbackLabels}
-                onChange={setPlaybackControl}
-                description="You always choose the anime, episode, and audio."
-              />
-              <ChoiceField
-                id="room-ai"
-                label="Ask AI in the room"
-                value={aiAccess}
-                options={aiLabels}
-                onChange={setAiAccess}
-              />
-            </>
+            <ChoiceField
+              id="room-ai"
+              label="Ask AI in the room"
+              value={aiAccess}
+              options={aiLabels}
+              onChange={setAiAccess}
+            />
           ) : null}
           <p className="text-xs text-muted-foreground">
             Room chat is saved and readable by everyone admitted, including
@@ -445,7 +426,6 @@ export function RoomSettingsDialog({
   })
   const [name, setName] = useState(state.name)
   const [access, setAccess] = useState(state.access)
-  const [playbackControl, setPlaybackControl] = useState(state.playbackControl)
   const [aiAccess, setAiAccess] = useState(state.aiAccess)
   const [confirm, setConfirm] = useState<RoomAccessChangePreview | null>(null)
   const [saving, setSaving] = useState(false)
@@ -457,7 +437,6 @@ export function RoomSettingsDialog({
         roomId: state.id,
         name: name.trim() || state.name,
         access,
-        playbackControl,
         aiAccess,
       },
       reactivityKeys: [roomReactivityKeys.lists],
@@ -484,7 +463,6 @@ export function RoomSettingsDialog({
           if (next) {
             setName(state.name)
             setAccess(state.access)
-            setPlaybackControl(state.playbackControl)
             setAiAccess(state.aiAccess)
           }
           onOpenChange(next)
@@ -514,14 +492,6 @@ export function RoomSettingsDialog({
               options={roomAccessLabel}
               onChange={setAccess}
               description={accessDescriptions[access]}
-            />
-            <ChoiceField
-              id="room-settings-playback"
-              label="Playback controls"
-              value={playbackControl}
-              options={playbackLabels}
-              onChange={setPlaybackControl}
-              description="Everyone includes guests. You always choose the anime, episode, and audio."
             />
             <ChoiceField
               id="room-settings-ai"

@@ -266,7 +266,7 @@ export function PlayerSettingsPopover({
                       ? room.selectEpisode(playback.episode, audio, {
                           provider: playback.provider,
                         })
-                      : toast.message("The host chooses the audio edition.")
+                      : room.setAudio(audio)
                   )
                 }
               />

@@ -10,9 +10,6 @@ export const RoomCapacity = 20
 export const RoomAccess = Schema.Literals(["public", "friends", "invite"])
 export type RoomAccess = typeof RoomAccess.Type
 
-export const RoomPlaybackControl = Schema.Literals(["host", "everyone"])
-export type RoomPlaybackControl = typeof RoomPlaybackControl.Type
-
 export const RoomAiAccess = Schema.Literals(["off", "host", "everyone"])
 export type RoomAiAccess = typeof RoomAiAccess.Type
 
@@ -106,7 +103,6 @@ export const RoomState = Schema.Struct({
   id: RoomId,
   name: Schema.String,
   access: RoomAccess,
-  playbackControl: RoomPlaybackControl,
   aiAccess: RoomAiAccess,
   status: RoomStatus,
   revision: Schema.Int.check(Schema.isGreaterThanOrEqualTo(0)),
