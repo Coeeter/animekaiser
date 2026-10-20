@@ -89,6 +89,7 @@ export function useRoomSync({
   const roomRef = useRef(room)
   roomRef.current = room
   const blockedRef = useRef(false)
+  const heldRef = useRef(false)
   const onBlockedRef = useRef(onBlocked)
   onBlockedRef.current = onBlocked
   const active = room !== null
@@ -106,6 +107,10 @@ export function useRoomSync({
       const video = videoRef.current
       if (!current || !video) return
       if (!current.controller || !current.connected) {
+        if (!video.paused) video.pause()
+        return
+      }
+      if (heldRef.current) {
         if (!video.paused) video.pause()
         return
       }
@@ -161,6 +166,7 @@ export function useRoomSync({
   const joinPlayback = () => {
     const video = videoRef.current
     if (!video) return
+    heldRef.current = false
     blockedRef.current = false
     onBlockedRef.current(false)
     const current = roomRef.current
@@ -175,7 +181,14 @@ export function useRoomSync({
     })
   }
 
-  return { joinPlayback }
+  // A viewer without control can pause for themselves like a live stream; the
+  // room keeps playing and joining again jumps back to the room's position.
+  const holdPlayback = () => {
+    heldRef.current = true
+    videoRef.current?.pause()
+  }
+
+  return { joinPlayback, holdPlayback }
 }
 
 const viewingIntervalMs = 5_000

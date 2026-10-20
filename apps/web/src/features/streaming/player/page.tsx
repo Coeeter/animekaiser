@@ -351,7 +351,7 @@ function StreamPlayer({
     enabled: room === null,
   })
 
-  const { joinPlayback } = useRoomSync({
+  const { joinPlayback, holdPlayback } = useRoomSync({
     room,
     videoRef: media.videoRef,
     onBlocked: setRoomBlocked,
@@ -369,7 +369,17 @@ function StreamPlayer({
         togglePlayback: () => {
           const video = media.videoRef.current
           if (!video) return
-          if (!room.canControl) return blockedControl()
+          if (!room.canControl) {
+            if (!video.paused) {
+              holdPlayback()
+              toast.message("Paused for you", {
+                description: "The room keeps playing. Press play to catch up.",
+              })
+              return
+            }
+            if (room.playback.playing && !room.hostAway) return joinPlayback()
+            return blockedControl()
+          }
           const positionSeconds = video.currentTime
           if (room.playback.playing) {
             video.pause()
