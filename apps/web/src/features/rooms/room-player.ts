@@ -12,6 +12,7 @@ import { createContext, useContext, useEffect, useRef, useState } from "react"
 
 export type RoomPlayerController = {
   readonly roomId: string
+  readonly episodeNumber: number
   readonly selectionRevision: number
   readonly playback: RoomPlayback
   readonly clockOffset: number
@@ -29,6 +30,11 @@ export type RoomPlayerController = {
     audio: StreamAudio,
     options?: { play?: boolean; provider?: StreamProviderId }
   ) => void
+  readonly setSource: (source: {
+    provider: StreamProviderId
+    episodeId: string
+    serverId?: string
+  }) => void
   readonly setServerId: (serverId: string | undefined) => void
   readonly setAudio: (audio: StreamAudio) => void
   readonly claimPlayback: () => void

@@ -12,6 +12,7 @@ import {
   Play,
   RotateCcw,
   RotateCw,
+  Server,
 } from "lucide-react"
 import { AnimeTitle } from "../../anime/common/anime-title"
 import { episodeLabel } from "../player-format"
@@ -33,6 +34,7 @@ export function PlayerMobileControls({
   onSeekBy,
   controlsVisible,
   playerPortalContainer,
+  onOpenSources,
 }: {
   playback: StreamPlayback
   currentTime: number
@@ -48,6 +50,7 @@ export function PlayerMobileControls({
   onSeekBy: (seconds: number) => void
   controlsVisible: boolean
   playerPortalContainer: HTMLElement | null
+  onOpenSources: () => void
 }) {
   const isMobile = useIsMobile()
   return (
@@ -77,6 +80,15 @@ export function PlayerMobileControls({
             {episodeLabel(playback.episode)}
           </p>
         </div>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="shrink-0 text-white hover:bg-white/10 hover:text-white"
+          onClick={onOpenSources}
+        >
+          <Server data-icon="inline-start" />
+          Source
+        </Button>
         {isMobile ? (
           <PlayerSettingsPopover
             portalContainer={playerPortalContainer}

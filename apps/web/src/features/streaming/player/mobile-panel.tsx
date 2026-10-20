@@ -117,8 +117,8 @@ export function PlayerMobilePanel({
         />
         <PanelRow
           icon={<Server />}
-          label="Stream server"
-          value={playback.server.name}
+          label="Source"
+          value={`${providerName} · ${playback.server.name}`}
           onClick={onOpenServers}
         />
         <PanelRow

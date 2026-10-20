@@ -4,6 +4,7 @@ import type {
   RoomOperationError,
   RoomPlayback,
   StreamAudio,
+  StreamProviderId,
 } from "@animekaiser/domain"
 import { Button } from "@animekaiser/ui/components/button"
 import { useIsMobile } from "@animekaiser/ui/hooks/use-mobile"
@@ -88,6 +89,12 @@ export const toastRoomFailure = (exit: Exit.Exit<unknown, unknown>) => {
   toast.error(error?.message ?? unexpectedFailureMessage(exit))
 }
 
+const sourceOverrideAtom = Atom.family((_key: string) =>
+  Atom.make<{ provider: StreamProviderId; episodeId: string } | null>(
+    null
+  ).pipe(Atom.keepAlive)
+)
+
 const serverOverrideAtom = Atom.family((_key: string) =>
   Atom.make<string | undefined>(undefined).pipe(Atom.keepAlive)
 )
@@ -148,6 +155,8 @@ function ActiveRoom({ roomId }: { roomId: string }) {
   const state = live?.state ?? null
   const selection = state?.selection ?? null
   const serverKey = `${roomId}:${selection?.revision ?? 0}`
+  const sourceOverride = useAtomValue(sourceOverrideAtom(serverKey))
+  const setSourceOverride = useAtomSet(sourceOverrideAtom(serverKey))
   const serverId = useAtomValue(serverOverrideAtom(serverKey))
   const setServerId = useAtomSet(serverOverrideAtom(serverKey))
   const audioOverride = useAtomValue(audioOverrideAtom(serverKey))
@@ -224,6 +233,7 @@ function ActiveRoom({ roomId }: { roomId: string }) {
     ? {
         roomId,
         selectionRevision: selection.revision,
+        episodeNumber: selection.episodeNumber,
         playback: localPlayback,
         clockOffset,
         canControl: state.you.canControlPlayback,
@@ -281,6 +291,13 @@ function ActiveRoom({ roomId }: { roomId: string }) {
               },
             },
           }).then(toastRoomFailure),
+        setSource: (source) => {
+          setSourceOverride({
+            provider: source.provider,
+            episodeId: source.episodeId,
+          })
+          setServerId(source.serverId)
+        },
         setServerId,
         setAudio: (audio) => {
           setServerId(undefined)
@@ -330,8 +347,8 @@ function ActiveRoom({ roomId }: { roomId: string }) {
           <StreamPlayerPage
             input={{
               malId: selection.anime.malId,
-              provider: selection.provider,
-              episodeId: selection.episodeId,
+              provider: sourceOverride?.provider ?? selection.provider,
+              episodeId: sourceOverride?.episodeId ?? selection.episodeId,
               audio: audioOverride ?? selection.audio,
               serverId,
             }}

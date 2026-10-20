@@ -119,8 +119,8 @@ export function PlayerDesktopControls({
           onClick={onOpenEpisodes}
         >
           <ListVideo />
-          <span className="truncate" title={`${providerName} episodes`}>
-            {providerName} episodes
+          <span className="truncate" title="Episodes">
+            Episodes
           </span>
         </Button>
         <Button
@@ -130,8 +130,11 @@ export function PlayerDesktopControls({
           onClick={onOpenServers}
         >
           <Server />
-          <span className="truncate" title={playback.server.name}>
-            {playback.server.name}
+          <span
+            className="truncate"
+            title={`Source: ${providerName} · ${playback.server.name}`}
+          >
+            {providerName} · {playback.server.name}
           </span>
         </Button>
         {room ? null : (

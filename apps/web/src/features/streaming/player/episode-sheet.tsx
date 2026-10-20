@@ -12,14 +12,6 @@ import {
   InputGroupInput,
 } from "@animekaiser/ui/components/input-group"
 import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@animekaiser/ui/components/select"
-import {
   Sheet,
   SheetBody,
   SheetContent,
@@ -49,12 +41,7 @@ import { createContext, useContext, useState } from "react"
 import { AnimeTitle } from "../../anime/common/anime-title"
 import { NextAiringNotice } from "../../anime/schedule/next-airing-notice"
 import { episodeSpoilerAtom } from "../../history/atoms"
-import {
-  episodeChoicesAtom,
-  providerLabelAtom,
-  streamEpisodesAtom,
-  streamProvidersAtom,
-} from "../atoms"
+import { episodeChoicesAtom, streamEpisodesAtom } from "../atoms"
 import { EpisodeThumbnail } from "../episode-thumbnail"
 import {
   audioLabel,
@@ -77,7 +64,8 @@ export function EpisodeSheet({
   portalContainer,
   selection,
   onChoose,
-  title = "Choose a stream",
+  title = "Episodes",
+  allowFallback = false,
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
@@ -90,29 +78,22 @@ export function EpisodeSheet({
   }
   onChoose?: EpisodeChoice
   title?: string
+  allowFallback?: boolean
 }) {
-  const [picked, setPicked] = useState<StreamProviderId | null>(null)
   const result = useAtomValue(
-    picked
-      ? streamEpisodesAtom(selection.malId, picked)
-      : episodeChoicesAtom({
+    allowFallback
+      ? episodeChoicesAtom({
           malId: selection.malId,
           provider: selection.provider,
         })
-  )
-
-  const providerOptions = AsyncResult.getOrElse(
-    useAtomValue(streamProvidersAtom),
-    () => []
+      : streamEpisodesAtom(selection.malId, selection.provider)
   )
   const catalog = AsyncResult.builder(result)
     .onSuccess((value) => value)
     .orNull()
 
   const provider = catalog?.providers.at(0) ?? null
-  const selectedProvider = picked ?? provider?.provider ?? selection.provider
-  const fellBack =
-    !picked && provider !== null && provider.provider !== selection.provider
+  const selectedProvider = provider?.provider ?? selection.provider
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -124,7 +105,7 @@ export function EpisodeSheet({
         <SheetHeader>
           <SheetTitle>{title}</SheetTitle>
           <SheetDescription>
-            Switch providers and choose an episode of{" "}
+            Choose an episode of{" "}
             {catalog ? (
               <AnimeTitle title={catalog.anime.title} />
             ) : (
@@ -139,32 +120,10 @@ export function EpisodeSheet({
               nextAiringEpisode={catalog.anime.nextAiringEpisode}
             />
           ) : null}
-          <Select
-            value={selectedProvider}
-            onValueChange={(value) => {
-              setPicked(value as StreamProviderId)
-            }}
-          >
-            <SelectTrigger className="mb-2 w-full">
-              <SelectValue placeholder="Provider" />
-            </SelectTrigger>
-            <SelectContent portalContainer={portalContainer}>
-              <SelectGroup>
-                {providerOptions.map((entry) => (
-                  <SelectItem key={entry.id} value={entry.id}>
-                    {entry.label}
-                  </SelectItem>
-                ))}
-              </SelectGroup>
-            </SelectContent>
-          </Select>
-          {fellBack ? (
-            <p
-              className="-mt-1 mb-1 text-xs text-muted-foreground"
-              role="status"
-            >
-              <ProviderLabel provider={selection.provider} /> isn't working
-              right now, so this shows the first provider with episodes.
+          {provider && selectedProvider !== selection.provider ? (
+            <p role="status" className="text-sm text-muted-foreground">
+              The current source is unavailable. Showing episodes from{" "}
+              {provider.label}.
             </p>
           ) : null}
           {provider ? (
@@ -177,6 +136,8 @@ export function EpisodeSheet({
                 onSelect={() => onOpenChange(false)}
               />
             </EpisodeChoiceContext.Provider>
+          ) : AsyncResult.isFailure(result) ? (
+            <p role="alert">Unable to load episodes. Try another source.</p>
           ) : (
             <EpisodeSheetPending />
           )}
@@ -567,8 +528,4 @@ function EpisodeSheetPending() {
       ))}
     </>
   )
-}
-
-function ProviderLabel({ provider }: { provider: StreamProviderId }) {
-  return <>{useAtomValue(providerLabelAtom(provider))}</>
 }

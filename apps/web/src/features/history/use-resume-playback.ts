@@ -12,10 +12,12 @@ export function useResumePlayback({
   playback,
   videoRef,
   enabled = true,
+  sourcePosition,
 }: {
   playback: StreamPlayback
   videoRef: RefObject<HTMLVideoElement | null>
   enabled?: boolean
+  sourcePosition?: number
 }) {
   const episode = Math.max(1, Math.floor(playback.episode.number))
   const result = useAtomValue(
@@ -27,21 +29,27 @@ export function useResumePlayback({
     .orNull()
 
   const resumedKeyRef = useRef<string | null>(null)
-  const episodeKey = `${playback.provider}:${playback.episode.id}`
+  const episodeKey = `${playback.provider}:${playback.episode.id}:${playback.audio}:${playback.server.id}`
 
   useEffect(() => {
     resumedKeyRef.current = null
   }, [episodeKey])
 
   useEffect(() => {
-    if (!enabled || !entry || entry.status === "completed") return
-    if (entry.positionSeconds < minimumResumeSeconds) return
+    if (!enabled) return
+    if (
+      sourcePosition === undefined &&
+      (!entry ||
+        entry.status === "completed" ||
+        entry.positionSeconds < minimumResumeSeconds)
+    )
+      return
     if (resumedKeyRef.current === episodeKey) return
 
     const video = videoRef.current
     if (!video) return
 
-    const target = entry.positionSeconds
+    const target = sourcePosition ?? entry?.positionSeconds ?? 0
 
     const apply = () => {
       if (resumedKeyRef.current === episodeKey) return
@@ -55,7 +63,11 @@ export function useResumePlayback({
       const duration = video.duration
       if (!Number.isFinite(duration) || duration <= 0) return
 
-      if (target > duration - endOfEpisodeGuardSeconds) {
+      if (
+        target >
+        duration -
+          (sourcePosition === undefined ? endOfEpisodeGuardSeconds : 0.25)
+      ) {
         resumedKeyRef.current = episodeKey
         return
       }
@@ -74,5 +86,5 @@ export function useResumePlayback({
       video.removeEventListener("loadedmetadata", apply)
       video.removeEventListener("canplay", apply)
     }
-  }, [enabled, entry, episodeKey, videoRef])
+  }, [enabled, entry, episodeKey, videoRef, sourcePosition])
 }

@@ -36,12 +36,9 @@ import {
   miniPlayerFrameAtom,
   setMiniPlayerFrameAtom,
 } from "../mini-player-frame"
-import {
-  nextStreamServer,
-  preferredAudio,
-  videoFitClass,
-} from "../player-format"
+import { preferredAudio, videoFitClass } from "../player-format"
 import { playerPreferencesAtom } from "../preferences"
+import type { SourceChoice } from "../sources"
 import type { SubtitleCue } from "../subtitles"
 import { subtitleCuesAtom, subtitleHtmlAtTime } from "../subtitles"
 import {
@@ -60,13 +57,14 @@ import {
   useMiniPlayerInteraction,
 } from "./hooks/use-mini-interaction"
 import { usePlayerSync } from "./hooks/use-player-sync"
+import { useSourceRecovery } from "./hooks/use-source-recovery"
 import { PlayerMiniControls } from "./mini-controls"
 import { PlayerMobileControls } from "./mobile-controls"
 import { PlayerMobilePanel } from "./mobile-panel"
 import { PlayerNextSeasonCard } from "./next-season-card"
 import { StreamPlayerPendingPage } from "./pending-page"
 import { PlayerShell } from "./player-shell"
-import { ServerSheet } from "./server-sheet"
+import { SourceSheet } from "./source-sheet"
 import { PlayerTheaterBar } from "./theater-bar"
 import { playerCaptionAtom, playerUiAtom, updatePlayerUiAtom } from "./ui-state"
 import {
@@ -113,6 +111,82 @@ export function StreamPlayerPage({
   const refresh = useAtomRefresh(atom)
   const [recoveryEpisodesOpen, setRecoveryEpisodesOpen] = useState(false)
   const room = useRoomPlayer()
+  const navigate = useNavigate()
+  const episodes = useAtomValue(streamEpisodesAtom(input.malId, input.provider))
+  const chosen = useRef<{
+    malId: number
+    provider: StreamProviderId
+    episodeId: string
+    number: number
+  } | null>(null)
+  const sourcePosition = useRef<{
+    malId: number
+    number: number
+    seconds: number
+  } | null>(null)
+  const lastPlayback = useRef<StreamPlayback | null>(null)
+  if (AsyncResult.isSuccess(result)) lastPlayback.current = result.value
+  const catalogEpisode = AsyncResult.isSuccess(episodes)
+    ? episodes.value.providers
+        .flatMap((entry) => entry.episodes)
+        .find((episode) => episode.id === input.episodeId)
+    : null
+  const selectedNumber =
+    chosen.current?.malId === input.malId &&
+    chosen.current.provider === input.provider &&
+    chosen.current.episodeId === input.episodeId
+      ? chosen.current.number
+      : null
+  const number = AsyncResult.isSuccess(result)
+    ? result.value.episode.number
+    : (catalogEpisode?.number ?? selectedNumber ?? room?.episodeNumber ?? null)
+  if (
+    sourcePosition.current &&
+    number !== null &&
+    (sourcePosition.current.malId !== input.malId ||
+      sourcePosition.current.number !== number)
+  )
+    sourcePosition.current = null
+  const chooseSource = (choice: SourceChoice, seconds?: number) => {
+    chosen.current = {
+      malId: input.malId,
+      provider: choice.provider,
+      episodeId: choice.episode.id,
+      number: choice.episode.number,
+    }
+    if (seconds !== undefined)
+      sourcePosition.current = {
+        malId: input.malId,
+        number: choice.episode.number,
+        seconds,
+      }
+
+    if (room)
+      room.setSource({
+        provider: choice.provider,
+        episodeId: choice.episode.id,
+        serverId: choice.serverId,
+      })
+    else
+      void navigate({
+        to: "/watch/$malId/$provider/$episodeId",
+        params: {
+          malId: input.malId,
+          provider: choice.provider,
+          episodeId: choice.episode.id,
+        },
+        search: { audio: choice.audio, serverId: choice.serverId },
+        replace: true,
+      })
+  }
+  const recovery = useSourceRecovery({
+    input,
+    number,
+    failed: AsyncResult.isFailure(result),
+    onChoose: chooseSource,
+    revision: room?.selectionRevision,
+    lastPlayback: lastPlayback.current,
+  })
 
   return AsyncResult.builder(result)
     .onInitialOrWaiting(() =>
@@ -124,9 +198,16 @@ export function StreamPlayerPage({
           <PlayerShell className="min-h-[70svh] justify-center md:min-h-0">
             <div className="m-auto flex w-full max-w-xl flex-col gap-4 p-4">
               <DataError
-                title="Unable to load this stream"
+                title={
+                  recovery.recovering
+                    ? "Trying another source…"
+                    : "Unable to load this stream"
+                }
                 description="The selected server or provider may be unavailable."
-                onRetry={refresh}
+                onRetry={() => {
+                  recovery.reset()
+                  refresh()
+                }}
               />
               <div className="flex flex-wrap justify-center gap-2">
                 {room ? (
@@ -157,13 +238,14 @@ export function StreamPlayerPage({
                     onClick={() => setRecoveryEpisodesOpen(true)}
                   >
                     <ListVideo data-icon="inline-start" />
-                    Change provider or episode
+                    Choose another episode
                   </Button>
                 ) : null}
               </div>
             </div>
           </PlayerShell>
           <EpisodeSheet
+            allowFallback
             open={recoveryEpisodesOpen}
             onOpenChange={setRecoveryEpisodesOpen}
             portalContainer={null}
@@ -185,12 +267,44 @@ export function StreamPlayerPage({
           {mode === "full" ? (
             <title>{`${title} – Episode ${playback.episode.number} | AnimeKaiser`}</title>
           ) : null}
+          {recovery.exhausted ? (
+            <p
+              role="alert"
+              className="p-3 text-center text-sm text-muted-foreground"
+            >
+              No source could play this episode. Choose a source to try again.
+            </p>
+          ) : null}
           <StreamPlayer
             input={input}
             playback={playback}
             loading={false}
             mode={mode}
             onClose={onClose}
+            sourcePosition={
+              sourcePosition.current?.malId === playback.anime.malId &&
+              sourcePosition.current.number === playback.episode.number
+                ? sourcePosition.current.seconds
+                : undefined
+            }
+            onChooseSource={(choice, seconds) => {
+              recovery.reset()
+              chooseSource(choice, seconds)
+              if (
+                choice.provider === input.provider &&
+                choice.episode.id === input.episodeId &&
+                choice.serverId === input.serverId
+              )
+                refresh()
+            }}
+            onExhausted={(seconds) => {
+              sourcePosition.current = {
+                malId: input.malId,
+                number: playback.episode.number,
+                seconds,
+              }
+              void recovery.recover(playback)
+            }}
           />
         </>
       )
@@ -229,9 +343,15 @@ function StreamPlayer({
   loading,
   mode,
   onClose,
+  onChooseSource,
+  onExhausted,
+  sourcePosition,
 }: {
   input: StreamPlaybackInput
   playback: StreamPlayback
+  sourcePosition?: number
+  onChooseSource: (choice: SourceChoice, seconds?: number) => void
+  onExhausted: (seconds: number) => void
   loading: boolean
   mode: "full" | "mini"
   onClose?: () => void
@@ -290,27 +410,7 @@ function StreamPlayer({
   const sourceUrl = playback.sourceUrl
 
   const handleFatalPlaybackError = () => {
-    const nextServer = nextStreamServer(
-      playback.servers,
-      playback.server.id,
-      playback.audio
-    )
-    if (!nextServer) return false
-    toast.message(`Trying ${nextServer.name}…`)
-    if (room) {
-      room.setServerId(nextServer.id)
-      return true
-    }
-    void navigate({
-      to: "/watch/$malId/$provider/$episodeId",
-      params: {
-        malId: playback.anime.malId,
-        provider: playback.provider,
-        episodeId: playback.episode.id,
-      },
-      search: { audio: playback.audio, serverId: nextServer.id },
-      replace: true,
-    })
+    onExhausted(media.videoRef.current?.currentTime ?? 0)
     return true
   }
 
@@ -350,6 +450,7 @@ function StreamPlayer({
     playback,
     videoRef: media.videoRef,
     enabled: room === null,
+    sourcePosition,
   })
 
   const { joinPlayback, holdPlayback, held } = useRoomSync({
@@ -732,6 +833,8 @@ function StreamPlayer({
       sidebarState={sidebarState}
       className={cn(
         (theater || roomLayout) && "md:flex-row md:overflow-y-auto",
+        roomLayout &&
+          "h-[calc(100dvh-3.5rem-env(safe-area-inset-bottom))] overflow-hidden md:h-dvh",
         mode === "mini" && miniPlayerClass,
         mode === "full" && !controlsVisible && media.playing && "cursor-none"
       )}
@@ -752,6 +855,7 @@ function StreamPlayer({
         <main
           className={cn(
             "relative flex items-center justify-center overflow-hidden bg-black",
+            roomLayout && "max-md:max-h-[30dvh]",
             theater
               ? "aspect-video w-full shrink-0 md:rounded-2xl"
               : mode === "full" && !fullscreen
@@ -854,6 +958,7 @@ function StreamPlayer({
               onSeekBy={controls.seekBy}
               controlsVisible={controlsVisible}
               playerPortalContainer={playerPortalContainer}
+              onOpenSources={() => setServersOpen(true)}
             />
           ) : null}
 
@@ -944,13 +1049,15 @@ function StreamPlayer({
                 : undefined
             }
           />
-          <ServerSheet
-            key={playback.server.id}
+          <SourceSheet
+            key={`${playback.provider}:${playback.server.id}`}
             open={serversOpen}
             onOpenChange={setServersOpen}
             portalContainer={playerPortalContainer}
             playback={playback}
-            onChoose={room ? room.setServerId : undefined}
+            onChoose={(choice) =>
+              onChooseSource(choice, media.videoRef.current?.currentTime)
+            }
           />
         </>
       ) : null}

@@ -2167,7 +2167,8 @@ export class RoomService extends Context.Service<RoomService>()(
         const roomRow = membership.room
         const matchesRoom =
           roomRow.malId === input.anime.malId &&
-          roomRow.episodeId === input.episodeId
+          roomRow.episodeNumber !== null &&
+          Math.max(1, Math.floor(roomRow.episodeNumber)) === input.episode
         yield* upsertAnime(input.anime)
         const key = and(
           eq(watchCoverage.userId, userId),
