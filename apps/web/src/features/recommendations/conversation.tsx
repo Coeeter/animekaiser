@@ -350,16 +350,26 @@ function MessageView({
     )
   if (message.status === "pending")
     return (
-      <div
-        className="flex items-center gap-2 text-sm text-muted-foreground"
-        role="status"
-      >
-        <Loader2 className="size-4 animate-spin" />
-        {message.recapRequest ? "Researching sources…" : "Thinking…"}
-        <Button size="xs" variant="ghost" onClick={onStop}>
-          <Square data-icon="inline-start" />
-          Stop
-        </Button>
+      <div className="flex flex-col gap-2">
+        {message.content ? (
+          <AssistantMarkdown>{message.content}</AssistantMarkdown>
+        ) : null}
+        <div
+          className="flex items-center gap-2 text-sm text-muted-foreground"
+          role="status"
+        >
+          <Loader2 className="size-4 animate-spin" />
+          {message.activity ??
+            (message.content
+              ? "Writing…"
+              : message.recapRequest
+                ? "Researching sources…"
+                : "Thinking…")}
+          <Button size="xs" variant="ghost" onClick={onStop}>
+            <Square data-icon="inline-start" />
+            Stop
+          </Button>
+        </div>
       </div>
     )
   if (message.status !== "complete")

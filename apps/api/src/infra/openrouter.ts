@@ -238,7 +238,7 @@ export const OpenRouterLive = Layer.effect(
           const report = (next: AgentProgress, force: boolean) => {
             const now = Date.now()
             progress = next
-            if (!request.onProgress || (!force && now - reportedAt < 800))
+            if (!request.onProgress || (!force && now - reportedAt < 250))
               return Effect.void
             reportedAt = now
             return request.onProgress(next)
