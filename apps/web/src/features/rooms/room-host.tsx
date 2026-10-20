@@ -2,6 +2,7 @@ import type {
   AnimeItem,
   AnimeLibraryMetadata,
   RoomOperationError,
+  RoomPlayback,
   StreamAudio,
 } from "@animekaiser/domain"
 import { Button } from "@animekaiser/ui/components/button"
@@ -137,6 +138,13 @@ function ActiveRoom({ roomId }: { roomId: string }) {
   const record = useAtomSet(recordRoomViewingAtom, { mode: "promiseExit" })
   const convert = useAtomSet(convertRoomGuestAtom, { mode: "promiseExit" })
 
+  const [playbackIntent, setPlaybackIntent] = useState<{
+    id: string
+    selectionRevision: number
+    basePositionAt: number
+    playback: RoomPlayback
+    acknowledged: boolean
+  } | null>(null)
   const state = live?.state ?? null
   const selection = state?.selection ?? null
   const serverKey = `${roomId}:${selection?.revision ?? 0}`
@@ -199,11 +207,24 @@ function ActiveRoom({ roomId }: { roomId: string }) {
     state.hostAwaySince !== null &&
     Date.now() + clockOffset - state.hostAwaySince > hostGraceMs
 
+  // Keep the host's local command in effect until its acknowledgement and
+  // a newer server anchor arrive; an older snapshot must not undo the click.
+  const pendingPlayback =
+    playbackIntent &&
+    selection &&
+    state.you.canControlPlayback &&
+    playbackIntent.selectionRevision === selection.revision &&
+    (!playbackIntent.acknowledged ||
+      state.playback.positionAt === playbackIntent.basePositionAt)
+      ? playbackIntent.playback
+      : null
+  const localPlayback = pendingPlayback ?? state.playback
+
   const controller: RoomPlayerController | null = selection
     ? {
         roomId,
         selectionRevision: selection.revision,
-        playback: state.playback,
+        playback: localPlayback,
         clockOffset,
         canControl: state.you.canControlPlayback,
         isHost: state.you.isHost,
@@ -213,14 +234,39 @@ function ActiveRoom({ roomId }: { roomId: string }) {
         hostAway,
         hostReconnecting: state.hostAwaySince !== null && !hostAway,
         panel: <RoomPanel roomId={roomId} variant="rail" />,
-        command: (action) =>
-          void command({
-            payload: {
-              roomId,
-              selectionRevision: selection.revision,
-              action,
+        command: (action) => {
+          const id = crypto.randomUUID()
+          setPlaybackIntent({
+            id,
+            selectionRevision: selection.revision,
+            basePositionAt: state.playback.positionAt,
+            acknowledged: false,
+            playback: {
+              ...localPlayback,
+              positionSeconds: action.positionSeconds,
+              positionAt: Date.now() + clockOffset,
+              ...(action._tag === "Play"
+                ? { playing: true }
+                : action._tag === "Pause"
+                  ? { playing: false }
+                  : action._tag === "Rate"
+                    ? { rate: action.rate }
+                    : {}),
             },
-          }).then(toastRoomFailure),
+          })
+          void command({
+            payload: { roomId, selectionRevision: selection.revision, action },
+          }).then((exit) => {
+            toastRoomFailure(exit)
+            setPlaybackIntent((current) =>
+              current?.id !== id
+                ? current
+                : Exit.isFailure(exit)
+                  ? null
+                  : { ...current, acknowledged: true }
+            )
+          })
+        },
         selectEpisode: (episode, audio, options) =>
           void select({
             payload: {
