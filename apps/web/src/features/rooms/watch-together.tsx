@@ -5,11 +5,19 @@ import type {
   StreamProviderId,
 } from "@animekaiser/domain"
 import { Button } from "@animekaiser/ui/components/button"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@animekaiser/ui/components/dialog"
 import { useAtomValue } from "@effect/atom-react"
-import { Link } from "@tanstack/react-router"
+import { Link, useRouterState } from "@tanstack/react-router"
 import * as AsyncResult from "effect/reactivity/AsyncResult"
 import { Users } from "lucide-react"
-import type { ComponentProps } from "react"
+import type { ComponentProps, ReactNode } from "react"
 import { useState } from "react"
 import { getAnimeTitle } from "../anime/common/title"
 import { sessionAtom } from "../auth/atoms"
@@ -27,6 +35,41 @@ type ButtonProps = Pick<
 
 function useSignedIn() {
   return AsyncResult.getOrElse(useAtomValue(sessionAtom), () => null) !== null
+}
+
+function SignInToWatchTogether({
+  children,
+  ...button
+}: ButtonProps & { children: ReactNode }) {
+  const [open, setOpen] = useState(false)
+  const redirect = useRouterState({ select: (state) => state.location.href })
+  return (
+    <>
+      <Button {...button} onClick={() => setOpen(true)}>
+        {children}
+      </Button>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Watch together</DialogTitle>
+            <DialogDescription>
+              Sign in to create a room and watch in sync with friends.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button asChild variant="outline">
+              <Link to="/register">Create account</Link>
+            </Button>
+            <Button asChild>
+              <Link to="/login" search={{ redirect }}>
+                Sign in
+              </Link>
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
+  )
 }
 
 export function WatchTogetherButton({
@@ -60,12 +103,10 @@ export function WatchTogetherButton({
 
   if (!signedIn)
     return (
-      <Button asChild variant="outline" {...button}>
-        <Link to="/login" search={{ redirect: `/series/${anime.malId}` }}>
-          <Users data-icon="inline-start" />
-          Watch together
-        </Link>
-      </Button>
+      <SignInToWatchTogether variant="outline" {...button}>
+        <Users data-icon="inline-start" />
+        Watch together
+      </SignInToWatchTogether>
     )
 
   return (
@@ -123,7 +164,17 @@ export function PlayerWatchTogether({
 }) {
   const signedIn = useSignedIn()
   const [position, setPosition] = useState<number | null>(null)
-  if (!signedIn) return null
+  if (!signedIn)
+    return (
+      <SignInToWatchTogether
+        variant={variant}
+        size={size}
+        className={className}
+      >
+        <Users />
+        <span>Watch together</span>
+      </SignInToWatchTogether>
+    )
   return (
     <>
       <Button
