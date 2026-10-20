@@ -145,11 +145,3 @@
     scroll-snap-align: start;
   }
 }
-
-@layer base {
-  /* The player and any element that owns touch gestures must not also trigger
-     the browser's pull-to-refresh / overscroll chrome. */
-  html {
-    overscroll-behavior-y: none;
-  }
-}
