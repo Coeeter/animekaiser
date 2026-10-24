@@ -275,7 +275,7 @@ function SeriesDetail({
                 }
                 className="max-w-full min-w-0 gap-4"
               >
-                <div className="sticky top-14 z-20 -mx-4 flex h-11 items-center bg-background/90 px-4 backdrop-blur-md md:top-0 md:-mx-6 md:px-6">
+                <div className="sticky top-(--mobile-header-height) z-20 transition-[top] duration-300 -mx-4 flex h-11 items-center bg-background/90 px-4 backdrop-blur-md md:top-0 md:-mx-6 md:px-6">
                   <TabsList
                     variant="line"
                     className="max-w-full justify-start overflow-x-auto"

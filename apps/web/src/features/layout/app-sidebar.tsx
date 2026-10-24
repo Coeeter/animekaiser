@@ -303,7 +303,14 @@ export function AppSidebar({ children }: { children: ReactNode }) {
         </SidebarFooter>
         <SidebarRail />
       </Sidebar>
-      <SidebarInset className="min-h-svh bg-transparent">
+      <SidebarInset
+        className={cn(
+          "min-h-svh bg-transparent",
+          scroll.scrollingDown
+            ? "[--mobile-header-height:0px]"
+            : "[--mobile-header-height:3.5rem] phone-landscape:[--mobile-header-height:2.75rem]"
+        )}
+      >
         {isWatchRoute ? null : (
           <header
             className={cn(

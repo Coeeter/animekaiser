@@ -26,7 +26,7 @@ export function SearchPage({ query }: { query: string }) {
 
   return (
     <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 pb-10">
-      <div className="sticky top-14 z-30 -mb-2 bg-background/85 px-4 pt-3 pb-3 backdrop-blur-xl md:top-0 md:px-6 md:pt-6">
+      <div className="sticky top-(--mobile-header-height) z-30 transition-[top] duration-300 -mb-2 bg-background/85 px-4 pt-3 pb-3 backdrop-blur-xl md:top-0 md:px-6 md:pt-6">
         <DebouncedSearchInput
           committed={trimmed}
           onCommit={(next) =>
