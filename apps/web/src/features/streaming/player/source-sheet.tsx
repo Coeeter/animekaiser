@@ -232,7 +232,11 @@ function SourceServers({
               provider: playback.provider,
               episode: playback.episode,
               audio: playback.audio,
-              serverId: server.id,
+              serverId:
+                server.id === playback.server.id &&
+                playback.provider !== selected.provider
+                  ? undefined
+                  : server.id,
             })
             onClose()
           }}

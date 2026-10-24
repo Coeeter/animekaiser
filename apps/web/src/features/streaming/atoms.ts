@@ -67,13 +67,13 @@ export const streamPlaybackAtom = (
   audio: StreamAudio,
   serverId?: string | undefined
 ) =>
-  KaiserRpcClient.query("GetStreamPlayback", {
-    malId,
-    provider,
-    episodeId,
-    audio,
-    serverId,
-  })
+  KaiserRpcClient.query(
+    "GetStreamPlayback",
+    { malId, provider, episodeId, audio, serverId },
+    // Resolving a stream takes seconds, and the source sheet resolves the same
+    // playback the page is about to load.
+    { timeToLive: "5 minutes" }
+  )
 
 export type WatchTarget = {
   malId: number
