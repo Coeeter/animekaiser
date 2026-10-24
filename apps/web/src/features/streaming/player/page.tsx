@@ -822,6 +822,7 @@ function StreamPlayer({
   const theater =
     mode === "full" &&
     !fullscreen &&
+    !isMobile &&
     room === null &&
     preferences.viewMode === "theater"
   const roomLayout = room !== null && mode === "full" && !fullscreen
@@ -859,13 +860,13 @@ function StreamPlayer({
             theater
               ? "aspect-video w-full shrink-0 md:rounded-2xl"
               : mode === "full" && !fullscreen
-                ? "aspect-video w-full shrink-0 md:aspect-auto md:min-h-0 md:flex-1"
+                ? "aspect-video w-full shrink-0 phone-landscape:aspect-auto phone-landscape:h-dvh md:aspect-auto md:min-h-0 md:flex-1"
                 : "min-h-0 flex-1",
             mode === "full" &&
               !fullscreen &&
               (theater || roomLayout
                 ? "sticky top-0 z-20 md:relative md:z-auto"
-                : "sticky top-0 z-20 md:static")
+                : "sticky top-0 z-20 phone-landscape:relative md:static")
           )}
           onPointerMove={revealControls}
           onPointerDown={revealControls}
@@ -892,7 +893,7 @@ function StreamPlayer({
             />
           ) : null}
 
-          {mode === "full" ? (
+          {mode === "full" && !isMobile ? (
             <PlayerCenterIndicator
               icon={centerIndicatorIcon}
               visible={!media.playing || mediaLoading}
@@ -904,6 +905,7 @@ function StreamPlayer({
           <PlayerSubtitleOverlay
             html={activeSubtitle}
             mode={mode}
+            compact={isMobile}
             controlsVisible={controlsVisible}
             preferences={preferences}
           />
@@ -911,14 +913,15 @@ function StreamPlayer({
           {mode === "full" ? (
             <div
               className={cn(
-                "pointer-events-none absolute right-4 z-30 flex gap-2 transition-[bottom] duration-200 md:right-8",
-                controlsVisible
-                  ? "bottom-14 md:bottom-36"
-                  : "bottom-4 md:bottom-10"
+                "pointer-events-none absolute z-30 flex gap-2 transition-[bottom] duration-200",
+                isMobile
+                  ? cn("right-3", controlsVisible ? "bottom-11" : "bottom-3")
+                  : cn("right-8", controlsVisible ? "bottom-36" : "bottom-10")
               )}
             >
               <PlayerSkipButton
                 kind="intro"
+                compact={isMobile}
                 segment={playback.intro}
                 currentTime={media.currentTime}
                 duration={media.duration}
@@ -926,6 +929,7 @@ function StreamPlayer({
               />
               <PlayerSkipButton
                 kind="outro"
+                compact={isMobile}
                 segment={playback.outro}
                 currentTime={media.currentTime}
                 duration={media.duration}
@@ -943,47 +947,48 @@ function StreamPlayer({
           ) : null}
 
           {mode === "full" ? (
-            <PlayerMobileControls
-              playback={playback}
-              currentTime={media.currentTime}
-              duration={media.duration}
-              bufferedEnd={media.bufferedEnd}
-              onSeek={controls.seekTo}
-              live={live}
-              playing={media.playing}
-              loading={mediaLoading}
-              fullscreen={fullscreen}
-              onTogglePlayback={controls.togglePlayback}
-              onToggleFullscreen={toggleFullscreen}
-              onSeekBy={controls.seekBy}
-              controlsVisible={controlsVisible}
-              playerPortalContainer={playerPortalContainer}
-              onOpenSources={() => setServersOpen(true)}
-            />
-          ) : null}
-
-          {mode === "full" ? (
-            <PlayerDesktopControls
-              playback={playback}
-              currentTime={media.currentTime}
-              duration={media.duration}
-              bufferedEnd={media.bufferedEnd}
-              onSeek={controls.seekTo}
-              live={live}
-              playing={media.playing}
-              loading={mediaLoading}
-              muted={media.muted}
-              volume={media.volume}
-              fullscreen={fullscreen}
-              onTogglePlayback={controls.togglePlayback}
-              onToggleMute={media.toggleMute}
-              onVolumeChange={media.setVideoVolume}
-              onToggleFullscreen={toggleFullscreen}
-              onOpenEpisodes={openEpisodes}
-              onOpenServers={() => setServersOpen(true)}
-              controlsVisible={controlsVisible}
-              playerPortalContainer={playerPortalContainer}
-            />
+            isMobile ? (
+              <PlayerMobileControls
+                playback={playback}
+                currentTime={media.currentTime}
+                duration={media.duration}
+                bufferedEnd={media.bufferedEnd}
+                onSeek={controls.seekTo}
+                live={live}
+                playing={media.playing}
+                loading={mediaLoading}
+                fullscreen={fullscreen}
+                onTogglePlayback={controls.togglePlayback}
+                onToggleFullscreen={toggleFullscreen}
+                onSeekBy={controls.seekBy}
+                controlsVisible={controlsVisible}
+                playerPortalContainer={playerPortalContainer}
+                onOpenEpisodes={openEpisodes}
+                onOpenSources={() => setServersOpen(true)}
+              />
+            ) : (
+              <PlayerDesktopControls
+                playback={playback}
+                currentTime={media.currentTime}
+                duration={media.duration}
+                bufferedEnd={media.bufferedEnd}
+                onSeek={controls.seekTo}
+                live={live}
+                playing={media.playing}
+                loading={mediaLoading}
+                muted={media.muted}
+                volume={media.volume}
+                fullscreen={fullscreen}
+                onTogglePlayback={controls.togglePlayback}
+                onToggleMute={media.toggleMute}
+                onVolumeChange={media.setVideoVolume}
+                onToggleFullscreen={toggleFullscreen}
+                onOpenEpisodes={openEpisodes}
+                onOpenServers={() => setServersOpen(true)}
+                controlsVisible={controlsVisible}
+                playerPortalContainer={playerPortalContainer}
+              />
+            )
           ) : (
             <PlayerMiniControls
               playback={playback}

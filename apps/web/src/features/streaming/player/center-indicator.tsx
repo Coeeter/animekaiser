@@ -13,7 +13,7 @@ export function PlayerCenterIndicator({
   return (
     <div
       className={cn(
-        "pointer-events-none absolute top-1/2 left-1/2 z-10 hidden size-20 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full bg-black/55 text-white shadow-2xl ring-1 ring-white/15 backdrop-blur-md transition-opacity duration-200 md:grid md:size-24 [&_svg]:size-9 md:[&_svg]:size-11",
+        "pointer-events-none absolute top-1/2 left-1/2 z-10 grid size-24 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full bg-black/55 text-white shadow-2xl ring-1 ring-white/15 backdrop-blur-md transition-opacity duration-200 [&_svg]:size-11",
         !visible && "opacity-0"
       )}
     >

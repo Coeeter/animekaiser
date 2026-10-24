@@ -17,7 +17,7 @@ import {
   SheetTrigger,
 } from "@animekaiser/ui/components/sheet"
 import { Switch } from "@animekaiser/ui/components/switch"
-import { useIsMobile } from "@animekaiser/ui/hooks/use-mobile"
+import { useIsMobile, useMediaQuery } from "@animekaiser/ui/hooks/use-mobile"
 import { cn } from "@animekaiser/ui/lib/utils"
 import { useAtomSet, useAtomValue } from "@effect/atom-react"
 import { Link } from "@tanstack/react-router"
@@ -29,6 +29,7 @@ import {
   Gauge,
   ListVideo,
   Play,
+  Server,
   Settings,
   SkipForward,
   Volume2,
@@ -37,7 +38,8 @@ import type { ReactNode } from "react"
 import { useId, useState } from "react"
 import { toast } from "sonner"
 import { expectedRoomPosition, useRoomPlayer } from "../../rooms/room-player"
-import { audioLabel, speedOptions } from "../player-format"
+import { providerLabelAtom } from "../atoms"
+import { audioLabel, episodeLabel, speedOptions } from "../player-format"
 import {
   playerPreferencesAtom,
   updatePlayerPreferencesAtom,
@@ -55,9 +57,13 @@ import {
 export function PlayerSettingsPopover({
   portalContainer,
   playback,
+  onOpenEpisodes,
+  onOpenSources,
 }: {
   portalContainer: HTMLElement | null
   playback: StreamPlayback
+  onOpenEpisodes?: () => void
+  onOpenSources?: () => void
 }) {
   const playerUi = useAtomValue(playerUiAtom)
   const updatePlayerUi = useAtomSet(updatePlayerUiAtom)
@@ -71,6 +77,8 @@ export function PlayerSettingsPopover({
   const preferences = useAtomValue(playerPreferencesAtom)
   const updatePreferences = useAtomSet(updatePlayerPreferencesAtom)
   const isMobile = useIsMobile()
+  const landscape = useMediaQuery("(orientation: landscape)")
+  const providerName = useAtomValue(providerLabelAtom(playback.provider))
   const room = useRoomPlayer()
   const [view, setView] = useState<
     "main" | "quality" | "captions" | "speed" | "audio"
@@ -107,6 +115,11 @@ export function PlayerSettingsPopover({
     setView("main")
   }
 
+  const openSheet = (openTarget: () => void) => {
+    setOpen(false)
+    openTarget()
+  }
+
   const trigger = (
     <Button
       variant="ghost"
@@ -122,6 +135,25 @@ export function PlayerSettingsPopover({
     <div className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain">
       {view === "main" ? (
         <div className="flex flex-col py-2">
+          {onOpenEpisodes ? (
+            <SettingNavRow
+              icon={<ListVideo />}
+              label="Episodes"
+              value={episodeLabel(playback.episode)}
+              onClick={() => openSheet(onOpenEpisodes)}
+            />
+          ) : null}
+          {onOpenSources ? (
+            <SettingNavRow
+              icon={<Server />}
+              label="Source"
+              value={`${providerName} · ${playback.server.name}`}
+              onClick={() => openSheet(onOpenSources)}
+            />
+          ) : null}
+          {onOpenEpisodes || onOpenSources ? (
+            <div className="my-2 h-px bg-white/10" />
+          ) : null}
           <PlayerPreferenceSwitch
             icon={<Play />}
             label="Autoplay"
@@ -307,9 +339,9 @@ export function PlayerSettingsPopover({
         <SheetTrigger asChild>{trigger}</SheetTrigger>
         <SheetContent
           portalContainer={portalContainer}
-          side="bottom"
+          side={landscape ? "right" : "bottom"}
           showCloseButton={false}
-          className="gap-0 overflow-hidden border-white/10 bg-black/95 p-0 pb-[env(safe-area-inset-bottom)] text-white shadow-2xl backdrop-blur-xl [&_[data-slot=sheet-handle]]:bg-white/25"
+          className="gap-0 overflow-hidden border-white/10 bg-black/95 p-0 pb-[env(safe-area-inset-bottom)] text-white shadow-2xl backdrop-blur-xl data-[side=right]:w-80 [&_[data-slot=sheet-handle]]:bg-white/25"
         >
           <SheetTitle className="sr-only">Player settings</SheetTitle>
           <SheetDescription className="sr-only">
@@ -329,7 +361,7 @@ export function PlayerSettingsPopover({
         align="end"
         side="top"
         sideOffset={12}
-        className="max-h-[calc(100dvh-6rem)] w-[min(23rem,calc(100vw-1.5rem))] gap-0 overflow-hidden rounded-xl border border-white/10 bg-black/90 p-0 text-white shadow-2xl ring-white/10 backdrop-blur-md md:max-h-none"
+        className="max-h-[calc(100dvh-6rem)] w-[min(23rem,calc(100vw-1.5rem))] gap-0 overflow-hidden rounded-xl border border-white/10 bg-black/90 p-0 text-white shadow-2xl ring-white/10 backdrop-blur-md"
       >
         {content}
       </PopoverContent>

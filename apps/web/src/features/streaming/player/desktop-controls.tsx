@@ -1,6 +1,5 @@
 import type { StreamPlayback } from "@animekaiser/domain"
 import { Button } from "@animekaiser/ui/components/button"
-import { useIsMobile } from "@animekaiser/ui/hooks/use-mobile"
 import { cn } from "@animekaiser/ui/lib/utils"
 import { useAtomSet, useAtomValue } from "@effect/atom-react"
 import { Link } from "@tanstack/react-router"
@@ -74,13 +73,12 @@ export function PlayerDesktopControls({
   const providerName = useAtomValue(providerLabelAtom(playback.provider))
   const preferences = useAtomValue(playerPreferencesAtom)
   const updatePreferences = useAtomSet(updatePlayerPreferencesAtom)
-  const isMobile = useIsMobile()
   const displayTitle = episodeTitle(playback.episode)
 
   return (
     <div
       className={cn(
-        "absolute inset-x-0 bottom-0 z-20 hidden flex-col gap-2 bg-gradient-to-t from-black via-black/75 to-transparent p-3 transition-opacity duration-200 sm:gap-3 sm:p-4 md:flex",
+        "absolute inset-x-0 bottom-0 z-20 flex flex-col gap-3 bg-gradient-to-t from-black via-black/75 to-transparent p-4 transition-opacity duration-200",
         controlsVisible ? "opacity-100" : "pointer-events-none opacity-0"
       )}
     >
@@ -201,9 +199,7 @@ export function PlayerDesktopControls({
           </div>
         </div>
         <div className="flex items-center gap-2">
-          {isMobile ||
-          fullscreen ||
-          preferences.viewMode === "theater" ? null : (
+          {fullscreen || preferences.viewMode === "theater" ? null : (
             <Button
               variant="ghost"
               size="icon-sm"
@@ -214,12 +210,10 @@ export function PlayerDesktopControls({
               <span className="sr-only">Theater mode</span>
             </Button>
           )}
-          {isMobile ? null : (
-            <PlayerSettingsPopover
-              portalContainer={playerPortalContainer}
-              playback={playback}
-            />
-          )}
+          <PlayerSettingsPopover
+            portalContainer={playerPortalContainer}
+            playback={playback}
+          />
           <Button
             variant="ghost"
             size="icon-sm"
