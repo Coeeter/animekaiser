@@ -83,7 +83,7 @@ No separate queue for background work — it's dispatched through Postgres
 
 ## Tech stack
 
-- **Runtime / tooling:** Bun 1.4.3, Turborepo, TypeScript 7, Biome
+- **Runtime / tooling:** Bun 1.4.4, Turborepo, TypeScript 7, Biome
 - **Backend:** Effect 3, `@effect/platform` HTTP, `@effect/rpc`, Drizzle ORM, Postgres 17, Redis 8
 - **Auth:** Better Auth (email/password, passkeys, OAuth account linking)
 - **Frontend:** TanStack Start, React 19, TanStack Router, `effect-atom`, Tailwind
@@ -94,7 +94,7 @@ No separate queue for background work — it's dispatched through Postgres
 
 ### Prerequisites
 
-- Bun 1.4.3 or newer
+- Bun 1.4.4 or newer
 - Node.js 20 or newer
 - Docker, or a local Postgres 17 and Redis 8
 
