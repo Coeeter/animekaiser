@@ -10,11 +10,14 @@ export const playbackSessionAtom = Atom.make<StreamPlaybackInput | null>(
   null
 ).pipe(Atom.keepAlive)
 
+// The session is only set when this atom is built, so it must not outlive the
+// route: a cached atom would leave the previous episode playing when the reader
+// returns to an episode they opened earlier.
 export const mountPlaybackSessionAtom = Atom.family(
   (input: StreamPlaybackInput) =>
     Atom.make((get) => {
       get.set(playbackSessionAtom, input)
-    })
+    }).pipe(Atom.setIdleTTL(0))
 )
 
 export function PlaybackSessionHost() {
