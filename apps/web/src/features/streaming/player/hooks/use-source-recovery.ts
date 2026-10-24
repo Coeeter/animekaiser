@@ -13,6 +13,7 @@ export function useSourceRecovery({
   onChoose,
   revision,
   lastPlayback,
+  askBeforeSwitching,
 }: {
   input: StreamPlaybackInput
   number: number | null
@@ -20,10 +21,12 @@ export function useSourceRecovery({
   onChoose: (choice: SourceChoice) => void
   revision?: number
   lastPlayback: StreamPlayback | null
+  askBeforeSwitching: boolean
 }) {
   const findNext = useAtomSet(nextSourceAtom, { mode: "promiseExit" })
   const [exhausted, setExhausted] = useState(false)
   const [recovering, setRecovering] = useState(false)
+  const [suggestion, setSuggestion] = useState<SourceChoice | null>(null)
   const context = `${input.malId}:${number}:${input.audio}:${revision ?? "solo"}`
   const inputKey = `${input.provider}:${input.episodeId}:${input.serverId ?? "default"}`
   const current = useRef({ context, inputKey, onChoose })
@@ -39,6 +42,7 @@ export function useSourceRecovery({
   useEffect(() => {
     setExhausted(false)
     setRecovering(false)
+    setSuggestion(null)
   }, [context, inputKey])
 
   const recover = async (playback?: StreamPlayback) => {
@@ -74,7 +78,8 @@ export function useSourceRecovery({
     }
     attempts.current.providers.add(input.provider)
     setRecovering(true)
-    toast.message("Trying another provider for this episode…")
+    if (!askBeforeSwitching)
+      toast.message("Trying another provider for this episode…")
     const exit = await findNext({
       malId: input.malId,
       number: episodeNumber,
@@ -89,7 +94,8 @@ export function useSourceRecovery({
       return
     setRecovering(false)
     if (Exit.isSuccess(exit) && exit.value) {
-      current.current.onChoose(exit.value)
+      if (askBeforeSwitching) setSuggestion(exit.value)
+      else current.current.onChoose(exit.value)
     } else {
       setExhausted(true)
       toast.error(
@@ -107,6 +113,19 @@ export function useSourceRecovery({
     attempts.current = { context, providers: new Set(), inputs: new Set() }
     setExhausted(false)
     setRecovering(false)
+    setSuggestion(null)
   }
-  return { recover, exhausted, recovering, reset }
+  const acceptSuggestion = () => {
+    if (!suggestion) return
+    setSuggestion(null)
+    current.current.onChoose(suggestion)
+  }
+  return {
+    recover,
+    exhausted,
+    recovering,
+    suggestion,
+    acceptSuggestion,
+    reset,
+  }
 }

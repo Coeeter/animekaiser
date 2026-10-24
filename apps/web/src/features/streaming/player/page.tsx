@@ -12,7 +12,7 @@ import { Link, useNavigate } from "@tanstack/react-router"
 import * as AsyncResult from "effect/reactivity/AsyncResult"
 import * as Atom from "effect/reactivity/Atom"
 import { ListVideo, Server } from "lucide-react"
-import type { MouseEvent, PointerEvent } from "react"
+import type { MouseEvent, PointerEvent, ReactNode } from "react"
 import { useEffect, useLayoutEffect, useRef, useState } from "react"
 import { toast } from "sonner"
 import { DataError } from "../../../components/data-error"
@@ -67,6 +67,7 @@ import { PlayerMobilePanel } from "./mobile-panel"
 import { PlayerNextSeasonCard } from "./next-season-card"
 import { StreamPlayerPendingPage } from "./pending-page"
 import { PlayerShell } from "./player-shell"
+import { SourceFailurePanel } from "./source-failure"
 import { SourceSheet } from "./source-sheet"
 import { playerCaptionAtom, playerUiAtom, updatePlayerUiAtom } from "./ui-state"
 import {
@@ -190,7 +191,23 @@ export function StreamPlayerPage({
     onChoose: chooseSource,
     revision: room?.selectionRevision,
     lastPlayback: lastPlayback.current,
+    askBeforeSwitching: room === null,
   })
+  const retrySource = () => {
+    recovery.reset()
+    refresh()
+  }
+  const failurePanel = (
+    <SourceFailurePanel
+      provider={input.provider}
+      episodeNumber={number}
+      recovering={recovery.recovering}
+      suggestion={recovery.suggestion}
+      exhausted={recovery.exhausted}
+      onAccept={recovery.acceptSuggestion}
+      onRetry={retrySource}
+    />
+  )
 
   return AsyncResult.builder(result)
     .onInitialOrWaiting(() =>
@@ -200,19 +217,19 @@ export function StreamPlayerPage({
       mode === "mini" ? null : (
         <>
           <PlayerShell className="min-h-[70svh] justify-center md:min-h-0">
-            <div className="m-auto flex w-full max-w-xl flex-col gap-4 p-4">
-              <DataError
-                title={
-                  recovery.recovering
-                    ? "Trying another source…"
-                    : "Unable to load this stream"
-                }
-                description="The selected server or provider may be unavailable."
-                onRetry={() => {
-                  recovery.reset()
-                  refresh()
-                }}
-              />
+            <div className="m-auto flex w-full max-w-xl flex-col items-center gap-4 p-4">
+              {room ? null : failurePanel}
+              {room ? (
+                <DataError
+                  title={
+                    recovery.recovering
+                      ? "Trying another source…"
+                      : "Unable to load this stream"
+                  }
+                  description="The selected server or provider may be unavailable."
+                  onRetry={retrySource}
+                />
+              ) : null}
               <div className="flex flex-wrap justify-center gap-2">
                 {room ? (
                   <Button onClick={() => room.setServerId(undefined)}>
@@ -271,14 +288,6 @@ export function StreamPlayerPage({
           {mode === "full" ? (
             <title>{`${title} – Episode ${playback.episode.number} | AnimeKaiser`}</title>
           ) : null}
-          {recovery.exhausted ? (
-            <p
-              role="alert"
-              className="p-3 text-center text-sm text-muted-foreground"
-            >
-              No source could play this episode. Choose a source to try again.
-            </p>
-          ) : null}
           <StreamPlayer
             input={input}
             playback={playback}
@@ -301,6 +310,16 @@ export function StreamPlayerPage({
               )
                 refresh()
             }}
+            overlay={
+              !room &&
+              (recovery.recovering ||
+                recovery.suggestion ||
+                recovery.exhausted) ? (
+                <div className="absolute inset-0 z-40 grid place-items-center bg-black/60 p-4">
+                  {failurePanel}
+                </div>
+              ) : null
+            }
             onExhausted={(seconds) => {
               sourcePosition.current = {
                 malId: input.malId,
@@ -350,12 +369,14 @@ function StreamPlayer({
   onChooseSource,
   onExhausted,
   sourcePosition,
+  overlay,
 }: {
   input: StreamPlaybackInput
   playback: StreamPlayback
   sourcePosition?: number
   onChooseSource: (choice: SourceChoice, seconds?: number) => void
   onExhausted: (seconds: number) => void
+  overlay?: ReactNode
   loading: boolean
   mode: "full" | "mini"
   onClose?: () => void
@@ -889,6 +910,8 @@ function StreamPlayer({
             {...media.videoHandlers}
             onEnded={handleEnded}
           />
+
+          {overlay}
 
           {room ? (
             <RoomPlayerOverlay
