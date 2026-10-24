@@ -428,7 +428,7 @@ function ProviderAvailability({
   malId: number
   provider: StreamProviderId
 }) {
-  const result = useAtomValue(streamAvailabilityAtom(malId))
+  const result = useAtomValue(streamAvailabilityAtom(malId, provider))
   const label = AsyncResult.builder(result)
     .onSuccess((items) => {
       const entry = items.find((item) => item.provider === provider)

@@ -29,10 +29,13 @@ export const providerLabelAtom = Atom.family((provider: StreamProviderId) =>
   })
 )
 
-export const streamAvailabilityAtom = (malId: number) =>
+export const streamAvailabilityAtom = (
+  malId: number,
+  provider: StreamProviderId
+) =>
   KaiserRpcClient.query(
     "ListStreamAvailability",
-    { malId },
+    { malId, provider },
     { timeToLive: "10 minutes" }
   )
 

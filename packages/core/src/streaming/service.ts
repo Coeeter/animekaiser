@@ -238,14 +238,17 @@ export class StreamingService extends Context.Service<StreamingService>()(
         return { ...playback, episode: withMetadata(playback.episode, artwork) }
       })
 
-      // Opened on demand from the provider picker: it asks every provider for
-      // its episode list, which the streaming service caches.
+      // Opened on demand from the provider picker: it asks each provider for
+      // its episode list, which the streaming service caches. The picker asks
+      // per provider so a slow one doesn't hold back the others' counts.
       const listAvailability = Effect.fn("StreamingService.listAvailability")(
-        function* (malId: number) {
+        function* (malId: number, only?: StreamProviderId) {
           const anime = yield* getAnime(malId)
           const providers = yield* streaming.listProviders
           return yield* Effect.forEach(
-            providers,
+            only === undefined
+              ? providers
+              : providers.filter((provider) => provider.id === only),
             (provider) =>
               episodesFor(anime, provider.id, provider.label).pipe(
                 Effect.map(

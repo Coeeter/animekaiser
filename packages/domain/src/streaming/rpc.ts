@@ -36,7 +36,10 @@ export class ListStreamEpisodes extends Rpc.make("ListStreamEpisodes", {
 }) {}
 
 export class ListStreamAvailability extends Rpc.make("ListStreamAvailability", {
-  payload: { malId: MalId },
+  payload: {
+    malId: MalId,
+    provider: Schema.optional(StreamProviderId),
+  },
   success: Schema.Array(StreamProviderAvailability),
   error: StreamingUnavailableError,
 }) {}
