@@ -34,29 +34,33 @@ const enterFullscreen = (
   video: HTMLVideoElement,
   autoLandscape: boolean
 ): void => {
+  // Element fullscreen keeps the app's controls and subtitles; only iPhone,
+  // which lacks it, falls back to the native video player.
+  if (document.fullscreenEnabled) {
+    void player.requestFullscreen().then(() => {
+      if (autoLandscape) lockLandscape()
+    })
+    return
+  }
+
   if (
     isWebkitVideo(video) &&
     typeof video.webkitEnterFullscreen === "function"
   ) {
     video.webkitEnterFullscreen()
-    return
   }
-
-  void player.requestFullscreen().then(() => {
-    if (autoLandscape) lockLandscape()
-  })
 }
 
 const exitFullscreen = (video: HTMLVideoElement): void => {
   const webkitDoc = document as WebkitDocument
 
-  if (isWebkitVideo(video) && webkitDoc.webkitFullscreenElement) {
-    video.webkitExitFullscreen?.()
+  if (document.fullscreenElement) {
+    void document.exitFullscreen()
     return
   }
 
-  if (document.fullscreenElement) {
-    void document.exitFullscreen()
+  if (isWebkitVideo(video) && webkitDoc.webkitFullscreenElement) {
+    video.webkitExitFullscreen?.()
   }
 }
 

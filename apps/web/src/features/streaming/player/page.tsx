@@ -56,6 +56,7 @@ import {
   type MiniResizeDirection,
   useMiniPlayerInteraction,
 } from "./hooks/use-mini-interaction"
+import { useNativeSubtitles } from "./hooks/use-native-subtitles"
 import { usePlayerSync } from "./hooks/use-player-sync"
 import { useSourceRecovery } from "./hooks/use-source-recovery"
 import { PlayerMiniControls } from "./mini-controls"
@@ -90,6 +91,8 @@ const defaultCaptionValue = (
 }
 
 const noNextSeasonAtom = Atom.make(AsyncResult.success<NextSeason | null>(null))
+
+const noSubtitleCues: ReadonlyArray<SubtitleCue> = []
 
 export function StreamPlayerPage({
   input,
@@ -567,8 +570,9 @@ function StreamPlayer({
 
   const subtitleCues = AsyncResult.getOrElse(
     useAtomValue(subtitleCuesAtom(selectedCaptionTrack?.file ?? null)),
-    (): ReadonlyArray<SubtitleCue> => []
+    () => noSubtitleCues
   )
+  useNativeSubtitles(media.videoRef, subtitleCues)
   const activeSubtitle = subtitleHtmlAtTime(subtitleCues, media.currentTime)
   const episodeKey = `${playback.provider}:${playback.episode.id}:${playback.audio}`
 

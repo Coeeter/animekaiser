@@ -28,8 +28,10 @@ export function PlayerSubtitleOverlay({
           ? "inset-x-3 bottom-3 line-clamp-2 text-xs"
           : compact
             ? cn(
-                "inset-x-3 text-sm",
-                controlsVisible ? "bottom-10" : "bottom-2"
+                "inset-x-3 text-sm phone-landscape:inset-x-10 phone-landscape:text-base",
+                controlsVisible
+                  ? "bottom-10 phone-landscape:bottom-12"
+                  : "bottom-2 phone-landscape:bottom-4"
               )
             : cn(
                 "inset-x-6 max-w-5xl text-2xl",

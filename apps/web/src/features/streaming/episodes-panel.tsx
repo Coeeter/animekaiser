@@ -316,7 +316,7 @@ function ProviderEpisodes({
       ref={listRef}
       className="flex scroll-mt-28 flex-col gap-3 md:scroll-mt-11"
     >
-      <div className="sticky top-[6.25rem] z-10 -mx-4 flex flex-wrap items-center gap-2 bg-background/90 px-4 py-2 backdrop-blur-md md:top-11 md:-mx-6 md:px-6">
+      <div className="sticky top-[calc(var(--mobile-header-height)+2.75rem)] z-10 transition-[top] duration-300 -mx-4 flex flex-wrap items-center gap-2 bg-background/90 px-4 py-2 backdrop-blur-md md:top-11 md:-mx-6 md:px-6">
         {providerSelector}
         <InputGroup className="order-last h-9 min-w-48 basis-full sm:order-none sm:basis-auto sm:flex-1">
           <InputGroupAddon>

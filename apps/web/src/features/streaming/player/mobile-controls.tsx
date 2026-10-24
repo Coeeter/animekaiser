@@ -56,7 +56,7 @@ export function PlayerMobileControls({
     <>
       <div
         className={cn(
-          "absolute inset-x-0 top-0 z-30 flex items-center gap-1 bg-gradient-to-b from-black/80 to-transparent p-1 pb-4 transition-opacity duration-200",
+          "absolute inset-x-0 top-0 z-30 flex items-center gap-1 bg-gradient-to-b from-black/80 to-transparent p-1 pb-4 transition-opacity phone-landscape:p-2 phone-landscape:pb-8 duration-200",
           controlsVisible ? "opacity-100" : "pointer-events-none opacity-0"
         )}
       >
@@ -72,10 +72,10 @@ export function PlayerMobileControls({
           </Link>
         </Button>
         <div className="min-w-0 flex-1">
-          <p className="truncate text-xs font-medium text-white">
+          <p className="truncate text-xs font-medium text-white phone-landscape:text-sm">
             <AnimeTitle title={playback.anime.title} />
           </p>
-          <p className="truncate text-[11px] leading-tight text-white/55">
+          <p className="truncate text-[11px] leading-tight text-white/70 phone-landscape:text-xs">
             {episodeLabel(playback.episode)}
           </p>
         </div>
@@ -89,14 +89,14 @@ export function PlayerMobileControls({
 
       <div
         className={cn(
-          "pointer-events-none absolute inset-0 z-20 flex items-center justify-center gap-8 transition-opacity duration-200",
+          "pointer-events-none absolute inset-0 z-20 flex items-center justify-center gap-8 transition-opacity duration-200 phone-landscape:gap-14",
           controlsVisible ? "opacity-100 *:pointer-events-auto" : "opacity-0"
         )}
       >
         <Button
           variant="ghost"
           size="icon"
-          className="size-10 rounded-full bg-black/40 text-white backdrop-blur-sm hover:bg-black/60 hover:text-white [&_svg]:size-5"
+          className="size-10 rounded-full bg-black/55 text-white backdrop-blur-sm hover:bg-black/70 hover:text-white phone-landscape:size-12 [&_svg]:size-5 phone-landscape:[&_svg]:size-6"
           onClick={() => onSeekBy(-10)}
         >
           <RotateCcw />
@@ -105,7 +105,7 @@ export function PlayerMobileControls({
         <Button
           variant="ghost"
           size="icon"
-          className="size-12 rounded-full bg-black/50 text-white backdrop-blur-sm hover:bg-black/70 hover:text-white [&_svg]:size-6"
+          className="size-12 rounded-full bg-black/60 text-white backdrop-blur-sm hover:bg-black/75 hover:text-white phone-landscape:size-16 [&_svg]:size-6 phone-landscape:[&_svg]:size-8"
           onClick={onTogglePlayback}
         >
           {loading ? (
@@ -120,7 +120,7 @@ export function PlayerMobileControls({
         <Button
           variant="ghost"
           size="icon"
-          className="size-10 rounded-full bg-black/40 text-white backdrop-blur-sm hover:bg-black/60 hover:text-white [&_svg]:size-5"
+          className="size-10 rounded-full bg-black/55 text-white backdrop-blur-sm hover:bg-black/70 hover:text-white phone-landscape:size-12 [&_svg]:size-5 phone-landscape:[&_svg]:size-6"
           onClick={() => onSeekBy(10)}
         >
           <RotateCw />
@@ -130,7 +130,7 @@ export function PlayerMobileControls({
 
       <div
         className={cn(
-          "absolute inset-x-0 bottom-0 z-30 flex items-center gap-1 bg-gradient-to-t from-black/85 to-transparent px-2 pt-4 transition-opacity duration-200",
+          "absolute inset-x-0 bottom-0 z-30 flex items-center gap-1 bg-gradient-to-t from-black/85 to-transparent px-2 pt-4 transition-opacity phone-landscape:px-3 phone-landscape:pt-8 phone-landscape:pb-1 duration-200",
           controlsVisible ? "opacity-100" : "pointer-events-none opacity-0"
         )}
       >
