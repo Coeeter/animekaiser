@@ -23,6 +23,9 @@ export function useMediaQuery(query: string) {
   )
 }
 
+// Matches the md/max-md variants in globals.css.
 export function useIsMobile() {
-  return useMediaQuery(`(max-width: ${MOBILE_BREAKPOINT - 1}px)`)
+  return useMediaQuery(
+    `(max-width: ${MOBILE_BREAKPOINT - 1}px), (pointer: coarse) and (max-height: 500px)`
+  )
 }

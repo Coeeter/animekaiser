@@ -42,3 +42,8 @@ export const socialLinks: ReadonlyArray<NavItem> = [
   { title: "Rooms", href: "/rooms", icon: Users },
   { title: "Friends", href: "/friends", icon: UserRound },
 ]
+
+export const isPlayerRoute = (pathname: string) =>
+  pathname.startsWith("/watch/") ||
+  pathname.startsWith("/play/") ||
+  pathname.startsWith("/rooms/")

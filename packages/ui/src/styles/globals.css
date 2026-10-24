@@ -5,6 +5,24 @@
 @import "@fontsource-variable/outfit";
 
 @custom-variant dark (&:is(.dark *));
+
+/* A phone on its side is wider than md but must keep the mobile layout.
+   Keep in sync with useIsMobile. */
+@custom-variant md {
+  @media (width >= 48rem) and (not ((pointer: coarse) and (height <= 500px))) {
+    @slot;
+  }
+}
+@custom-variant max-md {
+  @media (width < 48rem), ((pointer: coarse) and (height <= 500px)) {
+    @slot;
+  }
+}
+@custom-variant phone-landscape {
+  @media (pointer: coarse) and (orientation: landscape) and (height <= 500px) {
+    @slot;
+  }
+}
 @source "../../../apps/**/*.{ts,tsx}";
 @source "../../../components/**/*.{ts,tsx}";
 @source "../**/*.{ts,tsx}";

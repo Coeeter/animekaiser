@@ -45,7 +45,13 @@ import { shortcutsAtom, toggleSidebarShortcutAtom } from "../shortcuts/atoms"
 import { formatBinding } from "../shortcuts/shortcuts"
 import { MobileNav } from "./mobile-nav"
 import type { NavItem } from "./nav-links"
-import { mainLinks, personalLinks, socialLinks } from "./nav-links"
+import {
+  isPlayerRoute,
+  mainLinks,
+  personalLinks,
+  socialLinks,
+} from "./nav-links"
+import { pageScrollAtom } from "./page-scroll"
 import { SiteFooter } from "./site-footer"
 
 function NavGroup({
@@ -119,11 +125,6 @@ function MobileSidebarCloser({ pathname }: { pathname: string }) {
   return null
 }
 
-const isPlayerRoute = (pathname: string) =>
-  pathname.startsWith("/watch/") ||
-  pathname.startsWith("/play/") ||
-  pathname.startsWith("/rooms/")
-
 // The player always gets the icon rail; everywhere else uses the reader's own
 // choice, which the player never overwrites. Opening the sidebar on a player
 // page lasts only for that page.
@@ -165,6 +166,7 @@ export function AppSidebar({ children }: { children: ReactNode }) {
   const pathname = useLocation({ select: (l) => l.pathname })
   const searchBinding = useAtomValue(shortcutsAtom).search.at(0)
   const isWatchRoute = isPlayerRoute(pathname)
+  const scroll = useAtomValue(pageScrollAtom)
   const setSearchOpen = useAtomSet(searchOpenAtom)
   const setSettingsSection = useAtomSet(settingsSectionAtom)
   const setSettingsOpen = useAtomSet(settingsOpenAtom)
@@ -303,8 +305,13 @@ export function AppSidebar({ children }: { children: ReactNode }) {
       </Sidebar>
       <SidebarInset className="min-h-svh bg-transparent">
         {isWatchRoute ? null : (
-          <header className="sticky top-0 z-40 border-b border-white/5 bg-background/70 backdrop-blur-xl md:hidden">
-            <div className="flex h-14 items-center gap-2 px-3">
+          <header
+            className={cn(
+              "sticky top-0 z-40 border-b border-white/5 bg-background/70 backdrop-blur-xl transition-transform duration-300 md:hidden",
+              scroll.scrollingDown && "-translate-y-full"
+            )}
+          >
+            <div className="flex h-14 items-center gap-2 px-3 phone-landscape:h-11">
               <Link to="/" className="flex shrink-0 items-center gap-2">
                 <img className="size-8" src="/logo.svg" alt="AnimeKaiser" />
                 <span className="font-heading text-sm font-semibold tracking-wide lowercase">
@@ -351,7 +358,7 @@ export function AppSidebar({ children }: { children: ReactNode }) {
             "flex min-w-0 flex-1 flex-col",
             isWatchRoute
               ? undefined
-              : "pb-[calc(3.5rem+env(safe-area-inset-bottom))] md:pb-0"
+              : "pb-[calc(3.5rem+env(safe-area-inset-bottom))] phone-landscape:pb-[calc(2.75rem+env(safe-area-inset-bottom))] md:pb-0"
           )}
         >
           {isWatchRoute ? (

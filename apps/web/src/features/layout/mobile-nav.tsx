@@ -42,6 +42,8 @@ import { useState } from "react"
 import { sessionAtom } from "../auth/atoms"
 import { displayUsername, userInitials } from "../auth/user"
 import { settingsOpenAtom, settingsSectionAtom } from "../settings/atoms"
+import { isPlayerRoute } from "./nav-links"
+import { pageScrollAtom } from "./page-scroll"
 
 type MoreLink = {
   title: string
@@ -126,12 +128,20 @@ const isRouteActive = (pathname: string, href: string) =>
 export function MobileNav() {
   const pathname = useLocation({ select: (l) => l.pathname })
   const [moreOpen, setMoreOpen] = useState(false)
+  const scroll = useAtomValue(pageScrollAtom)
+  // A rotated phone shows the player edge to edge, so the bar waits until the
+  // page is scrolled past it.
+  const overPlayer = isPlayerRoute(pathname) && !scroll.belowFirstScreen
 
   return (
     <>
       <nav
         aria-label="Primary"
-        className="fixed inset-x-0 bottom-0 z-40 border-t border-white/5 bg-background/85 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl md:hidden"
+        className={cn(
+          "fixed inset-x-0 bottom-0 z-40 border-t border-white/5 bg-background/85 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl transition-transform duration-300 md:hidden",
+          scroll.scrollingDown && !moreOpen && "translate-y-full",
+          overPlayer && "phone-landscape:translate-y-full"
+        )}
       >
         <ul className="grid grid-cols-5">
           <MobileNavTab
@@ -208,7 +218,7 @@ function MobileNavTab({
   )
 
   const className = cn(
-    "relative flex h-full min-h-14 w-full flex-col items-center justify-center gap-1 transition-colors",
+    "relative flex h-full min-h-14 w-full flex-col items-center justify-center gap-1 transition-colors phone-landscape:min-h-11 phone-landscape:flex-row phone-landscape:gap-2",
     active ? "text-primary" : "text-muted-foreground active:text-foreground"
   )
 
