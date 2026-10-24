@@ -46,6 +46,7 @@ import {
   PlayerCenterIndicator,
 } from "./center-indicator"
 import { PlayerDesktopControls } from "./desktop-controls"
+import { PlayerEpisodeRail } from "./episode-rail"
 import { EpisodeSheet } from "./episode-sheet"
 import { useControlsVisibility } from "./hooks/use-controls"
 import { useEpisodeNavigation } from "./hooks/use-episode-navigation"
@@ -59,6 +60,7 @@ import {
 import { useNativeSubtitles } from "./hooks/use-native-subtitles"
 import { usePlayerSync } from "./hooks/use-player-sync"
 import { useSourceRecovery } from "./hooks/use-source-recovery"
+import { PlayerInfoPanel } from "./info-panel"
 import { PlayerMiniControls } from "./mini-controls"
 import { PlayerMobileControls } from "./mobile-controls"
 import { PlayerMobilePanel } from "./mobile-panel"
@@ -66,7 +68,6 @@ import { PlayerNextSeasonCard } from "./next-season-card"
 import { StreamPlayerPendingPage } from "./pending-page"
 import { PlayerShell } from "./player-shell"
 import { SourceSheet } from "./source-sheet"
-import { PlayerTheaterBar } from "./theater-bar"
 import { playerCaptionAtom, playerUiAtom, updatePlayerUiAtom } from "./ui-state"
 import {
   PlayerLoadingToast,
@@ -991,6 +992,7 @@ function StreamPlayer({
                 onOpenServers={() => setServersOpen(true)}
                 controlsVisible={controlsVisible}
                 playerPortalContainer={playerPortalContainer}
+                showHeader={!theater}
               />
             )
           ) : (
@@ -1016,14 +1018,25 @@ function StreamPlayer({
               ))
             : null}
         </main>
-        {theater ? <PlayerTheaterBar playback={playback} /> : null}
+        {theater ? (
+          <PlayerInfoPanel
+            playback={playback}
+            currentTime={media.currentTime}
+            previousEpisode={previousEpisode}
+            onNext={goNext}
+            nextLabel={nextEpisode || !nextSeason ? "Next" : "Next season"}
+            onNavigateToEpisode={navigateToEpisode}
+            onOpenSources={() => setServersOpen(true)}
+          />
+        ) : null}
       </div>
 
       {roomLayout ? room?.panel : null}
 
-      {mode === "full" && !fullscreen && !room ? (
+      {theater ? (
+        <PlayerEpisodeRail playback={playback} episodes={providerEpisodes} />
+      ) : mode === "full" && !fullscreen && !room ? (
         <PlayerMobilePanel
-          rail={theater}
           playback={playback}
           currentTime={media.currentTime}
           episodes={providerEpisodes}

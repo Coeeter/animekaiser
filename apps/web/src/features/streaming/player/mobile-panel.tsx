@@ -44,9 +44,7 @@ export function PlayerMobilePanel({
   onOpenEpisodes,
   onOpenServers,
   onNavigateToEpisode,
-  rail = false,
 }: {
-  rail?: boolean
   playback: StreamPlayback
   currentTime: number
   episodes: ReadonlyArray<StreamEpisode>
@@ -62,14 +60,7 @@ export function PlayerMobilePanel({
   const upcoming = upcomingEpisodes(episodes, playback.episode.id)
 
   return (
-    <div
-      className={cn(
-        "flex flex-col gap-5 bg-background px-4 pt-4 pb-[calc(4.5rem+env(safe-area-inset-bottom))] text-foreground",
-        rail
-          ? "md:sticky md:top-0 md:h-dvh md:w-96 md:shrink-0 md:overflow-y-auto md:border-l md:pb-6"
-          : "md:hidden"
-      )}
-    >
+    <div className="flex flex-col gap-5 bg-background px-4 pt-4 pb-[calc(4.5rem+env(safe-area-inset-bottom))] text-foreground md:hidden">
       <div className="flex flex-col gap-2">
         <h1 className="font-heading text-xl leading-tight font-bold tracking-tight">
           <AnimeTitle title={playback.anime.title} />
@@ -193,7 +184,7 @@ const upcomingLabel = (anime: AnimeItem) => {
 
 // Near the end of a finished season, the rest of the list continues into the
 // next entry of the watch order so "Next" never leads somewhere unseen.
-function NextSeasonUpNext({
+export function NextSeasonUpNext({
   playback,
   count,
 }: {

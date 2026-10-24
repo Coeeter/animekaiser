@@ -48,6 +48,7 @@ export function PlayerDesktopControls({
   onOpenServers,
   controlsVisible,
   playerPortalContainer,
+  showHeader,
 }: {
   playback: StreamPlayback
   currentTime: number
@@ -68,6 +69,7 @@ export function PlayerDesktopControls({
   onOpenServers: () => void
   controlsVisible: boolean
   playerPortalContainer: HTMLElement | null
+  showHeader: boolean
 }) {
   const room = useRoomPlayer()
   const providerName = useAtomValue(providerLabelAtom(playback.provider))
@@ -82,67 +84,69 @@ export function PlayerDesktopControls({
         controlsVisible ? "opacity-100" : "pointer-events-none opacity-0"
       )}
     >
-      <div className="flex items-center gap-2">
-        <Button
-          asChild
-          variant="ghost"
-          size="icon-sm"
-          className="shrink-0 text-white hover:bg-white/10 hover:text-white"
-        >
-          <Link to="/series/$id" params={{ id: playback.anime.malId }}>
-            <ArrowLeft />
-            <span className="sr-only">Back to series</span>
-          </Link>
-        </Button>
-        <button
-          type="button"
-          className="min-w-0 flex-1 text-left"
-          onClick={onTogglePlayback}
-        >
-          <p className="truncate text-sm font-medium text-white">
-            <AnimeTitle title={playback.anime.title} />
-          </p>
-          <p
-            className="truncate text-xs text-white/55"
-            title={`${episodeLabel(playback.episode)}${displayTitle ? ` · ${displayTitle}` : ""}`}
+      {showHeader ? (
+        <div className="flex items-center gap-2">
+          <Button
+            asChild
+            variant="ghost"
+            size="icon-sm"
+            className="shrink-0 text-white hover:bg-white/10 hover:text-white"
           >
-            {episodeLabel(playback.episode)}
-            {displayTitle ? ` · ${displayTitle}` : ""}
-          </p>
-        </button>
-        <Button
-          variant="ghost"
-          size="sm"
-          className="max-w-44 text-white hover:bg-white/10 hover:text-white"
-          onClick={onOpenEpisodes}
-        >
-          <ListVideo />
-          <span className="truncate" title="Episodes">
-            Episodes
-          </span>
-        </Button>
-        <Button
-          variant="ghost"
-          size="sm"
-          className="max-w-40 text-white hover:bg-white/10 hover:text-white"
-          onClick={onOpenServers}
-        >
-          <Server />
-          <span
-            className="truncate"
-            title={`Source: ${providerName} · ${playback.server.name}`}
+            <Link to="/series/$id" params={{ id: playback.anime.malId }}>
+              <ArrowLeft />
+              <span className="sr-only">Back to series</span>
+            </Link>
+          </Button>
+          <button
+            type="button"
+            className="min-w-0 flex-1 text-left"
+            onClick={onTogglePlayback}
           >
-            {providerName} · {playback.server.name}
-          </span>
-        </Button>
-        {room ? null : (
-          <PlayerWatchTogether
-            playback={playback}
-            currentTime={currentTime}
-            className="text-white hover:bg-white/10 hover:text-white"
-          />
-        )}
-      </div>
+            <p className="truncate text-sm font-medium text-white">
+              <AnimeTitle title={playback.anime.title} />
+            </p>
+            <p
+              className="truncate text-xs text-white/55"
+              title={`${episodeLabel(playback.episode)}${displayTitle ? ` · ${displayTitle}` : ""}`}
+            >
+              {episodeLabel(playback.episode)}
+              {displayTitle ? ` · ${displayTitle}` : ""}
+            </p>
+          </button>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="max-w-44 text-white hover:bg-white/10 hover:text-white"
+            onClick={onOpenEpisodes}
+          >
+            <ListVideo />
+            <span className="truncate" title="Episodes">
+              Episodes
+            </span>
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="max-w-40 text-white hover:bg-white/10 hover:text-white"
+            onClick={onOpenServers}
+          >
+            <Server />
+            <span
+              className="truncate"
+              title={`Source: ${providerName} · ${playback.server.name}`}
+            >
+              {providerName} · {playback.server.name}
+            </span>
+          </Button>
+          {room ? null : (
+            <PlayerWatchTogether
+              playback={playback}
+              currentTime={currentTime}
+              className="text-white hover:bg-white/10 hover:text-white"
+            />
+          )}
+        </div>
+      ) : null}
 
       <PlayerTimeline
         playback={playback}

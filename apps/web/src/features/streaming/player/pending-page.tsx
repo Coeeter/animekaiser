@@ -49,9 +49,9 @@ export function StreamPlayerPendingPage({
         >
           <VideoSkeleton />
         </div>
-        {theater ? <TheaterBarSkeleton /> : null}
+        {theater ? <InfoPanelSkeleton /> : null}
       </div>
-      <PanelSkeleton rail={theater} />
+      {theater ? <RailSkeleton /> : <PanelSkeleton />}
     </PlayerShell>
   )
 }
@@ -81,18 +81,25 @@ function VideoSkeleton() {
   )
 }
 
-function TheaterBarSkeleton() {
+function InfoPanelSkeleton() {
   return (
     <div className="hidden flex-col gap-4 md:flex">
+      <div className="flex items-start justify-between gap-6">
+        <div className="flex flex-col gap-2">
+          <DarkBlock className="h-6 w-72" />
+          <DarkBlock className="h-4 w-48" />
+        </div>
+        <div className="flex gap-2">
+          <DarkBlock className="h-9 w-28 rounded-full" />
+          <DarkBlock className="h-9 w-24 rounded-full" />
+        </div>
+      </div>
       <div className="flex items-center gap-2">
-        {["w-20", "w-20", "w-20", "w-20"].map((width, index) => (
-          <DarkBlock key={index} className={cn("h-8 rounded-full", width)} />
-        ))}
+        <DarkBlock className="h-8 w-56 rounded-full" />
+        <DarkBlock className="h-8 w-36 rounded-full" />
         <DarkBlock className="ml-auto h-8 w-28 rounded-full" />
       </div>
       <div className="flex flex-col gap-3 rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-        <DarkBlock className="h-3 w-20" />
-        <DarkBlock className="h-5 w-1/3" />
         <DarkBlock className="h-3 w-2/3" />
         <DarkBlock className="h-3 w-1/2" />
       </div>
@@ -100,16 +107,31 @@ function TheaterBarSkeleton() {
   )
 }
 
-function PanelSkeleton({ rail }: { rail: boolean }) {
+function RailSkeleton() {
   return (
-    <div
-      className={cn(
-        "flex flex-col gap-5 bg-background px-4 pt-4 pb-6 text-foreground",
-        rail
-          ? "md:sticky md:top-0 md:h-dvh md:w-96 md:shrink-0 md:overflow-hidden md:border-l"
-          : "md:hidden"
-      )}
-    >
+    <div className="hidden h-dvh w-96 shrink-0 flex-col overflow-hidden border-l bg-background md:sticky md:top-0 md:flex">
+      <div className="flex items-center justify-between border-b px-4 py-3">
+        <Skeleton className="h-5 w-20" />
+        <Skeleton className="h-3 w-16" />
+      </div>
+      <div className="flex flex-col gap-1 p-2">
+        {Array.from({ length: 8 }, (_, index) => (
+          <div key={index} className="flex items-center gap-3 p-2">
+            <Skeleton className="aspect-video w-28 shrink-0 rounded-lg" />
+            <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+              <Skeleton className="h-4 w-4/5" />
+              <Skeleton className="h-3 w-1/3" />
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function PanelSkeleton() {
+  return (
+    <div className="flex flex-col gap-5 bg-background px-4 pt-4 pb-6 text-foreground md:hidden">
       <div className="flex flex-col gap-2">
         <Skeleton className="h-6 w-3/4" />
         <Skeleton className="h-4 w-1/2" />
