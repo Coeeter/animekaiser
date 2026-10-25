@@ -18,11 +18,8 @@ import { forwardRef } from "react"
 import { WatchNowButton } from "../../streaming/watch-now-button"
 import { detailAtom } from "../detail/atoms"
 import { AnimeSubtitle, AnimeTitle } from "./anime-title"
-import { formatAnimeFormat, formatAnimeStatus } from "./format"
+import { formatAnimeFormat, formatAnimeStatus, stripHtml } from "./format"
 import { animeTitlePreferenceAtom, getAnimeTitle } from "./title"
-
-const stripHtml = (value: string | null) =>
-  value?.replace(/<[^>]*>/g, "").trim() || null
 
 const relativeAiringLabel = (airingAt: number) => {
   const seconds = airingAt - Math.floor(Date.now() / 1000)

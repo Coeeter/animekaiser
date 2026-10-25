@@ -42,7 +42,12 @@ import { preferredProviderAtom } from "../../streaming/preferences"
 import { WatchNowButton } from "../../streaming/watch-now-button"
 import { AnimeGrid } from "../common/anime-grid"
 import { AnimeSubtitle, AnimeTitle } from "../common/anime-title"
-import { formatAnimeFormat, formatAnimeStatus } from "../common/format"
+import {
+  formatAnimeFormat,
+  formatAnimeSeason,
+  formatAnimeStatus,
+  stripHtml,
+} from "../common/format"
 import { NextAiringNotice } from "../schedule/next-airing-notice"
 import { detailAtom, recommendationsAtom } from "./atoms"
 import { WatchOrderStrip } from "./watch-order-strip"
@@ -56,9 +61,6 @@ export const AnimeDetailTab = Schema.Literals([
 export type AnimeDetailTab = typeof AnimeDetailTab.Type
 
 const decodeAnimeDetailTab = Schema.decodeUnknownSync(AnimeDetailTab)
-
-const stripHtml = (value: string | null) =>
-  value?.replace(/<[^>]*>/g, "").trim() ?? null
 
 const hiddenRelationFormats = new Set(["MUSIC"])
 
@@ -331,9 +333,6 @@ const catalogStatus = (status: AnimeDetail["status"]) => {
   return undefined
 }
 
-const seasonLabel = (season: AnimeDetail["season"]) =>
-  season ? season.charAt(0) + season.slice(1).toLowerCase() : null
-
 const metaLink =
   "underline-offset-4 transition hover:text-white hover:underline"
 
@@ -385,7 +384,7 @@ function HeaderMeta({ anime }: { anime: AnimeDetail }) {
         }}
         className={metaLink}
       >
-        {[seasonLabel(anime.season), anime.seasonYear]
+        {[formatAnimeSeason(anime.season), anime.seasonYear]
           .filter(Boolean)
           .join(" ")}
       </Link>

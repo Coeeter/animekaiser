@@ -1,4 +1,8 @@
-import type { AnimeFormat, AnimeReleaseStatus } from "@animekaiser/domain"
+import type {
+  AnimeFormat,
+  AnimeReleaseStatus,
+  AnimeSeason,
+} from "@animekaiser/domain"
 
 export const formatAnimeFormat = (format: AnimeFormat | null) => {
   if (format === "TV_SHORT") return "TV Short"
@@ -26,3 +30,9 @@ export const formatAnimeMeta = (
   ]
     .filter(Boolean)
     .join(" · ")
+
+export const stripHtml = (value: string | null) =>
+  value?.replace(/<[^>]*>/g, "").trim() || null
+
+export const formatAnimeSeason = (season: AnimeSeason | null) =>
+  season ? season.charAt(0) + season.slice(1).toLowerCase() : null
