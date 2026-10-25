@@ -873,7 +873,7 @@ function StreamPlayer({
       <div
         className={
           theater
-            ? "contents md:flex md:min-w-0 md:flex-1 md:flex-col md:gap-4 md:p-4"
+            ? "contents md:flex md:min-w-0 md:flex-1 md:flex-col md:gap-4 md:self-start md:p-4 md:pb-8"
             : roomLayout
               ? "contents md:flex md:min-w-0 md:flex-1 md:flex-col"
               : "contents"
