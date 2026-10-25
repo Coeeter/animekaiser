@@ -47,7 +47,7 @@ export function WatchOrderStrip({ malId }: { malId: number }) {
           </span>
         ) : null}
       </div>
-      <div className="relative -mx-4 flex snap-x gap-3 overflow-x-auto px-4 pb-1 no-scrollbar md:-mx-6 md:px-6">
+      <div className="relative flex snap-x gap-3 overflow-x-auto pb-1 no-scrollbar">
         {items.map((item, index) => (
           <WatchOrderCard
             key={item.anime.malId}
